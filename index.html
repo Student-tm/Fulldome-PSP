@@ -511,7 +511,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 10.2 · CLOUD-UX</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 10.4 · FOLDER-NAME-JSON</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -2778,8 +2778,8 @@ function cloudUnlinkedFolders(){
 async function cloudOpenFolder(fid, name){
   try{
     setCloudStat('Opening "' + name + '"…');
-    const jfid = await driveFindFile('project.json', fid);
-    if(!jfid){ setCloudStat('No project.json in "' + name + '"'); return; }
+    const jfid = await driveFindProjectJson(fid, null);
+    if(!jfid){ setCloudStat('No project file in "' + name + '"'); return; }
     const meta = await (await gFetch('https://www.googleapis.com/drive/v3/files/' + jfid + '?fields=modifiedTime')).json();
     const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + jfid + '?alt=media');
     const text = await r.text();
@@ -2814,7 +2814,8 @@ async function cloudPushActive(){
       const fid = await driveEnsureFolder(projDriveFolderName(e.data.project), rootId);
       m = driveMap()[e.id] = { fid, mtime: '', docsSig: {} };
     }
-    const jfid = await driveFindFile('project.json', m.fid);
+    const wantedName = projDriveJsonName(e.data.project);
+    const jfid = await driveFindProjectJson(m.fid, wantedName);
     if(jfid && m.mtime){
       const meta = await (await gFetch('https://www.googleapis.com/drive/v3/files/' + jfid + '?fields=modifiedTime')).json();
       if(meta.modifiedTime && meta.modifiedTime !== m.mtime){
@@ -2827,7 +2828,7 @@ async function cloudPushActive(){
       }
     }
     const upUrl = 'https://www.googleapis.com/upload/drive/v3/files' + (jfid ? '/' + jfid : '') + '?uploadType=multipart&fields=id,modifiedTime';
-    const meta2 = jfid ? { name:'project.json' } : { name:'project.json', parents:[m.fid] };
+    const meta2 = jfid ? { name: wantedName } : { name: wantedName, parents:[m.fid] };
     const boundary = 'fdp' + Math.random().toString(36).slice(2);
     const body = new Blob(['--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify(meta2)+'\r\n--'+boundary+'\r\nContent-Type: application/json\r\n\r\n', projPayload(e), '\r\n--'+boundary+'--']);
     const ur = await gFetch(upUrl, { method: jfid?'PATCH':'POST', headers:{'Content-Type':'multipart/related; boundary='+boundary}, body });
@@ -2860,6 +2861,17 @@ async function cloudPushActive(){
   _pushing = false;
 }
 
+function projDriveJsonName(P){ return projDriveFolderName(P) + '.json'; }   /* same name as the project folder */
+async function driveFindProjectJson(fid, wanted){
+  if(wanted){ const a = await driveFindFile(wanted, fid); if(a) return a; }
+  const b = await driveFindFile('project.json', fid); if(b) return b;   /* legacy name */
+  /* fallback: the only .json sitting directly in the project folder */
+  const q = encodeURIComponent("'" + fid + "' in parents and trashed = false and mimeType != 'application/vnd.google-apps.folder'");
+  const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name)&pageSize=20');
+  const j = await r.json();
+  const js = (j.files||[]).filter(f => /\.json$/i.test(f.name));
+  return js.length ? js[0].id : null;
+}
 function projDriveFolderName(P){
   const num = String(P.number||'').trim();
   const t = String(P.title||'').trim();
@@ -2874,8 +2886,9 @@ async function driveSaveActive(){
     const rootId = await driveEnsureFolder(GDRIVE_ROOT_NAME, null);
     const pf = await driveEnsureFolder(projDriveFolderName(e.data.project), rootId);
     flashStat('Uploading project.json…');
-    const exId = await driveFindFile('project.json', pf);
-    await driveUpload('project.json', pf, projPayload(e), 'application/json', exId);
+    const jn = projDriveJsonName(e.data.project);
+    const exId = await driveFindProjectJson(pf, jn);
+    await driveUpload(jn, pf, projPayload(e), 'application/json', exId);
     /* human-readable mirror of Documentation files */
     const jobs = [];
     const d = e.data;
