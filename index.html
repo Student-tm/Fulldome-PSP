@@ -3,7 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fulldome Projection SP — b11.4</title>
+<!-- always fetch a fresh build: GitHub Pages caches aggressively (BUILD 11.5) -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Fulldome Projection SP — b11.7</title>
 <style>
   :root{
     --fdp-red:#D32F2F;
@@ -383,7 +387,19 @@
   .sproj-add{border:none;background:transparent;color:var(--dim);cursor:pointer;padding:3px 5px;border-radius:5px;
     font-size:15px;line-height:1;font-family:inherit}
   .sproj-add:hover{color:#fff;background:#30353d}
-  .plist2{display:flex;flex-direction:column;gap:5px;max-height:220px;overflow-y:auto}
+  .plist2{display:flex;flex-direction:column;gap:5px;max-height:460px;overflow:hidden}
+  /* split view: In progress / Completed, 50% each with its own scroll (BUILD 11.7) */
+  .pjsplit{display:flex;flex-direction:column;gap:0;max-height:460px}
+  .pjpane{display:flex;flex-direction:column;min-height:0}
+  .pjpane.half{flex:1 1 50%;max-height:50%}
+  .pjpane.full{flex:1 1 100%}
+  .pjpane .pjrows{display:flex;flex-direction:column;gap:5px;overflow-y:auto;padding-right:2px;min-height:0}
+  .pjpane + .pjpane{margin-top:10px;border-top:1px solid #363b44;padding-top:8px}
+  .pjhead{display:flex;align-items:center;gap:7px;font-size:9px;letter-spacing:1.2px;text-transform:uppercase;
+    color:#6b7480;padding:2px 4px 7px;flex:none}
+  .pjhead .n{background:#2c313a;color:#9aa2ad;border-radius:99px;padding:1px 7px;font-size:8.5px;letter-spacing:.3px}
+  .pjhead.done-h{color:#5f7f6c}
+  .pjhead.done-h .n{background:rgba(67,209,124,.15);color:#43d17c}
   .pj{display:flex;gap:8px;align-items:center;padding:8px 9px 8px 13px;border-radius:8px;background:transparent;
     position:relative;cursor:pointer;overflow:hidden}
   .pj::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:transparent;transition:background .12s}
@@ -517,7 +533,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 11.4 · VERSION</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 11.7 · SPLIT-LIST</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1456,9 +1472,20 @@ function renderSideProject(){
   };
   const inProg = db.projects.filter(e=>!e.done);
   const done   = db.projects.filter(e=>e.done).sort((a,b)=>(a.doneAt||0)-(b.doneAt||0));
-  let html = '';
-  if(cloudRows || inProg.length) html += '<div class="pjsec">In progress</div>' + cloudRows + inProg.map(cardHtml).join('');
-  if(done.length) html += '<div class="pjsec">Completed (' + done.length + ')</div>' + done.map(cardHtml).join('');
+  const split = done.length > 0;
+  const progRows = cloudRows + inProg.map(cardHtml).join('');
+  let html = '<div class="pjsplit">';
+  html += '<div class="pjpane ' + (split ? 'half' : 'full') + '">' +
+            '<div class="pjhead">In progress <span class="n">' + (inProg.length + (_cloudOn ? cloudUnlinkedFolders().length : 0)) + '</span></div>' +
+            '<div class="pjrows">' + (progRows || '<div style="font-size:11px;color:#565c66;padding:4px">No active projects</div>') + '</div>' +
+          '</div>';
+  if(split){
+    html += '<div class="pjpane half">' +
+              '<div class="pjhead done-h">Completed <span class="n">' + done.length + '</span></div>' +
+              '<div class="pjrows">' + done.map(cardHtml).join('') + '</div>' +
+            '</div>';
+  }
+  html += '</div>';
   document.getElementById('pjList').innerHTML = html;
 }
 
@@ -3072,7 +3099,7 @@ async function cloudOpenFolder(fid, name){
     const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + jfid + '?alt=media');
     const text = await r.text();
     const e = applyProjectText(text);
-    if(e){ driveMap()[e.id] = { fid, mtime: meta.modifiedTime || '' , docsSig: cloudDocsSig(e) }; saveState(); renderSideProject(); setTimeout(liveStart, 300); }
+    if(e){ driveMap()[e.id] = { fid, mtime: meta.modifiedTime || '' , docsSig: cloudDocsSig(e), name: name }; saveState(); renderSideProject(); setTimeout(liveStart, 300); }
     setCloudStat(_gUser ? ('Cloud ✓ ' + _gUser) : 'Cloud ✓');
   }catch(err){ setCloudStat('Cloud error: ' + (err && err.message || 'open failed')); }
 }
@@ -3117,7 +3144,22 @@ async function cloudPushActive(){
     if(m && m.fid && !(await driveAlive(m.fid))) m = null;
     if(!m || !m.fid){
       const fid = await driveEnsureFolder(projDriveFolderName(e.data.project), rootId);
-      m = driveMap()[e.id] = { fid, mtime: '', docsSig: {} };
+      m = driveMap()[e.id] = { fid, mtime: '', docsSig: {}, name: projDriveFolderName(e.data.project) };
+    }
+    /* keep Drive names in sync with the project (BUILD 11.6):
+       folder = "<number> <title>", json = same name + .json */
+    const wantFolder = projDriveFolderName(e.data.project);
+    if(m.name !== wantFolder){
+      try{
+        const cur = await (await gFetch('https://www.googleapis.com/drive/v3/files/' + m.fid + '?fields=name')).json();
+        if(cur && cur.name && cur.name !== wantFolder){
+          await gFetch('https://www.googleapis.com/drive/v3/files/' + m.fid + '?fields=id', {
+            method:'PATCH', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ name: wantFolder }) });
+          setCloudStat('Renamed in Drive → ' + wantFolder);
+        }
+        m.name = wantFolder;
+      }catch(err){}
     }
     const wantedName = projDriveJsonName(e.data.project);
     let jfid = await driveFindProjectJson(m.fid, wantedName);
