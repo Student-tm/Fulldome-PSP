@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>Fulldome Projection SP — b11.7</title>
+<title>Fulldome Projection SP — b11.9</title>
 <style>
   :root{
     --fdp-red:#D32F2F;
@@ -330,7 +330,7 @@
   table.eq select.cell.empty{color:#9aa2ad}
 
   /* sidebar project block */
-  .sproj-wrap{padding:10px;border-top:1px solid var(--line-d)}
+  .sproj-wrap{padding:10px;border-top:1px solid var(--line-d);display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
   .sproj-cap{font-size:10px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;margin:2px 4px 7px}
   .sproj{display:flex;gap:10px;align-items:center;padding:9px;border-radius:8px;background:var(--side2);
     box-shadow:inset 0 0 0 1px var(--line-d);position:relative}
@@ -387,14 +387,13 @@
   .sproj-add{border:none;background:transparent;color:var(--dim);cursor:pointer;padding:3px 5px;border-radius:5px;
     font-size:15px;line-height:1;font-family:inherit}
   .sproj-add:hover{color:#fff;background:#30353d}
-  .plist2{display:flex;flex-direction:column;gap:5px;max-height:460px;overflow:hidden}
+  .plist2{display:flex;flex-direction:column;gap:5px;flex:1 1 auto;min-height:0;overflow:hidden}
   /* split view: In progress / Completed, 50% each with its own scroll (BUILD 11.7) */
-  .pjsplit{display:flex;flex-direction:column;gap:0;max-height:460px}
+  .pjsplit{display:flex;flex-direction:column;height:100%;min-height:0}
   .pjpane{display:flex;flex-direction:column;min-height:0}
-  .pjpane.half{flex:1 1 50%;max-height:50%}
-  .pjpane.full{flex:1 1 100%}
+  .pjpane.top{flex:0 1 auto;max-height:50%}
+  .pjpane.bottom{flex:0 1 auto;max-height:50%;margin-top:auto;border-top:1px solid #363b44;padding-top:12px}
   .pjpane .pjrows{display:flex;flex-direction:column;gap:5px;overflow-y:auto;padding-right:2px;min-height:0}
-  .pjpane + .pjpane{margin-top:10px;border-top:1px solid #363b44;padding-top:8px}
   .pjhead{display:flex;align-items:center;gap:7px;font-size:9px;letter-spacing:1.2px;text-transform:uppercase;
     color:#6b7480;padding:2px 4px 7px;flex:none}
   .pjhead .n{background:#2c313a;color:#9aa2ad;border-radius:99px;padding:1px 7px;font-size:8.5px;letter-spacing:.3px}
@@ -521,7 +520,7 @@
     </div>
     <div class="plist2" id="pjList"></div>
   </div>
-  <div class="side-spacer"></div>
+  <div class="side-spacer" style="flex:0 0 auto"></div>
   <div class="side-tools2">
     <button class="tlink savefile" onclick="saveToFile()">Save Project File</button>
     <button class="tlink" onclick="openProjectFile()">Load Project File</button>
@@ -533,7 +532,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 11.7 · SPLIT-LIST</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 11.9 · PHOTO-MIRROR</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1475,12 +1474,12 @@ function renderSideProject(){
   const split = done.length > 0;
   const progRows = cloudRows + inProg.map(cardHtml).join('');
   let html = '<div class="pjsplit">';
-  html += '<div class="pjpane ' + (split ? 'half' : 'full') + '">' +
+  html += '<div class="pjpane top">' +
             '<div class="pjhead">In progress <span class="n">' + (inProg.length + (_cloudOn ? cloudUnlinkedFolders().length : 0)) + '</span></div>' +
             '<div class="pjrows">' + (progRows || '<div style="font-size:11px;color:#565c66;padding:4px">No active projects</div>') + '</div>' +
           '</div>';
   if(split){
-    html += '<div class="pjpane half">' +
+    html += '<div class="pjpane bottom">' +
               '<div class="pjhead done-h">Completed <span class="n">' + done.length + '</span></div>' +
               '<div class="pjrows">' + done.map(cardHtml).join('') + '</div>' +
             '</div>';
@@ -3103,6 +3102,41 @@ async function cloudOpenFolder(fid, name){
     setCloudStat(_gUser ? ('Cloud ✓ ' + _gUser) : 'Cloud ✓');
   }catch(err){ setCloudStat('Cloud error: ' + (err && err.message || 'open failed')); }
 }
+const PHOTO_DIRS = [
+  ['site',   'Site'],
+  ['server', 'Dome Server'],
+  ['vj',     'VJ Server'],
+  ['rack',   'Rack'],
+  ['camera', 'Camera']
+];
+function cloudPhotoJobs(e){
+  /* every photo of the project as {dir, name, data} — projector model shots
+     included (front/rear per model) */
+  const jobs = [];
+  const clean = s => String(s||'').replace(/[\/\\:*?"<>|]/g, '-').trim();
+  PHOTO_DIRS.forEach(([kind, dir]) => {
+    (entryPhotos(e, kind) || []).forEach((p, i) => {
+      if(!p || !p.src) return;
+      const base = clean(p.name || (dir + '-' + (i+1)));
+      const cap  = p.caption ? ' — ' + clean(p.caption) : '';
+      const ext  = (p.src.match(/^data:image\/([a-z]+)/i) || [,'jpg'])[1].replace('jpeg','jpg');
+      jobs.push({ dir, name: base + cap + '.' + ext, data: p.src });
+    });
+  });
+  const models = (e.data.projectors && e.data.projectors.models) || {};
+  Object.keys(models).forEach(k => {
+    const m = models[k] || {};
+    const label = clean(((m.brand||'') + ' ' + (m.model||'')).trim() || k);
+    if(m.f) jobs.push({ dir:'Projectors', name: label + ' — front.jpg', data: m.f });
+    if(m.r) jobs.push({ dir:'Projectors', name: label + ' — rear.jpg',  data: m.r });
+  });
+  return jobs;
+}
+function cloudPhotoSig(e){
+  const sig = {};
+  cloudPhotoJobs(e).forEach(j => { sig[j.dir + '/' + j.name] = (j.data||'').length; });
+  return sig;
+}
 function cloudDocsSig(e){
   const sig = {};
   const d = e.data;
@@ -3200,6 +3234,27 @@ async function cloudPushActive(){
       }
     }
     m.docsSig = sig;
+    /* photo mirror: Photos/<Category>/… — only new or changed shots */
+    try{
+      const psig = cloudPhotoSig(e);
+      const prev = m.photoSig || {};
+      const todo = cloudPhotoJobs(e).filter(j => psig[j.dir + '/' + j.name] !== prev[j.dir + '/' + j.name]);
+      if(todo.length){
+        const photosRoot = await driveEnsureFolder('Photos', m.fid);
+        const dirIds = {};
+        for(let k = 0; k < todo.length; k++){
+          const j = todo[k];
+          setCloudStat('Uploading photos ' + (k+1) + '/' + todo.length + ' — ' + j.dir);
+          try{
+            if(!dirIds[j.dir]) dirIds[j.dir] = await driveEnsureFolder(j.dir, photosRoot);
+            const ex = await driveFindFile(j.name, dirIds[j.dir]);
+            const mime = (j.data.match(/^data:([^;]+)/) || [,'image/jpeg'])[1];
+            await driveUpload(j.name, dirIds[j.dir], dataUrlToBytes(j.data), mime, ex);
+          }catch(err){}
+        }
+      }
+      m.photoSig = psig;
+    }catch(err){}
     /* tiny meta for the team sidebar */
     try{
       const metaName = 'meta.json';
