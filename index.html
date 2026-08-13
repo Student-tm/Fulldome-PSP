@@ -511,7 +511,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 10.4 · FOLDER-NAME-JSON</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 10.6 · TEAM-CARDS</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1387,10 +1387,28 @@ function renderSideProject(){
   if(!db.projects.length && !cloudN){ w.style.display='none'; return; }
   w.style.display='';
   document.getElementById('spCap').textContent = 'Projects (' + (db.projects.length + cloudN) + ')';
-  const cloudRows = (_cloudOn ? cloudUnlinkedFolders() : []).map(f =>
-    `<div class="pj" onclick="cloudOpenFolder('${f.id}','${esc(f.name).replace(/'/g,'&#39;')}')" title="Team project — click to open">
-      <div class="pjmeta"><div class="pjn"><span style="opacity:.55;margin-right:6px">☁</span>${esc(f.name)}</div>
-      <div class="pjt" style="color:#6b7480">Team project — not opened yet</div></div></div>`).join('');
+  const cloudRows = (_cloudOn ? cloudUnlinkedFolders() : []).map(f => {
+    const m = _cloudMeta[f.id] || null;
+    const cells = [];
+    if(m){
+      if(m.type) cells.push(['Type', m.type]);
+      if(m.dome) cells.push(['Dome', m.dome + ' m' + (m.domeType ? ' ' + m.domeType : '')]);
+      if(m.sysNumber) cells.push(['FDPSN', '#' + m.sysNumber]);
+    }
+    const head = m && (m.number || m.title)
+      ? '#' + esc(m.number || '—')
+      : esc(f.name);
+    const sub = m ? esc(m.title || '') : 'Team project — not opened yet';
+    const foot = cells.length
+      ? '<div class="pjcells">' + cells.map(c=>'<div class="pc"><div class="pcl">'+esc(c[0])+'</div><div class="pcv">'+esc(c[1])+'</div></div>').join('') + '</div>'
+      : '';
+    return `<div class="pj" onclick="cloudOpenFolder('${f.id}','${esc(f.name).replace(/'/g,'&#39;')}')" title="Team project — click to open">
+      <div class="pjmeta">
+        <div class="pjn"><span class="led sm pjled ${m && m.valid ? 'on' : ''}"></span>${head}<span style="opacity:.5;margin-left:6px;font-size:11px">☁</span></div>
+        <div class="pjt">${sub}</div>
+        ${foot}
+      </div></div>`;
+  }).join('');
   document.getElementById('pjList').innerHTML = cloudRows + db.projects.map(e=>{
     const P = e.data.project || {};
     const bits = [];
@@ -2740,7 +2758,7 @@ async function driveUpload(name, parentId, content, mime, existingId){
    (debounced) — no Drive verbs anywhere in the UI. db.driveMap (LOCAL only):
    localProjectId -> {fid, mtime, docsSig}. Conflict guard: before a push the
    remote project.json modifiedTime is compared with the last one we saw. */
-var _cloudOn = false, _cloudFolders = [], _pushTimer = null, _pushing = false;
+var _cloudOn = false, _cloudFolders = [], _cloudMeta = {}, _pushTimer = null, _pushing = false;
 function driveMap(){ if(!db.driveMap || typeof db.driveMap!=='object') db.driveMap = {}; return db.driveMap; }
 function setCloudStat(t){ const el=document.getElementById('driveStat'); if(el) el.textContent = t; }
 function cloudGateShow(){ const g=document.getElementById('authGate'); if(g) g.style.display='flex'; }
@@ -2763,13 +2781,38 @@ async function cloudStart(){
   }
 }
 async function cloudRefreshList(){
-  const rootId = await driveEnsureFolder(GDRIVE_ROOT_NAME, null);
-  db.gdriveRootId = rootId;
+  const rootId = await driveRootId();
   const q = encodeURIComponent("'" + rootId + "' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false");
   const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name)&orderBy=name&pageSize=200');
   const j = await r.json();
   _cloudFolders = j.files || [];
-  saveState(); renderSideProject();
+  saveState(); renderSideProject();                    /* names first — instant */
+  _cloudMeta = await cloudLoadMeta(_cloudFolders);     /* then rich cards */
+  renderSideProject();
+}
+function cloudMetaOf(e){
+  const P = e.data.project || {};
+  return {
+    v: 1,
+    number: P.number || '', title: P.title || '', type: P.type || '',
+    dome: P.domeDiameter || '', domeType: P.domeType || '', sysNumber: P.sysNumber || '',
+    status: P.status || '', valid: !!validationOf(e.data),
+    savedBy: _gUser || '', savedAt: new Date().toISOString()
+  };
+}
+async function cloudLoadMeta(folders){
+  /* tiny meta.json per project folder — lets the sidebar render FULL cards
+     for team projects without downloading the heavy project json */
+  const out = {};
+  await Promise.all((folders||[]).map(async f => {
+    try{
+      const mid = await driveFindFile('meta.json', f.id);
+      if(!mid) return;
+      const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + mid + '?alt=media');
+      out[f.id] = JSON.parse(await r.text());
+    }catch(e){}
+  }));
+  return out;
 }
 function cloudUnlinkedFolders(){
   const linked = {}; Object.values(driveMap()).forEach(m => { if(m && m.fid) linked[m.fid]=1; });
@@ -2808,14 +2851,17 @@ async function cloudPushActive(){
   _pushing = true;
   try{
     setCloudStat('Saving…');
-    const rootId = db.gdriveRootId || await driveEnsureFolder(GDRIVE_ROOT_NAME, null);
+    const rootId = await driveRootId();
     let m = driveMap()[e.id];
+    /* the remembered project folder may have been deleted/emptied by hand */
+    if(m && m.fid && !(await driveAlive(m.fid))) m = null;
     if(!m || !m.fid){
       const fid = await driveEnsureFolder(projDriveFolderName(e.data.project), rootId);
       m = driveMap()[e.id] = { fid, mtime: '', docsSig: {} };
     }
     const wantedName = projDriveJsonName(e.data.project);
-    const jfid = await driveFindProjectJson(m.fid, wantedName);
+    let jfid = await driveFindProjectJson(m.fid, wantedName);
+    if(jfid && !(await driveAlive(jfid))){ jfid = null; m.mtime = ''; m.docsSig = {}; }
     if(jfid && m.mtime){
       const meta = await (await gFetch('https://www.googleapis.com/drive/v3/files/' + jfid + '?fields=modifiedTime')).json();
       if(meta.modifiedTime && meta.modifiedTime !== m.mtime){
@@ -2853,6 +2899,12 @@ async function cloudPushActive(){
       }
     }
     m.docsSig = sig;
+    /* tiny meta for the team sidebar */
+    try{
+      const metaName = 'meta.json';
+      const mex = await driveFindFile(metaName, m.fid);
+      await driveUpload(metaName, m.fid, JSON.stringify(cloudMetaOf(e)), 'application/json', mex);
+    }catch(err){}
     saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
     setCloudStat((_gUser ? 'Cloud ✓ ' + _gUser : 'Cloud ✓') + ' · saved ' + new Date().toTimeString().slice(0,5));
   }catch(err){
@@ -2862,6 +2914,23 @@ async function cloudPushActive(){
 }
 
 function projDriveJsonName(P){ return projDriveFolderName(P) + '.json'; }   /* same name as the project folder */
+async function driveAlive(id){
+  if(!id) return false;
+  try{
+    const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + id + '?fields=id,trashed');
+    if(!r.ok) return false;
+    const j = await r.json();
+    return !!j.id && !j.trashed;
+  }catch(e){ return false; }
+}
+async function driveRootId(){
+  /* never trust a cached id — a trashed folder still answers by id, and
+     writes would silently land in the trash (BUILD 10.5) */
+  if(db.gdriveRootId && await driveAlive(db.gdriveRootId)) return db.gdriveRootId;
+  const id = await driveEnsureFolder(GDRIVE_ROOT_NAME, null);
+  db.gdriveRootId = id;
+  return id;
+}
 async function driveFindProjectJson(fid, wanted){
   if(wanted){ const a = await driveFindFile(wanted, fid); if(a) return a; }
   const b = await driveFindFile('project.json', fid); if(b) return b;   /* legacy name */
