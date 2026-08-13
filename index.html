@@ -503,7 +503,7 @@
   <div class="side-tools2">
     <button class="tlink savefile" onclick="saveToFile()">Save Project File</button>
     <button class="tlink" onclick="openProjectFile()">Load Project File</button>
-    <div id="driveStat" style="font-size:10px;color:#6b7480;text-align:center;margin-top:2px"></div>
+    <div id="driveStat" onclick="cloudSyncNow()" title="Click to sync now" style="font-size:10px;color:#6b7480;text-align:center;margin-top:2px;cursor:pointer"></div>
     <input type="file" id="loadFile" accept=".json,.fdproj" onchange="loadFromFile(event)">
     <button class="tlink danger" onclick="openDelete()">Delete Project</button>
     <div class="savestat" id="saveStat"></div>
@@ -511,7 +511,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 10.6 · TEAM-CARDS</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 10.8 · CLOUD-STATE</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1337,6 +1337,8 @@ function applyProjectText(text){
       saveState(); renderHeader(); renderSideProject();
       location.hash = '#/dashboard'; route();
       flashStat('Project loaded ✓');
+      setTimeout(()=>{ try{ cloudPushNow(); }catch(e){} }, 200);
+      if(_cloudOn && _gTok){ clearTimeout(_pushTimer); setTimeout(cloudPushActive, 200); }
       return e;
     }catch(err){ flashStat('Invalid project file'); return null; }
 }
@@ -1961,6 +1963,7 @@ function createProjectInner(){
   db.projects.push(entry);
   db.activeId = entry.id; syncActive();
   saveState(); renderHeader(); renderSideProject();
+  setTimeout(()=>{ try{ cloudPushNow(); }catch(e){} }, 200);
   goTo('#/dashboard');
 }
 function saveProjectEdit(){
@@ -1981,6 +1984,7 @@ function saveProjectEditInner(){
   }
   revalidateReady();
   saveState(); renderHeader(); renderSideProject();
+  setTimeout(()=>{ try{ cloudPushNow(); }catch(e){} }, 200);
   goTo('#/dashboard');
 }
 const blankRow = () => ({cat:'', name:'', qty:1, price:'', link:''});
@@ -2032,6 +2036,7 @@ function loadDemo(){
   db.projects.push(entry);
   db.activeId = entry.id; syncActive();
   saveState(); renderHeader(); renderSideProject();
+  setTimeout(()=>{ try{ cloudPushNow(); }catch(e){} }, 200);
   goTo('#/dashboard');
 }
 
@@ -2702,6 +2707,11 @@ async function gFetch(url, opts){
     opts.headers['Authorization'] = 'Bearer ' + _gTok;
     r = await fetch(url, opts);
   }
+  if(!r.ok && r.status !== 404){
+    let detail = '';
+    try{ const t = await r.clone().text(); const j = JSON.parse(t); detail = (j.error && j.error.message) || t.slice(0,120); }catch(e){}
+    throw new Error('Drive ' + r.status + (detail ? ': ' + detail : ''));
+  }
   return r;
 }
 async function driveEnsureFolder(name, parentId){
@@ -2763,7 +2773,7 @@ function driveMap(){ if(!db.driveMap || typeof db.driveMap!=='object') db.driveM
 function setCloudStat(t){ const el=document.getElementById('driveStat'); if(el) el.textContent = t; }
 function cloudGateShow(){ const g=document.getElementById('authGate'); if(g) g.style.display='flex'; }
 function cloudGateHide(){ const g=document.getElementById('authGate'); if(g) g.style.display='none'; }
-function cloudOffline(){ _cloudOn=false; cloudGateHide(); setCloudStat('Offline — local storage only'); }
+function cloudOffline(){ _cloudOn=false; cloudGateHide(); setCloudStat('Offline — click to sign in and sync'); }
 async function cloudStart(){
   const err = document.getElementById('authErr');
   try{
@@ -2775,6 +2785,9 @@ async function cloudStart(){
     setCloudStat('Loading team projects…');
     await cloudRefreshList();
     setCloudStat(_gUser ? ('Cloud ✓ ' + _gUser) : 'Cloud ✓');
+    /* a project may already be open (loaded from disk before signing in) —
+       make sure it reaches the team folder right away */
+    if(activeEntry()) cloudPushActive();
   }catch(e){
     if(err) err.textContent = 'Sign-in failed: ' + (e && e.message || 'error') + '. Check that your email is in the test users list.';
     setCloudStat('');
@@ -2838,6 +2851,18 @@ function cloudDocsSig(e){
   if(d.contentList && d.contentList.data) sig[d.contentList.name] = (d.contentList.data||'').length;
   return sig;
 }
+function cloudSyncNow(){
+  if(!_cloudOn || !_gTok){ cloudGateShow(); return; }
+  clearTimeout(_pushTimer);
+  cloudRefreshList().then(cloudPushActive)
+    .catch(e => setCloudStat('Cloud error: ' + (e && e.message || 'sync failed') + ' — click to retry'));
+}
+function cloudPushNow(){
+  /* right after a project is created / loaded from a file — don't wait 4s */
+  if(!_cloudOn || !_gTok){ setCloudStat('Offline — not synced to the team folder'); return; }
+  clearTimeout(_pushTimer);
+  cloudPushActive();
+}
 function cloudTouch(){
   /* called from saveState — schedule a quiet push of the active project */
   if(!_cloudOn || !_gTok) return;
@@ -2845,9 +2870,10 @@ function cloudTouch(){
   _pushTimer = setTimeout(cloudPushActive, 4000);
 }
 async function cloudPushActive(){
-  if(!_cloudOn || _pushing) return;
+  if(_pushing) return;
+  if(!_cloudOn || !_gTok){ setCloudStat('⚠ Not signed in — click here to connect Google Drive'); return; }
   const e = activeEntry();
-  if(!e || !e.data.project) return;
+  if(!e || !e.data.project){ setCloudStat('No active project to sync'); return; }
   _pushing = true;
   try{
     setCloudStat('Saving…');
@@ -2906,9 +2932,12 @@ async function cloudPushActive(){
       await driveUpload(metaName, m.fid, JSON.stringify(cloudMetaOf(e)), 'application/json', mex);
     }catch(err){}
     saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
-    setCloudStat((_gUser ? 'Cloud ✓ ' + _gUser : 'Cloud ✓') + ' · saved ' + new Date().toTimeString().slice(0,5));
+    await cloudRefreshList();
+    setCloudStat('Cloud ✓ ' + (_gUser || '') + ' · saved ' + new Date().toTimeString().slice(0,5) + ' → ' + projDriveFolderName(e.data.project));
   }catch(err){
-    setCloudStat('⚠ Not saved to cloud: ' + (err && err.message || 'error'));
+    const msg = (err && err.message) || 'error';
+    setCloudStat('⚠ NOT saved to cloud: ' + msg + ' — click to retry');
+    console.error('[cloud push]', err);
   }
   _pushing = false;
 }
@@ -4147,7 +4176,8 @@ window.addEventListener('error', function(e){
 });
 window.addEventListener('hashchange', route);
 loadState(()=>{ restoreHandles(); renderHeader(); renderSideProject(); route();
-  if(driveClientId()) cloudGateShow(); });
+  if(driveClientId()){ setCloudStat('Not signed in — click to connect'); cloudGateShow(); }
+  else setCloudStat('Local mode (no cloud configured)'); });
 </script>
 </body>
 </html>
