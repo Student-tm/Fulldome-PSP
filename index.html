@@ -503,6 +503,7 @@
   <div class="side-tools2">
     <button class="tlink savefile" onclick="saveToFile()">Save Project File</button>
     <button class="tlink" onclick="openProjectFile()">Load Project File</button>
+    <div id="driveStat" style="font-size:10px;color:#6b7480;text-align:center;margin-top:2px"></div>
     <input type="file" id="loadFile" accept=".json,.fdproj" onchange="loadFromFile(event)">
     <button class="tlink danger" onclick="openDelete()">Delete Project</button>
     <div class="savestat" id="saveStat"></div>
@@ -510,7 +511,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 8.8 · LINK-COPY</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 10.2 · CLOUD-UX</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -548,6 +549,26 @@
 <div class="lbx" id="lbx" onclick="closeLightbox()">
   <img id="lbxImg" alt="">
   <div class="lbcap" id="lbxCap"></div>
+</div>
+
+<div id="authGate" style="position:fixed;inset:0;background:var(--side,#1b1e23);z-index:2000;display:none;align-items:center;justify-content:center">
+  <div style="text-align:center;max-width:340px;padding:24px">
+    <div style="font-size:13px;letter-spacing:2.5px;color:#D32F2F;font-weight:800;margin-bottom:6px">FULLDOME</div>
+    <div style="font-size:21px;font-weight:700;color:#fff;margin-bottom:8px">Projection SP</div>
+    <div style="font-size:12.5px;color:#9aa2ad;line-height:1.5;margin-bottom:22px">Sign in to open the team workspace.<br>All projects and files stay in sync automatically.</div>
+    <button onclick="cloudStart()" style="width:100%;padding:12px;border:0;border-radius:10px;background:#fff;color:#1b1e23;font-weight:700;font-size:14px;cursor:pointer">Sign in with Google</button>
+    <div id="authErr" style="font-size:11px;color:#e6a0a0;margin-top:10px"></div>
+    <button onclick="cloudOffline()" style="margin-top:14px;background:none;border:0;color:#6b7480;font-size:11px;cursor:pointer;text-decoration:underline">Continue offline (this computer only)</button>
+  </div>
+</div>
+
+<div class="modal" id="driveModal">
+  <div class="box">
+    <div class="mt">Open from Google Drive</div>
+    <div class="mm" style="margin-bottom:10px">Team folder "Fulldome PSP" — pick a project:</div>
+    <div id="driveList" style="max-height:300px;overflow:auto"></div>
+    <div class="mb"><button class="no" onclick="closeDriveDlg()">Cancel</button></div>
+  </div>
 </div>
 
 <div class="modal" id="saveModal">
@@ -771,6 +792,7 @@ function loadState(done){
 var storageBroken = false;
 var _savePending = false, _saveQueued = false;
 function saveState(){
+  if(!saveState._skipCloud && typeof cloudTouch === 'function'){ try{ cloudTouch(); }catch(e){} }
   if(!idbOk){
     try{
       localStorage.setItem(STORE_KEY, JSON.stringify(db));
@@ -1361,10 +1383,15 @@ const IC_EDIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
 const IC_FRZ  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M4 6l16 12M20 6L4 18M12 2l-2.5 2.5M12 2l2.5 2.5M12 22l-2.5-2.5M12 22l2.5-2.5M4 6l.5 3.4M4 6l3.4-.5M20 18l-.5-3.4M20 18l-3.4.5M20 6l-3.4-.5M20 6l-.5 3.4M4 18l3.4.5M4 18l.5-3.4"/></svg>';
 function renderSideProject(){
   const w = document.getElementById('sprojWrap');
-  if(!db.projects.length){ w.style.display='none'; return; }
+  const cloudN = (_cloudOn ? cloudUnlinkedFolders().length : 0);
+  if(!db.projects.length && !cloudN){ w.style.display='none'; return; }
   w.style.display='';
-  document.getElementById('spCap').textContent = 'Projects (' + db.projects.length + ')';
-  document.getElementById('pjList').innerHTML = db.projects.map(e=>{
+  document.getElementById('spCap').textContent = 'Projects (' + (db.projects.length + cloudN) + ')';
+  const cloudRows = (_cloudOn ? cloudUnlinkedFolders() : []).map(f =>
+    `<div class="pj" onclick="cloudOpenFolder('${f.id}','${esc(f.name).replace(/'/g,'&#39;')}')" title="Team project — click to open">
+      <div class="pjmeta"><div class="pjn"><span style="opacity:.55;margin-right:6px">☁</span>${esc(f.name)}</div>
+      <div class="pjt" style="color:#6b7480">Team project — not opened yet</div></div></div>`).join('');
+  document.getElementById('pjList').innerHTML = cloudRows + db.projects.map(e=>{
     const P = e.data.project || {};
     const bits = [];
     if(P.type) bits.push(P.type);
@@ -2580,6 +2607,340 @@ function pagePlaceholder(title, icon, text, badge){
 
 
 /* ---------- DOCUMENTATION: all project photos with origin labels ---------- */
+/* ---------- GOOGLE DRIVE CLOUD (BUILD 10.0) ----------
+   Sign in with Google (GIS token flow) + Drive REST v3.
+   Structure on Drive:  "Fulldome PSP"  (app root, auto-created)
+     └─ "<project number> <title>"      (one folder per project)
+          ├─ project.json               (the whole project — source of truth)
+          └─ Documentation/             (human-readable mirror of doc files)
+   The Client ID comes from the team's Google Cloud project; it is public by
+   nature. Stored in db.gdriveClientId (local), with an optional baked-in
+   default below. Scope: full drive — needed so TEAMMATES see the shared
+   folder (drive.file would hide files the app instance didn't create).
+   While the Google app is in Testing mode, only listed test users can sign
+   in — perfect for a 3-4 person team. */
+const GDRIVE_DEFAULT_CLIENT_ID = '1072349968758-n428drqbsg1v5cv43uleq27dh5akhjpk.apps.googleusercontent.com';   /* Fulldome PSP team (Google Cloud project Fulldome PSP) */
+const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive';
+const GDRIVE_ROOT_NAME = 'Fulldome PSP';
+var _gTok = null, _gTokExp = 0, _gisLoading = null, _gUser = '';
+function driveClientId(){ return (db.gdriveClientId || GDRIVE_DEFAULT_CLIENT_ID || '').trim(); }
+function setDriveClientId(){
+  const v = prompt('Google OAuth Client ID (from Google Cloud Console → Credentials).\nPaste it here once per computer:', driveClientId());
+  if(v === null) return false;
+  db.gdriveClientId = (v||'').trim();
+  saveState(); renderSideProject();
+  return !!db.gdriveClientId;
+}
+function loadGis(){
+  if(window.google && google.accounts && google.accounts.oauth2) return Promise.resolve();
+  if(_gisLoading) return _gisLoading;
+  _gisLoading = new Promise((res, rej)=>{
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.onload = ()=> res();
+    s.onerror = ()=> { _gisLoading = null; rej(new Error('net')); };
+    document.head.appendChild(s);
+  });
+  return _gisLoading;
+}
+function driveToken(interactive){
+  if(_gTok && Date.now() < _gTokExp - 60000) return Promise.resolve(_gTok);
+  if(!driveClientId()){
+    if(!setDriveClientId()) return Promise.reject(new Error('no-client-id'));
+  }
+  return loadGis().then(()=> new Promise((res, rej)=>{
+    try{
+      const tc = google.accounts.oauth2.initTokenClient({
+        client_id: driveClientId(),
+        scope: GDRIVE_SCOPE,
+        callback: (r)=>{
+          if(r && r.access_token){
+            _gTok = r.access_token;
+            _gTokExp = Date.now() + (parseInt(r.expires_in)||3600)*1000;
+            driveWhoAmI();
+            res(_gTok);
+          } else rej(new Error(r && r.error || 'token'));
+        }
+      });
+      tc.requestAccessToken({ prompt: _gTok ? '' : (interactive===false ? '' : 'consent') });
+    }catch(e){ rej(e); }
+  }));
+}
+function driveWhoAmI(){
+  gFetch('https://www.googleapis.com/drive/v3/about?fields=user(displayName,emailAddress)')
+    .then(r=>r.json()).then(j=>{
+      _gUser = (j.user && (j.user.emailAddress || j.user.displayName)) || '';
+      const el = document.getElementById('driveStat');
+      if(el) el.textContent = _gUser ? ('Drive: ' + _gUser) : 'Drive: connected';
+    }).catch(()=>{});
+}
+async function gFetch(url, opts){
+  opts = opts || {};
+  opts.headers = Object.assign({}, opts.headers, { 'Authorization': 'Bearer ' + _gTok });
+  let r = await fetch(url, opts);
+  if(r.status === 401){
+    _gTok = null;
+    await driveToken(false);
+    opts.headers['Authorization'] = 'Bearer ' + _gTok;
+    r = await fetch(url, opts);
+  }
+  return r;
+}
+async function driveEnsureFolder(name, parentId){
+  const q = encodeURIComponent(
+    "name = '" + name.replace(/'/g, "\\'") + "' and mimeType = 'application/vnd.google-apps.folder' and trashed = false" +
+    (parentId ? " and '" + parentId + "' in parents" : ""));
+  const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name)&pageSize=5');
+  const j = await r.json();
+  if(j.files && j.files.length) return j.files[0].id;
+  const body = { name, mimeType: 'application/vnd.google-apps.folder' };
+  if(parentId) body.parents = [parentId];
+  const c = await gFetch('https://www.googleapis.com/drive/v3/files?fields=id', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  return (await c.json()).id;
+}
+async function driveFindFile(name, parentId){
+  const q = encodeURIComponent("name = '" + name.replace(/'/g, "\\'") + "' and '" + parentId + "' in parents and trashed = false");
+  const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name)&pageSize=5');
+  const j = await r.json();
+  return (j.files && j.files[0]) ? j.files[0].id : null;
+}
+function dataUrlToBytes(dataUrl){
+  const i = dataUrl.indexOf(',');
+  const b64 = dataUrl.slice(i+1);
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for(let k=0;k<bin.length;k++) arr[k] = bin.charCodeAt(k);
+  return arr;
+}
+async function driveUpload(name, parentId, content, mime, existingId){
+  /* multipart upload; content = string or Uint8Array */
+  const meta = existingId ? { name } : { name, parents: [parentId] };
+  const boundary = 'fdp' + Math.random().toString(36).slice(2);
+  const head = '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' +
+               JSON.stringify(meta) + '\r\n--' + boundary + '\r\nContent-Type: ' + mime + '\r\n\r\n';
+  const tail = '\r\n--' + boundary + '--';
+  let body;
+  if(typeof content === 'string'){
+    body = new Blob([head, content, tail]);
+  } else {
+    body = new Blob([head, content, tail]);
+  }
+  const url = 'https://www.googleapis.com/upload/drive/v3/files' + (existingId ? '/' + existingId : '') +
+    '?uploadType=multipart&fields=id';
+  const r = await gFetch(url, {
+    method: existingId ? 'PATCH' : 'POST',
+    headers: {'Content-Type': 'multipart/related; boundary=' + boundary},
+    body });
+  return (await r.json()).id;
+}
+/* ---------- TRANSPARENT CLOUD (BUILD 10.2) ----------
+   The user signs in once at start and just works. The sidebar shows every
+   team project from the Drive folder; opening pulls it, edits auto-push
+   (debounced) — no Drive verbs anywhere in the UI. db.driveMap (LOCAL only):
+   localProjectId -> {fid, mtime, docsSig}. Conflict guard: before a push the
+   remote project.json modifiedTime is compared with the last one we saw. */
+var _cloudOn = false, _cloudFolders = [], _pushTimer = null, _pushing = false;
+function driveMap(){ if(!db.driveMap || typeof db.driveMap!=='object') db.driveMap = {}; return db.driveMap; }
+function setCloudStat(t){ const el=document.getElementById('driveStat'); if(el) el.textContent = t; }
+function cloudGateShow(){ const g=document.getElementById('authGate'); if(g) g.style.display='flex'; }
+function cloudGateHide(){ const g=document.getElementById('authGate'); if(g) g.style.display='none'; }
+function cloudOffline(){ _cloudOn=false; cloudGateHide(); setCloudStat('Offline — local storage only'); }
+async function cloudStart(){
+  const err = document.getElementById('authErr');
+  try{
+    if(err) err.textContent='';
+    setCloudStat('Signing in…');
+    await driveToken(true);
+    _cloudOn = true;
+    cloudGateHide();
+    setCloudStat('Loading team projects…');
+    await cloudRefreshList();
+    setCloudStat(_gUser ? ('Cloud ✓ ' + _gUser) : 'Cloud ✓');
+  }catch(e){
+    if(err) err.textContent = 'Sign-in failed: ' + (e && e.message || 'error') + '. Check that your email is in the test users list.';
+    setCloudStat('');
+  }
+}
+async function cloudRefreshList(){
+  const rootId = await driveEnsureFolder(GDRIVE_ROOT_NAME, null);
+  db.gdriveRootId = rootId;
+  const q = encodeURIComponent("'" + rootId + "' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false");
+  const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name)&orderBy=name&pageSize=200');
+  const j = await r.json();
+  _cloudFolders = j.files || [];
+  saveState(); renderSideProject();
+}
+function cloudUnlinkedFolders(){
+  const linked = {}; Object.values(driveMap()).forEach(m => { if(m && m.fid) linked[m.fid]=1; });
+  return _cloudFolders.filter(f => !linked[f.id]);
+}
+async function cloudOpenFolder(fid, name){
+  try{
+    setCloudStat('Opening "' + name + '"…');
+    const jfid = await driveFindFile('project.json', fid);
+    if(!jfid){ setCloudStat('No project.json in "' + name + '"'); return; }
+    const meta = await (await gFetch('https://www.googleapis.com/drive/v3/files/' + jfid + '?fields=modifiedTime')).json();
+    const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + jfid + '?alt=media');
+    const text = await r.text();
+    const e = applyProjectText(text);
+    if(e){ driveMap()[e.id] = { fid, mtime: meta.modifiedTime || '' , docsSig: cloudDocsSig(e) }; saveState(); renderSideProject(); }
+    setCloudStat(_gUser ? ('Cloud ✓ ' + _gUser) : 'Cloud ✓');
+  }catch(err){ setCloudStat('Cloud error: ' + (err && err.message || 'open failed')); }
+}
+function cloudDocsSig(e){
+  const sig = {};
+  const d = e.data;
+  if(d.docs && d.docs.files) Object.keys(d.docs.files).forEach(cat => (d.docs.files[cat]||[]).forEach(f => { if(f && f.name && f.data) sig[f.name] = (f.data||'').length; }));
+  if(d.contentList && d.contentList.data) sig[d.contentList.name] = (d.contentList.data||'').length;
+  return sig;
+}
+function cloudTouch(){
+  /* called from saveState — schedule a quiet push of the active project */
+  if(!_cloudOn || !_gTok) return;
+  clearTimeout(_pushTimer);
+  _pushTimer = setTimeout(cloudPushActive, 4000);
+}
+async function cloudPushActive(){
+  if(!_cloudOn || _pushing) return;
+  const e = activeEntry();
+  if(!e || !e.data.project) return;
+  _pushing = true;
+  try{
+    setCloudStat('Saving…');
+    const rootId = db.gdriveRootId || await driveEnsureFolder(GDRIVE_ROOT_NAME, null);
+    let m = driveMap()[e.id];
+    if(!m || !m.fid){
+      const fid = await driveEnsureFolder(projDriveFolderName(e.data.project), rootId);
+      m = driveMap()[e.id] = { fid, mtime: '', docsSig: {} };
+    }
+    const jfid = await driveFindFile('project.json', m.fid);
+    if(jfid && m.mtime){
+      const meta = await (await gFetch('https://www.googleapis.com/drive/v3/files/' + jfid + '?fields=modifiedTime')).json();
+      if(meta.modifiedTime && meta.modifiedTime !== m.mtime){
+        const mine = confirm('This project was just saved by a teammate.\n\nOK — keep MY version (overwrites theirs)\nCancel — load THEIR version (my recent edits are discarded)');
+        if(!mine){
+          _pushing = false;
+          await cloudOpenFolder(m.fid, projDriveFolderName(e.data.project));
+          return;
+        }
+      }
+    }
+    const upUrl = 'https://www.googleapis.com/upload/drive/v3/files' + (jfid ? '/' + jfid : '') + '?uploadType=multipart&fields=id,modifiedTime';
+    const meta2 = jfid ? { name:'project.json' } : { name:'project.json', parents:[m.fid] };
+    const boundary = 'fdp' + Math.random().toString(36).slice(2);
+    const body = new Blob(['--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify(meta2)+'\r\n--'+boundary+'\r\nContent-Type: application/json\r\n\r\n', projPayload(e), '\r\n--'+boundary+'--']);
+    const ur = await gFetch(upUrl, { method: jfid?'PATCH':'POST', headers:{'Content-Type':'multipart/related; boundary='+boundary}, body });
+    const uj = await ur.json();
+    m.mtime = uj.modifiedTime || m.mtime;
+    /* mirror only NEW or CHANGED documentation files */
+    const sig = cloudDocsSig(e);
+    const jobs = [];
+    const d = e.data;
+    const collect = (f)=>{ if(f && f.name && f.data && sig[f.name] !== (m.docsSig||{})[f.name]) jobs.push(f); };
+    if(d.docs && d.docs.files) Object.keys(d.docs.files).forEach(cat => (d.docs.files[cat]||[]).forEach(collect));
+    if(d.contentList && d.contentList.data) collect(d.contentList);
+    if(jobs.length){
+      const docId = await driveEnsureFolder('Documentation', m.fid);
+      for(let k=0;k<jobs.length;k++){
+        setCloudStat('Uploading ' + jobs[k].name + '…');
+        try{
+          const ex = await driveFindFile(jobs[k].name, docId);
+          const mime = (jobs[k].data.match(/^data:([^;]+)/)||[])[1] || 'application/octet-stream';
+          await driveUpload(jobs[k].name, docId, dataUrlToBytes(jobs[k].data), mime, ex);
+        }catch(err){}
+      }
+    }
+    m.docsSig = sig;
+    saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
+    setCloudStat((_gUser ? 'Cloud ✓ ' + _gUser : 'Cloud ✓') + ' · saved ' + new Date().toTimeString().slice(0,5));
+  }catch(err){
+    setCloudStat('⚠ Not saved to cloud: ' + (err && err.message || 'error'));
+  }
+  _pushing = false;
+}
+
+function projDriveFolderName(P){
+  const num = String(P.number||'').trim();
+  const t = String(P.title||'').trim();
+  return ((num ? num + ' ' : '') + (t || 'project')).trim();
+}
+async function driveSaveActive(){
+  const e = activeEntry();
+  if(!e || !e.data.project){ flashStat('No active project to save'); return; }
+  try{
+    flashStat('Connecting to Google Drive…');
+    await driveToken(true);
+    const rootId = await driveEnsureFolder(GDRIVE_ROOT_NAME, null);
+    const pf = await driveEnsureFolder(projDriveFolderName(e.data.project), rootId);
+    flashStat('Uploading project.json…');
+    const exId = await driveFindFile('project.json', pf);
+    await driveUpload('project.json', pf, projPayload(e), 'application/json', exId);
+    /* human-readable mirror of Documentation files */
+    const jobs = [];
+    const d = e.data;
+    if(d.docs && d.docs.files){
+      Object.keys(d.docs.files).forEach(cat => (d.docs.files[cat]||[]).forEach(f => {
+        if(f && f.name && f.data) jobs.push(f);
+      }));
+    }
+    if(d.contentList && d.contentList.data) jobs.push(d.contentList);
+    if(jobs.length){
+      const docId = await driveEnsureFolder('Documentation', pf);
+      for(let k=0;k<jobs.length;k++){
+        flashStat('Uploading files ' + (k+1) + '/' + jobs.length + ' — ' + jobs[k].name);
+        try{
+          const ex = await driveFindFile(jobs[k].name, docId);
+          const mime = (jobs[k].data.match(/^data:([^;]+)/)||[])[1] || 'application/octet-stream';
+          await driveUpload(jobs[k].name, docId, dataUrlToBytes(jobs[k].data), mime, ex);
+        }catch(err){ /* keep going, report at the end */ jobs[k]._fail = 1; }
+      }
+    }
+    const fails = jobs.filter(j=>j._fail).length;
+    flashStat('Saved to Drive: "' + projDriveFolderName(e.data.project) + '" ✓' +
+      (jobs.length ? ' · files ' + (jobs.length-fails) + '/' + jobs.length : ''));
+  }catch(err){
+    if(err && err.message === 'no-client-id') return;
+    flashStat('Drive error: ' + (err && err.message || 'failed'));
+  }
+}
+async function driveOpen(){
+  try{
+    flashStat('Connecting to Google Drive…');
+    await driveToken(true);
+    const rootId = await driveEnsureFolder(GDRIVE_ROOT_NAME, null);
+    const q = encodeURIComponent("'" + rootId + "' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false");
+    const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name)&orderBy=name&pageSize=100');
+    const j = await r.json();
+    const list = j.files || [];
+    const box = document.getElementById('driveList');
+    if(!list.length){
+      box.innerHTML = '<div class="mm">No projects in the team folder yet. Use "Save to Google Drive" first.</div>';
+    } else {
+      box.innerHTML = list.map(f =>
+        '<button class="no" style="width:100%;text-align:left;margin-bottom:6px" onclick="driveOpenProject(\'' + f.id + '\',\'' + esc(f.name).replace(/'/g,'&#39;') + '\')">' + esc(f.name) + '</button>').join('');
+    }
+    document.getElementById('driveModal').classList.add('open');
+    flashStat('');
+  }catch(err){
+    if(err && err.message === 'no-client-id') return;
+    flashStat('Drive error: ' + (err && err.message || 'failed'));
+  }
+}
+function closeDriveDlg(){ document.getElementById('driveModal').classList.remove('open'); }
+async function driveOpenProject(folderId, name){
+  closeDriveDlg();
+  try{
+    flashStat('Downloading "' + name + '"…');
+    const fid = await driveFindFile('project.json', folderId);
+    if(!fid){ flashStat('No project.json in "' + name + '" — is it a PSP project folder?'); return; }
+    const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + fid + '?alt=media');
+    const text = await r.text();
+    const e = applyProjectText(text);
+    if(e) flashStat('Opened from Drive: "' + name + '" ✓');
+  }catch(err){ flashStat('Drive error: ' + (err && err.message || 'failed')); }
+}
+
 /* ---------- PRICE FETCH (BUILD 8.9) ----------
    Best-effort price reading from product links (Amazon / eBay / Walmart /
    any shop). Browsers cannot read shop pages directly (CORS), so requests go
@@ -3703,7 +4064,8 @@ window.addEventListener('error', function(e){
   try{ flashStat('⚠ Error: ' + (e.message||'unknown')); }catch(_){}
 });
 window.addEventListener('hashchange', route);
-loadState(()=>{ restoreHandles(); renderHeader(); renderSideProject(); route(); });
+loadState(()=>{ restoreHandles(); renderHeader(); renderSideProject(); route();
+  if(driveClientId()) cloudGateShow(); });
 </script>
 </body>
 </html>
