@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fulldome Projection SP</title>
+<title>Fulldome Projection SP — b11.4</title>
 <style>
   :root{
     --fdp-red:#D32F2F;
@@ -517,7 +517,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 11.2 · DONE-LIST</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 11.4 · VERSION</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -564,6 +564,7 @@
     <div style="font-size:12.5px;color:#9aa2ad;line-height:1.5;margin-bottom:22px">Sign in to open the team workspace.<br>All projects and files stay in sync automatically.</div>
     <button onclick="cloudStart()" style="width:100%;padding:12px;border:0;border-radius:10px;background:#fff;color:#1b1e23;font-weight:700;font-size:14px;cursor:pointer">Sign in with Google</button>
     <div id="authErr" style="font-size:11px;color:#e6a0a0;margin-top:10px"></div>
+    <div id="authBuild" style="font-size:10px;color:#565c66;margin-top:14px;letter-spacing:.5px"></div>
     <button onclick="cloudOffline()" style="margin-top:14px;background:none;border:0;color:#6b7480;font-size:11px;cursor:pointer;text-decoration:underline">Continue offline (this computer only)</button>
   </div>
 </div>
@@ -3121,19 +3122,15 @@ async function cloudPushActive(){
     const wantedName = projDriveJsonName(e.data.project);
     let jfid = await driveFindProjectJson(m.fid, wantedName);
     if(jfid && !(await driveAlive(jfid))){ jfid = null; m.mtime = ''; m.docsSig = {}; }
-    /* Conflict prompt only makes sense WITHOUT live sync. With Firebase on,
-       everyone already shares the same live state and the Drive file is just
-       a snapshot — asking would fire on every teammate save (BUILD 11.1). */
-    if(jfid && m.mtime && !(typeof fbReady === 'function' && fbReady() && _fbPath)){
-      const meta = await (await gFetch('https://www.googleapis.com/drive/v3/files/' + jfid + '?fields=modifiedTime')).json();
-      if(meta.modifiedTime && meta.modifiedTime !== m.mtime){
-        const mine = confirm('This project was just saved by a teammate.\n\nOK — keep MY version (overwrites theirs)\nCancel — load THEIR version (my recent edits are discarded)');
-        if(!mine){
-          _pushing = false;
-          await cloudOpenFolder(m.fid, projDriveFolderName(e.data.project));
-          return;
-        }
-      }
+    /* NO conflict modal (BUILD 11.3): the live state is shared via Firebase and
+       the Drive json is an archive snapshot with full Google version history,
+       so writing mine is always reversible. Remote change is only NOTED. */
+    let _remoteMoved = false;
+    if(jfid && m.mtime){
+      try{
+        const meta = await (await gFetch('https://www.googleapis.com/drive/v3/files/' + jfid + '?fields=modifiedTime')).json();
+        _remoteMoved = !!(meta.modifiedTime && meta.modifiedTime !== m.mtime);
+      }catch(err){}
     }
     const upUrl = 'https://www.googleapis.com/upload/drive/v3/files' + (jfid ? '/' + jfid : '') + '?uploadType=multipart&fields=id,modifiedTime';
     const meta2 = jfid ? { name: wantedName } : { name: wantedName, parents:[m.fid] };
@@ -3169,7 +3166,7 @@ async function cloudPushActive(){
     }catch(err){}
     saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
     await cloudRefreshList();
-    setCloudStat('Cloud ✓ ' + (_gUser || '') + ' · saved ' + new Date().toTimeString().slice(0,5) + ' → ' + projDriveFolderName(e.data.project));
+    setCloudStat('Cloud ✓ ' + (_gUser || '') + ' · saved ' + new Date().toTimeString().slice(0,5) + ' → ' + projDriveFolderName(e.data.project) + (_remoteMoved ? ' · teammate snapshot replaced (kept in Drive history)' : ''));
   }catch(err){
     const msg = (err && err.message) || 'error';
     setCloudStat('⚠ NOT saved to cloud: ' + msg + ' — click to retry');
@@ -4411,6 +4408,13 @@ window.addEventListener('error', function(e){
   try{ flashStat('⚠ Error: ' + (e.message||'unknown')); }catch(_){}
 });
 window.addEventListener('hashchange', route);
+(function(){
+  const foot = document.querySelector('.side-foot div');
+  const tag = foot ? foot.textContent.trim() : '';
+  const ab = document.getElementById('authBuild');
+  if(ab && tag) ab.textContent = tag;
+  if(tag) document.title = 'Fulldome Projection SP — ' + tag.replace('BUILD ','b').split(' · ')[0];
+})();
 loadState(()=>{ restoreHandles(); renderHeader(); renderSideProject(); route();
   if(driveClientId()){ setCloudStat('Not signed in — click to connect'); cloudGateShow(); }
   else setCloudStat('Local mode (no cloud configured)'); });
