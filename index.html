@@ -381,6 +381,27 @@
   .modal .mb .yes{background:var(--fdp-red);border-color:var(--fdp-red);color:#fff}
   .modal .mb .yes:hover{background:#b71c1c}
 
+  /* ---------- TECHNICAL TASK WINDOW (embedded Fulldome TTD) ---------- */
+  .ttbox{position:relative;width:96%;max-width:1240px;height:90vh;background:#fff;border-radius:14px;
+    overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.5);display:flex;flex-direction:column}
+  .ttbar{display:flex;align-items:center;gap:11px;background:var(--side);padding:11px 16px;
+    border-bottom:3px solid var(--fdp-red);flex:0 0 auto}
+  .ttbar .ic{width:26px;height:26px;border-radius:5px;background:var(--fdp-red);display:flex;align-items:center;justify-content:center}
+  .ttbar .ic svg{width:15px;height:15px}
+  .ttbar .tt{color:#fff;font-size:12.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+  .ttbar .tt small{display:block;font-size:9px;color:#8b93a0;font-weight:400;letter-spacing:.4px;text-transform:none;margin-top:2px}
+  .ttbar .sp{flex:1}
+  .ttbar a.open2,.ttbar .x{color:#c7ccd4;text-decoration:none;display:flex;align-items:center;gap:6px;
+    border-radius:6px;border:1px solid #333a43;cursor:pointer;font-size:11px}
+  .ttbar a.open2{padding:6px 11px;letter-spacing:.3px}
+  .ttbar a.open2 svg{width:13px;height:13px}
+  .ttbar a.open2:hover{background:var(--side2);color:#fff;border-color:#5a606b}
+  .ttbar .x{width:30px;height:30px;justify-content:center}
+  .ttbar .x:hover{background:#2b3038;color:#fff;border-color:#5a606b}
+  .ttframe{flex:1;border:0;width:100%;background:#fff}
+  .ttload{position:absolute;inset:52px 0 0 0;display:flex;align-items:center;justify-content:center;
+    color:#9aa2ad;font-size:12.5px;letter-spacing:.4px;pointer-events:none}
+
   /* project list — compact cards */
   .sproj-head{display:flex;align-items:center;margin:2px 4px 7px}
   .sproj-head .sproj-cap{margin:0;flex:1}
@@ -532,7 +553,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 11.9 · PHOTO-MIRROR</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.0 · TT WINDOW</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -552,6 +573,7 @@
       <div class="pc-item"><div class="l">Server</div><div class="v" style="display:flex;align-items:center;gap:7px"><span class="led sm" id="hLed"></span><span id="hLedTxt" style="font-size:11.5px">Not Ready</span></div></div>
     </div>
     <div class="top-actions">
+      <button class="top-btn" onclick="openTT()" title="Create a Technical Task"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M9.5 13h5M9.5 17h5"/></svg>Technical Task</button>
       <button class="top-btn" onclick="location.hash='#/create'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New Project</button>
       <button class="icon-btn" title="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/></svg></button>
       <div class="avatar" title="User">FD</div>
@@ -581,6 +603,20 @@
     <div id="authErr" style="font-size:11px;color:#e6a0a0;margin-top:10px"></div>
     <div id="authBuild" style="font-size:10px;color:#565c66;margin-top:14px;letter-spacing:.5px"></div>
     <button onclick="cloudOffline()" style="margin-top:14px;background:none;border:0;color:#6b7480;font-size:11px;cursor:pointer;text-decoration:underline">Continue offline (this computer only)</button>
+  </div>
+</div>
+
+<div class="modal" id="ttModal" onclick="ttBackdrop(event)">
+  <div class="ttbox">
+    <div class="ttbar">
+      <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M9.5 12h5M9.5 16h5"/></svg></div>
+      <div class="tt">Technical Task<small>Fulldome TTD</small></div>
+      <div class="sp"></div>
+      <a class="open2" href="https://student-tm.github.io/Fulldome-TTD/" target="_blank" rel="noopener" title="Open in a full browser tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M8 7h9v9"/></svg>Open in tab</a>
+      <div class="x" onclick="closeTT()" title="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></div>
+    </div>
+    <div class="ttload" id="ttLoad">Loading Technical Task…</div>
+    <iframe id="ttFrame" class="ttframe" title="Technical Task" allow="clipboard-write" referrerpolicy="no-referrer" onload="ttFrameLoaded()"></iframe>
   </div>
 </div>
 
@@ -1291,6 +1327,24 @@ async function saveAsNew(){
     flashStat('Saved to "' + handle.name + '" ✓');
   }catch(err){ downloadPayload(e, data); }
 }
+/* ---------- TECHNICAL TASK WINDOW (embedded Fulldome TTD, same origin) ---------- */
+var TTD_URL = 'https://student-tm.github.io/Fulldome-TTD/';
+function openTT(){
+  var m = document.getElementById('ttModal'); if(!m) return;
+  var f = document.getElementById('ttFrame');
+  if(f && !f.getAttribute('src')){                 /* lazy-load once; keeps in-progress work when reopened */
+    var ld = document.getElementById('ttLoad'); if(ld) ld.style.display='flex';
+    f.setAttribute('src', TTD_URL);
+  }
+  m.classList.add('open');
+}
+function closeTT(){ var m = document.getElementById('ttModal'); if(m) m.classList.remove('open'); }
+function ttBackdrop(e){ if(e && e.target && e.target.id === 'ttModal') closeTT(); }
+function ttFrameLoaded(){ var ld = document.getElementById('ttLoad'); if(ld) ld.style.display='none'; }
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape'){ var m = document.getElementById('ttModal'); if(m && m.classList.contains('open')) closeTT(); }
+});
+
 async function openProjectFile(){
   if(!window.showOpenFilePicker){ document.getElementById('loadFile').click(); return; }
   let fhs;
