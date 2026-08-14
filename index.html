@@ -598,7 +598,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.43 · LAST-MODULE FRAME</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.46 · MERGE EQUIP+SHIP</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -613,6 +613,7 @@
 <input type="file" id="projWebFile" accept=".html,.htm,.png,.jpg,.jpeg" multiple onchange="onProjWebPicked(event)" style="display:none">
 <input type="file" id="projDbFile" accept=".json" onchange="onProjDbPicked(event)" style="display:none">\n<input type="file" id="projPhFile" accept="image/*,.heic,.heif" onchange="onProjPhPicked(event)" style="display:none">
 <input type="file" id="ttFile" accept=".pdf,.json" onchange="onTtPicked(event)" style="display:none">
+<input type="file" id="shipFile" multiple onchange="onShipDocPicked(event)" style="display:none">
 <div id="lnkPrev"></div>
 <input type="file" id="ctlFile" accept=".txt,text/plain" onchange="onContentListPicked(event)">
 <div class="lbx" id="lbx" onclick="closeLightbox()">
@@ -721,6 +722,11 @@ function syncActive(){
   state = e ? e.data : emptyState();
   if(!Array.isArray(state.server.photos)) state.server.photos = [];
   if(typeof state.server.caseSize !== 'string') state.server.caseSize = '';   /* server chassis height, e.g. "2U" (BUILD 12.39) */
+  if(!state.shipping || typeof state.shipping!=='object') state.shipping = { date:'', pallets:[], assign:{}, docs:[] };   /* Shipping module (BUILD 12.45) */
+  if(!Array.isArray(state.shipping.pallets)) state.shipping.pallets = [];
+  if(!state.shipping.assign || typeof state.shipping.assign!=='object') state.shipping.assign = {};
+  if(!Array.isArray(state.shipping.docs)) state.shipping.docs = [];
+  if(typeof state.shipping.date !== 'string') state.shipping.date = '';
   if(!Array.isArray(state.rack.photos)) state.rack.photos = [];
   if(!state.vj || typeof state.vj!=='object') state.vj = { rows: [], ready: false, photos: [] };
   if(!state.validation || typeof state.validation!=='object') state.validation = { cpu:false, gpu:false, capture:false, video:false, burnin:false };
@@ -1016,7 +1022,8 @@ const IC = {
   spk:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="2"/><circle cx="12" cy="14" r="3.5"/><circle cx="12" cy="6.5" r="1.2"/></svg>',
   net:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="16" y="16" width="6" height="6" rx="1"/><path d="M12 8v4M5 16v-2h14v2M12 12v2"/></svg>',
   fan:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1.6"/><path d="M12 10.4c-.6-2.5.2-4.9 1.9-6.1 1.4.9 1.7 3.6-1.9 6.1zM13.6 12c2.5-.6 4.9.2 6.1 1.9-.9 1.4-3.6 1.7-6.1-1.9zM12 13.6c.6 2.5-.2 4.9-1.9 6.1-1.4-.9-1.7-3.6 1.9-6.1zM10.4 12c-2.5.6-4.9-.2-6.1-1.9.9-1.4 3.6-1.7 6.1 1.9z"/></svg>',
-  tool:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a4 4 0 00-5.2 5.2l-6 6a1.5 1.5 0 002.1 2.1l6-6a4 4 0 005.2-5.2l-2.4 2.4-2.2-.6-.6-2.2z"/></svg>'
+  tool:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a4 4 0 00-5.2 5.2l-6 6a1.5 1.5 0 002.1 2.1l6-6a4 4 0 005.2-5.2l-2.4 2.4-2.2-.6-.6-2.2z"/></svg>',
+  ship:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 3h13v13H1z"/><path d="M14 8h5l3 3v5h-8"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></svg>'
 };
 
 /* ---------- navigation ---------- */
@@ -2450,6 +2457,19 @@ function pageDashboard(){
         <div class="mod-desc">Installation tools, rigging and calibration equipment checklist for the project.</div>
         <a class="mod-btn disabled" href="#/tools">Coming Soon</a>
       </div>
+
+      <div class="mod active${_lastMod==='#/shipping'?' lastmod':''}">
+        <div class="mod-top"><div class="mod-ic">${IC.ship}</div>
+          <div><div class="mod-name">Equipment &amp; Shipping</div><span class="mod-badge b-active"><span class="bd"></span>Active</span></div></div>
+        <div class="mod-desc">Full equipment inventory, pallet packing, shipping date and shipping documents.</div>
+        <div class="mod-stats">
+          <div class="ms"><span class="k">Total Equipment</span><span class="v ${shipEquipment().length?'ok':''}">${shipEquipment().length || '—'} items</span></div>
+          <div class="ms"><span class="k">Pallets</span><span class="v">${state.shipping.pallets.length}</span></div>
+          <div class="ms"><span class="k">Items Assigned</span><span class="v">${shipEquipment().filter(it=>state.shipping.assign[it.key]).length} / ${shipEquipment().length}</span></div>
+          <div class="ms"><span class="k">Shipping Date</span><span class="v ${state.shipping.date?'ok':''}">${state.shipping.date ? esc(state.shipping.date) : '—'}</span></div>
+        </div>
+        <a class="mod-btn primary" href="#/shipping">Open Module ${IC.open}</a>
+      </div>
     </div>
 
     <div class="sumgrid">
@@ -2461,7 +2481,7 @@ function pageDashboard(){
         <div class="srow"><span class="k">Capture Card</span><span class="v">${P.captureRequired?'<span class="chip c-ok"><span class="cd"></span>Yes</span>':'<span class="chip c-mut"><span class="cd"></span>No</span>'}</span></div>
         <div class="srow"><span class="k">VJ Server</span><span class="v">${P.vjRequired?'<span class="chip c-ok"><span class="cd"></span>Yes</span>':'<span class="chip c-mut"><span class="cd"></span>No</span>'}</span></div>
         <div class="srow"><span class="k">Created</span><span class="v">${esc(P.created)}</span></div>
-        <div class="srow"><span class="k">Status</span><span class="v"><span class="chip c-warn"><span class="cd"></span>${esc(P.status)}</span></span></div>
+        <div class="srow"><span class="k">Shipping Date</span><span class="v">${(state.shipping&&state.shipping.date) ? esc(state.shipping.date) : '—'}</span></div>
       </div>
 
       <div class="card sum"><h3>Project Equipment</h3>
@@ -2968,6 +2988,130 @@ function setServerCase(v){
   saveState(); route();
 }
 
+/* ============ SHIPPING MODULE (BUILD 12.45) ============ */
+/* all project equipment aggregated across modules, grouped by module+name */
+function shipEquipment(){
+  const out = [];
+  const add = (mod, rows) => (rows||[]).forEach(r => { const nm=(r.name||'').trim(); if(nm) out.push({mod, name:nm, qty:parseFloat(r.qty)||1}); });
+  add('Server', state.server.rows);
+  if(state.project.vjRequired) add('VJ', (state.vj&&state.vj.rows)||[]);
+  add('Rack', state.rack.rows);
+  add('Camera', (state.camera&&state.camera.rows)||[]);
+  (((state.projectors&&state.projectors.list))||[]).forEach(p=>{ const nm=((p.mfr||'')+' '+(p.model||'')).trim(); if(nm) out.push({mod:'Projector', name:nm, qty:1}); });
+  const map={};
+  out.forEach(it=>{ const k=it.mod+'|'+it.name; if(!map[k]) map[k]={mod:it.mod,name:it.name,qty:0,key:k}; map[k].qty+=it.qty; });
+  return Object.values(map);
+}
+function setShipDate(v){ state.shipping.date = v||''; saveState(); renderSideProject(); rerenderKeepScroll(); }
+function addPallet(){
+  const nums = state.shipping.pallets.map(p=>parseInt(p.num,10)).filter(n=>!isNaN(n));
+  const next = (nums.length?Math.max.apply(null,nums):0)+1;
+  state.shipping.pallets.push({ id:newId(), num:String(next) });
+  saveState(); route();
+}
+function setPalletNum(id, v){ const p = state.shipping.pallets.find(x=>x.id===id); if(p){ p.num = v; saveState(); } }
+function rmPallet(id){
+  if(!confirm('Remove this pallet? Its items become unassigned.')) return;
+  state.shipping.pallets = state.shipping.pallets.filter(p=>p.id!==id);
+  Object.keys(state.shipping.assign).forEach(k=>{ if(state.shipping.assign[k]===id) delete state.shipping.assign[k]; });
+  saveState(); route();
+}
+function assignItem(idx, pid){
+  const it = shipEquipment()[idx]; if(!it) return;
+  if(pid) state.shipping.assign[it.key] = pid; else delete state.shipping.assign[it.key];
+  saveState(); rerenderKeepScroll();
+}
+function pickShipDoc(){ if(!activeEntry()){ alert('No active project.'); return; } document.getElementById('shipFile').click(); }
+function onShipDocPicked(ev){
+  const files=[...(ev.target.files||[])]; ev.target.value='';
+  if(!files.length || !activeEntry()) return;
+  files.forEach(f=>{
+    if(f.size > DOC_FILE_HARD){ alert('File "'+f.name+'" ('+fmtSize(f.size)+') is too large — per-file limit '+fmtSize(DOC_FILE_HARD)+'.'); return; }
+    if(f.size > DOC_FILE_SOFT && !confirm('File "'+f.name+'" is '+fmtSize(f.size)+' — upload anyway?')) return;
+    const rd=new FileReader();
+    rd.onload=()=>{ state.shipping.docs.push({ name:f.name, size:f.size, type:f.type||'', data:rd.result, added:new Date().toISOString().slice(0,10) }); saveState(); rerenderKeepScroll(); flashStat('File added: '+f.name); };
+    rd.onerror=()=>alert('Could not read file "'+f.name+'".');
+    rd.readAsDataURL(f);
+  });
+}
+function downloadShipDoc(i){ const f=state.shipping.docs[i]; if(!f) return; const a=document.createElement('a'); a.href=f.data; a.download=f.name||'file'; document.body.appendChild(a); a.click(); a.remove(); }
+function rmShipDoc(i){ const f=state.shipping.docs[i]; if(!f) return; if(!confirm('Delete "'+f.name+'"?')) return; state.shipping.docs.splice(i,1); saveState(); rerenderKeepScroll(); }
+function pageShipping(){
+  const S = state.shipping, P = state.project;
+  const items = shipEquipment();
+  const assigned = items.filter(it=>S.assign[it.key]).length;
+  const eqRows = items.length ? items.map((it,idx)=>{
+    const pid = S.assign[it.key]||'';
+    return `<tr>
+      <td class="tight" style="width:13%"><span class="chip c-mut" style="font-size:10px">${esc(it.mod)}</span></td>
+      <td>${esc(it.name)}</td>
+      <td style="text-align:right;width:7%">${it.qty}</td>
+      <td class="tight" style="width:24%"><select class="cell ${pid?'':'empty'}" onchange="assignItem(${idx},this.value)">
+        <option value="">— Unassigned</option>
+        ${S.pallets.map(p=>`<option value="${p.id}" ${pid===p.id?'selected':''}>Pallet ${esc(p.num||'?')}</option>`).join('')}
+      </select></td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="4" style="color:var(--dim);padding:14px">No equipment yet — add components in Server, Rack, Camera or Projectors.</td></tr>`;
+  const palletRows = S.pallets.length ? S.pallets.map(p=>{
+    const cnt = items.filter(it=>S.assign[it.key]===p.id).length;
+    return `<div class="srow" style="align-items:center">
+      <span class="k" style="display:inline-flex;align-items:center;gap:8px">Pallet
+        <input class="cell" style="width:70px;padding:5px 8px" value="${esc(p.num||'')}" oninput="setPalletNum('${p.id}',this.value)"></span>
+      <span class="v" style="display:inline-flex;align-items:center;gap:10px">${cnt} item${cnt===1?'':'s'}
+        <button class="mod-btn" style="padding:4px 9px;font-size:11px" onclick="rmPallet('${p.id}')">Remove</button></span>
+    </div>`;
+  }).join('') : `<div style="color:var(--dim);font-size:12.5px;padding:6px 2px">No pallets yet — add one to start assigning equipment.</div>`;
+  const docRows = S.docs.length ? S.docs.map((f,i)=>`
+    <div class="srow" style="align-items:center">
+      <span class="k" style="display:inline-flex;align-items:center;gap:8px;min-width:0">
+        <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(f.name)}</span>
+        <span class="chip c-mut" style="font-size:9.5px">${fmtSize(f.size)}</span></span>
+      <span class="v" style="display:inline-flex;gap:8px">
+        <button class="mod-btn" style="padding:4px 10px;font-size:11px" onclick="downloadShipDoc(${i})">Download</button>
+        <button class="mod-btn" style="padding:4px 9px;font-size:11px" onclick="rmShipDoc(${i})">Remove</button></span>
+    </div>`).join('') : `<div style="color:var(--dim);font-size:12.5px;padding:6px 2px">No shipping documents attached yet.</div>`;
+  return `
+  <div class="page">
+    <div class="crumbs"><a href="#/dashboard">Dashboard</a> › <span class="cur">Equipment &amp; Shipping</span></div>
+    <div class="pagehead">
+      <div class="eyebrow">#${esc(P.number)} · ${esc(P.title)}</div>
+      <h1>Equipment &amp; Shipping</h1>
+      <div class="sub">Full project equipment inventory — pack it onto pallets, set the shipping date and attach shipping documents.</div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div class="kl">Pallets</div><div class="kvv">${S.pallets.length}</div></div>
+      <div class="kpi"><div class="kl">Items assigned</div><div class="kvv">${assigned} / ${items.length}</div></div>
+      <div class="kpi"><div class="kl">Shipping date</div><div class="kvv" style="font-size:15px">${S.date ? esc(S.date) : '—'}</div></div>
+      <div class="kpi"><div class="kl">Documents</div><div class="kvv">${S.docs.length}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Shipping details</h3></div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:2px 2px 4px">
+        <span style="font-size:12.5px;font-weight:600;color:var(--ink2)">Shipping Date</span>
+        <input type="date" class="cell" style="width:auto;padding:6px 9px" value="${esc(S.date||'')}" onchange="setShipDate(this.value)">
+      </div>
+    </div>
+    <div class="racklay" style="grid-template-columns:340px 1fr;margin-top:16px">
+      <div class="card" style="margin-bottom:0">
+        <div class="card-head"><h3>Pallets</h3><button class="mod-btn primary" style="padding:6px 12px;font-size:12px" onclick="addPallet()">+ Add Pallet</button></div>
+        ${palletRows}
+      </div>
+      <div class="card" style="margin-bottom:0">
+        <div class="card-head"><h3>Equipment → Pallet</h3><span class="chip c-mut"><span class="cd"></span>${assigned}/${items.length} assigned</span></div>
+        <table class="eq">
+          <thead><tr><th>Module</th><th>Equipment</th><th style="text-align:right">Qty</th><th>Pallet</th></tr></thead>
+          <tbody>${eqRows}</tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="card-head"><h3>Shipping Documents</h3><button class="mod-btn primary" style="padding:6px 12px;font-size:12px" onclick="pickShipDoc()">+ Add Document</button></div>
+      ${docRows}
+    </div>
+    <a class="backlink" href="#/dashboard">${IC.back} Back to Dashboard</a>
+  </div>`;
+}
+
 /* ---------- placeholders ---------- */
 function pagePlaceholder(title, icon, text, badge){
   return `
@@ -3181,7 +3325,8 @@ function liveSlice(d){
     camera:  { rows: (d.camera && d.camera.rows) || [], ready: !!(d.camera && d.camera.ready) },
     projectors: { list: (d.projectors && d.projectors.list) || [], selId: (d.projectors && d.projectors.selId) || null },
     validation:   d.validation || {},                 /* dashboard test chips — live now (BUILD 12.7) */
-    vjValidation: d.vjValidation || {}
+    vjValidation: d.vjValidation || {},
+    shipping: { date:(d.shipping&&d.shipping.date)||'', pallets:(d.shipping&&d.shipping.pallets)||[], assign:(d.shipping&&d.shipping.assign)||{} }   /* pallets + date sync; docs ride in the heavy json only (BUILD 12.45) */
   };
 }
 /* full live document = the shared data slice + the entry-level completion flag */
@@ -3217,6 +3362,7 @@ function liveApply(d, live){
   if(live.projectors){ d.projectors = d.projectors || {list:[],selId:null,models:{}}; setIf(d.projectors, 'list', live.projectors.list || []); setIf(d.projectors, 'selId', live.projectors.selId || null); }
   if(live.validation)   setIf(d, 'validation',   live.validation);      /* dashboard test chips (BUILD 12.7) */
   if(live.vjValidation) setIf(d, 'vjValidation', live.vjValidation);
+  if(live.shipping){ d.shipping = d.shipping || {date:'',pallets:[],assign:{},docs:[]}; setIf(d.shipping,'date',live.shipping.date||''); setIf(d.shipping,'pallets',live.shipping.pallets||[]); setIf(d.shipping,'assign',live.shipping.assign||{}); }
   return changed;
 }
 /* ---- presence: who is in this project right now ---- */
@@ -4923,11 +5069,12 @@ const ROUTES = {
   '#/projectors':    {nav:'dashboard', render:pageProjectors},
   '#/camera':        {nav:'dashboard', render:pageCamera},
   '#/cables':        {nav:'dashboard', render:()=>pagePlaceholder('Cables', IC.cable, 'Cable ID, type, from/to, length, connectors, statuses — planned module.', 'Coming Soon')},
-  '#/equipment':     {nav:'dashboard', render:()=>pagePlaceholder('Equipment List', IC.list, 'Unified inventory aggregated from Server & Rack and other modules — planned module.', 'Coming Soon')},
+  '#/equipment':     {nav:'dashboard', render:pageShipping},   /* merged into Equipment & Shipping (BUILD 12.46) — alias kept for old links */
   '#/speakers':      {nav:'dashboard', render:()=>pagePlaceholder('Speakers', IC.spk, 'Main speakers and subwoofer selection, amplification and audio layout — planned module.', 'Coming Soon')},
   '#/network':       {nav:'dashboard', render:()=>pagePlaceholder('Network', IC.net, 'Switches, VLANs, IP plan and connectivity for the dome system — planned module.', 'Coming Soon')},
   '#/fan':           {nav:'dashboard', render:()=>pagePlaceholder('Screen Fan', IC.fan, 'Screen ventilation / fan system for the dome surface — planned module.', 'Coming Soon')},
-  '#/tools':         {nav:'dashboard', render:()=>pagePlaceholder('Tools', IC.tool, 'Installation tools, rigging and calibration equipment checklist — planned module.', 'Coming Soon')}
+  '#/tools':         {nav:'dashboard', render:()=>pagePlaceholder('Tools', IC.tool, 'Installation tools, rigging and calibration equipment checklist — planned module.', 'Coming Soon')},
+  '#/shipping':      {nav:'dashboard', render:pageShipping}
 };
 
 function goTo(hash){
@@ -4935,7 +5082,7 @@ function goTo(hash){
   else location.hash = hash;
 }
 var _lastMod = '';   /* the module page opened most recently — its dashboard card keeps the red frame (BUILD 12.43) */
-const MODULE_ROUTES = ['#/server-rack','#/projectors','#/speakers','#/camera','#/network','#/fan','#/cables','#/tools'];
+const MODULE_ROUTES = ['#/server-rack','#/projectors','#/speakers','#/camera','#/network','#/fan','#/cables','#/tools','#/shipping'];
 function route(){
   let h = location.hash || (state.project ? '#/dashboard' : '#/create');
   if(!ROUTES[h]) h = state.project ? '#/dashboard' : '#/create';
