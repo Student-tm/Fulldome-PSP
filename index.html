@@ -142,6 +142,9 @@
   /* Equipment & Shipping — full-width module group header rows (BUILD 12.47) */
   .shipeq tr.grouphdr td{background:#eef0f3;font-weight:800;text-transform:uppercase;letter-spacing:.6px;font-size:11px;color:#2b2f36;padding:9px 10px;border-top:2px solid #d7dbe0}
   .shipeq tr.grouphdr:first-child td{border-top:none}
+  .shipeq tr.grouphdr .gtri{display:inline-block;width:16px;color:#6b7480;font-size:11px;margin-right:2px}
+  .shipeq tr.grouphdr .gled{display:inline-block;width:10px;height:10px;border-radius:50%;margin-left:10px;vertical-align:middle;background:var(--fdp-red);box-shadow:0 0 0 2px rgba(211,47,47,.18)}
+  .shipeq tr.grouphdr .gled.on{background:#2e9e5b;box-shadow:0 0 0 2px rgba(46,158,91,.20)}
   .shipeq tr.pl-last td{border-bottom:1px solid #d7dbe0}
   .shipeq .pl-cell{border-left:1px solid #eceef1;background:#fbfcfd}
   .palrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:9px 2px;border-bottom:1px solid var(--line)}
@@ -150,6 +153,7 @@
   .palrow .pl-num,.palrow .pl-dim,.palrow .pl-wt{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink2);white-space:nowrap}
   .palrow .pl-name{flex:1 1 150px;min-width:120px}
   .palrow .pl-cnt{font-size:11.5px;color:var(--dim);margin-left:auto;white-space:nowrap}
+  .palrow .pl-all{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink2);white-space:nowrap;cursor:pointer}
   /* Dashboard order (BUILD 12.32): summary cards sit BETWEEN the readiness bar and the module cards */
   .page.dash{display:flex;flex-direction:column}
   .page.dash .modgrid{order:1;margin-bottom:0}
@@ -609,7 +613,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.55 · PALLET COL WIDTH</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.59 · GROUP FOLD + LED</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -625,6 +629,7 @@
 <input type="file" id="projDbFile" accept=".json" onchange="onProjDbPicked(event)" style="display:none">\n<input type="file" id="projPhFile" accept="image/*,.heic,.heif" onchange="onProjPhPicked(event)" style="display:none">
 <input type="file" id="ttFile" accept=".pdf,.json" onchange="onTtPicked(event)" style="display:none">
 <input type="file" id="shipFile" multiple onchange="onShipDocPicked(event)" style="display:none">
+<input type="file" id="palletPhotoFile" accept="image/*,.heic,.heif" multiple onchange="onPalletPhotoPicked(event)" style="display:none">
 <div id="lnkPrev"></div>
 <input type="file" id="ctlFile" accept=".txt,text/plain" onchange="onContentListPicked(event)">
 <div class="lbx" id="lbx" onclick="closeLightbox()">
@@ -741,6 +746,7 @@ function syncActive(){
   if(typeof state.shipping.date !== 'string') state.shipping.date = '';
   if(!state.shipping.meta   || typeof state.shipping.meta!=='object')   state.shipping.meta = {};    /* per-item comments (BUILD 12.54) */
   if(!state.shipping.packed || typeof state.shipping.packed!=='object') state.shipping.packed = {};  /* per-place "loaded on pallet" flag */
+  if(!state.shipping.palletPhotos || typeof state.shipping.palletPhotos!=='object') state.shipping.palletPhotos = {};  /* {palletId:[{name,caption,src}]} up to 10 each (BUILD 12.58) */
   if(!Array.isArray(state.rack.photos)) state.rack.photos = [];
   if(!state.vj || typeof state.vj!=='object') state.vj = { rows: [], ready: false, photos: [] };
   if(!state.validation || typeof state.validation!=='object') state.validation = { cpu:false, gpu:false, capture:false, video:false, burnin:false };
@@ -3033,6 +3039,8 @@ function shipPlaces(){
   camSeparate.forEach((it,i)=> places.push({key:'pl|cam-sep|'+i, name:it.name, module:'Calibration Camera', items:[it]}));
   return places;
 }
+var _shipCollapsed = {};   /* module -> collapsed (session-only UI state) */
+function toggleShipGroup(mi){ const mod = shipModules()[mi]; if(!mod) return; _shipCollapsed[mod] = !_shipCollapsed[mod]; rerenderKeepScroll(); }
 function setShipCmt(key, v){ if(!state.shipping.meta) state.shipping.meta={}; state.shipping.meta[key]=state.shipping.meta[key]||{}; state.shipping.meta[key].cmt=v; saveState(); }
 function setPacked(idx, checked){ const pl=shipPlaces()[idx]; if(!pl) return; if(!state.shipping.packed) state.shipping.packed={}; state.shipping.packed[pl.key]=!!checked; saveState(); rerenderKeepScroll(); }
 /* flat list in render order — running number & item counts */
@@ -3123,7 +3131,15 @@ function rmPallet(id){
   if(!confirm('Remove this pallet? Its items become unassigned.')) return;
   state.shipping.pallets = state.shipping.pallets.filter(p=>p.id!==id);
   Object.keys(state.shipping.assign).forEach(k=>{ if(state.shipping.assign[k]===id) delete state.shipping.assign[k]; });
+  if(state.shipping.palletPhotos) delete state.shipping.palletPhotos[id];   /* drop its photos too */
   saveState(); route();
+}
+/* one-click: put EVERY place onto this pallet (autofill — handy when there is just one pallet) */
+function assignAllToPallet(pid, checked){
+  const places = shipPlaces();
+  if(checked) places.forEach(pl => state.shipping.assign[pl.key] = pid);
+  else places.forEach(pl => { if(state.shipping.assign[pl.key] === pid) delete state.shipping.assign[pl.key]; });
+  saveState(); rerenderKeepScroll();
 }
 /* assign a whole PLACE (bundle) to a pallet in ONE action — idx into shipPlaces() */
 function assignPlace(idx, pid){
@@ -3146,6 +3162,38 @@ function onShipDocPicked(ev){
 }
 function downloadShipDoc(i){ const f=state.shipping.docs[i]; if(!f) return; const a=document.createElement('a'); a.href=f.data; a.download=f.name||'file'; document.body.appendChild(a); a.click(); a.remove(); }
 function rmShipDoc(i){ const f=state.shipping.docs[i]; if(!f) return; if(!confirm('Delete "'+f.name+'"?')) return; state.shipping.docs.splice(i,1); saveState(); rerenderKeepScroll(); }
+/* ---- per-pallet photos (up to 10 each) — one gallery per pallet (BUILD 12.58) ---- */
+function palPhotos(id){ if(!state.shipping.palletPhotos) state.shipping.palletPhotos={}; if(!Array.isArray(state.shipping.palletPhotos[id])) state.shipping.palletPhotos[id]=[]; return state.shipping.palletPhotos[id]; }
+function pickPalletPhotos(id){ if(!activeEntry()){ alert('No active project.'); return; } const inp=document.getElementById('palletPhotoFile'); inp.dataset.pid=id; inp.click(); }
+function onPalletPhotoPicked(ev){
+  const id=ev.target.dataset.pid; const files=[...(ev.target.files||[])]; ev.target.value='';
+  if(!id || !files.length || !activeEntry()) return;
+  const arr=palPhotos(id); const room=10-arr.length;
+  files.slice(0, Math.max(0,room)).forEach(f=>{
+    readImageFile(f,
+      dataUrl=>{ downscaleImage(dataUrl, 1280, 0.8,
+        src=>{ palPhotos(id).push({ name:f.name, caption:f.name.replace(/\.[a-z0-9]+$/i,''), src }); saveState(); rerenderKeepScroll(); if(isHeicFile(f)) flashStat('HEIC converted ✓'); },
+        ()=>alert(heicFailMsg(f,'decode'))); },
+      why=>alert(heicFailMsg(f,why)));
+  });
+}
+function rmPalletPhoto(id,i){ const arr=palPhotos(id); if(arr[i]){ arr.splice(i,1); saveState(); rerenderKeepScroll(); } }
+function openLightboxPallet(id,i){ const ph=palPhotos(id)[i]; if(ph) openLightbox(ph.src, ph.caption||ph.name||''); }
+function palletPhotoBlock(p){
+  const arr = palPhotos(p.id);
+  const label = 'Pallet ' + esc(p.num||'?') + (p.name ? (' — ' + esc(p.name)) : '');
+  const tiles = arr.map((ph,i)=>`
+    <div class="phtile">
+      <button class="phdel" title="Remove photo" onclick="rmPalletPhoto('${p.id}',${i})">×</button>
+      <img src="${ph.src}" alt="" onclick="openLightboxPallet('${p.id}',${i})">
+      <div class="phcap" style="border-top:1px solid var(--line)">${esc(ph.caption||ph.name||'—')}</div>
+    </div>`).join('');
+  const add = arr.length < 10 ? `<button class="phadd" onclick="pickPalletPhotos('${p.id}')"><span class="plus">+</span><span>Add photo</span><span style="font-weight:400">${arr.length} / 10</span></button>` : '';
+  return `<div style="margin-bottom:16px">
+    <div style="font-size:12.5px;font-weight:700;color:var(--ink2);margin:2px 0 8px;display:flex;align-items:center;gap:8px">${label} <span class="chip c-mut" style="font-size:9.5px">${arr.length} / 10</span></div>
+    <div class="phgrid">${tiles}${add}</div>
+  </div>`;
+}
 function pageShipping(){
   const S = state.shipping, P = state.project;
   const items = shipItems();
@@ -3154,9 +3202,13 @@ function pageShipping(){
   const assignedPlaces = places.filter(pl=>S.assign[pl.key]).length;
   const palOptions = pid => `<option value="">— Unassigned</option>` + S.pallets.map(p=>`<option value="${p.id}" ${pid===p.id?'selected':''}>Pallet ${esc(p.num||'?')}${p.name?' — '+esc(p.name):''}</option>`).join('');
   let n = 0;
-  const eqRows = items.length ? modules.map(mod=>{
-    const hdr = `<tr class="grouphdr"><td colspan="7">${esc(mod)}</td></tr>`;
+  const eqRows = items.length ? modules.map((mod,mi)=>{
     const modPlaces = places.filter(pl => pl.module === mod);
+    const allPacked = modPlaces.length>0 && modPlaces.every(pl => S.packed && S.packed[pl.key]);
+    const collapsed = !!_shipCollapsed[mod];
+    const hdr = `<tr class="grouphdr"><td colspan="7" style="cursor:pointer" onclick="toggleShipGroup(${mi})">
+      <span class="gtri">${collapsed?'▸':'▾'}</span>${esc(mod)}<span class="gled ${allPacked?'on':''}" title="${allPacked?'All items in this module are loaded on pallets':'Not all items in this module are loaded on pallets yet'}"></span></td></tr>`;
+    if(collapsed){ /* still advance the running numbers so they stay consistent when expanded */ modPlaces.forEach(pl=>{ n += pl.items.length; }); return hdr; }
     const body = modPlaces.map(pl => {
       const plIdx = places.indexOf(pl); const pid = S.assign[pl.key]||'';
       const packed = !!(S.packed && S.packed[pl.key]);
@@ -3188,8 +3240,10 @@ function pageShipping(){
   }).join('') : `<tr><td colspan="7" style="color:var(--dim);padding:14px">No equipment yet — add components in Server, Rack, Camera or Projectors.</td></tr>`;
   const palletRows = S.pallets.length ? S.pallets.map(p=>{
     const cnt = places.filter(pl=>S.assign[pl.key]===p.id).reduce((a,pl)=>a+pl.items.length,0);
+    const allHere = places.length>0 && places.every(pl=>S.assign[pl.key]===p.id);
     return `<div class="palrow">
       <span class="pl-num">Pallet <input class="cell" style="width:46px" value="${esc(p.num||'')}" oninput="setPalletNum('${p.id}',this.value)"></span>
+      <label class="pl-all" title="Put ALL equipment on this pallet"><input type="checkbox" style="width:15px;height:15px;cursor:pointer;accent-color:var(--fdp-red)" ${allHere?'checked':''} onchange="assignAllToPallet('${p.id}',this.checked)"> All equipment</label>
       <input class="cell pl-name" placeholder="Label (e.g. Server & Rack)" value="${esc(p.name||'')}" oninput="setPalletField('${p.id}','name',this.value)">
       <span class="pl-dim">L <input class="cell" style="width:52px" placeholder="48" value="${esc(p.l||'')}" oninput="setPalletField('${p.id}','l',this.value)">
         × W <input class="cell" style="width:52px" placeholder="40" value="${esc(p.w||'')}" oninput="setPalletField('${p.id}','w',this.value)">
@@ -3253,6 +3307,12 @@ function pageShipping(){
       <div class="card-head"><h3>Shipping Documents</h3><button class="mod-btn primary" style="padding:6px 12px;font-size:12px" onclick="pickShipDoc()">+ Add Document</button></div>
       ${docRows}
     </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="card-head"><h3>Pallet Photos</h3><span class="chip c-mut"><span class="cd"></span>${S.pallets.length} pallet${S.pallets.length===1?'':'s'}</span></div>
+      ${S.pallets.length ? S.pallets.map(palletPhotoBlock).join('') : `<div style="color:var(--dim);font-size:12.5px;padding:6px 2px">Add a pallet above — each pallet gets its own photo field (up to 10 photos).</div>`}
+    </div>
+
     <a class="backlink" href="#/dashboard">${IC.back} Back to Dashboard</a>
   </div>`;
 }
@@ -5262,7 +5322,12 @@ window.addEventListener('hashchange', route);
   if(sb && num) sb.textContent = 'build ' + num;           /* sidebar subtitle build, sourced from the one footer tag */
   if(tag) document.title = 'Fulldome Projection SP — ' + tag.replace('BUILD ','b').split(' · ')[0];
 })();
-loadState(()=>{ restoreHandles(); renderHeader(); renderSideProject(); route();
+loadState(()=>{ restoreHandles(); renderHeader(); renderSideProject();
+  /* BUILD 12.56: always open on the Dashboard at launch — never the last-open module
+     (the leftover URL hash, e.g. #/shipping, used to reopen that module). The active
+     project is the last-edited one and stays selected. */
+  { const boot = activeEntry() ? '#/dashboard' : '#/create'; if(location.hash !== boot) location.hash = boot; }
+  route();
   /* BUILD 12.13: no blocking sign-in gate. Try a silent Google reconnect at boot
      (connects with zero clicks if the session is alive); if it can't, the app is
      already open and the status line offers a one-click sign-in. */
