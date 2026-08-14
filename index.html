@@ -562,7 +562,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.12 · CARD FILL + TEST MODE</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.13 · AUTO SIGN-IN</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -3218,12 +3218,21 @@ function setCloudStat(t){ const el=document.getElementById('driveStat'); if(el) 
 function cloudGateShow(){ const g=document.getElementById('authGate'); if(g) g.style.display='flex'; }
 function cloudGateHide(){ const g=document.getElementById('authGate'); if(g) g.style.display='none'; }
 function cloudOffline(){ _cloudOn=false; cloudStopPoll(); cloudGateHide(); setCloudStat('Offline — click to sign in and sync'); }
-async function cloudStart(){
+async function cloudStart(silent){
   const err = document.getElementById('authErr');
   try{
     if(err) err.textContent='';
-    setCloudStat('Signing in…');
-    await driveToken(true);
+    setCloudStat(silent ? 'Connecting to Google…' : 'Signing in…');
+    if(silent){
+      /* best-effort silent reconnect: works if the Google session is alive and
+         this app was granted before; time-boxed so it never hangs the boot */
+      await Promise.race([
+        driveToken(false),
+        new Promise((_, rej)=> setTimeout(()=> rej(new Error('silent-timeout')), 4000))
+      ]);
+    } else {
+      await driveToken(true);
+    }
     _cloudOn = true;
     cloudGateHide();
     setCloudStat('Loading team projects…');
@@ -3239,6 +3248,7 @@ async function cloudStart(){
     if(activeEntry()) cloudPushActive();
     cloudStartPoll();                                  /* keep the team list + statuses fresh even without live sync (BUILD 12.10) */
   }catch(e){
+    if(silent){ setCloudStat('Not signed in — click here to sign in & sync'); return; }   /* silent attempt failed: no gate, one-click available */
     if(err) err.textContent = 'Sign-in failed: ' + (e && e.message || 'error') + '. Check that your email is in the test users list.';
     setCloudStat('');
   }
@@ -4739,11 +4749,10 @@ window.addEventListener('hashchange', route);
   if(tag) document.title = 'Fulldome Projection SP — ' + tag.replace('BUILD ','b').split(' · ')[0];
 })();
 loadState(()=>{ restoreHandles(); renderHeader(); renderSideProject(); route();
-  /* TESTING MODE (BUILD 12.12): the boot sign-in gate is disabled — the app opens
-     straight into offline/local mode. Google is NOT removed: click the cloud status
-     line (bottom-left) any time to sign in and sync. To bring the auto sign-in screen
-     back, restore cloudGateShow() here. */
-  if(driveClientId()){ setCloudStat('Sign-in off (testing) — click here to sign in & sync'); }
+  /* BUILD 12.13: no blocking sign-in gate. Try a silent Google reconnect at boot
+     (connects with zero clicks if the session is alive); if it can't, the app is
+     already open and the status line offers a one-click sign-in. */
+  if(driveClientId()){ cloudStart(true); }
   else setCloudStat('Local mode (no cloud configured)'); });
 </script>
 </body>
