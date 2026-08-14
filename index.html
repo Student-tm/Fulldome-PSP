@@ -422,10 +422,10 @@
   .pjhead.done-h{color:#5f7f6c}
   .pjhead.done-h .n{background:rgba(67,209,124,.15);color:#43d17c}
   .pj{display:flex;gap:8px;align-items:center;padding:8px 9px 8px 13px;border-radius:8px;background:transparent;
-    position:relative;cursor:pointer;overflow:hidden}
+    border:1px solid #363b44;position:relative;cursor:pointer;overflow:hidden;transition:border-color .12s,background .12s}
   .pj::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:transparent;transition:background .12s}
-  .pj:hover{background:#20242b}
-  .pj.sel{background:var(--side2);box-shadow:inset 0 0 0 1px var(--fdp-red)}
+  .pj:hover{background:#20242b;border-color:#454b56}
+  .pj.sel{background:var(--side2);border-color:var(--fdp-red);box-shadow:inset 0 0 0 1px var(--fdp-red)}
   .pj.done{opacity:.62}
   .pj.done .pjn{color:#7d8590}
   .pj.done:hover{opacity:.85}
@@ -554,7 +554,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.8 · STATUS RECONCILE</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.11 · CARD BORDERS</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -647,12 +647,12 @@
     <div class="mt">Delete Project</div>
     <div class="mm" id="delMsg">This will permanently remove the active project (server, rack and all its data) from the platform.<br>
     Save it to a file first if you need it later.<br><br>Enter the code to continue.</div>
-    <input class="pin-input" id="delPin" type="password" inputmode="numeric" maxlength="4" placeholder="••••"
-      onkeydown="if(event.key==='Enter')doDelete()">
+    <input class="pin-input" id="delPin" type="password" inputmode="numeric" maxlength="4" placeholder="••••">
     <div class="pin-err" id="delErr"></div>
-    <div class="mb">
+    <div class="mb" style="flex-wrap:wrap">
       <button class="no" onclick="closeDelete()">Cancel</button>
-      <button class="yes" onclick="doDelete()">Delete</button>
+      <button class="no" onclick="doDelete('local')" title="Removes it from this computer only; the team's Google Drive copy stays">This computer only</button>
+      <button class="yes" onclick="doDelete('cloud')" title="Also moves the project's Google Drive folder to Trash">Delete everywhere</button>
     </div>
   </div>
 </div>
@@ -1510,30 +1510,59 @@ function openDelete(){
   const e = activeEntry();
   if(!e || !e.data.project){ flashStat('No active project'); return; }
   document.getElementById('delMsg').innerHTML =
-    'This will permanently remove <b>#' + esc(e.data.project.number) + ' — ' + esc(e.data.project.title||'') + '</b> from the platform.<br>' +
-    'Save it to a file first if you need it later.<br><br>Enter the code to continue.';
+    'Delete <b>#' + esc(e.data.project.number) + ' — ' + esc(e.data.project.title||'') + '</b>.<br><br>' +
+    '<b>This computer only</b> — removes it here; the team\'s Google Drive copy stays and it will reappear on the next sign-in.<br>' +
+    '<b>Delete everywhere</b> — also moves the project\'s Google Drive folder to Trash (recoverable ~30 days on Drive).<br><br>' +
+    'Enter the code, then choose.';
   const m = document.getElementById('deleteModal');
   document.getElementById('delPin').value=''; document.getElementById('delErr').textContent='';
   m.classList.add('open');
   setTimeout(()=>document.getElementById('delPin').focus(), 50);
 }
 function closeDelete(){ document.getElementById('deleteModal').classList.remove('open'); }
-function doDelete(){
+function doDelete(scope){
   const pin = document.getElementById('delPin').value.trim();
   if(pin !== DELETE_PIN){
     document.getElementById('delErr').textContent = 'Wrong code';
     document.getElementById('delPin').value=''; document.getElementById('delPin').focus();
     return;
   }
-  const i = db.projects.findIndex(p => p.id === db.activeId);
+  const e = activeEntry();
+  if(!e){ closeDelete(); return; }
+  const fid = (driveMap()[e.id] && driveMap()[e.id].fid) || null;
+  if(scope === 'cloud'){
+    if(!_cloudOn || !_gTok){ document.getElementById('delErr').textContent = 'Sign in to Google first to delete from the team folder.'; return; }
+    if(fid){
+      document.getElementById('delErr').textContent = 'Deleting from Google Drive…';
+      driveTrashFolder(fid)
+        .then(()=> finishDelete(e, fid))
+        .catch(err=>{ document.getElementById('delErr').textContent = 'Drive delete failed: ' + (err && err.message || 'error'); });
+      return;
+    }
+  }
+  finishDelete(e, null);                 /* local-only, or cloud with no Drive folder yet */
+}
+function driveTrashFolder(fid){
+  return gFetch('https://www.googleapis.com/drive/v3/files/' + fid + '?fields=id', {
+    method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ trashed:true })
+  }).then(r=>{ if(!r.ok) throw new Error('HTTP ' + r.status); return r; });
+}
+function finishDelete(e, trashedFid){
+  try{ if(typeof liveStop==='function' && _fbPath && _fbPath.indexOf(fbProjectKey(e))>=0) liveStop(); }catch(_){}
+  const i = db.projects.findIndex(p => p.id === e.id);
   if(i > -1) db.projects.splice(i,1);
+  delete driveMap()[e.id];
+  if(trashedFid){                        /* drop it from the cloud lists so it doesn't reappear this session */
+    _cloudFolders = (_cloudFolders||[]).filter(f=>f.id!==trashedFid);
+    if(_cloudMeta) delete _cloudMeta[trashedFid];
+  }
   const alt = db.projects.find(p => !p.frozen);
   db.activeId = alt ? alt.id : null;
   syncActive();
   closeDelete();
   saveState(); renderHeader(); renderSideProject();
   location.hash = state.project ? '#/dashboard' : '#/create'; route();
-  flashStat('Project deleted');
+  flashStat(trashedFid ? 'Project deleted everywhere — Drive folder moved to Trash' : 'Project removed from this computer');
 }
 
 function flashStat(msg){
@@ -3180,7 +3209,7 @@ function driveMap(){ if(!db.driveMap || typeof db.driveMap!=='object') db.driveM
 function setCloudStat(t){ const el=document.getElementById('driveStat'); if(el) el.textContent = t; }
 function cloudGateShow(){ const g=document.getElementById('authGate'); if(g) g.style.display='flex'; }
 function cloudGateHide(){ const g=document.getElementById('authGate'); if(g) g.style.display='none'; }
-function cloudOffline(){ _cloudOn=false; cloudGateHide(); setCloudStat('Offline — click to sign in and sync'); }
+function cloudOffline(){ _cloudOn=false; cloudStopPoll(); cloudGateHide(); setCloudStat('Offline — click to sign in and sync'); }
 async function cloudStart(){
   const err = document.getElementById('authErr');
   try{
@@ -3200,11 +3229,23 @@ async function cloudStart(){
     /* a project may already be open (loaded from disk before signing in) —
        make sure it reaches the team folder right away */
     if(activeEntry()) cloudPushActive();
+    cloudStartPoll();                                  /* keep the team list + statuses fresh even without live sync (BUILD 12.10) */
   }catch(e){
     if(err) err.textContent = 'Sign-in failed: ' + (e && e.message || 'error') + '. Check that your email is in the test users list.';
     setCloudStat('');
   }
 }
+/* periodic pull of the team folder list + metas — so new projects and Done/
+   validation from other machines appear on their own (~every 45s), no F5,
+   independent of the flaky Firebase live channel. Skipped while hidden. */
+var _cloudPoll = null;
+function cloudStartPoll(){
+  if(_cloudPoll) return;
+  _cloudPoll = setInterval(function(){
+    if(_cloudOn && _gTok && !document.hidden){ cloudRefreshList().catch(function(){}); }
+  }, 45000);
+}
+function cloudStopPoll(){ if(_cloudPoll){ clearInterval(_cloudPoll); _cloudPoll = null; } }
 async function cloudRefreshList(){
   const rootId = await driveRootId();
   const q = encodeURIComponent("'" + rootId + "' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false");
