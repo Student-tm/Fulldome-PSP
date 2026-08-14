@@ -595,7 +595,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.34 · ROW SYNC (DRIVE)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.36 · SAME-ACCOUNT SYNC FIX</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -771,17 +771,17 @@ function readyColor(key, d){
   if(readyModuleHasData(key, d)) return 'yellow';     /* some data present */
   return 'red';                                       /* nothing yet */
 }
-/* Aggregate readiness for the sidebar CARD.
-   green  = every ready-buttoned core build in play is marked ready (and at least one is)
-   yellow = work started in any module, but not fully ready
-   ''     = nothing started yet (no tint) */
+/* Aggregate readiness for the sidebar CARD — STRICT, mirrors the readiness bar (BUILD 12.35).
+   green  = EVERY module in the bar is green (per user "зелёная только если ВЕЗДЕ зелёная")
+   yellow = work has started somewhere but not all green
+   ''     = nothing started yet (no tint)
+   NOTE: modules without a "Mark as Ready" button/section (Rack, Speakers, Screen Fan,
+   Network, Cables, Tools) can't reach green yet, so the card can't be green until they do. */
 function readyCardColor(d){
-  d = d || state; const P = d.project || {};
-  const core = ['server','camera']; if(P.vjRequired) core.push('vj');
-  const engaged = core.filter(k => readyModuleGreen(k,d) || readyModuleHasData(k,d));
-  const anyData = ['server','vj','rack','camera','speakers','fan'].some(k => readyModuleHasData(k,d));
-  if(engaged.length && engaged.every(k => readyModuleGreen(k,d))) return 'green';
-  if(anyData) return 'yellow';
+  d = d || state;
+  const cols = READY_MODULES.map(([k]) => readyColor(k, d));
+  if(cols.every(c => c === 'green')) return 'green';
+  if(cols.some(c => c !== 'red')) return 'yellow';   /* any progress anywhere */
   return '';
 }
 const READY_LABEL = { red:'Not started', yellow:'In progress', green:'Ready' };
@@ -1105,11 +1105,13 @@ function toggleTest(key){
   if(!state.validation) state.validation = {};
   state.validation[key] = !state.validation[key];
   saveState(); rerenderKeepScroll(); renderSideProject();
+  setTimeout(function(){ try{ cloudPushNow(); }catch(_){} }, 150);   /* push test status right away (BUILD 12.36) */
 }
 function toggleVjTest(key){
   if(!state.vjValidation) state.vjValidation = {};
   state.vjValidation[key] = !state.vjValidation[key];
   saveState(); rerenderKeepScroll(); renderSideProject();
+  setTimeout(function(){ try{ cloudPushNow(); }catch(_){} }, 150);
 }
 function revalidateVjReady(){
   if(state.vj && state.vj.ready && vjProblems().length){ state.vj.ready = false; saveState(); }
@@ -3333,6 +3335,7 @@ async function cloudStart(silent){
        make sure it reaches the team folder right away */
     if(activeEntry()) cloudPushActive();
     cloudStartPoll();                                  /* keep the team list + statuses fresh even without live sync (BUILD 12.10) */
+    cloudBindVisibility();                             /* pull the instant a hidden tab is focused (BUILD 12.36) */
   }catch(e){
     if(silent){ setCloudStat('Not signed in — click here to sign in & sync'); return; }   /* silent attempt failed: no gate, one-click available */
     if(err) err.textContent = 'Sign-in failed: ' + (e && e.message || 'error') + '. Check that your email is in the test users list.';
@@ -3342,6 +3345,16 @@ async function cloudStart(silent){
 /* periodic pull of the team folder list + metas — so new projects and Done/
    validation from other machines appear on their own (~every 45s), no F5,
    independent of the flaky Firebase live channel. Skipped while hidden. */
+/* the 45s poll is SKIPPED while the tab is hidden — so a background machine never
+   pulls a teammate's change until it's focused again. Bind focus/visibility so the
+   moment you look at a machine it pulls the latest (location, validation, rows). BUILD 12.36 */
+var _cloudVisBound = false;
+function cloudBindVisibility(){
+  if(_cloudVisBound) return; _cloudVisBound = true;
+  const pull = function(){ if(_cloudOn && _gTok && !document.hidden){ cloudRefreshList().catch(function(){}); } };
+  document.addEventListener('visibilitychange', pull);
+  window.addEventListener('focus', pull);
+}
 var _cloudPoll = null;
 function cloudStartPoll(){
   if(_cloudPoll) return;
@@ -3376,8 +3389,7 @@ async function cloudPullContent(){
     const m = map[e.id];
     const meta = _cloudMeta[m.fid];
     if(!meta || !('sig' in meta)) continue;
-    if(meta.sig === m.liveSig) continue;                         /* nothing new since we last applied */
-    if(meta.savedBy && _gUser && meta.savedBy === _gUser){ m.liveSig = meta.sig; continue; }  /* our own save */
+    if(meta.sig === m.liveSig) continue;                         /* nothing new since we last applied/pushed (works even for the SAME account on another machine — the sig, not savedBy, decides; BUILD 12.36 fix) */
     const isActive = (e.id === db.activeId);
     if(isActive && (isTypingInInput() || _pushing || _fbApplying)) continue;   /* don't clobber active edits — retry next poll */
     try{
