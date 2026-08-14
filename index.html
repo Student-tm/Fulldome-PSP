@@ -143,6 +143,8 @@
   .shipeq tr.grouphdr td{background:#eef0f3;font-weight:800;text-transform:uppercase;letter-spacing:.6px;font-size:11px;color:#2b2f36;padding:9px 10px;border-top:2px solid #d7dbe0}
   .shipeq tr.grouphdr:first-child td{border-top:none}
   .shipeq tr.grouphdr .gtri{display:inline-block;width:16px;color:#6b7480;font-size:11px;margin-right:2px}
+  .shipeq thead .allfold{border:1px solid var(--line);background:#fff;color:#3a3f47;border-radius:5px;width:20px;height:20px;line-height:1;font-size:11px;cursor:pointer;padding:0}
+  .shipeq thead .allfold:hover{border-color:var(--fdp-red);color:var(--fdp-red)}
   .shipeq tr.grouphdr .gled{display:inline-block;width:10px;height:10px;border-radius:50%;margin-left:10px;vertical-align:middle;background:var(--fdp-red);box-shadow:0 0 0 2px rgba(211,47,47,.18)}
   .shipeq tr.grouphdr .gled.on{background:#2e9e5b;box-shadow:0 0 0 2px rgba(46,158,91,.20)}
   .shipeq tr.pl-last td{border-bottom:1px solid #d7dbe0}
@@ -613,7 +615,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.62 · FLAT SHIPPING FOLDER</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.64 · DELETE PHOTOS FROM DRIVE</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1225,7 +1227,12 @@ function rerenderKeepScroll(){
   const c = document.getElementById('content');
   const st = c ? c.scrollTop : 0;
   route();
-  if(c) c.scrollTop = st;
+  /* restore immediately AND again after layout/image-decode settles, so re-rendering
+     a page with base64 images (e.g. pallet photos) no longer jumps to the top (BUILD 12.63) */
+  const restore = () => { const c2 = document.getElementById('content'); if(c2 && c2.scrollTop !== st) c2.scrollTop = st; };
+  restore();
+  try{ requestAnimationFrame(restore); }catch(_){}
+  setTimeout(restore, 60);
 }
 function libAllItems(){
   return LIB_GROUPS.flatMap(g => ((db.library&&db.library[g.key])||[]).filter(it=>(it.name||'').trim()));
@@ -3041,6 +3048,13 @@ function shipPlaces(){
 }
 var _shipCollapsed = {};   /* module -> collapsed (session-only UI state) */
 function toggleShipGroup(mi){ const mod = shipModules()[mi]; if(!mod) return; _shipCollapsed[mod] = !_shipCollapsed[mod]; rerenderKeepScroll(); }
+/* collapse / expand ALL module groups at once (button before the # column) */
+function toggleShipAllGroups(){
+  const mods = shipModules();
+  const allCollapsed = mods.length>0 && mods.every(m => _shipCollapsed[m]);
+  mods.forEach(m => { _shipCollapsed[m] = !allCollapsed; });
+  rerenderKeepScroll();
+}
 function setShipCmt(key, v){ if(!state.shipping.meta) state.shipping.meta={}; state.shipping.meta[key]=state.shipping.meta[key]||{}; state.shipping.meta[key].cmt=v; saveState(); }
 function setPacked(idx, checked){ const pl=shipPlaces()[idx]; if(!pl) return; if(!state.shipping.packed) state.shipping.packed={}; state.shipping.packed[pl.key]=!!checked; saveState(); rerenderKeepScroll(); }
 /* flat list in render order — running number & item counts */
@@ -3299,7 +3313,7 @@ function pageShipping(){
     <div class="card">
       <div class="card-head"><h3>Equipment → Pallet</h3><span class="chip c-mut"><span class="cd"></span>${assignedPlaces}/${places.length} places on pallets</span></div>
       <table class="eq shipeq">
-        <thead><tr><th style="width:4%;text-align:right">#</th><th>Equipment</th><th style="width:16%">Comment</th><th style="text-align:right">Qty</th><th style="text-align:center">Link</th><th style="width:6%">Pallet</th><th style="width:6%;text-align:center" title="Loaded on the pallet">On&nbsp;pallet</th></tr></thead>
+        <thead><tr><th style="width:6%"><span style="display:inline-flex;align-items:center;gap:6px"><button class="allfold" title="Collapse / expand all groups" onclick="toggleShipAllGroups()">${(modules.length && modules.every(m=>_shipCollapsed[m]))?'▸':'▾'}</button>#</span></th><th>Equipment</th><th style="width:16%">Comment</th><th style="text-align:right">Qty</th><th style="text-align:center">Link</th><th style="width:6%">Pallet</th><th style="width:6%;text-align:center" title="Loaded on the pallet">On&nbsp;pallet</th></tr></thead>
         <tbody>${eqRows}</tbody>
       </table>
     </div>
@@ -3434,6 +3448,18 @@ async function driveFindFile(name, parentId){
   const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name)&pageSize=5');
   const j = await r.json();
   return (j.files && j.files[0]) ? j.files[0].id : null;
+}
+/* find a folder by name WITHOUT creating it (BUILD 12.64) */
+async function driveFindFolder(name, parentId){
+  const q = encodeURIComponent("name = '" + name.replace(/'/g, "\\'") + "' and mimeType = 'application/vnd.google-apps.folder' and trashed = false" + (parentId ? " and '" + parentId + "' in parents" : ""));
+  const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id)&pageSize=1');
+  const j = await r.json();
+  return (j.files && j.files[0]) ? j.files[0].id : null;
+}
+/* move a Drive file to Trash (recoverable ~30 days) */
+async function driveTrash(fileId){
+  await gFetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?fields=id', {
+    method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ trashed:true }) });
 }
 function dataUrlToBytes(dataUrl){
   const i = dataUrl.indexOf(',');
@@ -4060,12 +4086,15 @@ async function cloudPushActive(entry){
       }
     }
     m.docsSig = sig;
-    /* photo mirror: Photos/<Category>/… — only new or changed shots */
+    /* photo mirror: Photos/<Category>/… — upload new/changed AND delete removed (BUILD 12.64) */
     try{
+      const jobs = cloudPhotoJobs(e);
       const psig = cloudPhotoSig(e);
       const prev = m.photoSig || {};
-      const todo = cloudPhotoJobs(e).filter(j => psig[j.dir + '/' + j.name] !== prev[j.dir + '/' + j.name]);
-      if(todo.length){
+      const todo = jobs.filter(j => psig[j.dir + '/' + j.name] !== prev[j.dir + '/' + j.name]);
+      const curSet = new Set(jobs.map(j => j.dir + ' ' + j.name));
+      const removed = (m.photoList || []).filter(pl => !curSet.has(pl.dir + ' ' + pl.name));
+      if(todo.length || removed.length){
         const photosRoot = await driveEnsureFolder('Photos', m.fid);
         const dirIds = {};   /* pallet photos use a flat folder name "Shipping/Pallet N" (per user, BUILD 12.62) */
         for(let k = 0; k < todo.length; k++){
@@ -4078,8 +4107,19 @@ async function cloudPushActive(entry){
             await driveUpload(j.name, dirIds[j.dir], dataUrlToBytes(j.data), mime, ex);
           }catch(err){}
         }
+        /* trash photos removed in the app so Drive stays in sync */
+        for(const rp of removed){
+          try{
+            setCloudStat('Removing photo — ' + rp.name);
+            const folderId = await driveFindFolder(rp.dir, photosRoot);
+            if(!folderId) continue;
+            const fileId = await driveFindFile(rp.name, folderId);
+            if(fileId) await driveTrash(fileId);
+          }catch(err){}
+        }
       }
       m.photoSig = psig;
+      m.photoList = jobs.map(j => ({ dir:j.dir, name:j.name }));   /* remember the current set for next-push deletion diff */
     }catch(err){}
     /* tiny meta for the team sidebar */
     try{
