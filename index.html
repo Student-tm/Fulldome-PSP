@@ -139,6 +139,9 @@
 
   /* summary grid */
   .sumgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+  /* Equipment & Shipping — full-width module group header rows (BUILD 12.47) */
+  .shipeq tr.grouphdr td{background:#eef0f3;font-weight:800;text-transform:uppercase;letter-spacing:.6px;font-size:11px;color:#2b2f36;padding:9px 10px;border-top:2px solid #d7dbe0}
+  .shipeq tr.grouphdr:first-child td{border-top:none}
   /* Dashboard order (BUILD 12.32): summary cards sit BETWEEN the readiness bar and the module cards */
   .page.dash{display:flex;flex-direction:column}
   .page.dash .modgrid{order:1;margin-bottom:0}
@@ -598,7 +601,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.46 · MERGE EQUIP+SHIP</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.47 · GROUPED PACKING LIST</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -2463,9 +2466,9 @@ function pageDashboard(){
           <div><div class="mod-name">Equipment &amp; Shipping</div><span class="mod-badge b-active"><span class="bd"></span>Active</span></div></div>
         <div class="mod-desc">Full equipment inventory, pallet packing, shipping date and shipping documents.</div>
         <div class="mod-stats">
-          <div class="ms"><span class="k">Total Equipment</span><span class="v ${shipEquipment().length?'ok':''}">${shipEquipment().length || '—'} items</span></div>
+          <div class="ms"><span class="k">Total Equipment</span><span class="v ${shipItems().length?'ok':''}">${shipItems().length || '—'} items</span></div>
           <div class="ms"><span class="k">Pallets</span><span class="v">${state.shipping.pallets.length}</span></div>
-          <div class="ms"><span class="k">Items Assigned</span><span class="v">${shipEquipment().filter(it=>state.shipping.assign[it.key]).length} / ${shipEquipment().length}</span></div>
+          <div class="ms"><span class="k">Items Assigned</span><span class="v">${shipItems().filter(it=>state.shipping.assign[it.key]).length} / ${shipItems().length}</span></div>
           <div class="ms"><span class="k">Shipping Date</span><span class="v ${state.shipping.date?'ok':''}">${state.shipping.date ? esc(state.shipping.date) : '—'}</span></div>
         </div>
         <a class="mod-btn primary" href="#/shipping">Open Module ${IC.open}</a>
@@ -2988,20 +2991,34 @@ function setServerCase(v){
   saveState(); route();
 }
 
-/* ============ SHIPPING MODULE (BUILD 12.45) ============ */
-/* all project equipment aggregated across modules, grouped by module+name */
-function shipEquipment(){
-  const out = [];
-  const add = (mod, rows) => (rows||[]).forEach(r => { const nm=(r.name||'').trim(); if(nm) out.push({mod, name:nm, qty:parseFloat(r.qty)||1}); });
-  add('Server', state.server.rows);
-  if(state.project.vjRequired) add('VJ', (state.vj&&state.vj.rows)||[]);
-  add('Rack', state.rack.rows);
-  add('Camera', (state.camera&&state.camera.rows)||[]);
-  (((state.projectors&&state.projectors.list))||[]).forEach(p=>{ const nm=((p.mfr||'')+' '+(p.model||'')).trim(); if(nm) out.push({mod:'Projector', name:nm, qty:1}); });
-  const map={};
-  out.forEach(it=>{ const k=it.mod+'|'+it.name; if(!map[k]) map[k]={mod:it.mod,name:it.name,qty:0,key:k}; map[k].qty+=it.qty; });
-  return Object.values(map);
+/* ============ EQUIPMENT & SHIPPING MODULE (BUILD 12.47) ============ */
+/* Equipment grouped by MODULE (dashboard order) for the packing table.
+   Rule: the Dome Server (and VJ Server) count as ONE line each — the server NAME,
+   not its internal components; the Rack lists ALL its equipment; Projectors and
+   Camera list their items. Each item carries a purchase link when known. */
+function shipGroups(){
+  const P = state.project;
+  const agg = rows => { const m={}, order=[]; (rows||[]).forEach(r=>{ const nm=(r.name||'').trim(); if(!nm) return; if(!m[nm]){ m[nm]={name:nm,qty:0,link:r.link||''}; order.push(nm); } m[nm].qty+=parseFloat(r.qty)||1; if(!m[nm].link && r.link) m[nm].link=r.link; }); return order.map(nm=>m[nm]); };
+  const groups = [];
+  /* Server & Rack: server = name only, then the whole rack */
+  const sr = [];
+  const serverName = (P.sysNumber ? ('FDPSN#'+P.sysNumber) : 'Dome Server') + (P.type ? (' '+P.type) : '');
+  if((state.server.rows||[]).some(r=>(r.name||'').trim())) sr.push({key:'sr|server', name: serverName || 'Dome Server', qty:1, link:''});
+  if(P.vjRequired && ((state.vj&&state.vj.rows)||[]).some(r=>(r.name||'').trim())) sr.push({key:'sr|vj', name:'VJ Server', qty:1, link:''});
+  agg(state.rack.rows).forEach(it=> sr.push({key:'sr|rack|'+it.name, name:it.name, qty:it.qty, link:it.link}));
+  if(sr.length) groups.push({module:'Server & Rack', items:sr});
+  /* Projectors */
+  const pj = [], pmap = {};
+  ((state.projectors&&state.projectors.list)||[]).forEach(p=>{ const nm=((p.mfr||'')+' '+(p.model||'')).trim(); if(!nm) return; if(!pmap[nm]){ pmap[nm]={key:'proj|'+nm, name:nm, qty:0, link:''}; pj.push(pmap[nm]); } pmap[nm].qty+=1; });
+  if(pj.length) groups.push({module:'Projectors', items:pj});
+  /* Calibration Camera */
+  const cam = agg((state.camera&&state.camera.rows)||[]);
+  if(cam.length) groups.push({module:'Calibration Camera', items: cam.map(it=>({key:'cam|'+it.name, name:it.name, qty:it.qty, link:it.link}))});
+  return groups;
 }
+/* flat list in render order — used for the running number, assignment index and counts */
+function shipItems(){ const out=[]; shipGroups().forEach(g=>g.items.forEach(it=>out.push(it))); return out; }
+function shipLinkHref(l){ l=(l||'').trim(); if(!l) return ''; return /^https?:\/\//i.test(l) ? l : ('https://'+l); }
 function setShipDate(v){ state.shipping.date = v||''; saveState(); renderSideProject(); rerenderKeepScroll(); }
 function addPallet(){
   const nums = state.shipping.pallets.map(p=>parseInt(p.num,10)).filter(n=>!isNaN(n));
@@ -3017,7 +3034,7 @@ function rmPallet(id){
   saveState(); route();
 }
 function assignItem(idx, pid){
-  const it = shipEquipment()[idx]; if(!it) return;
+  const it = shipItems()[idx]; if(!it) return;
   if(pid) state.shipping.assign[it.key] = pid; else delete state.shipping.assign[it.key];
   saveState(); rerenderKeepScroll();
 }
@@ -3038,20 +3055,29 @@ function downloadShipDoc(i){ const f=state.shipping.docs[i]; if(!f) return; cons
 function rmShipDoc(i){ const f=state.shipping.docs[i]; if(!f) return; if(!confirm('Delete "'+f.name+'"?')) return; state.shipping.docs.splice(i,1); saveState(); rerenderKeepScroll(); }
 function pageShipping(){
   const S = state.shipping, P = state.project;
-  const items = shipEquipment();
+  const groups = shipGroups();
+  const items = shipItems();
   const assigned = items.filter(it=>S.assign[it.key]).length;
-  const eqRows = items.length ? items.map((it,idx)=>{
-    const pid = S.assign[it.key]||'';
-    return `<tr>
-      <td class="tight" style="width:13%"><span class="chip c-mut" style="font-size:10px">${esc(it.mod)}</span></td>
-      <td>${esc(it.name)}</td>
-      <td style="text-align:right;width:7%">${it.qty}</td>
-      <td class="tight" style="width:24%"><select class="cell ${pid?'':'empty'}" onchange="assignItem(${idx},this.value)">
-        <option value="">— Unassigned</option>
-        ${S.pallets.map(p=>`<option value="${p.id}" ${pid===p.id?'selected':''}>Pallet ${esc(p.num||'?')}</option>`).join('')}
-      </select></td>
-    </tr>`;
-  }).join('') : `<tr><td colspan="4" style="color:var(--dim);padding:14px">No equipment yet — add components in Server, Rack, Camera or Projectors.</td></tr>`;
+  const palOptions = pid => `<option value="">— Unassigned</option>` + S.pallets.map(p=>`<option value="${p.id}" ${pid===p.id?'selected':''}>Pallet ${esc(p.num||'?')}</option>`).join('');
+  let fi = 0;   /* running flat index = index into shipItems(), for assignment */
+  const eqRows = items.length ? groups.map(g=>{
+    const hdr = `<tr class="grouphdr"><td colspan="5">${esc(g.module)}</td></tr>`;
+    const its = g.items.map(it=>{
+      const idx = fi++; const n = idx+1; const pid = S.assign[it.key]||'';
+      const href = shipLinkHref(it.link);
+      const link = href
+        ? `<a href="${esc(href)}" target="_blank" rel="noopener" title="Open purchase link" style="color:var(--fdp-red);display:inline-flex"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg></a>`
+        : `<span style="color:#c8ccd2">—</span>`;
+      return `<tr>
+        <td class="tight" style="width:5%;text-align:right;color:var(--dim)">${n}</td>
+        <td>${esc(it.name)}</td>
+        <td style="text-align:right;width:7%">${it.qty}</td>
+        <td class="tight" style="width:5%;text-align:center">${link}</td>
+        <td class="tight" style="width:24%"><select class="cell ${pid?'':'empty'}" onchange="assignItem(${idx},this.value)">${palOptions(pid)}</select></td>
+      </tr>`;
+    }).join('');
+    return hdr + its;
+  }).join('') : `<tr><td colspan="5" style="color:var(--dim);padding:14px">No equipment yet — add components in Server, Rack, Camera or Projectors.</td></tr>`;
   const palletRows = S.pallets.length ? S.pallets.map(p=>{
     const cnt = items.filter(it=>S.assign[it.key]===p.id).length;
     return `<div class="srow" style="align-items:center">
@@ -3098,8 +3124,8 @@ function pageShipping(){
       </div>
       <div class="card" style="margin-bottom:0">
         <div class="card-head"><h3>Equipment → Pallet</h3><span class="chip c-mut"><span class="cd"></span>${assigned}/${items.length} assigned</span></div>
-        <table class="eq">
-          <thead><tr><th>Module</th><th>Equipment</th><th style="text-align:right">Qty</th><th>Pallet</th></tr></thead>
+        <table class="eq shipeq">
+          <thead><tr><th style="width:5%;text-align:right">#</th><th>Equipment</th><th style="text-align:right">Qty</th><th style="text-align:center">Link</th><th>Pallet</th></tr></thead>
           <tbody>${eqRows}</tbody>
         </table>
       </div>
