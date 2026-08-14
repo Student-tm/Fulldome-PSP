@@ -409,12 +409,13 @@
     font-size:15px;line-height:1;font-family:inherit}
   .sproj-add:hover{color:#fff;background:#30353d}
   .plist2{display:flex;flex-direction:column;gap:5px;flex:1 1 auto;min-height:0;overflow:hidden}
-  /* split view: In progress / Completed, 50% each with its own scroll (BUILD 11.7) */
-  .pjsplit{display:flex;flex-direction:column;height:100%;min-height:0}
-  .pjpane{display:flex;flex-direction:column;min-height:0}
-  .pjpane.top{flex:0 1 auto;max-height:50%}
-  .pjpane.bottom{flex:0 1 auto;max-height:50%;margin-top:auto;border-top:1px solid #363b44;padding-top:12px}
-  .pjpane .pjrows{display:flex;flex-direction:column;gap:5px;overflow-y:auto;padding-right:2px;min-height:0}
+  /* In progress / Completed — ONE clean scroll area so cards never overlap
+     when the sidebar is short (BUILD 12.5). Completed sinks to the bottom
+     only while there is spare room; when tight, everything just scrolls. */
+  .pjsplit{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden}
+  .pjpane{display:flex;flex-direction:column;flex:0 0 auto;min-height:0}
+  .pjpane.bottom{margin-top:auto;border-top:1px solid #363b44;padding-top:12px}
+  .pjpane .pjrows{display:flex;flex-direction:column;gap:5px;padding-right:2px}
   .pjhead{display:flex;align-items:center;gap:7px;font-size:9px;letter-spacing:1.2px;text-transform:uppercase;
     color:#6b7480;padding:2px 4px 7px;flex:none}
   .pjhead .n{background:#2c313a;color:#9aa2ad;border-radius:99px;padding:1px 7px;font-size:8.5px;letter-spacing:.3px}
@@ -553,7 +554,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.4 · CLOUD OPEN FIX</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.5 · DONE SYNC + SCROLL</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -759,6 +760,8 @@ function toggleDone(id, ev){
   if(e.done){ delete e.done; delete e.doneAt; flashStat('Project reopened'); }
   else { e.done = true; e.doneAt = Date.now(); flashStat('Project marked completed'); }
   saveState(); renderSideProject();
+  /* sync completion to the team folder for THIS project (BUILD 12.5) */
+  if(_cloudOn && _gTok){ clearTimeout(_pushTimer); setTimeout(()=>{ try{ cloudPushActive(e); }catch(_){} }, 100); }
 }
 function toggleFreeze(id, ev){
   if(ev) ev.stopPropagation();
@@ -1265,6 +1268,7 @@ function idbGet2(key){
 function restoreHandles(){ if(idbOk){ idbGet2('handles').then(v=>{ if(v && typeof v==='object') _fh = v; }).catch(()=>{}); } }
 function projPayload(e){
   return JSON.stringify({app:'Fulldome Projection SP', version:4, saved:new Date().toISOString(),
+    done:!!e.done, doneAt:e.doneAt||0,                          /* completion status travels with the project */
     state:e.data, library:db.library, customCats:db.customCats,
     projLib:db.projLib||[], projIpStart:db.projIpStart||null}, null, 2);
 }
@@ -1451,6 +1455,8 @@ function applyProjectText(text){
       let e = db.projects.find(p => p.data.project && p.data.project.number === data.project.number);
       if(e){ e.data = data; }
       else { e = {id:newId(), frozen:false, data}; db.projects.push(e); }
+      /* completion status rides with the project (BUILD 12.5) */
+      if('done' in obj){ if(obj.done){ e.done = true; e.doneAt = obj.doneAt || Date.now(); } else { delete e.done; delete e.doneAt; } }
       /* project files (v4+) carry a library backup — merge missing items back */
       if(obj.library && typeof obj.library==='object'){
         LIB_GROUPS.forEach(g=>{
@@ -1547,7 +1553,7 @@ function renderSideProject(){
   if(!db.projects.length && !cloudN){ w.style.display='none'; return; }
   w.style.display='';
   document.getElementById('spCap').textContent = 'Projects (' + (db.projects.length + cloudN) + ')';
-  const cloudRows = (_cloudOn ? cloudUnlinkedFolders() : []).map(f => {
+  const cloudCard = (f)=>{
     const m = _cloudMeta[f.id] || null;
     const cells = [];
     if(m){
@@ -1555,6 +1561,7 @@ function renderSideProject(){
       if(m.dome) cells.push(['Dome', m.dome + ' m' + (m.domeType ? ' ' + m.domeType : '')]);
       if(m.sysNumber) cells.push(['FDPSN', '#' + m.sysNumber]);
     }
+    const isDone = !!(m && m.done);
     const head = m && (m.number || m.title)
       ? '#' + esc(m.number || '—')
       : esc(f.name);
@@ -1562,13 +1569,13 @@ function renderSideProject(){
     const foot = cells.length
       ? '<div class="pjcells">' + cells.map(c=>'<div class="pc"><div class="pcl">'+esc(c[0])+'</div><div class="pcv">'+esc(c[1])+'</div></div>').join('') + '</div>'
       : '';
-    return `<div class="pj" onclick="cloudOpenFolder('${f.id}','${esc(f.name).replace(/'/g,'&#39;')}')" title="Team project — click to open">
+    return `<div class="pj ${isDone?'done':''}" onclick="cloudOpenFolder('${f.id}','${esc(f.name).replace(/'/g,'&#39;')}')" title="Team project — click to open">
       <div class="pjmeta">
-        <div class="pjn"><span class="led sm pjled ${m && m.valid ? 'on' : ''}"></span>${head}<span style="opacity:.5;margin-left:6px;font-size:11px">☁</span></div>
+        <div class="pjn"><span class="led sm pjled ${m && m.valid ? 'on' : ''}"></span>${head}${isDone?'<span class="donebadge">Done</span>':''}<span style="opacity:.5;margin-left:6px;font-size:11px">☁</span></div>
         <div class="pjt">${sub}</div>
         ${foot}
       </div></div>`;
-  }).join('');
+  };
   const cardHtml = (e)=>{
     const P = e.data.project || {};
     const bits = [];
@@ -1594,19 +1601,24 @@ function renderSideProject(){
       </div>
     </div>`;
   };
+  const cloudFolders = _cloudOn ? cloudUnlinkedFolders() : [];
+  const cloudProg = cloudFolders.filter(f => !(_cloudMeta[f.id] && _cloudMeta[f.id].done));
+  const cloudDone = cloudFolders.filter(f =>  (_cloudMeta[f.id] && _cloudMeta[f.id].done));
   const inProg = db.projects.filter(e=>!e.done);
   const done   = db.projects.filter(e=>e.done).sort((a,b)=>(a.doneAt||0)-(b.doneAt||0));
-  const split = done.length > 0;
-  const progRows = cloudRows + inProg.map(cardHtml).join('');
+  const progRows = cloudProg.map(cloudCard).join('') + inProg.map(cardHtml).join('');
+  const doneRows = cloudDone.map(cloudCard).join('') + done.map(cardHtml).join('');
+  const doneCount = done.length + cloudDone.length;
+  const split = doneCount > 0;
   let html = '<div class="pjsplit">';
   html += '<div class="pjpane top">' +
-            '<div class="pjhead">In progress <span class="n">' + (inProg.length + (_cloudOn ? cloudUnlinkedFolders().length : 0)) + '</span></div>' +
+            '<div class="pjhead">In progress <span class="n">' + (inProg.length + cloudProg.length) + '</span></div>' +
             '<div class="pjrows">' + (progRows || '<div style="font-size:11px;color:#565c66;padding:4px">No active projects</div>') + '</div>' +
           '</div>';
   if(split){
     html += '<div class="pjpane bottom">' +
-              '<div class="pjhead done-h">Completed <span class="n">' + done.length + '</span></div>' +
-              '<div class="pjrows">' + done.map(cardHtml).join('') + '</div>' +
+              '<div class="pjhead done-h">Completed <span class="n">' + doneCount + '</span></div>' +
+              '<div class="pjrows">' + doneRows + '</div>' +
             '</div>';
   }
   html += '</div>';
@@ -3193,6 +3205,7 @@ function cloudMetaOf(e){
     number: P.number || '', title: P.title || '', type: P.type || '',
     dome: P.domeDiameter || '', domeType: P.domeType || '', sysNumber: P.sysNumber || '',
     status: P.status || '', valid: !!validationOf(e.data),
+    done: !!e.done, doneAt: e.doneAt || 0,                       /* completion status for the sidebar card, no heavy download */
     savedBy: _gUser || '', savedAt: new Date().toISOString()
   };
 }
@@ -3289,10 +3302,10 @@ function cloudTouch(){
   clearTimeout(_pushTimer);
   _pushTimer = setTimeout(cloudPushActive, delay);
 }
-async function cloudPushActive(){
+async function cloudPushActive(entry){
   if(_pushing) return;
   if(!_cloudOn || !_gTok){ setCloudStat('⚠ Not signed in — click here to connect Google Drive'); return; }
-  const e = activeEntry();
+  const e = (entry && entry.data && entry.data.project) ? entry : activeEntry();   /* can push a specific project (e.g. Done toggled on a non-active one) */
   if(!e || !e.data.project){ setCloudStat('No active project to sync'); return; }
   _pushing = true;
   try{
