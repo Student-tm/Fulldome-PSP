@@ -422,10 +422,18 @@
   .pjhead.done-h{color:#5f7f6c}
   .pjhead.done-h .n{background:rgba(67,209,124,.15);color:#43d17c}
   .pj{display:flex;gap:8px;align-items:center;padding:8px 9px 8px 13px;border-radius:8px;background:transparent;
-    border:1px solid #363b44;position:relative;cursor:pointer;overflow:hidden;transition:border-color .12s,background .12s}
+    border:1px solid #adadad;position:relative;cursor:pointer;overflow:hidden;transition:border-color .12s,background .12s}
   .pj::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:transparent;transition:background .12s}
-  .pj:hover{background:#20242b;border-color:#454b56}
-  .pj.sel{background:var(--side2);border-color:var(--fdp-red);box-shadow:inset 0 0 0 1px var(--fdp-red)}
+  .pj:hover{background:#20242b;border-color:#c9c9c9}
+  .pj.sel{background:#adadad;border-color:var(--fdp-red);box-shadow:inset 0 0 0 1px var(--fdp-red)}
+  /* selected card sits on the light-gray fill — dark text for readability */
+  .pj.sel .pjt{color:#22262c}
+  .pj.sel .pcl{color:#4c525c}
+  .pj.sel .pcv{color:#1b1e23}
+  .pj.sel .pjcells{border-top-color:#8f8f8f}
+  .pj.sel .pc{border-left-color:#8f8f8f}
+  .pj.sel .pjb{color:#3a3f47}
+  .pj.sel .pjb:hover{color:#000;background:rgba(0,0,0,.08)}
   .pj.done{opacity:.62}
   .pj.done .pjn{color:#7d8590}
   .pj.done:hover{opacity:.85}
@@ -437,7 +445,7 @@
   .pj .pjled{position:static;display:inline-block;margin-right:6px;vertical-align:1px;flex:none}
   .pj .pjmeta{flex:1;min-width:0}
   .pj .pjn{font-size:13px;color:#9aa2ad;font-weight:500;letter-spacing:.3px;line-height:1.25;display:flex;align-items:center}
-  .pj.sel .pjn{color:#fff}
+  .pj.sel .pjn{color:#1b1e23}
   .pj.sel .pjled.on{background:#43d17c}
   .pj .pjt{font-size:11.5px;font-weight:400;color:#cfd4da;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;margin-top:1px}
   .pj .pjs{font-size:10px;color:var(--dim);line-height:1.3}
@@ -554,7 +562,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.11 · CARD BORDERS</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.12 · CARD FILL + TEST MODE</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -4731,7 +4739,11 @@ window.addEventListener('hashchange', route);
   if(tag) document.title = 'Fulldome Projection SP — ' + tag.replace('BUILD ','b').split(' · ')[0];
 })();
 loadState(()=>{ restoreHandles(); renderHeader(); renderSideProject(); route();
-  if(driveClientId()){ setCloudStat('Not signed in — click to connect'); cloudGateShow(); }
+  /* TESTING MODE (BUILD 12.12): the boot sign-in gate is disabled — the app opens
+     straight into offline/local mode. Google is NOT removed: click the cloud status
+     line (bottom-left) any time to sign in and sync. To bring the auto sign-in screen
+     back, restore cloudGateShow() here. */
+  if(driveClientId()){ setCloudStat('Sign-in off (testing) — click here to sign in & sync'); }
   else setCloudStat('Local mode (no cloud configured)'); });
 </script>
 </body>
