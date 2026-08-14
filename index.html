@@ -104,11 +104,14 @@
 
   /* module cards grid */
   .modgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
-  .mod{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:11px;position:relative}
-  .mod.active{border-color:var(--fdp-red);box-shadow:0 2px 12px rgba(211,47,47,.08)}
+  .mod{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:11px;position:relative;transition:border-color .12s,box-shadow .12s}
+  /* red frame now means "hovered" or "the module you last opened" — not the ACTIVE status (BUILD 12.43) */
+  .mod:hover{border-color:var(--fdp-red);box-shadow:0 2px 12px rgba(211,47,47,.10)}
+  .mod.lastmod{border-color:var(--fdp-red);box-shadow:0 2px 14px rgba(211,47,47,.14)}
+  .mod.lastmod .mod-ic{background:#fdeeee;color:var(--fdp-red)}
   .mod-top{display:flex;align-items:flex-start;gap:12px}
   .mod-ic{flex:0 0 40px;height:40px;border-radius:9px;background:#f1f3f6;color:var(--ink2);display:flex;align-items:center;justify-content:center}
-  .mod.active .mod-ic{background:#fdeeee;color:var(--fdp-red)}
+  .mod:hover .mod-ic{background:#fdeeee;color:var(--fdp-red)}
   .mod-ic svg{width:21px;height:21px}
   .mod-name{font-size:15.5px;font-weight:700;color:var(--ink)}
   .mod-badge{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
@@ -595,7 +598,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.37 · S&R CARD + FAST SYNC</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.43 · LAST-MODULE FRAME</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -717,6 +720,7 @@ function syncActive(){
   const e = activeEntry();
   state = e ? e.data : emptyState();
   if(!Array.isArray(state.server.photos)) state.server.photos = [];
+  if(typeof state.server.caseSize !== 'string') state.server.caseSize = '';   /* server chassis height, e.g. "2U" (BUILD 12.39) */
   if(!Array.isArray(state.rack.photos)) state.rack.photos = [];
   if(!state.vj || typeof state.vj!=='object') state.vj = { rows: [], ready: false, photos: [] };
   if(!state.validation || typeof state.validation!=='object') state.validation = { cpu:false, gpu:false, capture:false, video:false, burnin:false };
@@ -940,6 +944,13 @@ function loadState(done){
 var storageBroken = false;
 var _savePending = false, _saveQueued = false;
 function saveState(){
+  /* a genuine local edit (not a cloud-apply) time-stamps the active project so a Drive
+     poll won't overwrite a change you JUST made before it's pushed (fixes "renamed,
+     reopened, old name is back", BUILD 12.38). TIME-BOXED (BUILD 12.41): the guard only
+     holds for ~30s after the last edit, then incoming sync resumes — so it can never get
+     stuck and silently block teammate updates (that broke status sync after ~20 min open).
+     Cleared outright once cloudPushActive confirms the upload. */
+  if(!saveState._skipCloud){ try{ const _e = activeEntry(); if(_e) _e._dirtyAt = Date.now(); }catch(e){} }
   if(!saveState._skipCloud && typeof cloudTouch === 'function'){ try{ cloudTouch(); }catch(e){} }
   if(!saveState._skipCloud && typeof liveTouch === 'function'){ try{ liveTouch(); }catch(e){} }
   if(!idbOk){
@@ -1001,7 +1012,11 @@ const IC = {
   ext:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg>',
   warn:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0zM12 9v4M12 17h.01"/></svg>',
   dome:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18a9 9 0 0118 0"/><path d="M2 18h20M12 3v2M6 6l1.5 1.5M18 6l-1.5 1.5"/></svg>',
-  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>'
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>',
+  spk:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="2"/><circle cx="12" cy="14" r="3.5"/><circle cx="12" cy="6.5" r="1.2"/></svg>',
+  net:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="16" y="16" width="6" height="6" rx="1"/><path d="M12 8v4M5 16v-2h14v2M12 12v2"/></svg>',
+  fan:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1.6"/><path d="M12 10.4c-.6-2.5.2-4.9 1.9-6.1 1.4.9 1.7 3.6-1.9 6.1zM13.6 12c2.5-.6 4.9.2 6.1 1.9-.9 1.4-3.6 1.7-6.1-1.9zM12 13.6c.6 2.5-.2 4.9-1.9 6.1-1.4-.9-1.7-3.6 1.9-6.1zM10.4 12c-2.5.6-4.9-.2-6.1-1.9.9-1.4 3.6-1.7 6.1 1.9z"/></svg>',
+  tool:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a4 4 0 00-5.2 5.2l-6 6a1.5 1.5 0 002.1 2.1l6-6a4 4 0 005.2-5.2l-2.4 2.4-2.2-.6-.6-2.2z"/></svg>'
 };
 
 /* ---------- navigation ---------- */
@@ -2354,7 +2369,7 @@ function pageDashboard(){
     </div>
 
     <div class="modgrid">
-      <div class="mod active">
+      <div class="mod active${_lastMod==='#/server-rack'?' lastmod':''}">
         <div class="mod-top">
           <div class="mod-ic">${IC.server}</div>
           <div><div class="mod-name">Server &amp; Rack</div>
@@ -2370,7 +2385,7 @@ function pageDashboard(){
         <a class="mod-btn primary" href="#/server-rack">Open Module ${IC.open}</a>
       </div>
 
-      <div class="mod">
+      <div class="mod active${_lastMod==='#/projectors'?' lastmod':''}">
         <div class="mod-top"><div class="mod-ic">${IC.beam}</div>
           <div><div class="mod-name">Projectors</div><span class="mod-badge b-active"><span class="bd"></span>Active</span></div></div>
         <div class="mod-desc">Projector inventory, installation and configuration status, live web interfaces and saved web settings per projector.</div>
@@ -2383,7 +2398,18 @@ function pageDashboard(){
         <a class="mod-btn primary" href="#/projectors">Open Module ${IC.open}</a>
       </div>
 
-      <div class="mod">
+      <div class="mod${_lastMod==='#/speakers'?' lastmod':''}">
+        <div class="mod-top"><div class="mod-ic">${IC.spk}</div>
+          <div><div class="mod-name">Speakers</div><span class="mod-badge b-plan"><span class="bd"></span>Planned</span></div></div>
+        <div class="mod-desc">Main speakers and subwoofer selection, amplification and audio system layout.</div>
+        <div class="mod-stats">
+          <div class="ms"><span class="k">Speaker Model</span><span class="v ${(P.speakersModel||'').trim()?'ok':''}">${(P.speakersModel||'').trim() ? esc(P.speakersModel) : '—'}</span></div>
+          <div class="ms"><span class="k">Subwoofer</span><span class="v ${(P.subwooferModel||'').trim()?'ok':''}">${(P.subwooferModel||'').trim() ? esc(P.subwooferModel) : '—'}</span></div>
+        </div>
+        <a class="mod-btn disabled" href="#/speakers">Coming Soon</a>
+      </div>
+
+      <div class="mod active${_lastMod==='#/camera'?' lastmod':''}">
         <div class="mod-top"><div class="mod-ic">${IC.cam}</div>
           <div><div class="mod-name">Calibration Camera</div><span class="mod-badge b-active"><span class="bd"></span>Active</span></div></div>
         <div class="mod-desc">Calibration camera kit — camera, lens, mount and accessories, picked from the Equipment Library, with photos and Ready check.</div>
@@ -2396,30 +2422,33 @@ function pageDashboard(){
         <a class="mod-btn primary" href="#/camera">Open Module ${IC.open}</a>
       </div>
 
-      <div class="mod">
+      <div class="mod${_lastMod==='#/network'?' lastmod':''}">
+        <div class="mod-top"><div class="mod-ic">${IC.net}</div>
+          <div><div class="mod-name">Network</div><span class="mod-badge b-plan"><span class="bd"></span>Planned</span></div></div>
+        <div class="mod-desc">Network switches, VLANs, IP plan and connectivity for the dome projection system.</div>
+        <a class="mod-btn disabled" href="#/network">Coming Soon</a>
+      </div>
+
+      <div class="mod${_lastMod==='#/fan'?' lastmod':''}">
+        <div class="mod-top"><div class="mod-ic">${IC.fan}</div>
+          <div><div class="mod-name">Screen Fan</div><span class="mod-badge b-plan"><span class="bd"></span>Planned</span></div></div>
+        <div class="mod-desc">Screen ventilation / fan system for the dome surface.</div>
+        <div class="mod-stats"><div class="ms"><span class="k">Fan System</span><span class="v ${(P.screenFan||'').trim()?'ok':''}">${(P.screenFan||'').trim() ? esc(P.screenFan) : '—'}</span></div></div>
+        <a class="mod-btn disabled" href="#/fan">Coming Soon</a>
+      </div>
+
+      <div class="mod${_lastMod==='#/cables'?' lastmod':''}">
         <div class="mod-top"><div class="mod-ic">${IC.cable}</div>
           <div><div class="mod-name">Cables</div><span class="mod-badge b-plan"><span class="bd"></span>Planned</span></div></div>
         <div class="mod-desc">Power, network, HDBaseT, HDMI, DisplayPort, USB, fiber and audio cable management.</div>
         <a class="mod-btn disabled" href="#/cables">Coming Soon</a>
       </div>
 
-      <div class="mod">
-        <div class="mod-top"><div class="mod-ic">${IC.list}</div>
-          <div><div class="mod-name">Equipment List</div><span class="mod-badge b-plan"><span class="bd"></span>Planned</span></div></div>
-        <div class="mod-desc">Complete project inventory: purchasing, receiving, testing, packing, shipping and installation status. Aggregated from all modules.</div>
-        <div class="mod-stats"><div class="ms"><span class="k">Items registered</span><span class="v">${totalItems()}</span></div></div>
-        <a class="mod-btn disabled" href="#/equipment">Coming Soon</a>
-      </div>
-
-      <div class="mod active">
-        <div class="mod-top"><div class="mod-ic">${IC.photo}</div>
-          <div><div class="mod-name">Schematics, Manuals &amp; Photos</div><span class="mod-badge b-active"><span class="bd"></span>Active</span></div></div>
-        <div class="mod-desc">Central library for drawings, schematics, manuals, equipment and installation photos, CAD files and generated documentation.</div>
-        <div class="mod-stats">
-          <div class="ms"><span class="k">Photos</span><span class="v ${docPhotoCount()?'ok':''}">${docPhotoCount()||'—'}</span></div>
-          <div class="ms"><span class="k">Content Lists</span><span class="v ${docContentListCount()?'ok':''}">${docContentListCount()||'—'}</span></div>
-        </div>
-        <a class="mod-btn primary" href="#/documentation">Open Module ${IC.open}</a>
+      <div class="mod${_lastMod==='#/tools'?' lastmod':''}">
+        <div class="mod-top"><div class="mod-ic">${IC.tool}</div>
+          <div><div class="mod-name">Tools</div><span class="mod-badge b-plan"><span class="bd"></span>Planned</span></div></div>
+        <div class="mod-desc">Installation tools, rigging and calibration equipment checklist for the project.</div>
+        <a class="mod-btn disabled" href="#/tools">Coming Soon</a>
       </div>
     </div>
 
@@ -2435,13 +2464,14 @@ function pageDashboard(){
         <div class="srow"><span class="k">Status</span><span class="v"><span class="chip c-warn"><span class="cd"></span>${esc(P.status)}</span></span></div>
       </div>
 
-      <div class="card sum"><h3>Server &amp; Rack</h3>
-        <div class="srow"><span class="k">Server Rack Size</span><span class="v">${state.rack.heightU}U</span></div>
+      <div class="card sum"><h3>Project Equipment</h3>
+        <div class="srow"><span class="k">Rack Size</span><span class="v">${state.rack.heightU}U</span></div>
         <div class="srow"><span class="k">Dome Server Name</span><span class="v">${P.sysNumber ? 'FDPSN#'+esc(P.sysNumber) : 'FDPSN# ****'}${P.type?' '+esc(P.type):''}</span></div>
+        <div class="srow"><span class="k">Server Case Size</span><span class="v">${(state.server.caseSize && String(state.server.caseSize).trim()) ? esc(state.server.caseSize) : '—'}</span></div>
         <div class="srow"><span class="k">Projector Model</span><span class="v">${(function(){ const ms=[...new Set(projList().map(p=>((p.mfr||'')+' '+(p.model||'')).trim()).filter(Boolean))]; return ms.length ? esc(ms.join(', ')) : (P.projectorModel ? esc(P.projectorModel) : '—'); })()}</span></div>
         <div class="srow"><span class="k">Speaker Model</span><span class="v">${(P.speakersModel && String(P.speakersModel).trim()) ? esc(P.speakersModel) : '—'}</span></div>
-        <div class="srow"><span class="k">Camera Model</span><span class="v">${(function(){ const c=(state.camera.rows||[]).map(r=>(r.name||'').trim()).filter(Boolean); return c.length ? esc([...new Set(c)].join(', ')) : '—'; })()}</span></div>
-        <div class="srow"><span class="k">Server + Rack Cost</span><span class="v">${fmt(serverTotal()+vjTotal()+rackTotal())}</span></div>
+        <div class="srow"><span class="k">Subwoofer Model</span><span class="v">${(P.subwooferModel && String(P.subwooferModel).trim()) ? esc(P.subwooferModel) : '—'}</span></div>
+        <div class="srow"><span class="k">Camera Model</span><span class="v">${(function(){ const rows=(state.camera.rows||[]); const cams=rows.filter(r=>/camera/i.test(r.cat||'')).map(r=>(r.name||'').trim()).filter(Boolean); const list = cams.length ? cams : rows.map(r=>(r.name||'').trim()).filter(Boolean).slice(0,1); return list.length ? esc([...new Set(list)].join(', ')) : '—'; })()}</span></div>
         <div class="srow"><span class="k">Content List</span><span class="v">${state.contentList
           ? `<span style="display:inline-flex;align-items:center;gap:8px">
                <span style="display:inline-flex;align-items:center;gap:5px;color:var(--ink2)" title="${esc(state.contentList.name)}">
@@ -2589,6 +2619,14 @@ function pageServerRack(){
         <button class="ready-btn ${ready?'on':''}" id="readyBtn" onclick="toggleReady()">
           <span class="led ${ready?'on':''}" id="btnLed"></span><span id="btnLbl">${ready ? 'Server Ready' : 'Mark as Ready'}</span></button>
       </div>
+      <div style="display:flex;align-items:center;gap:9px;padding:0 2px 12px;border-bottom:1px solid var(--line);margin-bottom:12px">
+        <span style="font-size:12.5px;font-weight:600;color:var(--ink2)">Server Case Size</span>
+        <select class="cell" style="width:auto;min-width:90px;padding:6px 9px" onchange="setServerCase(this.value)">
+          <option value="" ${!state.server.caseSize?'selected':''}>—</option>
+          ${['2U','3U','4U'].map(u=>`<option value="${u}" ${state.server.caseSize===u?'selected':''}>${u}</option>`).join('')}
+        </select>
+        <span style="font-size:11.5px;color:var(--dim)">Chassis height of the Dome Server (rack units).</span>
+      </div>
       <table class="eq">
         <thead><tr><th>Category</th><th>Hardware</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th><th>Link</th><th></th><th></th></tr></thead>
         <tbody id="srvBody">${srvRows}</tbody>
@@ -2614,10 +2652,11 @@ function pageServerRack(){
       <div class="card" style="margin-bottom:0">
         <div class="card-head"><h3>Rack Views</h3>
           <div style="display:flex;gap:8px;align-items:center">
-            <span class="usel" style="gap:5px">
-              <button class="mod-btn" style="padding:3px 9px" onclick="setRackU(-1)" ${H<=8?'disabled':''}>−</button>
-              <span style="font-size:12.5px;font-weight:700;min-width:30px;text-align:center">${H}U</span>
-              <button class="mod-btn" style="padding:3px 9px" onclick="setRackU(1)" ${H>=20?'disabled':''}>+</button>
+            <span style="display:inline-flex;align-items:center;gap:6px">
+              <span style="font-size:12px;color:var(--dim)">Rack Size</span>
+              <select class="cell" style="width:auto;min-width:74px;padding:5px 8px;font-weight:700" onchange="setRackSize(this.value)">
+                ${(function(){ const opts=[8,10,12,14,16,18,20]; if(!opts.includes(H)) opts.push(H); opts.sort((a,b)=>a-b); return opts.map(n=>`<option value="${n}" ${H===n?'selected':''}>${n}U</option>`).join(''); })()}
+              </select>
             </span>
             <button class="mod-btn ${photoEdit.views?'primary':''}" style="padding:6px 14px;font-size:12px" onclick="togglePhotoEdit('views')">${photoEdit.views?'Done':'Edit'}</button>
           </div></div>
@@ -2915,6 +2954,19 @@ function setRackU(d){
   Object.keys(state.rack.slots).forEach(u=>{ if(+u > nu) delete state.rack.slots[u]; });
   saveState(); route();
 }
+/* Rack Size dropdown (BUILD 12.39) — sets the height directly (8U–20U); feeds the dashboard card */
+function setRackSize(v){
+  const nu = Math.min(20, Math.max(8, parseInt(v,10)||12));
+  if(nu === state.rack.heightU) return;
+  state.rack.heightU = nu;
+  Object.keys(state.rack.slots||{}).forEach(u=>{ if(+u > nu) delete state.rack.slots[u]; });
+  saveState(); route();
+}
+/* Server Case Size dropdown (BUILD 12.39) — chassis height of the Dome Server, e.g. "2U" */
+function setServerCase(v){
+  state.server.caseSize = v || '';
+  saveState(); route();
+}
 
 /* ---------- placeholders ---------- */
 function pagePlaceholder(title, icon, text, badge){
@@ -3123,7 +3175,7 @@ function fbProjectKey(e){
 function liveSlice(d){
   return {
     project: d.project || {},
-    server:  { rows: d.server.rows || [], ready: !!d.server.ready },
+    server:  { rows: d.server.rows || [], ready: !!d.server.ready, caseSize: d.server.caseSize || '' },
     vj:      { rows: (d.vj && d.vj.rows) || [], ready: !!(d.vj && d.vj.ready) },
     rack:    { rows: d.rack.rows || [], heightU: d.rack.heightU || 12, slots: d.rack.slots || {} },
     camera:  { rows: (d.camera && d.camera.rows) || [], ready: !!(d.camera && d.camera.ready) },
@@ -3158,7 +3210,7 @@ function liveApply(d, live){
     if(JSON.stringify(obj[key]) !== JSON.stringify(val)){ obj[key] = val; changed = true; }
   };
   if(live.project) setIf(d, 'project', Object.assign({}, d.project, live.project));
-  if(live.server){ setIf(d.server, 'rows', live.server.rows || []); setIf(d.server, 'ready', !!live.server.ready); }
+  if(live.server){ setIf(d.server, 'rows', live.server.rows || []); setIf(d.server, 'ready', !!live.server.ready); if('caseSize' in live.server) setIf(d.server, 'caseSize', live.server.caseSize || ''); }
   if(live.vj){ d.vj = d.vj || {rows:[],ready:false,photos:[]}; setIf(d.vj, 'rows', live.vj.rows || []); setIf(d.vj, 'ready', !!live.vj.ready); }
   if(live.rack){ setIf(d.rack, 'rows', live.rack.rows || []); setIf(d.rack, 'heightU', live.rack.heightU || 12); setIf(d.rack, 'slots', live.rack.slots || {}); }
   if(live.camera){ d.camera = d.camera || {rows:[],ready:false,photos:[]}; setIf(d.camera, 'rows', live.camera.rows || []); setIf(d.camera, 'ready', !!live.camera.ready); }
@@ -3356,6 +3408,7 @@ function cloudBindVisibility(){
   window.addEventListener('focus', pull);
 }
 var _cloudPoll = null;
+var _forcePull = false;   /* set by a manual reset so the next pull ignores the 30s local-edit guard (BUILD 12.41) */
 function cloudStartPoll(){
   if(_cloudPoll) return;
   _cloudPoll = setInterval(function(){
@@ -3369,11 +3422,13 @@ async function cloudRefreshList(){
   const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name)&orderBy=name&pageSize=200');
   const j = await r.json();
   _cloudFolders = j.files || [];
-  saveState(); renderSideProject();                    /* names first — instant */
+  saveState._skipCloud = true; saveState(); saveState._skipCloud = false;  /* saving the folder list is NOT a user edit — must NOT stamp _dirtyAt or it blocks incoming sync forever (BUILD 12.41 fix) */
+  renderSideProject();                                 /* names first — instant */
   _cloudMeta = await cloudLoadMeta(_cloudFolders);     /* then rich cards */
   cloudReconcileFromMeta();                            /* pull Done + validation onto already-downloaded projects (BUILD 12.8) */
   renderSideProject();
-  try{ await cloudPullContent(); }catch(e){}           /* pull teammate ROW edits over Drive (BUILD 12.34) — reliable fallback for the flaky live channel */
+  try{ await cloudPullContent(_forcePull); }catch(e){} /* pull teammate ROW edits over Drive (BUILD 12.34) — reliable fallback for the flaky live channel */
+  _forcePull = false;
 }
 /* Poll-based content sync (BUILD 12.34): for every downloaded project linked to a
    cloud folder, if the folder meta's content signature differs from what we last
@@ -3381,7 +3436,7 @@ async function cloudRefreshList(){
    the shared slice (server/vj/rack/camera rows + projectors + validation). This makes
    server fields sync within ~45s even when the Firebase live channel is down. The
    ACTIVE project is not clobbered while the user is typing — it retries next tick. */
-async function cloudPullContent(){
+async function cloudPullContent(force){
   if(!_cloudOn || !_gTok) return;
   const map = driveMap();
   const entries = db.projects.filter(e => map[e.id] && map[e.id].fid);
@@ -3389,6 +3444,7 @@ async function cloudPullContent(){
     const m = map[e.id];
     const meta = _cloudMeta[m.fid];
     if(!meta || !('sig' in meta)) continue;
+    if(!force && e._dirtyAt && (Date.now() - e._dirtyAt) < 30000) continue; /* protect a change made in the last 30s from being clobbered before its push lands; after that (or on a manual reset), incoming sync resumes (BUILD 12.41) */
     if(meta.sig === m.liveSig) continue;                         /* nothing new since we last applied/pushed (works even for the SAME account on another machine — the sig, not savedBy, decides; BUILD 12.36 fix) */
     const isActive = (e.id === db.activeId);
     if(isActive && (isTypingInInput() || _pushing || _fbApplying)) continue;   /* don't clobber active edits — retry next poll */
@@ -3523,6 +3579,7 @@ function cloudDocsSig(e){
 function cloudSyncNow(){
   if(!_cloudOn || !_gTok){ cloudGateShow(); return; }
   clearTimeout(_pushTimer);
+  _forcePull = true;                         /* manual reset: pull the latest even inside the 30s local-edit guard (BUILD 12.41) */
   cloudRefreshList().then(cloudPushActive)
     .catch(e => setCloudStat('Cloud error: ' + (e && e.message || 'sync failed') + ' — click to retry'));
 }
@@ -3642,6 +3699,7 @@ async function cloudPushActive(entry){
       const mex = await driveFindFile(metaName, m.fid);
       await driveUpload(metaName, m.fid, JSON.stringify(cloudMetaOf(e)), 'application/json', mex);
       m.liveSig = liveSig(e.data);        /* remember what WE just published — poll won't re-pull our own save */
+      e._dirtyAt = 0;                      /* our local edits are now safely on Drive (BUILD 12.41) */
     }catch(err){}
     saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
     await cloudRefreshList();
@@ -4865,19 +4923,26 @@ const ROUTES = {
   '#/projectors':    {nav:'dashboard', render:pageProjectors},
   '#/camera':        {nav:'dashboard', render:pageCamera},
   '#/cables':        {nav:'dashboard', render:()=>pagePlaceholder('Cables', IC.cable, 'Cable ID, type, from/to, length, connectors, statuses — planned module.', 'Coming Soon')},
-  '#/equipment':     {nav:'dashboard', render:()=>pagePlaceholder('Equipment List', IC.list, 'Unified inventory aggregated from Server & Rack and other modules — planned module.', 'Coming Soon')}
+  '#/equipment':     {nav:'dashboard', render:()=>pagePlaceholder('Equipment List', IC.list, 'Unified inventory aggregated from Server & Rack and other modules — planned module.', 'Coming Soon')},
+  '#/speakers':      {nav:'dashboard', render:()=>pagePlaceholder('Speakers', IC.spk, 'Main speakers and subwoofer selection, amplification and audio layout — planned module.', 'Coming Soon')},
+  '#/network':       {nav:'dashboard', render:()=>pagePlaceholder('Network', IC.net, 'Switches, VLANs, IP plan and connectivity for the dome system — planned module.', 'Coming Soon')},
+  '#/fan':           {nav:'dashboard', render:()=>pagePlaceholder('Screen Fan', IC.fan, 'Screen ventilation / fan system for the dome surface — planned module.', 'Coming Soon')},
+  '#/tools':         {nav:'dashboard', render:()=>pagePlaceholder('Tools', IC.tool, 'Installation tools, rigging and calibration equipment checklist — planned module.', 'Coming Soon')}
 };
 
 function goTo(hash){
   if(location.hash === hash){ route(); }   /* same hash fires no hashchange — rerender explicitly */
   else location.hash = hash;
 }
+var _lastMod = '';   /* the module page opened most recently — its dashboard card keeps the red frame (BUILD 12.43) */
+const MODULE_ROUTES = ['#/server-rack','#/projectors','#/speakers','#/camera','#/network','#/fan','#/cables','#/tools'];
 function route(){
   let h = location.hash || (state.project ? '#/dashboard' : '#/create');
   if(!ROUTES[h]) h = state.project ? '#/dashboard' : '#/create';
   const r = ROUTES[h];
   if(!state.project && !r.noProject) h = '#/create';
   const rr = ROUTES[h];
+  if(MODULE_ROUTES.indexOf(h) >= 0) _lastMod = h;   /* remember which module we entered */
   renderNav(rr.nav);
   document.getElementById('content').innerHTML = rr.render();
   document.getElementById('content').scrollTop = 0;
