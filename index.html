@@ -3,7 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fulldome Projection SP</title>
+<!-- always fetch a fresh build: GitHub Pages caches aggressively (BUILD 11.5) -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>Fulldome Projection SP — b11.9</title>
 <style>
   :root{
     --fdp-red:#D32F2F;
@@ -326,7 +330,7 @@
   table.eq select.cell.empty{color:#9aa2ad}
 
   /* sidebar project block */
-  .sproj-wrap{padding:10px;border-top:1px solid var(--line-d)}
+  .sproj-wrap{padding:10px;border-top:1px solid var(--line-d);display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
   .sproj-cap{font-size:10px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;margin:2px 4px 7px}
   .sproj{display:flex;gap:10px;align-items:center;padding:9px;border-radius:8px;background:var(--side2);
     box-shadow:inset 0 0 0 1px var(--line-d);position:relative}
@@ -377,18 +381,56 @@
   .modal .mb .yes{background:var(--fdp-red);border-color:var(--fdp-red);color:#fff}
   .modal .mb .yes:hover{background:#b71c1c}
 
+  /* ---------- TECHNICAL TASK WINDOW (embedded Fulldome TTD) ---------- */
+  .ttbox{position:relative;width:96%;max-width:1240px;height:90vh;background:#fff;border-radius:14px;
+    overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.5);display:flex;flex-direction:column}
+  .ttbar{display:flex;align-items:center;gap:11px;background:var(--side);padding:11px 16px;
+    border-bottom:3px solid var(--fdp-red);flex:0 0 auto}
+  .ttbar .ic{width:26px;height:26px;border-radius:5px;background:var(--fdp-red);display:flex;align-items:center;justify-content:center}
+  .ttbar .ic svg{width:15px;height:15px}
+  .ttbar .tt{color:#fff;font-size:12.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+  .ttbar .tt small{display:block;font-size:9px;color:#8b93a0;font-weight:400;letter-spacing:.4px;text-transform:none;margin-top:2px}
+  .ttbar .sp{flex:1}
+  .ttbar a.open2,.ttbar .x{color:#c7ccd4;text-decoration:none;display:flex;align-items:center;gap:6px;
+    border-radius:6px;border:1px solid #333a43;cursor:pointer;font-size:11px}
+  .ttbar a.open2{padding:6px 11px;letter-spacing:.3px}
+  .ttbar a.open2 svg{width:13px;height:13px}
+  .ttbar a.open2:hover{background:var(--side2);color:#fff;border-color:#5a606b}
+  .ttbar .x{width:30px;height:30px;justify-content:center}
+  .ttbar .x:hover{background:#2b3038;color:#fff;border-color:#5a606b}
+  .ttframe{flex:1;border:0;width:100%;background:#fff}
+  .ttload{position:absolute;inset:52px 0 0 0;display:flex;align-items:center;justify-content:center;
+    color:#9aa2ad;font-size:12.5px;letter-spacing:.4px;pointer-events:none}
+
   /* project list — compact cards */
   .sproj-head{display:flex;align-items:center;margin:2px 4px 7px}
   .sproj-head .sproj-cap{margin:0;flex:1}
   .sproj-add{border:none;background:transparent;color:var(--dim);cursor:pointer;padding:3px 5px;border-radius:5px;
     font-size:15px;line-height:1;font-family:inherit}
   .sproj-add:hover{color:#fff;background:#30353d}
-  .plist2{display:flex;flex-direction:column;gap:5px;max-height:220px;overflow-y:auto}
+  .plist2{display:flex;flex-direction:column;gap:5px;flex:1 1 auto;min-height:0;overflow:hidden}
+  /* split view: In progress / Completed, 50% each with its own scroll (BUILD 11.7) */
+  .pjsplit{display:flex;flex-direction:column;height:100%;min-height:0}
+  .pjpane{display:flex;flex-direction:column;min-height:0}
+  .pjpane.top{flex:0 1 auto;max-height:50%}
+  .pjpane.bottom{flex:0 1 auto;max-height:50%;margin-top:auto;border-top:1px solid #363b44;padding-top:12px}
+  .pjpane .pjrows{display:flex;flex-direction:column;gap:5px;overflow-y:auto;padding-right:2px;min-height:0}
+  .pjhead{display:flex;align-items:center;gap:7px;font-size:9px;letter-spacing:1.2px;text-transform:uppercase;
+    color:#6b7480;padding:2px 4px 7px;flex:none}
+  .pjhead .n{background:#2c313a;color:#9aa2ad;border-radius:99px;padding:1px 7px;font-size:8.5px;letter-spacing:.3px}
+  .pjhead.done-h{color:#5f7f6c}
+  .pjhead.done-h .n{background:rgba(67,209,124,.15);color:#43d17c}
   .pj{display:flex;gap:8px;align-items:center;padding:8px 9px 8px 13px;border-radius:8px;background:transparent;
     position:relative;cursor:pointer;overflow:hidden}
   .pj::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:transparent;transition:background .12s}
   .pj:hover{background:#20242b}
-  .pj.sel{background:var(--side2)}
+  .pj.sel{background:var(--side2);box-shadow:inset 0 0 0 1px var(--fdp-red)}
+  .pj.done{opacity:.62}
+  .pj.done .pjn{color:#7d8590}
+  .pj.done:hover{opacity:.85}
+  .pjsec{font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:#6b7480;padding:10px 9px 4px;border-top:1px solid #2c313a;margin-top:6px}
+  .pjsec:first-child{border-top:none;margin-top:0}
+  .donebadge{font-size:8.5px;letter-spacing:.5px;text-transform:uppercase;color:#43d17c;border:1px solid rgba(67,209,124,.35);border-radius:99px;padding:1px 7px;margin-left:6px;vertical-align:1px}
   .pj.sel::before{background:var(--fdp-red)}
   .pj{padding-top:10px;padding-bottom:10px}
   .pj .pjled{position:static;display:inline-block;margin-right:6px;vertical-align:1px;flex:none}
@@ -499,11 +541,11 @@
     </div>
     <div class="plist2" id="pjList"></div>
   </div>
-  <div class="side-spacer"></div>
+  <div class="side-spacer" style="flex:0 0 auto"></div>
   <div class="side-tools2">
     <button class="tlink savefile" onclick="saveToFile()">Save Project File</button>
     <button class="tlink" onclick="openProjectFile()">Load Project File</button>
-    <div id="driveStat" style="font-size:10px;color:#6b7480;text-align:center;margin-top:2px"></div>
+    <div id="driveStat" onclick="cloudSyncNow()" title="Click to sync now" style="font-size:10px;color:#6b7480;text-align:center;margin-top:2px;cursor:pointer"></div>
     <input type="file" id="loadFile" accept=".json,.fdproj" onchange="loadFromFile(event)">
     <button class="tlink danger" onclick="openDelete()">Delete Project</button>
     <div class="savestat" id="saveStat"></div>
@@ -511,7 +553,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 10.6 · TEAM-CARDS</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.4 · CLOUD OPEN FIX</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -531,6 +573,7 @@
       <div class="pc-item"><div class="l">Server</div><div class="v" style="display:flex;align-items:center;gap:7px"><span class="led sm" id="hLed"></span><span id="hLedTxt" style="font-size:11.5px">Not Ready</span></div></div>
     </div>
     <div class="top-actions">
+      <button class="top-btn" onclick="openTT()" title="Create a Technical Task"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M9.5 13h5M9.5 17h5"/></svg>Technical Task</button>
       <button class="top-btn" onclick="location.hash='#/create'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New Project</button>
       <button class="icon-btn" title="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/></svg></button>
       <div class="avatar" title="User">FD</div>
@@ -558,7 +601,22 @@
     <div style="font-size:12.5px;color:#9aa2ad;line-height:1.5;margin-bottom:22px">Sign in to open the team workspace.<br>All projects and files stay in sync automatically.</div>
     <button onclick="cloudStart()" style="width:100%;padding:12px;border:0;border-radius:10px;background:#fff;color:#1b1e23;font-weight:700;font-size:14px;cursor:pointer">Sign in with Google</button>
     <div id="authErr" style="font-size:11px;color:#e6a0a0;margin-top:10px"></div>
+    <div id="authBuild" style="font-size:10px;color:#565c66;margin-top:14px;letter-spacing:.5px"></div>
     <button onclick="cloudOffline()" style="margin-top:14px;background:none;border:0;color:#6b7480;font-size:11px;cursor:pointer;text-decoration:underline">Continue offline (this computer only)</button>
+  </div>
+</div>
+
+<div class="modal" id="ttModal" onclick="ttBackdrop(event)">
+  <div class="ttbox">
+    <div class="ttbar">
+      <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M9.5 12h5M9.5 16h5"/></svg></div>
+      <div class="tt">Technical Task<small>Fulldome TTD</small></div>
+      <div class="sp"></div>
+      <a class="open2" href="https://student-tm.github.io/Fulldome-TTD/" target="_blank" rel="noopener" title="Open in a full browser tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17 17 7M8 7h9v9"/></svg>Open in tab</a>
+      <div class="x" onclick="closeTT()" title="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></div>
+    </div>
+    <div class="ttload" id="ttLoad">Loading Technical Task…</div>
+    <iframe id="ttFrame" class="ttframe" title="Technical Task" allow="clipboard-write" referrerpolicy="no-referrer" onload="ttFrameLoaded()"></iframe>
   </div>
 </div>
 
@@ -688,11 +746,19 @@ function ensureDocs(d){
   return d.docs;
 }
 function setActive(id){
+  if(typeof liveStop === 'function') liveStop();
   const e = db.projects.find(p => p.id === id);
   if(!e || e.frozen) return;                 // frozen projects are not selectable
   db.activeId = id; syncActive();
   saveState(); renderHeader(); renderSideProject();
   location.hash = '#/dashboard'; route();
+}
+function toggleDone(id, ev){
+  if(ev) ev.stopPropagation();
+  const e = db.projects.find(x=>x.id===id); if(!e) return;
+  if(e.done){ delete e.done; delete e.doneAt; flashStat('Project reopened'); }
+  else { e.done = true; e.doneAt = Date.now(); flashStat('Project marked completed'); }
+  saveState(); renderSideProject();
 }
 function toggleFreeze(id, ev){
   if(ev) ev.stopPropagation();
@@ -793,6 +859,7 @@ var storageBroken = false;
 var _savePending = false, _saveQueued = false;
 function saveState(){
   if(!saveState._skipCloud && typeof cloudTouch === 'function'){ try{ cloudTouch(); }catch(e){} }
+  if(!saveState._skipCloud && typeof liveTouch === 'function'){ try{ liveTouch(); }catch(e){} }
   if(!idbOk){
     try{
       localStorage.setItem(STORE_KEY, JSON.stringify(db));
@@ -1260,6 +1327,95 @@ async function saveAsNew(){
     flashStat('Saved to "' + handle.name + '" ✓');
   }catch(err){ downloadPayload(e, data); }
 }
+/* ---------- TECHNICAL TASK WINDOW (embedded Fulldome TTD, same origin) ---------- */
+var TTD_URL = 'https://student-tm.github.io/Fulldome-TTD/';
+function openTT(){
+  var m = document.getElementById('ttModal'); if(!m) return;
+  var f = document.getElementById('ttFrame');
+  if(f && !f.getAttribute('src')){                 /* first open: lazy-load; the tt-ready handshake prefills */
+    var ld = document.getElementById('ttLoad'); if(ld) ld.style.display='flex';
+    /* cache-bust so the frame always loads the freshly deployed TTD (a plain reload served the old build from disk cache) */
+    f.setAttribute('src', TTD_URL + (TTD_URL.indexOf('?')<0?'?':'&') + 'psp=' + Date.now());
+  } else if(f && f.contentWindow){                 /* already loaded: re-push the CURRENT project (project switch without a reload) */
+    ttSendPrefill(f.contentWindow);
+  }
+  m.classList.add('open');
+}
+function closeTT(){ var m = document.getElementById('ttModal'); if(m) m.classList.remove('open'); }
+function ttBackdrop(e){ if(e && e.target && e.target.id === 'ttModal') closeTT(); }
+function ttFrameLoaded(){ var ld = document.getElementById('ttLoad'); if(ld) ld.style.display='none'; }
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape'){ var m = document.getElementById('ttModal'); if(m && m.classList.contains('open')) closeTT(); }
+});
+
+/* ---------- TT WINDOW bridge: prefill + save-back (postMessage <-> Fulldome TTD) ---------- */
+var TTD_ORIGIN = 'https://student-tm.github.io';
+/* fields of the ACTIVE project sent to TTD for prefill (only non-empty ones) */
+function ttPrefillFields(){
+  var e = activeEntry(); if(!e || !e.data || !e.data.project) return {};
+  var P = e.data.project;
+  var pick = ['number','title','domeCode','domeDiameter','type','projectorModel',
+              'audioSystem','speakersModel','subwooferModel','screenFan','ttDate'];
+  var out = {};
+  pick.forEach(function(k){ if(P[k]!=null && String(P[k]).trim()!=='') out[k] = P[k]; });
+  return out;
+}
+/* send the active project's prefill (key+number+fields) to a TTD window */
+function ttSendPrefill(win){
+  if(!win) return;
+  var ae = activeEntry();
+  var msg = {
+    source: 'fulldome-psp', type: 'tt-prefill',
+    key:    ae ? ae.id : null,
+    number: (ae && ae.data && ae.data.project && ae.data.project.number) || '',
+    fields: ttPrefillFields()
+  };
+  try{ win.postMessage(msg, TTD_ORIGIN); }catch(_){}
+}
+/* store an incoming TT file into the active project's Documentation (ttFiles) → rides to Drive */
+function ttStoreFile(file, ttMeta){
+  if(!file || (!file.dataUrl && !file.text)) return null;
+  var dataUrl = file.dataUrl
+    ? file.dataUrl
+    : 'data:' + (file.mime||'application/json') + ';base64,' + btoa(unescape(encodeURIComponent(file.text)));
+  var comma = String(dataUrl).indexOf(',');
+  var approxSize = comma>=0 ? Math.round((String(dataUrl).length - comma - 1) * 3/4) : String(dataUrl).length;
+  var name = (file.name || ('TT ' + ((ttMeta && ttMeta.number) || ''))).trim() || 'Technical Task';
+  var arr = docFilesOf('ttFiles');                 /* active project, creates the category if needed */
+  var rec = { name:name, size:approxSize, type:file.mime||'', data:dataUrl, added:new Date().toISOString().slice(0,10) };
+  var idx = arr.findIndex(function(x){ return x && x.name === name; });   /* same name → replace, not duplicate */
+  if(idx>=0) arr[idx] = rec; else arr.push(rec);
+  return name;
+}
+function ttReceiveSave(d){
+  var e = activeEntry();
+  if(!e) return { ok:false, msg:'No active project selected in PSP.' };
+  try{
+    var names = [];
+    var n1 = ttStoreFile(d.file, d.tt);      if(n1) names.push(n1);
+    var n2 = ttStoreFile(d.fileJson, d.tt);  if(n2) names.push(n2);
+    if(!names.length) return { ok:false, msg:'No file in the message.' };
+    saveState();
+    try{ if(location.hash === '#/documentation') rerenderKeepScroll(); }catch(_){}
+    setTimeout(function(){ try{ cloudPushNow(); }catch(_){} }, 200);
+    flashStat('Technical Task saved to project: ' + names.join(', '));
+    return { ok:true, msg:'Saved to project #' + (e.data.project.number||'') + ' — syncing to Drive.' };
+  }catch(err){
+    return { ok:false, msg:'Could not save: ' + (err && err.message || err) };
+  }
+}
+window.addEventListener('message', function(e){
+  if(e.origin !== TTD_ORIGIN) return;              /* only our own origin */
+  var d = e.data || {};
+  if(!d || d.source !== 'fulldome-ttd') return;     /* only messages from TTD */
+  if(d.type === 'tt-ready'){
+    ttSendPrefill(e.source);                          /* stable per-project identity (key) — TTD switches the form on change */
+  }else if(d.type === 'tt-save'){
+    var res = ttReceiveSave(d);
+    try{ e.source.postMessage({ source:'fulldome-psp', type:'tt-save-result', ok:res.ok, msg:res.msg }, e.origin); }catch(_){}
+  }
+});
+
 async function openProjectFile(){
   if(!window.showOpenFilePicker){ document.getElementById('loadFile').click(); return; }
   let fhs;
@@ -1337,6 +1493,8 @@ function applyProjectText(text){
       saveState(); renderHeader(); renderSideProject();
       location.hash = '#/dashboard'; route();
       flashStat('Project loaded ✓');
+      setTimeout(()=>{ try{ cloudPushNow(); }catch(e){} }, 200);
+      if(_cloudOn && _gTok){ clearTimeout(_pushTimer); setTimeout(cloudPushActive, 200); }
       return e;
     }catch(err){ flashStat('Invalid project file'); return null; }
 }
@@ -1380,6 +1538,8 @@ function flashStat(msg){
 
 /* ---------- sidebar project list (compact) ---------- */
 const IC_EDIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 013 3L12 15l-4 1 1-4z"/></svg>';
+const IC_DONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6L9 17l-5-5"/></svg>';
+const IC_UNDO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 109-9 9 9 0 00-6.36 2.64L3 8"/><path d="M3 3v5h5"/></svg>';
 const IC_FRZ  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M4 6l16 12M20 6L4 18M12 2l-2.5 2.5M12 2l2.5 2.5M12 22l-2.5-2.5M12 22l2.5-2.5M4 6l.5 3.4M4 6l3.4-.5M20 18l-.5-3.4M20 18l-3.4.5M20 6l-3.4-.5M20 6l-.5 3.4M4 18l3.4.5M4 18l.5-3.4"/></svg>';
 function renderSideProject(){
   const w = document.getElementById('sprojWrap');
@@ -1409,7 +1569,7 @@ function renderSideProject(){
         ${foot}
       </div></div>`;
   }).join('');
-  document.getElementById('pjList').innerHTML = cloudRows + db.projects.map(e=>{
+  const cardHtml = (e)=>{
     const P = e.data.project || {};
     const bits = [];
     if(P.type) bits.push(P.type);
@@ -1420,23 +1580,37 @@ function renderSideProject(){
     if(P.domeDiameter) cells.push(['Dome', P.domeDiameter + ' m' + (P.domeType ? ' ' + P.domeType : '')]);
     if(P.sysNumber) cells.push(['FDPSN', '#'+P.sysNumber]);
     if(!cells.length && P.status) cells.push(['Status', P.status]);
-    const foot = e.frozen
-      ? '<div class="pjs" style="margin-top:5px"><span class="frzbadge">'+IC_FRZ+'Frozen</span></div>'
-      : (cells.length ? '<div class="pjcells">'+cells.map(c=>'<div class="pc"><div class="pcl">'+esc(c[0])+'</div><div class="pcv">'+esc(c[1])+'</div></div>').join('')+'</div>' : '');
-    return `<div class="pj ${sel?'sel':''} ${e.frozen?'frozen':''}" onclick="setActive('${e.id}')"
-      title="${e.frozen?'Frozen — unfreeze to select':'Select project'}">
+    if(e.done && e.doneAt) cells.push(['Done', new Date(e.doneAt).toISOString().slice(0,10)]);
+    const foot = cells.length ? '<div class="pjcells">'+cells.map(c=>'<div class="pc"><div class="pcl">'+esc(c[0])+'</div><div class="pcv">'+esc(c[1])+'</div></div>').join('')+'</div>' : '';
+    return `<div class="pj ${sel?'sel':''} ${e.done?'done':''}" onclick="setActive('${e.id}')" title="Select project">
       <div class="pjmeta">
-        <div class="pjn"><span class="led sm pjled ${validationOf(e.data)?'on':''}" title="${validationOf(e.data)?'Validation passed':'Validation not passed'}"></span>#${esc(P.number||'—')}</div>
+        <div class="pjn"><span class="led sm pjled ${validationOf(e.data)?'on':''}" title="${validationOf(e.data)?'Validation passed':'Validation not passed'}"></span>#${esc(P.number||'—')}${e.done?'<span class="donebadge">Done</span>':''}</div>
         <div class="pjt">${esc(P.title||'—')}</div>
         ${foot}
       </div>
       <div class="pjbtns">
-        <button class="pjb" title="Edit project setup" onclick="editProject('${e.id}',event)" ${e.frozen?'disabled':''}>${IC_EDIT}</button>
-        <button class="pjb frz ${e.frozen?'frz-on':''}" title="${e.frozen?'Unfreeze project':'Freeze project — protect from selection'}"
-          onclick="toggleFreeze('${e.id}',event)">${IC_FRZ}</button>
+        <button class="pjb" title="Edit project setup" onclick="editProject('${e.id}',event)">${IC_EDIT}</button>
+        <button class="pjb" title="${e.done?'Reopen project':'Mark project completed'}" onclick="toggleDone('${e.id}',event)">${e.done?IC_UNDO:IC_DONE}</button>
       </div>
     </div>`;
-  }).join('');
+  };
+  const inProg = db.projects.filter(e=>!e.done);
+  const done   = db.projects.filter(e=>e.done).sort((a,b)=>(a.doneAt||0)-(b.doneAt||0));
+  const split = done.length > 0;
+  const progRows = cloudRows + inProg.map(cardHtml).join('');
+  let html = '<div class="pjsplit">';
+  html += '<div class="pjpane top">' +
+            '<div class="pjhead">In progress <span class="n">' + (inProg.length + (_cloudOn ? cloudUnlinkedFolders().length : 0)) + '</span></div>' +
+            '<div class="pjrows">' + (progRows || '<div style="font-size:11px;color:#565c66;padding:4px">No active projects</div>') + '</div>' +
+          '</div>';
+  if(split){
+    html += '<div class="pjpane bottom">' +
+              '<div class="pjhead done-h">Completed <span class="n">' + done.length + '</span></div>' +
+              '<div class="pjrows">' + done.map(cardHtml).join('') + '</div>' +
+            '</div>';
+  }
+  html += '</div>';
+  document.getElementById('pjList').innerHTML = html;
 }
 
 /* ---------- content list (TXT) ---------- */
@@ -1961,6 +2135,7 @@ function createProjectInner(){
   db.projects.push(entry);
   db.activeId = entry.id; syncActive();
   saveState(); renderHeader(); renderSideProject();
+  setTimeout(()=>{ try{ cloudPushNow(); }catch(e){} }, 200);
   goTo('#/dashboard');
 }
 function saveProjectEdit(){
@@ -1981,6 +2156,7 @@ function saveProjectEditInner(){
   }
   revalidateReady();
   saveState(); renderHeader(); renderSideProject();
+  setTimeout(()=>{ try{ cloudPushNow(); }catch(e){} }, 200);
   goTo('#/dashboard');
 }
 const blankRow = () => ({cat:'', name:'', qty:1, price:'', link:''});
@@ -2032,6 +2208,7 @@ function loadDemo(){
   db.projects.push(entry);
   db.activeId = entry.id; syncActive();
   saveState(); renderHeader(); renderSideProject();
+  setTimeout(()=>{ try{ cloudPushNow(); }catch(e){} }, 200);
   goTo('#/dashboard');
 }
 
@@ -2670,7 +2847,7 @@ function driveToken(interactive){
     try{
       const tc = google.accounts.oauth2.initTokenClient({
         client_id: driveClientId(),
-        scope: GDRIVE_SCOPE,
+        scope: GDRIVE_SCOPE + ' openid email profile',
         callback: (r)=>{
           if(r && r.access_token){
             _gTok = r.access_token;
@@ -2701,6 +2878,11 @@ async function gFetch(url, opts){
     await driveToken(false);
     opts.headers['Authorization'] = 'Bearer ' + _gTok;
     r = await fetch(url, opts);
+  }
+  if(!r.ok && r.status !== 404){
+    let detail = '';
+    try{ const t = await r.clone().text(); const j = JSON.parse(t); detail = (j.error && j.error.message) || t.slice(0,120); }catch(e){}
+    throw new Error('Drive ' + r.status + (detail ? ': ' + detail : ''));
   }
   return r;
 }
@@ -2752,6 +2934,212 @@ async function driveUpload(name, parentId, content, mime, existingId){
     body });
   return (await r.json()).id;
 }
+/* ---------- LIVE SYNC / FIREBASE (BUILD 11.0) ----------
+   Realtime Database holds the LIVE project state; Drive stays the archive
+   (folder per project, readable Documentation files, json snapshot).
+   Auth: the Google token from GIS is exchanged for a Firebase session via
+   the REST identitytoolkit endpoint (no SDK bundle needed — single-file app).
+   Transport: REST + Server-Sent Events stream per open project, so edits
+   from teammates arrive in ~1s without any polling. */
+const FB = {
+  apiKey: 'AIzaSyCnUrMNwC-cov8cT490cUpv0z4jfThDSaA',
+  dbUrl:  'https://fulldome-psp-default-rtdb.firebaseio.com'
+};
+var _fbTok = null, _fbUid = '', _fbStream = null, _fbPath = '', _fbApplying = false, _fbLocal = {}, _fbSendT = null;
+function fbReady(){ return !!_fbTok; }
+async function fbSignInWithAccessToken(accessToken){
+  const r = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=' + FB.apiKey, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      postBody: 'access_token=' + encodeURIComponent(accessToken) + '&providerId=google.com',
+      requestUri: location.origin, returnIdpCredential: true, returnSecureToken: true })
+  });
+  const j = await r.json();
+  if(!j.idToken) throw new Error((j.error && j.error.message) || 'auth');
+  _fbTok = j.idToken; _fbUid = j.localId || '';
+  return _fbTok;
+}
+async function fbSignIn(googleIdToken){
+  /* exchange the Google credential for a Firebase ID token */
+  const r = await fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=' + FB.apiKey, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      postBody: 'id_token=' + googleIdToken + '&providerId=google.com',
+      requestUri: location.origin, returnIdpCredential: true, returnSecureToken: true })
+  });
+  const j = await r.json();
+  if(!j.idToken) throw new Error((j.error && j.error.message) || 'firebase auth failed');
+  _fbTok = j.idToken; _fbUid = j.localId || '';
+  return _fbTok;
+}
+function fbUrl(path, q){
+  return FB.dbUrl + '/' + path + '.json?auth=' + encodeURIComponent(_fbTok||'') + (q ? '&' + q : '');
+}
+async function fbGet(path){
+  const r = await fetch(fbUrl(path));
+  if(!r.ok) throw new Error('db read ' + r.status);
+  return await r.json();
+}
+async function fbPatch(path, obj){
+  const r = await fetch(fbUrl(path), { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify(obj) });
+  if(!r.ok) throw new Error('db write ' + r.status);
+  return await r.json();
+}
+function fbProjectKey(e){
+  /* stable key: the cloud folder id when known, else the local project id */
+  const m = driveMap()[e.id];
+  return (m && m.fid) ? m.fid : e.id;
+}
+/* ---- live document: the modules everyone edits together ---- */
+function liveSlice(d){
+  return {
+    project: d.project || {},
+    server:  { rows: d.server.rows || [], ready: !!d.server.ready },
+    vj:      { rows: (d.vj && d.vj.rows) || [], ready: !!(d.vj && d.vj.ready) },
+    rack:    { rows: d.rack.rows || [], heightU: d.rack.heightU || 12, slots: d.rack.slots || {} },
+    camera:  { rows: (d.camera && d.camera.rows) || [], ready: !!(d.camera && d.camera.ready) },
+    projectors: { list: (d.projectors && d.projectors.list) || [], selId: (d.projectors && d.projectors.selId) || null }
+  };
+}
+function liveApply(d, live){
+  if(!live) return false;
+  let changed = false;
+  const setIf = (obj, key, val) => {
+    if(val === undefined) return;
+    if(JSON.stringify(obj[key]) !== JSON.stringify(val)){ obj[key] = val; changed = true; }
+  };
+  if(live.project) setIf(d, 'project', Object.assign({}, d.project, live.project));
+  if(live.server){ setIf(d.server, 'rows', live.server.rows || []); setIf(d.server, 'ready', !!live.server.ready); }
+  if(live.vj){ d.vj = d.vj || {rows:[],ready:false,photos:[]}; setIf(d.vj, 'rows', live.vj.rows || []); setIf(d.vj, 'ready', !!live.vj.ready); }
+  if(live.rack){ setIf(d.rack, 'rows', live.rack.rows || []); setIf(d.rack, 'heightU', live.rack.heightU || 12); setIf(d.rack, 'slots', live.rack.slots || {}); }
+  if(live.camera){ d.camera = d.camera || {rows:[],ready:false,photos:[]}; setIf(d.camera, 'rows', live.camera.rows || []); setIf(d.camera, 'ready', !!live.camera.ready); }
+  if(live.projectors){ d.projectors = d.projectors || {list:[],selId:null,models:{}}; setIf(d.projectors, 'list', live.projectors.list || []); setIf(d.projectors, 'selId', live.projectors.selId || null); }
+  return changed;
+}
+/* ---- presence: who is in this project right now ---- */
+var _presT = null, _presence = {};
+function presenceTick(){
+  if(!fbReady() || !_fbPath) return;
+  const me = (_gUser || 'user').replace(/[.#$\[\]\/]/g, '_');
+  fbPatch(_fbPath + '/presence/' + me, { email: _gUser || '', at: Date.now() }).catch(()=>{});
+}
+function presenceNames(){
+  const now = Date.now(), out = [];
+  Object.values(_presence || {}).forEach(p => {
+    if(!p || !p.email) return;
+    if(now - (p.at||0) > 90000) return;               /* stale — user left */
+    if(p.email === _gUser) return;
+    out.push(p.email.split('@')[0]);
+  });
+  return out;
+}
+function renderPresence(){
+  const names = presenceNames();
+  let el = document.getElementById('presBar');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'presBar';
+    el.style.cssText = 'position:fixed;right:16px;bottom:14px;z-index:900;background:#1b1e23;color:#cfd4da;border-radius:20px;padding:7px 14px;font-size:11.5px;box-shadow:0 6px 20px rgba(0,0,0,.25);display:none';
+    document.body.appendChild(el);
+  }
+  if(names.length){ el.style.display='block'; el.textContent = '● also here: ' + names.join(', '); }
+  else el.style.display='none';
+}
+/* ---- stream: receive teammates' edits ---- */
+function liveStop(){
+  if(_fbStream){ try{ _fbStream.close(); }catch(e){} _fbStream = null; }
+  clearInterval(_presT); _presT = null;
+  _fbPath = ''; _presence = {}; renderPresence();
+}
+async function liveStart(){
+  const e = activeEntry();
+  if(!fbReady() || !e){ return; }
+  const path = 'projects/' + fbProjectKey(e);
+  if(_fbPath === path && _fbStream) return;
+  liveStop();
+  _fbPath = path;
+  /* seed: remote wins if it exists, otherwise publish mine */
+  try{
+    const remote = await fbGet(path + '/live');
+    if(remote){
+      _fbApplying = true;
+      if(liveApply(e.data, remote)){ saveState._skipCloud = true; saveState(); saveState._skipCloud = false; route(); renderSideProject(); }
+      _fbApplying = false;
+    } else {
+      await fbPatch(path + '/live', liveSlice(e.data));
+    }
+  }catch(err){ setCloudStat('Live sync unavailable: ' + (err.message||'error')); return; }
+  _fbLocal = JSON.stringify(liveSlice(e.data));
+  /* who is already in this project (the stream only brings CHANGES) */
+  try{ _presence = (await fbGet(path + '/presence')) || {}; renderPresence(); }catch(err){}
+  /* SSE stream for incoming changes */
+  try{
+    _fbStream = new EventSource(fbUrl(path, ''));
+    _fbStream.addEventListener('put', onLiveEvent);
+    _fbStream.addEventListener('patch', onLiveEvent);
+  }catch(err){}
+  presenceTick();
+  _presT = setInterval(()=>{ presenceTick(); renderPresence(); }, 25000);
+}
+function onLiveEvent(ev){
+  let msg; try{ msg = JSON.parse(ev.data); }catch(e){ return; }
+  if(!msg || msg.path === undefined) return;
+  const e = activeEntry(); if(!e) return;
+  const p = msg.path, data = msg.data;
+  if(p === '/' && data){
+    if(data.presence){ _presence = data.presence; renderPresence(); }
+    if(data.live) applyIncoming(e, data.live);
+    return;
+  }
+  if(p.indexOf('/presence') === 0){
+    const who = p.split('/')[2];
+    if(who){ if(data) _presence[who] = data; else delete _presence[who]; renderPresence(); }
+    return;
+  }
+  if(p.indexOf('/live') === 0){
+    if(p === '/live'){ applyIncoming(e, data); return; }
+    /* granular path like /live/server/rows */
+    const parts = p.split('/').filter(Boolean).slice(1);   /* drop 'live' */
+    const cur = JSON.parse(_fbLocal || '{}');
+    let node = cur;
+    for(let i=0;i<parts.length-1;i++){ node[parts[i]] = node[parts[i]] || {}; node = node[parts[i]]; }
+    if(parts.length) node[parts[parts.length-1]] = data;
+    applyIncoming(e, cur);
+  }
+}
+function applyIncoming(e, live){
+  if(!live) return;
+  _fbApplying = true;
+  const changed = liveApply(e.data, live);
+  _fbLocal = JSON.stringify(liveSlice(e.data));
+  if(changed){
+    saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
+    if(!isTypingInInput()) route();
+    renderHeader(); renderSideProject();
+    setCloudStat('Updated by teammate · ' + new Date().toTimeString().slice(0,5));
+  }
+  _fbApplying = false;
+}
+function isTypingInInput(){
+  const a = document.activeElement;
+  return !!(a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT'));
+}
+/* ---- send: publish my edits ---- */
+function liveTouch(){
+  if(!fbReady() || !_fbPath || _fbApplying) return;
+  clearTimeout(_fbSendT);
+  _fbSendT = setTimeout(livePush, 700);
+}
+async function livePush(){
+  const e = activeEntry(); if(!e || !_fbPath || !fbReady()) return;
+  const slice = liveSlice(e.data);
+  const s = JSON.stringify(slice);
+  if(s === _fbLocal) return;
+  _fbLocal = s;
+  try{ await fbPatch(_fbPath + '/live', slice); }
+  catch(err){ setCloudStat('⚠ Live sync error: ' + (err.message||'') + ' — click to retry'); }
+}
+
 /* ---------- TRANSPARENT CLOUD (BUILD 10.2) ----------
    The user signs in once at start and just works. The sidebar shows every
    team project from the Drive folder; opening pulls it, edits auto-push
@@ -2763,7 +3151,7 @@ function driveMap(){ if(!db.driveMap || typeof db.driveMap!=='object') db.driveM
 function setCloudStat(t){ const el=document.getElementById('driveStat'); if(el) el.textContent = t; }
 function cloudGateShow(){ const g=document.getElementById('authGate'); if(g) g.style.display='flex'; }
 function cloudGateHide(){ const g=document.getElementById('authGate'); if(g) g.style.display='none'; }
-function cloudOffline(){ _cloudOn=false; cloudGateHide(); setCloudStat('Offline — local storage only'); }
+function cloudOffline(){ _cloudOn=false; cloudGateHide(); setCloudStat('Offline — click to sign in and sync'); }
 async function cloudStart(){
   const err = document.getElementById('authErr');
   try{
@@ -2775,6 +3163,14 @@ async function cloudStart(){
     setCloudStat('Loading team projects…');
     await cloudRefreshList();
     setCloudStat(_gUser ? ('Cloud ✓ ' + _gUser) : 'Cloud ✓');
+    /* live sync: Firebase session from the same Google session */
+    try{
+      await fbSignInWithAccessToken(_gTok);
+      await liveStart();
+    }catch(e){ setCloudStat('Cloud ✓ (live sync off: ' + (e.message||'') + ')'); }
+    /* a project may already be open (loaded from disk before signing in) —
+       make sure it reaches the team folder right away */
+    if(activeEntry()) cloudPushActive();
   }catch(e){
     if(err) err.textContent = 'Sign-in failed: ' + (e && e.message || 'error') + '. Check that your email is in the test users list.';
     setCloudStat('');
@@ -2821,15 +3217,50 @@ function cloudUnlinkedFolders(){
 async function cloudOpenFolder(fid, name){
   try{
     setCloudStat('Opening "' + name + '"…');
-    const jfid = await driveFindProjectJson(fid, null);
+    const jfid = await driveFindProjectJson(fid, (name || '') + '.json');   /* the project json is named after the folder */
     if(!jfid){ setCloudStat('No project file in "' + name + '"'); return; }
     const meta = await (await gFetch('https://www.googleapis.com/drive/v3/files/' + jfid + '?fields=modifiedTime')).json();
     const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + jfid + '?alt=media');
     const text = await r.text();
     const e = applyProjectText(text);
-    if(e){ driveMap()[e.id] = { fid, mtime: meta.modifiedTime || '' , docsSig: cloudDocsSig(e) }; saveState(); renderSideProject(); }
+    if(e){ driveMap()[e.id] = { fid, mtime: meta.modifiedTime || '' , docsSig: cloudDocsSig(e), name: name }; saveState(); renderSideProject(); setTimeout(liveStart, 300); }
     setCloudStat(_gUser ? ('Cloud ✓ ' + _gUser) : 'Cloud ✓');
   }catch(err){ setCloudStat('Cloud error: ' + (err && err.message || 'open failed')); }
+}
+const PHOTO_DIRS = [
+  ['site',   'Site'],
+  ['server', 'Dome Server'],
+  ['vj',     'VJ Server'],
+  ['rack',   'Rack'],
+  ['camera', 'Camera']
+];
+function cloudPhotoJobs(e){
+  /* every photo of the project as {dir, name, data} — projector model shots
+     included (front/rear per model) */
+  const jobs = [];
+  const clean = s => String(s||'').replace(/[\/\\:*?"<>|]/g, '-').trim();
+  PHOTO_DIRS.forEach(([kind, dir]) => {
+    (entryPhotos(e, kind) || []).forEach((p, i) => {
+      if(!p || !p.src) return;
+      const base = clean(p.name || (dir + '-' + (i+1)));
+      const cap  = p.caption ? ' — ' + clean(p.caption) : '';
+      const ext  = (p.src.match(/^data:image\/([a-z]+)/i) || [,'jpg'])[1].replace('jpeg','jpg');
+      jobs.push({ dir, name: base + cap + '.' + ext, data: p.src });
+    });
+  });
+  const models = (e.data.projectors && e.data.projectors.models) || {};
+  Object.keys(models).forEach(k => {
+    const m = models[k] || {};
+    const label = clean(((m.brand||'') + ' ' + (m.model||'')).trim() || k);
+    if(m.f) jobs.push({ dir:'Projectors', name: label + ' — front.jpg', data: m.f });
+    if(m.r) jobs.push({ dir:'Projectors', name: label + ' — rear.jpg',  data: m.r });
+  });
+  return jobs;
+}
+function cloudPhotoSig(e){
+  const sig = {};
+  cloudPhotoJobs(e).forEach(j => { sig[j.dir + '/' + j.name] = (j.data||'').length; });
+  return sig;
 }
 function cloudDocsSig(e){
   const sig = {};
@@ -2838,16 +3269,31 @@ function cloudDocsSig(e){
   if(d.contentList && d.contentList.data) sig[d.contentList.name] = (d.contentList.data||'').length;
   return sig;
 }
-function cloudTouch(){
-  /* called from saveState — schedule a quiet push of the active project */
-  if(!_cloudOn || !_gTok) return;
+function cloudSyncNow(){
+  if(!_cloudOn || !_gTok){ cloudGateShow(); return; }
   clearTimeout(_pushTimer);
-  _pushTimer = setTimeout(cloudPushActive, 4000);
+  cloudRefreshList().then(cloudPushActive)
+    .catch(e => setCloudStat('Cloud error: ' + (e && e.message || 'sync failed') + ' — click to retry'));
+}
+function cloudPushNow(){
+  /* right after a project is created / loaded from a file — don't wait 4s */
+  if(!_cloudOn || !_gTok){ setCloudStat('Offline — not synced to the team folder'); return; }
+  clearTimeout(_pushTimer);
+  cloudPushActive();
+}
+function cloudTouch(){
+  /* called from saveState — schedule a quiet push of the active project.
+     With live sync the Drive copy is an archive snapshot: write it rarely. */
+  if(!_cloudOn || !_gTok) return;
+  const delay = (typeof fbReady === 'function' && fbReady() && _fbPath) ? 25000 : 4000;
+  clearTimeout(_pushTimer);
+  _pushTimer = setTimeout(cloudPushActive, delay);
 }
 async function cloudPushActive(){
-  if(!_cloudOn || _pushing) return;
+  if(_pushing) return;
+  if(!_cloudOn || !_gTok){ setCloudStat('⚠ Not signed in — click here to connect Google Drive'); return; }
   const e = activeEntry();
-  if(!e || !e.data.project) return;
+  if(!e || !e.data.project){ setCloudStat('No active project to sync'); return; }
   _pushing = true;
   try{
     setCloudStat('Saving…');
@@ -2857,21 +3303,35 @@ async function cloudPushActive(){
     if(m && m.fid && !(await driveAlive(m.fid))) m = null;
     if(!m || !m.fid){
       const fid = await driveEnsureFolder(projDriveFolderName(e.data.project), rootId);
-      m = driveMap()[e.id] = { fid, mtime: '', docsSig: {} };
+      m = driveMap()[e.id] = { fid, mtime: '', docsSig: {}, name: projDriveFolderName(e.data.project) };
+    }
+    /* keep Drive names in sync with the project (BUILD 11.6):
+       folder = "<number> <title>", json = same name + .json */
+    const wantFolder = projDriveFolderName(e.data.project);
+    if(m.name !== wantFolder){
+      try{
+        const cur = await (await gFetch('https://www.googleapis.com/drive/v3/files/' + m.fid + '?fields=name')).json();
+        if(cur && cur.name && cur.name !== wantFolder){
+          await gFetch('https://www.googleapis.com/drive/v3/files/' + m.fid + '?fields=id', {
+            method:'PATCH', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ name: wantFolder }) });
+          setCloudStat('Renamed in Drive → ' + wantFolder);
+        }
+        m.name = wantFolder;
+      }catch(err){}
     }
     const wantedName = projDriveJsonName(e.data.project);
     let jfid = await driveFindProjectJson(m.fid, wantedName);
     if(jfid && !(await driveAlive(jfid))){ jfid = null; m.mtime = ''; m.docsSig = {}; }
+    /* NO conflict modal (BUILD 11.3): the live state is shared via Firebase and
+       the Drive json is an archive snapshot with full Google version history,
+       so writing mine is always reversible. Remote change is only NOTED. */
+    let _remoteMoved = false;
     if(jfid && m.mtime){
-      const meta = await (await gFetch('https://www.googleapis.com/drive/v3/files/' + jfid + '?fields=modifiedTime')).json();
-      if(meta.modifiedTime && meta.modifiedTime !== m.mtime){
-        const mine = confirm('This project was just saved by a teammate.\n\nOK — keep MY version (overwrites theirs)\nCancel — load THEIR version (my recent edits are discarded)');
-        if(!mine){
-          _pushing = false;
-          await cloudOpenFolder(m.fid, projDriveFolderName(e.data.project));
-          return;
-        }
-      }
+      try{
+        const meta = await (await gFetch('https://www.googleapis.com/drive/v3/files/' + jfid + '?fields=modifiedTime')).json();
+        _remoteMoved = !!(meta.modifiedTime && meta.modifiedTime !== m.mtime);
+      }catch(err){}
     }
     const upUrl = 'https://www.googleapis.com/upload/drive/v3/files' + (jfid ? '/' + jfid : '') + '?uploadType=multipart&fields=id,modifiedTime';
     const meta2 = jfid ? { name: wantedName } : { name: wantedName, parents:[m.fid] };
@@ -2899,6 +3359,27 @@ async function cloudPushActive(){
       }
     }
     m.docsSig = sig;
+    /* photo mirror: Photos/<Category>/… — only new or changed shots */
+    try{
+      const psig = cloudPhotoSig(e);
+      const prev = m.photoSig || {};
+      const todo = cloudPhotoJobs(e).filter(j => psig[j.dir + '/' + j.name] !== prev[j.dir + '/' + j.name]);
+      if(todo.length){
+        const photosRoot = await driveEnsureFolder('Photos', m.fid);
+        const dirIds = {};
+        for(let k = 0; k < todo.length; k++){
+          const j = todo[k];
+          setCloudStat('Uploading photos ' + (k+1) + '/' + todo.length + ' — ' + j.dir);
+          try{
+            if(!dirIds[j.dir]) dirIds[j.dir] = await driveEnsureFolder(j.dir, photosRoot);
+            const ex = await driveFindFile(j.name, dirIds[j.dir]);
+            const mime = (j.data.match(/^data:([^;]+)/) || [,'image/jpeg'])[1];
+            await driveUpload(j.name, dirIds[j.dir], dataUrlToBytes(j.data), mime, ex);
+          }catch(err){}
+        }
+      }
+      m.photoSig = psig;
+    }catch(err){}
     /* tiny meta for the team sidebar */
     try{
       const metaName = 'meta.json';
@@ -2906,9 +3387,12 @@ async function cloudPushActive(){
       await driveUpload(metaName, m.fid, JSON.stringify(cloudMetaOf(e)), 'application/json', mex);
     }catch(err){}
     saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
-    setCloudStat((_gUser ? 'Cloud ✓ ' + _gUser : 'Cloud ✓') + ' · saved ' + new Date().toTimeString().slice(0,5));
+    await cloudRefreshList();
+    setCloudStat('Cloud ✓ ' + (_gUser || '') + ' · saved ' + new Date().toTimeString().slice(0,5) + ' → ' + projDriveFolderName(e.data.project) + (_remoteMoved ? ' · teammate snapshot replaced (kept in Drive history)' : ''));
   }catch(err){
-    setCloudStat('⚠ Not saved to cloud: ' + (err && err.message || 'error'));
+    const msg = (err && err.message) || 'error';
+    setCloudStat('⚠ NOT saved to cloud: ' + msg + ' — click to retry');
+    console.error('[cloud push]', err);
   }
   _pushing = false;
 }
@@ -2938,7 +3422,7 @@ async function driveFindProjectJson(fid, wanted){
   const q = encodeURIComponent("'" + fid + "' in parents and trashed = false and mimeType != 'application/vnd.google-apps.folder'");
   const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name)&pageSize=20');
   const j = await r.json();
-  const js = (j.files||[]).filter(f => /\.json$/i.test(f.name));
+  const js = (j.files||[]).filter(f => /\.json$/i.test(f.name) && f.name.toLowerCase() !== 'meta.json');   /* meta.json is sidebar meta, NOT the project */
   return js.length ? js[0].id : null;
 }
 function projDriveFolderName(P){
@@ -4146,8 +4630,16 @@ window.addEventListener('error', function(e){
   try{ flashStat('⚠ Error: ' + (e.message||'unknown')); }catch(_){}
 });
 window.addEventListener('hashchange', route);
+(function(){
+  const foot = document.querySelector('.side-foot div');
+  const tag = foot ? foot.textContent.trim() : '';
+  const ab = document.getElementById('authBuild');
+  if(ab && tag) ab.textContent = tag;
+  if(tag) document.title = 'Fulldome Projection SP — ' + tag.replace('BUILD ','b').split(' · ')[0];
+})();
 loadState(()=>{ restoreHandles(); renderHeader(); renderSideProject(); route();
-  if(driveClientId()) cloudGateShow(); });
+  if(driveClientId()){ setCloudStat('Not signed in — click to connect'); cloudGateShow(); }
+  else setCloudStat('Local mode (no cloud configured)'); });
 </script>
 </body>
 </html>
