@@ -613,7 +613,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.60 · PALLET PHOTOS TO DRIVE</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.61 · SHIP PHOTOS GALLERY + SYNC</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -3794,9 +3794,11 @@ async function cloudPullContent(force){
   for(const e of entries){
     const m = map[e.id];
     const meta = _cloudMeta[m.fid];
-    if(!meta || !('sig' in meta)) continue;
-    if(!force && e._dirtyAt && (Date.now() - e._dirtyAt) < 30000) continue; /* protect a change made in the last 30s from being clobbered before its push lands; after that (or on a manual reset), incoming sync resumes (BUILD 12.41) */
-    if(meta.sig === m.liveSig) continue;                         /* nothing new since we last applied/pushed (works even for the SAME account on another machine — the sig, not savedBy, decides; BUILD 12.36 fix) */
+    if(!meta || (!('sig' in meta) && !('psig' in meta))) continue;
+    const sigChanged  = ('sig' in meta)  && meta.sig  !== m.liveSig;   /* rows/fields/etc changed */
+    const psigChanged = ('psig' in meta) && meta.psig !== m.psig;      /* a photo added/removed (BUILD 12.61) */
+    if(!sigChanged && !psigChanged) continue;                    /* nothing new since we last applied/pushed */
+    if(!force && e._dirtyAt && (Date.now() - e._dirtyAt) < 30000) continue; /* protect a change made in the last 30s from being clobbered before its push lands (BUILD 12.41) */
     const isActive = (e.id === db.activeId);
     if(isActive && (isTypingInInput() || _pushing || _fbApplying)) continue;   /* don't clobber active edits — retry next poll */
     try{
@@ -3807,9 +3809,10 @@ async function cloudPullContent(force){
       const obj = JSON.parse(await r.text());
       const s = obj.state || obj;
       if(!s || !s.project || !('server' in s)) continue;
-      let changed = liveApply(e.data, liveSlice(s));
+      let changed = false;
+      if(sigChanged){ if(liveApply(e.data, liveSlice(s))) changed = true; m.liveSig = meta.sig; }
+      if(psigChanged){ if(applyPhotosFrom(e.data, s)) changed = true; m.psig = meta.psig; }   /* pull photos (incl. pallet photos) */
       if('done' in obj){ const wd=!!obj.done; if(wd!==!!e.done){ if(wd){e.done=true;e.doneAt=obj.doneAt||Date.now();}else{delete e.done;delete e.doneAt;} changed=true; } }
-      m.liveSig = meta.sig;
       if(changed){
         saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
         renderSideProject();
@@ -3851,6 +3854,7 @@ function cloudMetaOf(e){
     done: !!e.done, doneAt: e.doneAt || 0,                       /* completion status for the sidebar card, no heavy download */
     validation: e.data.validation || {}, vjValidation: e.data.vjValidation || {},   /* test chips reconcile on refresh (BUILD 12.8) */
     sig: liveSig(e.data),                                        /* content signature → poll-based row sync (BUILD 12.34) */
+    psig: photoSigStr(e),                                        /* photo signature → poll-based photo sync (BUILD 12.61) */
     savedBy: _gUser || '', savedAt: new Date().toISOString()
   };
 }
@@ -3881,7 +3885,7 @@ async function cloudOpenFolder(fid, name){
     const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + jfid + '?alt=media');
     const text = await r.text();
     const e = applyProjectText(text);
-    if(e){ driveMap()[e.id] = { fid, mtime: meta.modifiedTime || '' , docsSig: cloudDocsSig(e), name: name, liveSig: liveSig(e.data) }; saveState(); renderSideProject(); setTimeout(liveStart, 300); }
+    if(e){ driveMap()[e.id] = { fid, mtime: meta.modifiedTime || '' , docsSig: cloudDocsSig(e), name: name, liveSig: liveSig(e.data), psig: photoSigStr(e) }; saveState(); renderSideProject(); setTimeout(liveStart, 300); }
     setCloudStat(_gUser ? ('Cloud ✓ ' + _gUser) : 'Cloud ✓');
   }catch(err){ setCloudStat('Cloud error: ' + (err && err.message || 'open failed')); }
 }
@@ -3917,7 +3921,7 @@ function cloudPhotoJobs(e){
   const pp   = (e.data.shipping && e.data.shipping.palletPhotos) || {};
   const pals = (e.data.shipping && e.data.shipping.pallets) || [];
   pals.forEach(p => {
-    const dir = clean('Pallet ' + (p.num||'?') + (p.name ? (' ' + p.name) : ''));
+    const dir = 'Shipping/' + clean('Pallet ' + (p.num||'?') + (p.name ? (' ' + p.name) : ''));   /* Photos/Shipping/Pallet N/ */
     (pp[p.id] || []).forEach((ph, i) => {
       if(!ph || !ph.src) return;
       const base = clean(ph.name || ('pallet-' + (i+1)));
@@ -3932,6 +3936,26 @@ function cloudPhotoSig(e){
   const sig = {};
   cloudPhotoJobs(e).forEach(j => { sig[j.dir + '/' + j.name] = (j.data||'').length; });
   return sig;
+}
+/* tiny hash of the photo set (names + sizes, NOT the base64) — cheap to compute,
+   lets the poll detect a photo added/removed elsewhere and pull it (BUILD 12.61) */
+function photoSigStr(e){
+  const s = JSON.stringify(cloudPhotoSig(e)); let h = 5381;
+  for(let i=0;i<s.length;i++){ h = ((h<<5)+h + s.charCodeAt(i)) | 0; }
+  return (h>>>0).toString(36) + '.' + s.length;
+}
+/* copy all photo arrays from a downloaded project state onto the local entry data */
+function applyPhotosFrom(d, s){
+  let ch = false;
+  const setA = (obj, key, val) => { if(!obj) return; if(JSON.stringify(obj[key]||[]) !== JSON.stringify(val||[])){ obj[key] = val||[]; ch = true; } };
+  if(s.server) setA(d.server, 'photos', s.server.photos);
+  if(s.vj){ d.vj = d.vj || {rows:[],ready:false,photos:[]}; setA(d.vj, 'photos', s.vj.photos); }
+  if(s.rack){ setA(d.rack, 'photos', s.rack.photos); setA(d.rack, 'frontPh', s.rack.frontPh); setA(d.rack, 'rearPh', s.rack.rearPh); }
+  if(s.camera){ d.camera = d.camera || {rows:[],ready:false,photos:[]}; setA(d.camera, 'photos', s.camera.photos); }
+  if(s.docs){ d.docs = d.docs || {}; setA(d.docs, 'sitePh', s.docs.sitePh); }
+  if(s.projectors && s.projectors.models){ d.projectors = d.projectors || {}; if(JSON.stringify(d.projectors.models||{}) !== JSON.stringify(s.projectors.models)){ d.projectors.models = s.projectors.models; ch = true; } }
+  if(s.shipping){ d.shipping = d.shipping || {}; if(JSON.stringify(d.shipping.palletPhotos||{}) !== JSON.stringify(s.shipping.palletPhotos||{})){ d.shipping.palletPhotos = s.shipping.palletPhotos || {}; ch = true; } }
+  return ch;
 }
 function cloudDocsSig(e){
   const sig = {};
@@ -4044,6 +4068,13 @@ async function cloudPushActive(entry){
       if(todo.length){
         const photosRoot = await driveEnsureFolder('Photos', m.fid);
         const dirIds = {};
+        /* resolve a (possibly nested, "/"-separated) photo dir under Photos, caching each level */
+        const ensureDir = async (pathStr) => {
+          const parts = String(pathStr).split('/').filter(Boolean);
+          let parent = photosRoot, acc = '';
+          for(const part of parts){ acc = acc ? (acc + '/' + part) : part; if(!dirIds[acc]) dirIds[acc] = await driveEnsureFolder(part, parent); parent = dirIds[acc]; }
+          return parent;
+        };
         for(let k = 0; k < todo.length; k++){
           const j = todo[k];
           setCloudStat('Uploading photos ' + (k+1) + '/' + todo.length + ' — ' + j.dir);
@@ -4063,6 +4094,7 @@ async function cloudPushActive(entry){
       const mex = await driveFindFile(metaName, m.fid);
       await driveUpload(metaName, m.fid, JSON.stringify(cloudMetaOf(e)), 'application/json', mex);
       m.liveSig = liveSig(e.data);        /* remember what WE just published — poll won't re-pull our own save */
+      m.psig = photoSigStr(e);            /* our photo set is now on Drive — poll won't re-pull (BUILD 12.61) */
       e._dirtyAt = 0;                      /* our local edits are now safely on Drive (BUILD 12.41) */
     }catch(err){}
     saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
@@ -5124,12 +5156,30 @@ function pageDocumentation(){
     const rr  = mk(entryPhotos(e,'rear'), 'rear', 'rk', 'Rack · Rear');
     const rck = mk(entryPhotos(e,'rack'), 'rack', 'rk', 'Rack');
     const cam = mk(entryPhotos(e,'camera'), 'camera', '', 'Camera');
-    if(!srv && !vjp && !rck && !fr && !rr && !cam) return '';
+    /* Shipping — pallet photos, one label per pallet */
+    const pp = (e.data.shipping && e.data.shipping.palletPhotos) || {};
+    const pals = (e.data.shipping && e.data.shipping.pallets) || [];
+    let ship = '', shipN = 0;
+    pals.forEach(p=>{
+      const arr = pp[p.id] || []; if(!arr.length) return;
+      const label = 'Shipping · Pallet ' + esc(p.num||'?') + (p.name?(' '+esc(p.name)):'');
+      arr.forEach((ph,i)=>{ shipN++; ship += `
+        <div class="phtile">
+          <span class="doctag phorig">${label}</span>
+          <img src="${ph.src}" alt="" onclick="openLightboxPallet('${p.id}',${i})">
+          <div class="phcap" style="border-top:1px solid var(--line);padding:7px 9px;font-size:11.5px">
+            <b>${esc(ph.caption||ph.name||'—')}</b>
+            <div style="color:#9aa2ad;font-size:10.5px;margin-top:1px">${label} — #${esc(P.number)} ${esc(P.title||'')}</div>
+          </div>
+        </div>`; });
+    });
+    if(!srv && !vjp && !rck && !fr && !rr && !cam && !ship) return '';
+    const modCount = entryPhotos(e,'server').length + entryPhotos(e,'vj').length + entryPhotos(e,'rack').length + entryPhotos(e,'front').length + entryPhotos(e,'rear').length + entryPhotos(e,'camera').length + shipN;
     return `
     <div class="card docsec">
       <div class="card-head"><h3>#${esc(P.number)} — ${esc(P.title||'')}</h3>
-        <span class="chip c-mut"><span class="cd"></span>${entryPhotos(e,'server').length + entryPhotos(e,'vj').length + entryPhotos(e,'rack').length + entryPhotos(e,'front').length + entryPhotos(e,'rear').length + entryPhotos(e,'camera').length} photos</span></div>
-      <div class="phgrid">${fr}${rr}${srv}${vjp}${rck}${cam}</div>
+        <span class="chip c-mut"><span class="cd"></span>${modCount} photos</span></div>
+      <div class="phgrid">${fr}${rr}${srv}${vjp}${rck}${cam}${ship}</div>
     </div>`;
   }).filter(Boolean).join('');
 
