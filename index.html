@@ -553,7 +553,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.0 · TT WINDOW</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.1 · TT SYNC</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1343,6 +1343,62 @@ function ttBackdrop(e){ if(e && e.target && e.target.id === 'ttModal') closeTT()
 function ttFrameLoaded(){ var ld = document.getElementById('ttLoad'); if(ld) ld.style.display='none'; }
 document.addEventListener('keydown', function(e){
   if(e.key === 'Escape'){ var m = document.getElementById('ttModal'); if(m && m.classList.contains('open')) closeTT(); }
+});
+
+/* ---------- TT WINDOW bridge: prefill + save-back (postMessage <-> Fulldome TTD) ---------- */
+var TTD_ORIGIN = 'https://student-tm.github.io';
+/* fields of the ACTIVE project sent to TTD for prefill (only non-empty ones) */
+function ttPrefillFields(){
+  var e = activeEntry(); if(!e || !e.data || !e.data.project) return {};
+  var P = e.data.project;
+  var pick = ['number','title','domeCode','domeDiameter','type','projectorModel',
+              'audioSystem','speakersModel','subwooferModel','screenFan','ttDate'];
+  var out = {};
+  pick.forEach(function(k){ if(P[k]!=null && String(P[k]).trim()!=='') out[k] = P[k]; });
+  return out;
+}
+/* store an incoming TT file into the active project's Documentation (ttFiles) → rides to Drive */
+function ttStoreFile(file, ttMeta){
+  if(!file || (!file.dataUrl && !file.text)) return null;
+  var dataUrl = file.dataUrl
+    ? file.dataUrl
+    : 'data:' + (file.mime||'application/json') + ';base64,' + btoa(unescape(encodeURIComponent(file.text)));
+  var comma = String(dataUrl).indexOf(',');
+  var approxSize = comma>=0 ? Math.round((String(dataUrl).length - comma - 1) * 3/4) : String(dataUrl).length;
+  var name = (file.name || ('TT ' + ((ttMeta && ttMeta.number) || ''))).trim() || 'Technical Task';
+  var arr = docFilesOf('ttFiles');                 /* active project, creates the category if needed */
+  var rec = { name:name, size:approxSize, type:file.mime||'', data:dataUrl, added:new Date().toISOString().slice(0,10) };
+  var idx = arr.findIndex(function(x){ return x && x.name === name; });   /* same name → replace, not duplicate */
+  if(idx>=0) arr[idx] = rec; else arr.push(rec);
+  return name;
+}
+function ttReceiveSave(d){
+  var e = activeEntry();
+  if(!e) return { ok:false, msg:'No active project selected in PSP.' };
+  try{
+    var names = [];
+    var n1 = ttStoreFile(d.file, d.tt);      if(n1) names.push(n1);
+    var n2 = ttStoreFile(d.fileJson, d.tt);  if(n2) names.push(n2);
+    if(!names.length) return { ok:false, msg:'No file in the message.' };
+    saveState();
+    try{ if(location.hash === '#/documentation') rerenderKeepScroll(); }catch(_){}
+    setTimeout(function(){ try{ cloudPushNow(); }catch(_){} }, 200);
+    flashStat('Technical Task saved to project: ' + names.join(', '));
+    return { ok:true, msg:'Saved to project #' + (e.data.project.number||'') + ' — syncing to Drive.' };
+  }catch(err){
+    return { ok:false, msg:'Could not save: ' + (err && err.message || err) };
+  }
+}
+window.addEventListener('message', function(e){
+  if(e.origin !== TTD_ORIGIN) return;              /* only our own origin */
+  var d = e.data || {};
+  if(!d || d.source !== 'fulldome-ttd') return;     /* only messages from TTD */
+  if(d.type === 'tt-ready'){
+    try{ e.source.postMessage({ source:'fulldome-psp', type:'tt-prefill', fields: ttPrefillFields() }, e.origin); }catch(_){}
+  }else if(d.type === 'tt-save'){
+    var res = ttReceiveSave(d);
+    try{ e.source.postMessage({ source:'fulldome-psp', type:'tt-save-result', ok:res.ok, msg:res.msg }, e.origin); }catch(_){}
+  }
 });
 
 async function openProjectFile(){
