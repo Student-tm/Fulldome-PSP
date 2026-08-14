@@ -595,7 +595,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.32 · DASH ORDER</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.34 · ROW SYNC (DRIVE)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1682,9 +1682,10 @@ function renderSideProject(){
     const foot = cells.length
       ? '<div class="pjcells">' + cells.map(c=>'<div class="pc"><div class="pcl">'+esc(c[0])+'</div><div class="pcv">'+esc(c[1])+'</div></div>').join('') + '</div>'
       : '';
+    const cloc = (m && m.location && m.location!=='—') ? '<span class="pjloc">'+esc(m.location)+'</span>' : '';
     return `<div class="pj ${isDone?'done':''}" onclick="cloudOpenFolder('${f.id}','${esc(f.name).replace(/'/g,'&#39;')}')" title="Team project — click to open">
       <div class="pjmeta">
-        <div class="pjn"><span class="led sm pjled ${m && m.valid ? 'on' : ''}"></span>${head}${isDone?'<span class="donebadge">Done</span>':''}<span style="opacity:.5;margin-left:6px;font-size:11px">☁</span></div>
+        <div class="pjn"><span class="led sm pjled ${m && m.valid ? 'on' : ''}"></span>${head}${isDone?'<span class="donebadge">Done</span>':''}<span style="opacity:.5;margin-left:6px;font-size:11px">☁</span>${cloc}</div>
         <div class="pjt">${sub}</div>
         ${foot}
       </div></div>`;
@@ -3131,6 +3132,14 @@ function liveSlice(d){
 }
 /* full live document = the shared data slice + the entry-level completion flag */
 function liveDoc(e){ return Object.assign(liveSlice(e.data), { done: !!e.done, doneAt: e.doneAt || 0 }); }
+/* short stable signature of the shared slice — lets the 45s Drive poll detect a
+   teammate content change (server/vj/rack/camera rows, projectors, validation)
+   WITHOUT downloading the heavy json every tick (BUILD 12.34) */
+function liveSig(d){
+  const s = JSON.stringify(liveSlice(d)); let h = 5381;
+  for(let i=0;i<s.length;i++){ h = ((h<<5)+h + s.charCodeAt(i)) | 0; }
+  return (h>>>0).toString(36) + '.' + s.length;
+}
 /* apply the completion flag from an incoming live doc onto the entry; returns true if it changed */
 function liveApplyDone(e, live){
   if(!live || !('done' in live)) return false;
@@ -3351,6 +3360,45 @@ async function cloudRefreshList(){
   _cloudMeta = await cloudLoadMeta(_cloudFolders);     /* then rich cards */
   cloudReconcileFromMeta();                            /* pull Done + validation onto already-downloaded projects (BUILD 12.8) */
   renderSideProject();
+  try{ await cloudPullContent(); }catch(e){}           /* pull teammate ROW edits over Drive (BUILD 12.34) — reliable fallback for the flaky live channel */
+}
+/* Poll-based content sync (BUILD 12.34): for every downloaded project linked to a
+   cloud folder, if the folder meta's content signature differs from what we last
+   applied AND the change came from someone else, download the heavy json and apply
+   the shared slice (server/vj/rack/camera rows + projectors + validation). This makes
+   server fields sync within ~45s even when the Firebase live channel is down. The
+   ACTIVE project is not clobbered while the user is typing — it retries next tick. */
+async function cloudPullContent(){
+  if(!_cloudOn || !_gTok) return;
+  const map = driveMap();
+  const entries = db.projects.filter(e => map[e.id] && map[e.id].fid);
+  for(const e of entries){
+    const m = map[e.id];
+    const meta = _cloudMeta[m.fid];
+    if(!meta || !('sig' in meta)) continue;
+    if(meta.sig === m.liveSig) continue;                         /* nothing new since we last applied */
+    if(meta.savedBy && _gUser && meta.savedBy === _gUser){ m.liveSig = meta.sig; continue; }  /* our own save */
+    const isActive = (e.id === db.activeId);
+    if(isActive && (isTypingInInput() || _pushing || _fbApplying)) continue;   /* don't clobber active edits — retry next poll */
+    try{
+      const jname = (m.name || '') + '.json';
+      const jfid = await driveFindProjectJson(m.fid, jname);
+      if(!jfid) continue;
+      const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + jfid + '?alt=media');
+      const obj = JSON.parse(await r.text());
+      const s = obj.state || obj;
+      if(!s || !s.project || !('server' in s)) continue;
+      let changed = liveApply(e.data, liveSlice(s));
+      if('done' in obj){ const wd=!!obj.done; if(wd!==!!e.done){ if(wd){e.done=true;e.doneAt=obj.doneAt||Date.now();}else{delete e.done;delete e.doneAt;} changed=true; } }
+      m.liveSig = meta.sig;
+      if(changed){
+        saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
+        renderSideProject();
+        if(isActive && !isTypingInInput()) rerenderKeepScroll();
+        setCloudStat('Updated by teammate · ' + new Date().toTimeString().slice(0,5));
+      }
+    }catch(err){}
+  }
 }
 /* for projects already downloaded locally (linked to a cloud folder), adopt the
    shared status (Done + validation chips) from the folder meta on refresh/sign-in —
@@ -3369,6 +3417,7 @@ function cloudReconcileFromMeta(){
     }
     if(meta.validation && JSON.stringify(e.data.validation) !== JSON.stringify(meta.validation)){ e.data.validation = meta.validation; changed = true; }
     if(meta.vjValidation && JSON.stringify(e.data.vjValidation) !== JSON.stringify(meta.vjValidation)){ e.data.vjValidation = meta.vjValidation; changed = true; }
+    if('location' in meta && e.data.project && (e.data.project.location||'') !== (meta.location||'')){ e.data.project.location = meta.location || ''; changed = true; }
   });
   if(changed){ saveState._skipCloud = true; saveState(); saveState._skipCloud = false; }
 }
@@ -3378,9 +3427,11 @@ function cloudMetaOf(e){
     v: 1,
     number: P.number || '', title: P.title || '', type: P.type || '',
     dome: P.domeDiameter || '', domeType: P.domeType || '', sysNumber: P.sysNumber || '',
+    location: P.location || '',                                  /* location on the sidebar card (BUILD 12.33) */
     status: P.status || '', valid: !!validationOf(e.data),
     done: !!e.done, doneAt: e.doneAt || 0,                       /* completion status for the sidebar card, no heavy download */
     validation: e.data.validation || {}, vjValidation: e.data.vjValidation || {},   /* test chips reconcile on refresh (BUILD 12.8) */
+    sig: liveSig(e.data),                                        /* content signature → poll-based row sync (BUILD 12.34) */
     savedBy: _gUser || '', savedAt: new Date().toISOString()
   };
 }
@@ -3411,7 +3462,7 @@ async function cloudOpenFolder(fid, name){
     const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + jfid + '?alt=media');
     const text = await r.text();
     const e = applyProjectText(text);
-    if(e){ driveMap()[e.id] = { fid, mtime: meta.modifiedTime || '' , docsSig: cloudDocsSig(e), name: name }; saveState(); renderSideProject(); setTimeout(liveStart, 300); }
+    if(e){ driveMap()[e.id] = { fid, mtime: meta.modifiedTime || '' , docsSig: cloudDocsSig(e), name: name, liveSig: liveSig(e.data) }; saveState(); renderSideProject(); setTimeout(liveStart, 300); }
     setCloudStat(_gUser ? ('Cloud ✓ ' + _gUser) : 'Cloud ✓');
   }catch(err){ setCloudStat('Cloud error: ' + (err && err.message || 'open failed')); }
 }
@@ -3578,6 +3629,7 @@ async function cloudPushActive(entry){
       const metaName = 'meta.json';
       const mex = await driveFindFile(metaName, m.fid);
       await driveUpload(metaName, m.fid, JSON.stringify(cloudMetaOf(e)), 'application/json', mex);
+      m.liveSig = liveSig(e.data);        /* remember what WE just published — poll won't re-pull our own save */
     }catch(err){}
     saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
     await cloudRefreshList();
