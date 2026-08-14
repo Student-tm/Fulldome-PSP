@@ -613,7 +613,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.61 · SHIP PHOTOS GALLERY + SYNC</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.62 · FLAT SHIPPING FOLDER</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -4067,14 +4067,7 @@ async function cloudPushActive(entry){
       const todo = cloudPhotoJobs(e).filter(j => psig[j.dir + '/' + j.name] !== prev[j.dir + '/' + j.name]);
       if(todo.length){
         const photosRoot = await driveEnsureFolder('Photos', m.fid);
-        const dirIds = {};
-        /* resolve a (possibly nested, "/"-separated) photo dir under Photos, caching each level */
-        const ensureDir = async (pathStr) => {
-          const parts = String(pathStr).split('/').filter(Boolean);
-          let parent = photosRoot, acc = '';
-          for(const part of parts){ acc = acc ? (acc + '/' + part) : part; if(!dirIds[acc]) dirIds[acc] = await driveEnsureFolder(part, parent); parent = dirIds[acc]; }
-          return parent;
-        };
+        const dirIds = {};   /* pallet photos use a flat folder name "Shipping/Pallet N" (per user, BUILD 12.62) */
         for(let k = 0; k < todo.length; k++){
           const j = todo[k];
           setCloudStat('Uploading photos ' + (k+1) + '/' + todo.length + ' — ' + j.dir);
