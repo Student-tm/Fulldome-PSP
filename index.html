@@ -18,19 +18,20 @@
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
   body{font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink);
-    display:flex;height:100vh;overflow:hidden}
+    display:flex;flex-direction:column;height:100vh;overflow:hidden}
+  .app-row{display:flex;flex:1 1 auto;min-height:0;overflow:hidden}
 
   /* ---------- SIDEBAR ---------- */
-  .side{flex:0 0 236px;background:var(--side);color:var(--txt-d);display:flex;flex-direction:column;min-height:0;transition:flex-basis .18s;overflow-y:auto;overflow-x:hidden}
+  .side{flex:0 0 270px;background:var(--side);color:var(--txt-d);display:flex;flex-direction:column;min-height:0;transition:flex-basis .18s;overflow-y:auto;overflow-x:hidden}
   .side.mini{flex-basis:60px}
-  .side-head{padding:15px 14px;border-bottom:1px solid var(--line-d)}
-  .brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15px;margin-bottom:3px}
+  /* sidebar head — Fulldome.pro spec: just the wordmark logo + a subtitle line (BUILD 12.21) */
+  .side-head{padding:15px 16px;border-bottom:1px solid var(--line-d)}
+  .brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15px}
   .brand img{height:22px;width:auto;display:block}
   .side.mini .brand img{display:none}
-  .side-head .sub{font-size:11px;color:var(--dim);letter-spacing:.4px;text-transform:uppercase;white-space:nowrap}
+  .side-head .sub{font-size:11px;color:var(--dim);margin-top:4px;white-space:normal;line-height:1.35}
+  .side-head .sub b{color:#e8ebef;font-weight:600}
   .side.mini .side-head .sub{display:none}
-  .brand .dot{width:17px;height:17px;border-radius:50%;background:var(--fdp-red);position:relative;flex:0 0 auto}
-  .brand .dot::before{content:"";position:absolute;inset:2.5px;background:#fff;border-radius:50%}
   .brand .dot::after{content:"";position:absolute;inset:5.5px;background:#0d0d0d;border-radius:50%}
   .nav{flex:1;overflow-y:auto;padding:10px 8px}
   .nitem{display:flex;align-items:center;gap:11px;padding:10px 11px;border-radius:8px;cursor:pointer;margin-bottom:3px;
@@ -50,10 +51,16 @@
 
   /* ---------- MAIN / HEADER ---------- */
   .main{flex:1;display:flex;flex-direction:column;min-width:0}
-  .topbar{background:var(--side);color:var(--txt-d);border-bottom:1px solid var(--line-d);
-    display:flex;align-items:center;gap:16px;padding:10px 22px;flex-wrap:wrap}
+  .topbar{background:var(--side);color:var(--txt-d);border-bottom:2px solid var(--fdp-red);
+    display:flex;align-items:center;gap:16px;padding:10px 16px;flex-wrap:wrap;flex:0 0 auto}
   .os-name{font-size:15px;font-weight:700;white-space:nowrap}
   .os-name small{display:block;font-weight:400;font-size:10.5px;color:var(--dim);letter-spacing:.6px;text-transform:uppercase}
+  /* top-bar brand — mirrors the TT window header block (BUILD 12.22) */
+  .topbrand{display:flex;align-items:center;gap:11px}
+  .topbrand .tb-ic{width:30px;height:30px;border-radius:6px;background:var(--fdp-red);flex:0 0 auto;display:flex;align-items:center;justify-content:center}
+  .topbrand .tb-ic svg{width:17px;height:17px}
+  .topbrand .tb-tt{color:#fff;font-size:14px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;line-height:1.1}
+  .topbrand .tb-tt small{display:block;font-size:10px;color:#8b93a0;font-weight:400;letter-spacing:.3px;text-transform:none;margin-top:2px}
   .proj-chip{display:flex;align-items:center;gap:14px;background:var(--side2);border:1px solid var(--line-d);
     border-radius:9px;padding:7px 14px;min-width:0}
   .pc-item{min-width:0}
@@ -139,6 +146,9 @@
   .c-warn{color:#8a6d1a;background:#fdf8ec;border:1px solid #ecd9a0}.c-warn .cd{background:#e0a13d}
   .c-off{color:#c0392b;background:#fdf3f2;border:1px solid #f0c6c2}.c-off .cd{background:#e5534b}
   .c-mut{color:#5a6573;background:#f4f5f7;border:1px solid #e3e6ea}.c-mut .cd{background:#9aa2ad}
+  /* horizontal module-readiness strip on the Dashboard (BUILD 12.28) */
+  .readybar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 15px;margin:0 0 18px}
+  .readybar .rb-cap{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#8b93a0;margin-right:4px}
 
   /* section switcher on Server & Rack page */
   .secnav{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
@@ -417,13 +427,18 @@
   .pjpane.bottom{margin-top:auto;border-top:1px solid #363b44;padding-top:12px}
   .pjpane .pjrows{display:flex;flex-direction:column;gap:5px;padding-right:2px}
   .pjhead{display:flex;align-items:center;gap:7px;font-size:9px;letter-spacing:1.2px;text-transform:uppercase;
-    color:#6b7480;padding:2px 4px 7px;flex:none}
-  .pjhead .n{background:#2c313a;color:#9aa2ad;border-radius:99px;padding:1px 7px;font-size:8.5px;letter-spacing:.3px}
-  .pjhead.done-h{color:#5f7f6c}
-  .pjhead.done-h .n{background:rgba(67,209,124,.15);color:#43d17c}
+    color:#ffffff;font-weight:700;padding:2px 4px 7px;flex:none}
+  .pjhead .n{background:#2c313a;color:#e8ebef;border-radius:99px;padding:1px 7px;font-size:8.5px;letter-spacing:.3px}
+  .pjhead.done-h{color:#8fe6b0}
+  .pjhead.done-h .n{background:rgba(67,209,124,.20);color:#8fe6b0}
   .pj{display:flex;gap:8px;align-items:center;padding:8px 9px 8px 13px;border-radius:8px;background:transparent;
     border:1px solid #adadad;position:relative;cursor:pointer;overflow:hidden;transition:border-color .12s,background .12s}
   .pj::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:transparent;transition:background .12s}
+  /* aggregate readiness tint (BUILD 12.29) — driven by each module's own status, never manual */
+  .pj.rc-yellow{background:rgba(230,184,77,.10);border-color:#7d6a3a}
+  .pj.rc-yellow::before{background:#e6b800}
+  .pj.rc-green{background:rgba(67,209,124,.10);border-color:#3e7a55}
+  .pj.rc-green::before{background:#43d17c}
   .pj:hover{background:#20242b;border-color:#c9c9c9}
   .pj.sel{background:#adadad;border-color:var(--fdp-red);box-shadow:inset 0 0 0 1px var(--fdp-red)}
   /* selected card sits on the light-gray fill — dark text for readability */
@@ -445,6 +460,7 @@
   .pj .pjled{position:static;display:inline-block;margin-right:6px;vertical-align:1px;flex:none}
   .pj .pjmeta{flex:1;min-width:0}
   .pj .pjn{font-size:13px;color:#9aa2ad;font-weight:500;letter-spacing:.3px;line-height:1.25;display:flex;align-items:center}
+  .pj .pjloc{margin-left:auto;padding-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52%}
   .pj.sel .pjn{color:#1b1e23}
   .pj.sel .pjled.on{background:#43d17c}
   .pj .pjt{font-size:11.5px;font-weight:400;color:#cfd4da;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;margin-top:1px}
@@ -537,10 +553,24 @@
 </head>
 <body>
 
+<header class="topbar" id="topbar">
+  <div class="topbrand">
+    <span class="tb-ic"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+    <div class="tb-tt">Projection System Portal<small>Fulldome PSP</small></div>
+  </div>
+  <div class="top-actions">
+    <button class="top-btn" onclick="openTT()" title="Create a Technical Task"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M9.5 13h5M9.5 17h5"/></svg>Technical Task</button>
+    <button class="top-btn" onclick="location.hash='#/create'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New Project</button>
+    <button class="icon-btn" title="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/></svg></button>
+    <div class="avatar" title="User">FD</div>
+  </div>
+</header>
+
+<div class="app-row">
 <aside class="side" id="sidebar">
   <div class="side-head">
-    <div class="brand"><span class="dot"></span><img id="brandLogo" alt="Fulldome.pro" src="data:image/png;base64,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"></div>
-    <div class="sub">Project OS</div>
+    <div class="brand"><img id="brandLogo" alt="Fulldome.pro" src="data:image/png;base64,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"></div>
+    <div class="sub">Fulldome PSP — Projection System Portal</div>
   </div>
   <nav class="nav" id="nav"></nav>
   <div class="sproj-wrap" id="sprojWrap" style="display:none">
@@ -562,33 +592,14 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.13 · AUTO SIGN-IN</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.31 · SIDEBAR HEADERS</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
 
-<div class="main">
-  <header class="topbar" id="topbar">
-    <div class="os-name">Fulldome Projection SP<small>Engineering platform</small></div>
-    <div class="proj-chip" id="projChip" style="display:none">
-      <div class="pc-item"><div class="l">Project</div><div class="v red" id="hProj">—</div></div>
-      <div class="pc-sep"></div>
-      <div class="pc-item"><div class="l">Name</div><div class="v" id="hTitle">—</div></div>
-      <div class="pc-sep"></div>
-      <div class="pc-item"><div class="l">Location</div><div class="v" id="hLoc">—</div></div>
-      <div class="pc-sep"></div>
-      <div class="pc-item"><div class="l">Status</div><div class="v"><span class="stat-pill"><span class="sd"></span><span id="hStatus">—</span></span></div></div>
-      <div class="pc-sep"></div>
-      <div class="pc-item"><div class="l">Server</div><div class="v" style="display:flex;align-items:center;gap:7px"><span class="led sm" id="hLed"></span><span id="hLedTxt" style="font-size:11.5px">Not Ready</span></div></div>
-    </div>
-    <div class="top-actions">
-      <button class="top-btn" onclick="openTT()" title="Create a Technical Task"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M9.5 13h5M9.5 17h5"/></svg>Technical Task</button>
-      <button class="top-btn" onclick="location.hash='#/create'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New Project</button>
-      <button class="icon-btn" title="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/></svg></button>
-      <div class="avatar" title="User">FD</div>
-    </div>
-  </header>
-  <main class="content" id="content"></main>
+  <div class="main">
+    <main class="content" id="content"></main>
+  </div>
 </div>
 
 <input type="file" id="photoFile" accept="image/*,.heic,.heif" multiple onchange="onPhotosPicked(event)">
@@ -714,7 +725,64 @@ function syncActive(){
   if(!state.camera || typeof state.camera!=='object') state.camera = { rows:[], ready:false, photos:[] };
   if(!Array.isArray(state.camera.rows)) state.camera.rows = [];
   if(!Array.isArray(state.camera.photos)) state.camera.photos = [];
+  if(!state.ready || typeof state.ready!=='object') state.ready = {};   /* readiness lights per module (BUILD 12.15) */
 }
+/* ---------- MODULE READINESS (BUILD 12.29) — DATA-DRIVEN, read-only in the bar.
+   red (empty) → yellow (has data) → green (its own module's "Mark as Ready" pressed).
+   The bar is NOT clickable: each dot reflects that module's own section. Green comes
+   ONLY from the module's real ready flag (server.ready / camera.ready / vj.ready).
+   The colors aggregate up to the sidebar project card (readyCardColor). ---------- */
+const READY_MODULES = [
+  ['server','Dome Server'], ['rack','Server Rack'], ['camera','Camera'],
+  ['speakers','Speakers'],  ['net','Network'],      ['cables','Cables'],
+  ['fan','Screen Fan'],     ['tools','Tools']
+];
+/* data presence per module, computed from ANY project's data object (default: active) */
+function readyModuleHasData(key, d){
+  d = d || state; const P = d.project || {};
+  const rows = k => (d[k] && d[k].rows) || [];
+  switch(key){
+    case 'server':   return rows('server').some(r=>(r.name||'').trim());
+    case 'vj':       return rows('vj').some(r=>(r.name||'').trim());
+    case 'rack':     return rows('rack').some(r=>(r.name||'').trim())
+                        || ((d.rack&&d.rack.photos)||[]).length>0
+                        || ((d.rack&&d.rack.frontPh)||[]).length>0
+                        || ((d.rack&&d.rack.rearPh)||[]).length>0;
+    case 'camera':   return rows('camera').some(r=>(r.name||'').trim());
+    case 'speakers': return !!((P.speakersModel||'').trim() || (P.subwooferModel||'').trim() || (P.audioSystem||'').trim());
+    case 'fan':      return !!((P.screenFan||'').trim());
+    default:         return false;   /* net / cables / tools have no section yet */
+  }
+}
+/* GREEN is allowed ONLY for modules that own a real "Mark as Ready" button */
+function readyModuleGreen(key, d){
+  d = d || state;
+  if(key==='server') return !!(d.server && d.server.ready);
+  if(key==='camera') return !!(d.camera && d.camera.ready);
+  if(key==='vj')     return !!(d.vj && d.vj.ready);
+  return false;
+}
+function readyColor(key, d){
+  d = d || state;
+  if(readyModuleGreen(key, d)) return 'green';        /* its "Mark as Ready" pressed */
+  if(readyModuleHasData(key, d)) return 'yellow';     /* some data present */
+  return 'red';                                       /* nothing yet */
+}
+/* Aggregate readiness for the sidebar CARD.
+   green  = every ready-buttoned core build in play is marked ready (and at least one is)
+   yellow = work started in any module, but not fully ready
+   ''     = nothing started yet (no tint) */
+function readyCardColor(d){
+  d = d || state; const P = d.project || {};
+  const core = ['server','camera']; if(P.vjRequired) core.push('vj');
+  const engaged = core.filter(k => readyModuleGreen(k,d) || readyModuleHasData(k,d));
+  const anyData = ['server','vj','rack','camera','speakers','fan'].some(k => readyModuleHasData(k,d));
+  if(engaged.length && engaged.every(k => readyModuleGreen(k,d))) return 'green';
+  if(anyData) return 'yellow';
+  return '';
+}
+const READY_LABEL = { red:'Not started', yellow:'In progress', green:'Ready' };
+const READY_CHIP  = { red:'c-off', yellow:'c-warn', green:'c-ok' };
 /* Projectors migration — old saves get an empty projectors box */
 function ensureProjectors(d){
   if(!d.projectors || typeof d.projectors!=='object') d.projectors = { list: [], selId: null };
@@ -1010,9 +1078,14 @@ const VJ_VALIDATION_TESTS = [
   {key:'mem', label:'Memory Test',     off:'Not Tested'},
   {key:'gpu', label:'GPU Test',        off:'Not Tested'}
 ];
+/* applicable Dome tests — drop the Capture Card Test when the project has no capture card (BUILD 12.30) */
+function domeTestsFor(data){
+  const cap = !!(data && data.project && data.project.captureRequired);
+  return cap ? VALIDATION_TESTS : VALIDATION_TESTS.filter(t => t.key !== 'capture');
+}
 function domeValidationOf(data){
   const v = (data && data.validation) || {};
-  return VALIDATION_TESTS.every(t => !!v[t.key]);
+  return domeTestsFor(data).every(t => !!v[t.key]);
 }
 function vjValidationOf(data){
   const v = (data && data.vjValidation) || {};
@@ -1624,11 +1697,12 @@ function renderSideProject(){
     if(P.domeDiameter) cells.push(['Dome', P.domeDiameter + ' m' + (P.domeType ? ' ' + P.domeType : '')]);
     if(P.sysNumber) cells.push(['FDPSN', '#'+P.sysNumber]);
     if(!cells.length && P.status) cells.push(['Status', P.status]);
-    if(e.done && e.doneAt) cells.push(['Done', new Date(e.doneAt).toISOString().slice(0,10)]);
     const foot = cells.length ? '<div class="pjcells">'+cells.map(c=>'<div class="pc"><div class="pcl">'+esc(c[0])+'</div><div class="pcv">'+esc(c[1])+'</div></div>').join('')+'</div>' : '';
-    return `<div class="pj ${sel?'sel':''} ${e.done?'done':''}" onclick="setActive('${e.id}')" title="Select project">
+    const loc = (P.location && P.location!=='—') ? '<span class="pjloc">'+esc(P.location)+'</span>' : '';
+    const rc = readyCardColor(e.data); const rcCls = rc ? ' rc-'+rc : '';
+    return `<div class="pj ${sel?'sel':''} ${e.done?'done':''}${rcCls}" onclick="setActive('${e.id}')" title="Select project">
       <div class="pjmeta">
-        <div class="pjn"><span class="led sm pjled ${validationOf(e.data)?'on':''}" title="${validationOf(e.data)?'Validation passed':'Validation not passed'}"></span>#${esc(P.number||'—')}${e.done?'<span class="donebadge">Done</span>':''}</div>
+        <div class="pjn"><span class="led sm pjled ${validationOf(e.data)?'on':''}" title="${validationOf(e.data)?'Validation passed':'Validation not passed'}"></span>#${esc(P.number||'—')}${e.done?'<span class="donebadge">Done</span>':''}${loc}</div>
         <div class="pjt">${esc(P.title||'—')}</div>
         ${foot}
       </div>
@@ -1847,15 +1921,9 @@ function closeLightbox(){ document.getElementById('lbx').classList.remove('open'
 
 /* ---------- header ---------- *//* ---------- header ---------- */
 function renderHeader(){
-  const chip = document.getElementById('projChip');
-  if(!state.project){ chip.style.display='none'; return; }
-  chip.style.display='';
-  document.getElementById('hProj').textContent = '#' + state.project.number;
-  document.getElementById('hTitle').textContent = state.project.title || '—';
-  document.getElementById('hLoc').textContent = state.project.location || '—';
-  document.getElementById('hStatus').textContent = state.project.status || 'Engineering';
-  document.getElementById('hLed').classList.toggle('on', !!state.server.ready);
-  document.getElementById('hLedTxt').textContent = state.server.ready ? 'Ready' : 'Not Ready';
+  /* project meta chip (Project/Name/Location/Status/Server) removed from the top
+     bar (BUILD 12.17) — project info lives on the Dashboard now. No-op kept so all
+     existing renderHeader() callers stay valid. */
 }
 
 /* boot: enforce grouping on data restored from storage */
@@ -2274,6 +2342,11 @@ function pageDashboard(){
       <div class="sub">Central entry point for all engineering modules of project #${esc(P.number)} ${esc(P.title)}.</div>
     </div>
 
+    <div class="readybar">
+      <span class="rb-cap">Module readiness</span>
+      ${READY_MODULES.map(([k,label])=>{ const c=readyColor(k); return `<span class="chip ${READY_CHIP[c]}" style="border-width:1px" title="${label}: ${READY_LABEL[c]} — set in the ${label} section"><span class="cd"></span>${esc(label)}</span>`; }).join('')}
+    </div>
+
     <div class="modgrid">
       <div class="mod active">
         <div class="mod-top">
@@ -2392,7 +2465,7 @@ function pageDashboard(){
       </div>
 
       <div class="card sum"><h3>Server Validation Status</h3>
-        ${VALIDATION_TESTS.map(t=>`
+        ${domeTestsFor(state).map(t=>`
         <div class="srow"><span class="k">${t.label}</span><span class="v">
           <button class="chip ${state.validation[t.key]?'c-ok':'c-off'}" style="cursor:pointer;border-width:1px;font-family:inherit"
             title="Click to toggle" onclick="toggleTest('${t.key}')">
@@ -2400,6 +2473,7 @@ function pageDashboard(){
         <div class="srow"><span class="k">Shipping Approval</span><span class="v">
           <span class="chip ${domeValidationOf(state)?'c-ok':'c-off'}"><span class="cd"></span>${domeValidationOf(state)?'Approved':'Blocked'}</span></span></div>
       </div>
+
 
       ${P.vjRequired ? `
       <div class="card sum"><h3>VJ Validation Status</h3>
@@ -2698,14 +2772,14 @@ function setVjCat(i, v){
 function addVj(){ state.vj.rows.push(blankRow()); saveState(); route(); }
 function rmVj(i){ state.vj.rows.splice(i,1); revalidateVjReady(); saveState(); route(); }
 function toggleVjReady(){
-  if(state.vj.ready){ state.vj.ready=false; saveState(); refreshVjReadyUI(); const b=document.getElementById('vjProbBox'); if(b) b.classList.remove('show'); return; }
+  if(state.vj.ready){ state.vj.ready=false; saveState(); refreshVjReadyUI(); renderSideProject(); const b=document.getElementById('vjProbBox'); if(b) b.classList.remove('show'); return; }
   const problems = vjProblems();
   if(problems.length){
     document.getElementById('vjProbList').innerHTML = problems.map(x=>'• '+esc(x)).join('<br>');
     document.getElementById('vjProbBox').classList.add('show');
     return;
   }
-  state.vj.ready = true; saveState(); refreshVjReadyUI();
+  state.vj.ready = true; saveState(); refreshVjReadyUI(); renderSideProject();
   const b=document.getElementById('vjProbBox'); if(b) b.classList.remove('show');
 }
 
@@ -2813,7 +2887,7 @@ function addRack(){ state.rack.rows.push(blankRackRow()); saveState(); route(); 
 function rmRack(i){ state.rack.rows.splice(i,1); saveState(); route(); }
 
 function toggleReady(){
-  if(state.server.ready){ state.server.ready = false; state._showProblems = false; saveState(); refreshReadyUI(); hideProblems(); return; }
+  if(state.server.ready){ state.server.ready = false; state._showProblems = false; saveState(); refreshReadyUI(); renderSideProject(); hideProblems(); return; }
   const problems = serverProblems();
   if(problems.length){
     /* stays red — show why */
@@ -2823,7 +2897,7 @@ function toggleReady(){
     box.classList.add('show');
     return;
   }
-  state.server.ready = true; state._showProblems = false; saveState(); refreshReadyUI(); hideProblems();
+  state.server.ready = true; state._showProblems = false; saveState(); refreshReadyUI(); renderSideProject(); hideProblems();
 }
 function hideProblems(){ const b=document.getElementById('probBox'); if(b) b.classList.remove('show'); }
 
@@ -3415,6 +3489,11 @@ async function cloudPushActive(entry){
     if(!m || !m.fid){
       const fid = await driveEnsureFolder(projDriveFolderName(e.data.project), rootId);
       m = driveMap()[e.id] = { fid, mtime: '', docsSig: {}, name: projDriveFolderName(e.data.project) };
+      /* NEW project: the live stream may have started on the temporary local id
+         (folder didn't exist yet). Now that the shared folder id is known, re-key
+         the stream to projects/<fid> so BOTH machines share one live node and
+         server/rack/etc. rows sync (BUILD 12.14). */
+      if(e === activeEntry() && typeof liveStart === 'function' && fbReady()){ try{ liveStart(); }catch(_){} }
     }
     /* keep Drive names in sync with the project (BUILD 11.6):
        folder = "<number> <title>", json = same name + .json */
@@ -3927,11 +4006,11 @@ function addCamRowToLib(i){
   flashStat('Added to Library ✓');
 }
 function toggleCamReady(){
-  if(state.camera.ready){ state.camera.ready = false; saveState(); refreshCamReadyUI(); return; }
+  if(state.camera.ready){ state.camera.ready = false; saveState(); refreshCamReadyUI(); renderSideProject(); return; }
   if(!state.camera.rows.some(r=>(r.name||'').trim())){
     alert('Add at least one camera component before marking Ready.'); return;
   }
-  state.camera.ready = true; saveState(); refreshCamReadyUI();
+  state.camera.ready = true; saveState(); refreshCamReadyUI(); renderSideProject();
 }
 function refreshCamReadyUI(){
   const ready = state.camera.ready;
@@ -4746,6 +4825,9 @@ window.addEventListener('hashchange', route);
   const tag = foot ? foot.textContent.trim() : '';
   const ab = document.getElementById('authBuild');
   if(ab && tag) ab.textContent = tag;
+  const num = (tag.match(/BUILD\s+([\d.]+)/) || [,''])[1];
+  const sb = document.getElementById('sideBuild');
+  if(sb && num) sb.textContent = 'build ' + num;           /* sidebar subtitle build, sourced from the one footer tag */
   if(tag) document.title = 'Fulldome Projection SP — ' + tag.replace('BUILD ','b').split(' · ')[0];
 })();
 loadState(()=>{ restoreHandles(); renderHeader(); renderSideProject(); route();
