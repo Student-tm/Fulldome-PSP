@@ -613,7 +613,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.59 · GROUP FOLD + LED</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.60 · PALLET PHOTOS TO DRIVE</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -3912,6 +3912,19 @@ function cloudPhotoJobs(e){
     const label = clean(((m.brand||'') + ' ' + (m.model||'')).trim() || k);
     if(m.f) jobs.push({ dir:'Projectors', name: label + ' — front.jpg', data: m.f });
     if(m.r) jobs.push({ dir:'Projectors', name: label + ' — rear.jpg',  data: m.r });
+  });
+  /* pallet photos → Photos/Pallet <num> [label]/ (BUILD 12.60) */
+  const pp   = (e.data.shipping && e.data.shipping.palletPhotos) || {};
+  const pals = (e.data.shipping && e.data.shipping.pallets) || [];
+  pals.forEach(p => {
+    const dir = clean('Pallet ' + (p.num||'?') + (p.name ? (' ' + p.name) : ''));
+    (pp[p.id] || []).forEach((ph, i) => {
+      if(!ph || !ph.src) return;
+      const base = clean(ph.name || ('pallet-' + (i+1)));
+      const cap  = ph.caption ? ' — ' + clean(ph.caption) : '';
+      const ext  = (ph.src.match(/^data:image\/([a-z]+)/i) || [,'jpg'])[1].replace('jpeg','jpg');
+      jobs.push({ dir, name: base + cap + '.' + ext, data: ph.src });
+    });
   });
   return jobs;
 }
