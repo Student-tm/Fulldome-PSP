@@ -142,6 +142,8 @@
   /* Equipment & Shipping — full-width module group header rows (BUILD 12.47) */
   .shipeq tr.grouphdr td{background:#eef0f3;font-weight:800;text-transform:uppercase;letter-spacing:.6px;font-size:11px;color:#2b2f36;padding:9px 10px;border-top:2px solid #d7dbe0}
   .shipeq tr.grouphdr:first-child td{border-top:none}
+  .shipeq tr.pl-last td{border-bottom:1px solid #d7dbe0}
+  .shipeq .pl-cell{border-left:1px solid #eceef1;background:#fbfcfd}
   .palrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:9px 2px;border-bottom:1px solid var(--line)}
   .palrow:last-child{border-bottom:none}
   .palrow .cell{padding:5px 7px}
@@ -607,7 +609,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.51 · CAMERA KIT + TRIPOD PLACE</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.53 · SHIP CHECKBOXES</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -2474,8 +2476,8 @@ function pageDashboard(){
         <div class="mod-desc">Full equipment inventory, pallet packing, shipping date and shipping documents.</div>
         <div class="mod-stats">
           <div class="ms"><span class="k">Total Equipment</span><span class="v ${shipItems().length?'ok':''}">${shipItems().length || '—'} items</span></div>
+          <div class="ms"><span class="k">Places</span><span class="v">${shipPlaces().length}</span></div>
           <div class="ms"><span class="k">Pallets</span><span class="v">${state.shipping.pallets.length}</span></div>
-          <div class="ms"><span class="k">Items Assigned</span><span class="v">${shipItems().filter(it=>state.shipping.assign[it.key]).length} / ${shipItems().length}</span></div>
           <div class="ms"><span class="k">Shipping Date</span><span class="v ${state.shipping.date?'ok':''}">${state.shipping.date ? esc(state.shipping.date) : '—'}</span></div>
         </div>
         <a class="mod-btn primary" href="#/shipping">Open Module ${IC.open}</a>
@@ -2582,6 +2584,7 @@ function pageServerRack(){
       </select></td>
       <td class="tight"><input class="cell b" id="srvN${i}" onfocus="dlFocus(this)" onblur="dlBlur(this)" list="${(r.cat||'').trim()?catListId(r.cat):'dlLibAll'}" value="${esc(r.name)}" placeholder="Pick from Library or type" oninput="updSrv(${i},'name',this.value)"></td>
       <td style="width:6%;text-align:center">${ordDot('server', i, r)}</td>
+      ${shipChk('server', i, r)}
       <td class="tight" style="width:7%"><input class="cell num" value="${esc(r.qty)}" oninput="updSrv(${i},'qty',this.value)"></td>
       <td class="tight" style="width:11%"><input class="cell num" id="srvP${i}" value="${esc(r.price)}" placeholder="—" oninput="updSrv(${i},'price',this.value)"></td>
       <td class="num" style="width:11%"><span id="srvRowT${i}">${fmt(priceNum(r.price)*(parseFloat(r.qty)||1) || null)}</span></td>
@@ -2602,6 +2605,7 @@ function pageServerRack(){
       </select></td>
       <td class="tight"><input class="cell b" id="rackN${i}" onfocus="dlFocus(this)" onblur="dlBlur(this)" list="${(r.cat||'').trim()?rackListId(r.cat):'dlLibAll'}" value="${esc(r.name)}" placeholder="Pick from Library or type" oninput="updRack(${i},'name',this.value)"></td>
       <td style="width:7%;text-align:center">${ordDot('rack', i, r)}</td>
+      ${shipChk('rack', i, r)}
       <td class="tight" style="width:7%"><input class="cell num" value="${esc(r.qty)}" oninput="updRack(${i},'qty',this.value)"></td>
       <td class="tight" style="width:12%"><input class="cell num" id="rackP${i}" value="${esc(r.price)}" placeholder="—" oninput="updRack(${i},'price',this.value)"></td>
       <td class="tight" style="width:16%"><div style="display:flex;align-items:center;gap:4px"><input class="cell" id="rackL${i}" onmouseenter="lpShow(this)" onmouseleave="lpHide()" value="${esc(r.link)}" placeholder="https://" oninput="updRack(${i},'link',this.value)"><button class="mod-btn" style="padding:4px 7px;flex:none" title="Copy link" onclick="copyRowLink('rackL${i}', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button><button class="mod-btn" style="padding:4px 7px;flex:none" title="Open link" onclick="openRowLink('rackL${i}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><path d="M15 3h6v6M10 14L21 3"/></svg></button></div></td>
@@ -2658,9 +2662,9 @@ function pageServerRack(){
         <span style="font-size:11.5px;color:var(--dim)">Chassis height of the Dome Server (rack units).</span>
       </div>
       <table class="eq">
-        <thead><tr><th>Category</th><th>Hardware</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th><th>Link</th><th></th><th></th></tr></thead>
+        <thead><tr><th>Category</th><th>Hardware</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:center" title="Combine into one shipping place">Ship</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th><th>Link</th><th></th><th></th></tr></thead>
         <tbody id="srvBody">${srvRows}</tbody>
-        <tfoot><tr><td colspan="5">Server total</td><td class="num" id="srvFoot">${fmt(serverTotal())}</td><td colspan="3"></td></tr></tfoot>
+        <tfoot><tr><td colspan="6">Server total</td><td class="num" id="srvFoot">${fmt(serverTotal())}</td><td colspan="3"></td></tr></tfoot>
       </table>
       <button class="add-line" onclick="addSrv()">+ Add component</button>
       <div class="problems ${(!ready && problems.length && state._showProblems)?'show':''}" id="probBox">
@@ -2698,9 +2702,9 @@ function pageServerRack(){
       <div class="card" style="margin-bottom:0">
         <div class="card-head"><h3>Rack equipment</h3><div style="display:flex;gap:8px;align-items:center"><button class="mod-btn" style="padding:5px 11px;font-size:11.5px;margin-right:8px" title="Fetch fresh prices from the links" onclick="refreshPrices('rack')">↻ Prices</button><span class="chip c-warn"><span class="cd"></span>Layout: Draft</span></div></div>
         <table class="eq">
-          <thead><tr><th>Category</th><th>Equipment</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:right">Qty</th><th style="text-align:right">Price</th><th>Link</th><th></th><th></th></tr></thead>
+          <thead><tr><th>Category</th><th>Equipment</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:center" title="Combine into one shipping place">Ship</th><th style="text-align:right">Qty</th><th style="text-align:right">Price</th><th>Link</th><th></th><th></th></tr></thead>
           <tbody>${rackRows}</tbody>
-          <tfoot><tr><td colspan="4">Rack total</td><td class="num" id="rackFoot">${fmt(rackTotal())}</td><td colspan="3"></td></tr></tfoot>
+          <tfoot><tr><td colspan="5">Rack total</td><td class="num" id="rackFoot">${fmt(rackTotal())}</td><td colspan="3"></td></tr></tfoot>
         </table>
         <button class="add-line" onclick="addRack()">+ Add equipment</button>
       </div>
@@ -2775,6 +2779,7 @@ function vjSection(){
       </select></td>
       <td class="tight"><input class="cell b" id="vjN${i}" onfocus="dlFocus(this)" onblur="dlBlur(this)" list="${(r.cat||'').trim()?catListId(r.cat):'dlLibAll'}" value="${esc(r.name)}" placeholder="Pick from Library or type" oninput="updVj(${i},'name',this.value)"></td>
       <td style="width:6%;text-align:center">${ordDot('vj', i, r)}</td>
+      ${shipChk('vj', i, r)}
       <td class="tight" style="width:7%"><input class="cell num" value="${esc(r.qty)}" oninput="updVj(${i},'qty',this.value)"></td>
       <td class="tight" style="width:11%"><input class="cell num" id="vjP${i}" value="${esc(r.price)}" placeholder="—" oninput="updVj(${i},'price',this.value)"></td>
       <td class="num" style="width:11%"><span id="vjRowT${i}">${fmt(priceNum(r.price)*(parseFloat(r.qty)||1) || null)}</span></td>
@@ -2795,9 +2800,9 @@ function vjSection(){
           <span class="led ${vjReady?'on':''}" id="vjBtnLed"></span><span id="vjBtnLbl">${vjReady ? 'VJ Server Ready' : 'Mark as Ready'}</span></button>
       </div>
       <table class="eq">
-        <thead><tr><th>Category</th><th>Hardware</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th><th>Link</th><th></th><th></th></tr></thead>
+        <thead><tr><th>Category</th><th>Hardware</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:center" title="Combine into one shipping place">Ship</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th><th>Link</th><th></th><th></th></tr></thead>
         <tbody>${rows}</tbody>
-        <tfoot><tr><td colspan="5">VJ Server total</td><td class="num" id="vjFoot">${fmt(vjTotal())}</td><td colspan="3"></td></tr></tfoot>
+        <tfoot><tr><td colspan="6">VJ Server total</td><td class="num" id="vjFoot">${fmt(vjTotal())}</td><td colspan="3"></td></tr></tfoot>
       </table>
       <button class="add-line" onclick="addVj()">+ Add component</button>
       <div class="problems" id="vjProbBox"><b>VJ Server cannot be marked Ready:</b><span id="vjProbList"></span></div>
@@ -2998,33 +3003,38 @@ function setServerCase(v){
   saveState(); route();
 }
 
-/* ============ EQUIPMENT & SHIPPING MODULE (BUILD 12.47) ============ */
-/* Equipment grouped by MODULE (dashboard order) for the packing table.
-   Rule: the Dome Server (and VJ Server) count as ONE line each — the server NAME,
-   not its internal components; the Rack lists ALL its equipment; Projectors and
-   Camera list their items. Each item carries a purchase link when known. */
-function shipGroups(){
-  const P = state.project;
-  const agg = rows => { const m={}, order=[]; (rows||[]).forEach(r=>{ const nm=(r.name||'').trim(); if(!nm) return; if(!m[nm]){ m[nm]={name:nm,qty:0,link:r.link||''}; order.push(nm); } m[nm].qty+=parseFloat(r.qty)||1; if(!m[nm].link && r.link) m[nm].link=r.link; }); return order.map(nm=>m[nm]); };
-  const groups = [];
-  /* Server & Rack: server = name only, then the whole rack */
-  const sr = [];
+/* ============ EQUIPMENT & SHIPPING MODULE (BUILD 12.53) ============
+   PLACES are driven by the "Ship" checkbox on builder rows (isCombined):
+   • Server & Rack — the server (one line) + VJ + every CHECKED rack row = one combined
+     "Server & Rack" place; each UNCHECKED rack row ships as its own place.
+   • Projectors — each projector unit is always its own place.
+   • Camera — every CHECKED camera row = one "Camera" place; each UNCHECKED row (e.g. tripod)
+     ships as its own place.
+   Assignment is per PLACE (one pallet per place, chosen once). */
+function shipPlaces(){
+  const P = state.project; const places = [];
+  const mkItem = r => ({ name:(r.name||'').trim(), qty:parseFloat(r.qty)||1, link:r.link||'' });
+  /* ---- Server & Rack ---- */
+  const srCombined = [], srSeparate = [];
   const serverName = (P.sysNumber ? ('FDPSN#'+P.sysNumber) : 'Dome Server') + (P.type ? (' '+P.type) : '');
-  if((state.server.rows||[]).some(r=>(r.name||'').trim())) sr.push({key:'sr|server', name: serverName || 'Dome Server', qty:1, link:''});
-  if(P.vjRequired && ((state.vj&&state.vj.rows)||[]).some(r=>(r.name||'').trim())) sr.push({key:'sr|vj', name:'VJ Server', qty:1, link:''});
-  agg(state.rack.rows).forEach(it=> sr.push({key:'sr|rack|'+it.name, name:it.name, qty:it.qty, link:it.link}));
-  if(sr.length) groups.push({module:'Server & Rack', items:sr});
-  /* Projectors — EACH unit is its own line (so each becomes its own shipping place) */
-  const pj = [];
-  ((state.projectors&&state.projectors.list)||[]).forEach((p,i)=>{ const nm=((p.mfr||'')+' '+(p.model||'')).trim(); if(!nm) return; pj.push({key:'proj|'+(p.id||i), name: nm + (p.serial?(' · SN '+p.serial):(p.num?(' #'+p.num):'')), qty:1, link:''}); });
-  if(pj.length) groups.push({module:'Projectors', items:pj});
-  /* Calibration Camera */
-  const cam = agg((state.camera&&state.camera.rows)||[]);
-  if(cam.length) groups.push({module:'Calibration Camera', items: cam.map(it=>({key:'cam|'+it.name, name:it.name, qty:it.qty, link:it.link}))});
-  return groups;
+  if((state.server.rows||[]).some(r=>(r.name||'').trim())) srCombined.push({name:serverName||'Dome Server', qty:1, link:''});
+  if(P.vjRequired && ((state.vj&&state.vj.rows)||[]).some(r=>(r.name||'').trim())) srCombined.push({name:'VJ Server', qty:1, link:''});
+  (state.rack.rows||[]).forEach(r=>{ if(!(r.name||'').trim()) return; (isCombined(r)?srCombined:srSeparate).push(mkItem(r)); });
+  if(srCombined.length) places.push({key:'pl|sr', name:'Server & Rack', module:'Server & Rack', items:srCombined});
+  srSeparate.forEach((it,i)=> places.push({key:'pl|sr-sep|'+i, name:it.name, module:'Server & Rack', items:[it]}));
+  /* ---- Projectors — each unit its own place ---- */
+  ((state.projectors&&state.projectors.list)||[]).forEach((p,i)=>{ const nm=((p.mfr||'')+' '+(p.model||'')).trim(); if(!nm) return; places.push({key:'pl|proj|'+(p.id||i), name: nm + (p.serial?(' · SN '+p.serial):(p.num?(' #'+p.num):'')), module:'Projectors', items:[{name:nm, qty:1, link:''}]}); });
+  /* ---- Camera ---- */
+  const camCombined = [], camSeparate = [];
+  ((state.camera&&state.camera.rows)||[]).forEach(r=>{ if(!(r.name||'').trim()) return; (isCombined(r)?camCombined:camSeparate).push(mkItem(r)); });
+  if(camCombined.length) places.push({key:'pl|cam', name:'Camera', module:'Calibration Camera', items:camCombined});
+  camSeparate.forEach((it,i)=> places.push({key:'pl|cam-sep|'+i, name:it.name, module:'Calibration Camera', items:[it]}));
+  return places;
 }
-/* flat list in render order — used for the running number, assignment index and counts */
-function shipItems(){ const out=[]; shipGroups().forEach(g=>g.items.forEach(it=>out.push(it))); return out; }
+/* flat list in render order — running number & item counts */
+function shipItems(){ const out=[]; shipPlaces().forEach(pl=>pl.items.forEach(it=>out.push(it))); return out; }
+/* module order for the table headers, derived from the places actually present */
+function shipModules(){ const seen=[]; shipPlaces().forEach(pl=>{ if(seen.indexOf(pl.module)<0) seen.push(pl.module); }); return seen; }
 function shipLinkHref(l){ l=(l||'').trim(); if(!l) return ''; return /^https?:\/\//i.test(l) ? l : ('https://'+l); }
 function setShipDate(v){ state.shipping.date = v||''; saveState(); renderSideProject(); rerenderKeepScroll(); }
 function addPallet(){
@@ -3038,26 +3048,17 @@ function setPalletField(id, field, v){ const p = state.shipping.pallets.find(x=>
 /* Auto-create shipping PLACES by rule (BUILD 12.48):
    Server & Rack = 1 place · each projector = its own place · Camera (body+lens+adapter+case) = 1 place */
 function autoPlaces(){
-  const groups = shipGroups();
-  if(!groups.length){ alert('No equipment yet — add components first.'); return; }
-  if(state.shipping.pallets.length && !confirm('Replace the current places with auto-created ones?\n\n• Server & Rack → 1 place\n• Each projector → its own place\n• Camera (body + lens + adapter + case) → 1 place')) return;
+  const places = shipPlaces();
+  if(!places.length){ alert('No equipment yet — add components first.'); return; }
+  if(state.shipping.pallets.length && !confirm('Replace the current pallets with auto-created ones?\n\n• Server & Rack → 1 pallet\n• Each projector → its own pallet\n• Camera kit (body + case + lens + adapter) → 1 pallet\n• Tripod → its own pallet')) return;
   const pals = [], assign = {}; let n = 0;
-  const mk = (name) => { n++; const p = { id:newId(), num:String(n), name:name||'', l:'', w:'', h:'', wt:'' }; pals.push(p); return p; };
-  groups.forEach(g => {
-    if(g.module === 'Projectors'){
-      g.items.forEach(it => { const p = mk(it.name); assign[it.key] = p.id; });   /* each projector = its own place */
-    } else if(g.module === 'Calibration Camera'){
-      /* camera KIT (body + case + lens + adapter) = ONE place; the tripod ships separately */
-      const tripod = g.items.filter(it => /tripod/i.test(it.name));
-      const kit    = g.items.filter(it => !/tripod/i.test(it.name));
-      if(kit.length){ const p = mk('Camera'); kit.forEach(it => assign[it.key] = p.id); }
-      tripod.forEach(it => { const p = mk('Tripod'); assign[it.key] = p.id; });
-    } else {
-      const p = mk(g.module); g.items.forEach(it => assign[it.key] = p.id);   /* Server & Rack (and any other) = one place */
-    }
+  places.forEach(pl => {
+    n++;
+    const p = { id:newId(), num:String(n), name:pl.name||'', l:'', w:'', h:'', wt:'' };
+    pals.push(p); assign[pl.key] = p.id;   /* one pallet per place; the whole place assigned once */
   });
   state.shipping.pallets = pals; state.shipping.assign = assign;
-  saveState(); route(); flashStat('Places created by rule ✓');
+  saveState(); route(); flashStat('Pallets created by rule ✓');
 }
 function loadJsPDF(cb){
   if(window.jspdf && window.jspdf.jsPDF){ cb(window.jspdf.jsPDF); return; }
@@ -3082,22 +3083,24 @@ function genShipPDF(){
     nl('Project: #' + (P.number||'') + '  ' + (P.title||''), 11, true);
     nl('Shipping date: ' + (S.date || '—'), 10, false, '#444');
     y += 8;
+    const places = shipPlaces();
     let totalWt = 0;
     S.pallets.forEach(p => {
-      const its = items.filter(it => S.assign[it.key] === p.id);
+      const pls = places.filter(pl => S.assign[pl.key] === p.id);
+      const its = pls.reduce((a,pl)=>a.concat(pl.items),[]);
       const dims = [p.l, p.w, p.h].map(x => (x||'').trim()).filter(Boolean);
       const dimStr = dims.length ? (dims.join('" x ') + '" (L x W x H)') : 'size —';
       const wt = (p.wt||'').trim(); if(wt) totalWt += parseFloat(wt) || 0;
       y += 6;
-      nl('Place ' + (p.num||'?') + (p.name ? ('  —  ' + p.name) : ''), 12, true);
+      nl('Pallet ' + (p.num||'?') + (p.name ? ('  —  ' + p.name) : ''), 12, true);
       nl('    ' + dimStr + '     weight: ' + (wt ? wt + ' lb' : '—'), 10, false, '#555');
       if(its.length) its.forEach(it => nl('    - ' + it.name + (it.qty>1 ? ('  x' + it.qty) : ''), 10, false, '#222'));
-      else nl('    (no items)', 10, false, '#999');
+      else nl('    (empty)', 10, false, '#999');
     });
-    const un = items.filter(it => !S.assign[it.key]);
-    if(un.length){ y += 8; nl('Unassigned', 12, true, '#b00'); un.forEach(it => nl('    - ' + it.name + (it.qty>1 ? ('  x' + it.qty) : ''), 10, false, '#222')); }
+    const un = places.filter(pl => !S.assign[pl.key]);
+    if(un.length){ y += 8; nl('Unassigned places', 12, true, '#b00'); un.forEach(pl => pl.items.forEach(it => nl('    - ' + it.name + (it.qty>1 ? ('  x' + it.qty) : ''), 10, false, '#222'))); }
     y += 14;
-    nl('Total places: ' + S.pallets.length + '        Total weight: ' + (totalWt ? (Math.round(totalWt*10)/10) + ' lb' : '—'), 11, true);
+    nl('Total pallets: ' + S.pallets.length + '        Total weight: ' + (totalWt ? (Math.round(totalWt*10)/10) + ' lb' : '—'), 11, true);
     const fn = ('Shipping ' + (P.number||'') + ' ' + (P.title||'')).trim().replace(/[\/\\:*?"<>|]/g, '-') + '.pdf';
     doc.save(fn); flashStat('Shipping PDF generated ✓');
   });
@@ -3108,9 +3111,10 @@ function rmPallet(id){
   Object.keys(state.shipping.assign).forEach(k=>{ if(state.shipping.assign[k]===id) delete state.shipping.assign[k]; });
   saveState(); route();
 }
-function assignItem(idx, pid){
-  const it = shipItems()[idx]; if(!it) return;
-  if(pid) state.shipping.assign[it.key] = pid; else delete state.shipping.assign[it.key];
+/* assign a whole PLACE (bundle) to a pallet in ONE action — idx into shipPlaces() */
+function assignPlace(idx, pid){
+  const pl = shipPlaces()[idx]; if(!pl) return;
+  if(pid) state.shipping.assign[pl.key] = pid; else delete state.shipping.assign[pl.key];
   saveState(); rerenderKeepScroll();
 }
 function pickShipDoc(){ if(!activeEntry()){ alert('No active project.'); return; } document.getElementById('shipFile').click(); }
@@ -3130,31 +3134,40 @@ function downloadShipDoc(i){ const f=state.shipping.docs[i]; if(!f) return; cons
 function rmShipDoc(i){ const f=state.shipping.docs[i]; if(!f) return; if(!confirm('Delete "'+f.name+'"?')) return; state.shipping.docs.splice(i,1); saveState(); rerenderKeepScroll(); }
 function pageShipping(){
   const S = state.shipping, P = state.project;
-  const groups = shipGroups();
   const items = shipItems();
-  const assigned = items.filter(it=>S.assign[it.key]).length;
+  const places = shipPlaces();
+  const modules = shipModules();
+  const assignedPlaces = places.filter(pl=>S.assign[pl.key]).length;
   const palOptions = pid => `<option value="">— Unassigned</option>` + S.pallets.map(p=>`<option value="${p.id}" ${pid===p.id?'selected':''}>Pallet ${esc(p.num||'?')}${p.name?' — '+esc(p.name):''}</option>`).join('');
-  let fi = 0;   /* running flat index = index into shipItems(), for assignment */
-  const eqRows = items.length ? groups.map(g=>{
-    const hdr = `<tr class="grouphdr"><td colspan="5">${esc(g.module)}</td></tr>`;
-    const its = g.items.map(it=>{
-      const idx = fi++; const n = idx+1; const pid = S.assign[it.key]||'';
-      const href = shipLinkHref(it.link);
-      const link = href
-        ? `<a href="${esc(href)}" target="_blank" rel="noopener" title="Open purchase link" style="color:var(--fdp-red);display:inline-flex"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg></a>`
-        : `<span style="color:#c8ccd2">—</span>`;
-      return `<tr>
-        <td class="tight" style="width:5%;text-align:right;color:var(--dim)">${n}</td>
-        <td>${esc(it.name)}</td>
-        <td style="text-align:right;width:7%">${it.qty}</td>
-        <td class="tight" style="width:5%;text-align:center">${link}</td>
-        <td class="tight" style="width:24%"><select class="cell ${pid?'':'empty'}" onchange="assignItem(${idx},this.value)">${palOptions(pid)}</select></td>
-      </tr>`;
+  let n = 0;
+  const eqRows = items.length ? modules.map(mod=>{
+    const hdr = `<tr class="grouphdr"><td colspan="5">${esc(mod)}</td></tr>`;
+    const modPlaces = places.filter(pl => pl.module === mod);
+    const body = modPlaces.map(pl => {
+      const plIdx = places.indexOf(pl); const pid = S.assign[pl.key]||'';
+      return pl.items.map((it, ii)=>{
+        n++;
+        const href = shipLinkHref(it.link);
+        const link = href
+          ? `<a href="${esc(href)}" target="_blank" rel="noopener" title="Open purchase link" style="color:var(--fdp-red);display:inline-flex"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg></a>`
+          : `<span style="color:#c8ccd2">—</span>`;
+        /* ONE pallet dropdown per PLACE — on the first item row, spanning the place's items */
+        const pallCell = ii === 0
+          ? `<td class="tight pl-cell" rowspan="${pl.items.length}" style="width:24%;vertical-align:middle"><select class="cell ${pid?'':'empty'}" title="Whole ${esc(pl.name)} place → one pallet" onchange="assignPlace(${plIdx},this.value)">${palOptions(pid)}</select></td>`
+          : '';
+        return `<tr class="${ii===pl.items.length-1?'pl-last':''}">
+          <td class="tight" style="width:5%;text-align:right;color:var(--dim)">${n}</td>
+          <td>${esc(it.name)}</td>
+          <td style="text-align:right;width:7%">${it.qty}</td>
+          <td class="tight" style="width:5%;text-align:center">${link}</td>
+          ${pallCell}
+        </tr>`;
+      }).join('');
     }).join('');
-    return hdr + its;
+    return hdr + body;
   }).join('') : `<tr><td colspan="5" style="color:var(--dim);padding:14px">No equipment yet — add components in Server, Rack, Camera or Projectors.</td></tr>`;
   const palletRows = S.pallets.length ? S.pallets.map(p=>{
-    const cnt = items.filter(it=>S.assign[it.key]===p.id).length;
+    const cnt = places.filter(pl=>S.assign[pl.key]===p.id).reduce((a,pl)=>a+pl.items.length,0);
     return `<div class="palrow">
       <span class="pl-num">Pallet <input class="cell" style="width:46px" value="${esc(p.num||'')}" oninput="setPalletNum('${p.id}',this.value)"></span>
       <input class="cell pl-name" placeholder="Label (e.g. Server & Rack)" value="${esc(p.name||'')}" oninput="setPalletField('${p.id}','name',this.value)">
@@ -3185,7 +3198,7 @@ function pageShipping(){
     </div>
     <div class="kpis">
       <div class="kpi"><div class="kl">Pallets</div><div class="kvv">${S.pallets.length}</div></div>
-      <div class="kpi"><div class="kl">Items assigned</div><div class="kvv">${assigned} / ${items.length}</div></div>
+      <div class="kpi"><div class="kl">Places assigned</div><div class="kvv">${assignedPlaces} / ${places.length}</div></div>
       <div class="kpi"><div class="kl">Shipping date</div><div class="kvv" style="font-size:15px">${S.date ? esc(S.date) : '—'}</div></div>
       <div class="kpi"><div class="kl">Documents</div><div class="kvv">${S.docs.length}</div></div>
     </div>
@@ -3210,7 +3223,7 @@ function pageShipping(){
     </div>
 
     <div class="card">
-      <div class="card-head"><h3>Equipment → Pallet</h3><span class="chip c-mut"><span class="cd"></span>${assigned}/${items.length} assigned</span></div>
+      <div class="card-head"><h3>Equipment → Pallet</h3><span class="chip c-mut"><span class="cd"></span>${assignedPlaces}/${places.length} places on pallets</span></div>
       <table class="eq shipeq">
         <thead><tr><th style="width:5%;text-align:right">#</th><th>Equipment</th><th style="text-align:right">Qty</th><th style="text-align:center">Link</th><th>Pallet</th></tr></thead>
         <tbody>${eqRows}</tbody>
@@ -4324,6 +4337,13 @@ function ordDot(kind, i, r){
   const s = parseInt(r.ord)||0;
   return `<span class="odot o${s}" id="${kind}Ord${i}" title="${ORD_TITLES[s]} — click to change" onclick="cycOrd('${kind}',${i},this)"></span>`;
 }
+/* --- Shipping "combine into one place" flag on builder rows (BUILD 12.53) ---
+   checked = this item ships in its module's combined place; unchecked = its own place.
+   Default: checked, EXCEPT tripods (they ship separately). */
+function isCombined(r){ if(!r) return false; return (r.ship===undefined) ? !/tripod/i.test(r.name||'') : !!r.ship; }
+function shipRowsOf(kind){ return kind==='server'?state.server.rows : kind==='vj'?(state.vj&&state.vj.rows||[]) : kind==='rack'?state.rack.rows : kind==='camera'?(state.camera&&state.camera.rows||[]) : []; }
+function toggleShip(kind, i, checked){ const rows=shipRowsOf(kind); if(!rows[i]) return; rows[i].ship = !!checked; saveState(); }
+function shipChk(kind, i, r){ return `<td style="width:4%;text-align:center" title="Shipping — combine into one place (uncheck = ships as its own place)"><input type="checkbox" style="width:15px;height:15px;cursor:pointer;accent-color:var(--fdp-red)" ${isCombined(r)?'checked':''} onchange="toggleShip('${kind}',${i},this.checked)"></td>`; }
 function cycOrd(kind, i, el){
   const rows = ordRowsOf(kind); if(!rows[i]) return;
   const s = ((parseInt(rows[i].ord)||0) + 1) % 3;
@@ -4417,6 +4437,7 @@ function pageCamera(){
       </select></td>
       <td class="tight"><input class="cell b" id="camN${i}" onfocus="dlFocus(this)" onblur="dlBlur(this)" list="${(r.cat||'').trim()?camListId(r.cat):'dlLibAll'}" value="${esc(r.name)}" placeholder="Pick from Library or type" oninput="updCam(${i},'name',this.value)"></td>
       <td style="width:6%;text-align:center">${ordDot('camera', i, r)}</td>
+      ${shipChk('camera', i, r)}
       <td class="tight" style="width:7%"><input class="cell num" value="${esc(r.qty)}" oninput="updCam(${i},'qty',this.value)"></td>
       <td class="tight" style="width:11%"><input class="cell num" id="camP${i}" value="${esc(r.price)}" placeholder="—" oninput="updCam(${i},'price',this.value)"></td>
       <td class="num" style="width:11%"><span id="camRowT${i}">${fmt(priceNum(r.price)*(parseFloat(r.qty)||1) || null)}</span></td>
@@ -4456,9 +4477,9 @@ function pageCamera(){
           <span class="led ${ready?'on':''}" id="camBtnLed"></span><span id="camBtnLbl">${ready ? 'Camera Ready' : 'Mark as Ready'}</span></button>
       </div>
       <table class="eq">
-        <thead><tr><th>Category</th><th>Hardware</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th><th>Link</th><th></th><th></th></tr></thead>
+        <thead><tr><th>Category</th><th>Hardware</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:center" title="Combine into one shipping place">Ship</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th><th>Link</th><th></th><th></th></tr></thead>
         <tbody>${camRows}</tbody>
-        <tfoot><tr><td colspan="5">Camera total</td><td class="num" id="camFoot">${fmt(camTotal())}</td><td colspan="3"></td></tr></tfoot>
+        <tfoot><tr><td colspan="6">Camera total</td><td class="num" id="camFoot">${fmt(camTotal())}</td><td colspan="3"></td></tr></tfoot>
       </table>
       <button class="add-line" onclick="addCam()">+ Add component</button>
     </div>
