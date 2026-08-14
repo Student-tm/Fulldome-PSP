@@ -553,7 +553,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.2 · TT KEY</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.3 · TT REOPEN</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1332,9 +1332,12 @@ var TTD_URL = 'https://student-tm.github.io/Fulldome-TTD/';
 function openTT(){
   var m = document.getElementById('ttModal'); if(!m) return;
   var f = document.getElementById('ttFrame');
-  if(f && !f.getAttribute('src')){                 /* lazy-load once; keeps in-progress work when reopened */
+  if(f && !f.getAttribute('src')){                 /* first open: lazy-load; the tt-ready handshake prefills */
     var ld = document.getElementById('ttLoad'); if(ld) ld.style.display='flex';
-    f.setAttribute('src', TTD_URL);
+    /* cache-bust so the frame always loads the freshly deployed TTD (a plain reload served the old build from disk cache) */
+    f.setAttribute('src', TTD_URL + (TTD_URL.indexOf('?')<0?'?':'&') + 'psp=' + Date.now());
+  } else if(f && f.contentWindow){                 /* already loaded: re-push the CURRENT project (project switch without a reload) */
+    ttSendPrefill(f.contentWindow);
   }
   m.classList.add('open');
 }
@@ -1356,6 +1359,18 @@ function ttPrefillFields(){
   var out = {};
   pick.forEach(function(k){ if(P[k]!=null && String(P[k]).trim()!=='') out[k] = P[k]; });
   return out;
+}
+/* send the active project's prefill (key+number+fields) to a TTD window */
+function ttSendPrefill(win){
+  if(!win) return;
+  var ae = activeEntry();
+  var msg = {
+    source: 'fulldome-psp', type: 'tt-prefill',
+    key:    ae ? ae.id : null,
+    number: (ae && ae.data && ae.data.project && ae.data.project.number) || '',
+    fields: ttPrefillFields()
+  };
+  try{ win.postMessage(msg, TTD_ORIGIN); }catch(_){}
 }
 /* store an incoming TT file into the active project's Documentation (ttFiles) → rides to Drive */
 function ttStoreFile(file, ttMeta){
@@ -1394,15 +1409,7 @@ window.addEventListener('message', function(e){
   var d = e.data || {};
   if(!d || d.source !== 'fulldome-ttd') return;     /* only messages from TTD */
   if(d.type === 'tt-ready'){
-    var ae = activeEntry();
-    var msg = {
-      source: 'fulldome-psp',
-      type:   'tt-prefill',
-      key:    ae ? ae.id : null,                                   /* stable per-project identity — TTD switches the form on change */
-      number: (ae && ae.data && ae.data.project && ae.data.project.number) || '',
-      fields: ttPrefillFields()
-    };
-    try{ e.source.postMessage(msg, e.origin); }catch(_){}
+    ttSendPrefill(e.source);                          /* stable per-project identity (key) — TTD switches the form on change */
   }else if(d.type === 'tt-save'){
     var res = ttReceiveSave(d);
     try{ e.source.postMessage({ source:'fulldome-psp', type:'tt-save-result', ok:res.ok, msg:res.msg }, e.origin); }catch(_){}
