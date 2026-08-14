@@ -609,7 +609,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.53 · SHIP CHECKBOXES</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.55 · PALLET COL WIDTH</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -739,6 +739,8 @@ function syncActive(){
   if(!state.shipping.assign || typeof state.shipping.assign!=='object') state.shipping.assign = {};
   if(!Array.isArray(state.shipping.docs)) state.shipping.docs = [];
   if(typeof state.shipping.date !== 'string') state.shipping.date = '';
+  if(!state.shipping.meta   || typeof state.shipping.meta!=='object')   state.shipping.meta = {};    /* per-item comments (BUILD 12.54) */
+  if(!state.shipping.packed || typeof state.shipping.packed!=='object') state.shipping.packed = {};  /* per-place "loaded on pallet" flag */
   if(!Array.isArray(state.rack.photos)) state.rack.photos = [];
   if(!state.vj || typeof state.vj!=='object') state.vj = { rows: [], ready: false, photos: [] };
   if(!state.validation || typeof state.validation!=='object') state.validation = { cpu:false, gpu:false, capture:false, video:false, burnin:false };
@@ -3013,24 +3015,26 @@ function setServerCase(v){
    Assignment is per PLACE (one pallet per place, chosen once). */
 function shipPlaces(){
   const P = state.project; const places = [];
-  const mkItem = r => ({ name:(r.name||'').trim(), qty:parseFloat(r.qty)||1, link:r.link||'' });
+  const mkItem = (r, key) => ({ key, name:(r.name||'').trim(), qty:parseFloat(r.qty)||1, link:r.link||'' });
   /* ---- Server & Rack ---- */
   const srCombined = [], srSeparate = [];
   const serverName = (P.sysNumber ? ('FDPSN#'+P.sysNumber) : 'Dome Server') + (P.type ? (' '+P.type) : '');
-  if((state.server.rows||[]).some(r=>(r.name||'').trim())) srCombined.push({name:serverName||'Dome Server', qty:1, link:''});
-  if(P.vjRequired && ((state.vj&&state.vj.rows)||[]).some(r=>(r.name||'').trim())) srCombined.push({name:'VJ Server', qty:1, link:''});
-  (state.rack.rows||[]).forEach(r=>{ if(!(r.name||'').trim()) return; (isCombined(r)?srCombined:srSeparate).push(mkItem(r)); });
+  if((state.server.rows||[]).some(r=>(r.name||'').trim())) srCombined.push({key:'i|srv', name:serverName||'Dome Server', qty:1, link:''});
+  if(P.vjRequired && ((state.vj&&state.vj.rows)||[]).some(r=>(r.name||'').trim())) srCombined.push({key:'i|vj', name:'VJ Server', qty:1, link:''});
+  (state.rack.rows||[]).forEach((r,idx)=>{ if(!(r.name||'').trim()) return; (isCombined(r)?srCombined:srSeparate).push(mkItem(r,'i|rack|'+idx)); });
   if(srCombined.length) places.push({key:'pl|sr', name:'Server & Rack', module:'Server & Rack', items:srCombined});
   srSeparate.forEach((it,i)=> places.push({key:'pl|sr-sep|'+i, name:it.name, module:'Server & Rack', items:[it]}));
   /* ---- Projectors — each unit its own place ---- */
-  ((state.projectors&&state.projectors.list)||[]).forEach((p,i)=>{ const nm=((p.mfr||'')+' '+(p.model||'')).trim(); if(!nm) return; places.push({key:'pl|proj|'+(p.id||i), name: nm + (p.serial?(' · SN '+p.serial):(p.num?(' #'+p.num):'')), module:'Projectors', items:[{name:nm, qty:1, link:''}]}); });
+  ((state.projectors&&state.projectors.list)||[]).forEach((p,i)=>{ const nm=((p.mfr||'')+' '+(p.model||'')).trim(); if(!nm) return; places.push({key:'pl|proj|'+(p.id||i), name: nm + (p.serial?(' · SN '+p.serial):(p.num?(' #'+p.num):'')), module:'Projectors', items:[{key:'i|proj|'+(p.id||i), name:nm, qty:1, link:''}]}); });
   /* ---- Camera ---- */
   const camCombined = [], camSeparate = [];
-  ((state.camera&&state.camera.rows)||[]).forEach(r=>{ if(!(r.name||'').trim()) return; (isCombined(r)?camCombined:camSeparate).push(mkItem(r)); });
+  ((state.camera&&state.camera.rows)||[]).forEach((r,idx)=>{ if(!(r.name||'').trim()) return; (isCombined(r)?camCombined:camSeparate).push(mkItem(r,'i|cam|'+idx)); });
   if(camCombined.length) places.push({key:'pl|cam', name:'Camera', module:'Calibration Camera', items:camCombined});
   camSeparate.forEach((it,i)=> places.push({key:'pl|cam-sep|'+i, name:it.name, module:'Calibration Camera', items:[it]}));
   return places;
 }
+function setShipCmt(key, v){ if(!state.shipping.meta) state.shipping.meta={}; state.shipping.meta[key]=state.shipping.meta[key]||{}; state.shipping.meta[key].cmt=v; saveState(); }
+function setPacked(idx, checked){ const pl=shipPlaces()[idx]; if(!pl) return; if(!state.shipping.packed) state.shipping.packed={}; state.shipping.packed[pl.key]=!!checked; saveState(); rerenderKeepScroll(); }
 /* flat list in render order — running number & item counts */
 function shipItems(){ const out=[]; shipPlaces().forEach(pl=>pl.items.forEach(it=>out.push(it))); return out; }
 /* module order for the table headers, derived from the places actually present */
@@ -3082,25 +3086,35 @@ function genShipPDF(){
     doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.setTextColor('#111'); doc.text('SHIPPING / PACKING LIST', M, y); y += 26;
     nl('Project: #' + (P.number||'') + '  ' + (P.title||''), 11, true);
     nl('Shipping date: ' + (S.date || '—'), 10, false, '#444');
-    y += 8;
     const places = shipPlaces();
+    const assignedPl = places.filter(pl => S.assign[pl.key]);
+    const loadedPl = places.filter(pl => S.assign[pl.key] && S.packed && S.packed[pl.key]);
+    const complete = places.length > 0 && loadedPl.length === places.length;
+    /* status banner — instantly shows whether shipping is finished */
+    y += 4;
+    if(complete) nl('STATUS: READY TO SHIP — all ' + places.length + ' places loaded', 12, true, '#1a7f37');
+    else nl('STATUS: NOT COMPLETE — ' + loadedPl.length + ' of ' + places.length + ' places loaded', 12, true, '#b00');
+    y += 6;
+    const cmtOf = it => (S.meta && S.meta[it.key] && S.meta[it.key].cmt) ? ('   [' + S.meta[it.key].cmt + ']') : '';
     let totalWt = 0;
     S.pallets.forEach(p => {
       const pls = places.filter(pl => S.assign[pl.key] === p.id);
       const its = pls.reduce((a,pl)=>a.concat(pl.items),[]);
+      const anyLoaded = pls.some(pl => S.packed && S.packed[pl.key]);
       const dims = [p.l, p.w, p.h].map(x => (x||'').trim()).filter(Boolean);
       const dimStr = dims.length ? (dims.join('" x ') + '" (L x W x H)') : 'size —';
       const wt = (p.wt||'').trim(); if(wt) totalWt += parseFloat(wt) || 0;
       y += 6;
-      nl('Pallet ' + (p.num||'?') + (p.name ? ('  —  ' + p.name) : ''), 12, true);
+      nl('Pallet ' + (p.num||'?') + (p.name ? ('  —  ' + p.name) : '') + (pls.length ? (anyLoaded ? '   [LOADED]' : '   [NOT LOADED]') : ''), 12, true, pls.length ? (anyLoaded ? '#1a7f37' : '#b00') : '#111');
       nl('    ' + dimStr + '     weight: ' + (wt ? wt + ' lb' : '—'), 10, false, '#555');
-      if(its.length) its.forEach(it => nl('    - ' + it.name + (it.qty>1 ? ('  x' + it.qty) : ''), 10, false, '#222'));
+      if(its.length) its.forEach(it => nl('    - ' + it.name + (it.qty>1 ? ('  x' + it.qty) : '') + cmtOf(it), 10, false, '#222'));
       else nl('    (empty)', 10, false, '#999');
     });
     const un = places.filter(pl => !S.assign[pl.key]);
-    if(un.length){ y += 8; nl('Unassigned places', 12, true, '#b00'); un.forEach(pl => pl.items.forEach(it => nl('    - ' + it.name + (it.qty>1 ? ('  x' + it.qty) : ''), 10, false, '#222'))); }
+    if(un.length){ y += 8; nl('NOT ON ANY PALLET (' + un.length + ')', 12, true, '#b00'); un.forEach(pl => pl.items.forEach(it => nl('    - ' + it.name + (it.qty>1 ? ('  x' + it.qty) : '') + cmtOf(it), 10, false, '#222'))); }
     y += 14;
     nl('Total pallets: ' + S.pallets.length + '        Total weight: ' + (totalWt ? (Math.round(totalWt*10)/10) + ' lb' : '—'), 11, true);
+    nl('Places loaded: ' + loadedPl.length + ' / ' + places.length + (complete ? '   — COMPLETE' : '   — INCOMPLETE'), 11, true, complete ? '#1a7f37' : '#b00');
     const fn = ('Shipping ' + (P.number||'') + ' ' + (P.title||'')).trim().replace(/[\/\\:*?"<>|]/g, '-') + '.pdf';
     doc.save(fn); flashStat('Shipping PDF generated ✓');
   });
@@ -3141,31 +3155,37 @@ function pageShipping(){
   const palOptions = pid => `<option value="">— Unassigned</option>` + S.pallets.map(p=>`<option value="${p.id}" ${pid===p.id?'selected':''}>Pallet ${esc(p.num||'?')}${p.name?' — '+esc(p.name):''}</option>`).join('');
   let n = 0;
   const eqRows = items.length ? modules.map(mod=>{
-    const hdr = `<tr class="grouphdr"><td colspan="5">${esc(mod)}</td></tr>`;
+    const hdr = `<tr class="grouphdr"><td colspan="7">${esc(mod)}</td></tr>`;
     const modPlaces = places.filter(pl => pl.module === mod);
     const body = modPlaces.map(pl => {
       const plIdx = places.indexOf(pl); const pid = S.assign[pl.key]||'';
+      const packed = !!(S.packed && S.packed[pl.key]);
       return pl.items.map((it, ii)=>{
         n++;
         const href = shipLinkHref(it.link);
         const link = href
           ? `<a href="${esc(href)}" target="_blank" rel="noopener" title="Open purchase link" style="color:var(--fdp-red);display:inline-flex"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg></a>`
           : `<span style="color:#c8ccd2">—</span>`;
-        /* ONE pallet dropdown per PLACE — on the first item row, spanning the place's items */
+        const cmt = (S.meta && S.meta[it.key] && S.meta[it.key].cmt) || '';
+        /* ONE pallet dropdown + ONE "on pallet" checkbox per PLACE — on the first item row, spanning the place */
         const pallCell = ii === 0
-          ? `<td class="tight pl-cell" rowspan="${pl.items.length}" style="width:24%;vertical-align:middle"><select class="cell ${pid?'':'empty'}" title="Whole ${esc(pl.name)} place → one pallet" onchange="assignPlace(${plIdx},this.value)">${palOptions(pid)}</select></td>`
+          ? `<td class="tight pl-cell" rowspan="${pl.items.length}" style="width:6%;vertical-align:middle"><select class="cell ${pid?'':'empty'}" title="Whole ${esc(pl.name)} place → one pallet" onchange="assignPlace(${plIdx},this.value)">${palOptions(pid)}</select></td>`
+          : '';
+        const packCell = ii === 0
+          ? `<td class="tight pl-cell" rowspan="${pl.items.length}" style="width:6%;text-align:center;vertical-align:middle"><input type="checkbox" style="width:16px;height:16px;cursor:pointer;accent-color:#2e9e5b" ${packed?'checked':''} ${pid?'':'disabled title="Assign a pallet first"'} onchange="setPacked(${plIdx},this.checked)"></td>`
           : '';
         return `<tr class="${ii===pl.items.length-1?'pl-last':''}">
-          <td class="tight" style="width:5%;text-align:right;color:var(--dim)">${n}</td>
+          <td class="tight" style="width:4%;text-align:right;color:var(--dim)">${n}</td>
           <td>${esc(it.name)}</td>
-          <td style="text-align:right;width:7%">${it.qty}</td>
+          <td class="tight" style="width:16%"><input class="cell" value="${esc(cmt)}" placeholder="—" oninput="setShipCmt('${it.key}',this.value)"></td>
+          <td style="text-align:right;width:6%">${it.qty}</td>
           <td class="tight" style="width:5%;text-align:center">${link}</td>
-          ${pallCell}
+          ${pallCell}${packCell}
         </tr>`;
       }).join('');
     }).join('');
     return hdr + body;
-  }).join('') : `<tr><td colspan="5" style="color:var(--dim);padding:14px">No equipment yet — add components in Server, Rack, Camera or Projectors.</td></tr>`;
+  }).join('') : `<tr><td colspan="7" style="color:var(--dim);padding:14px">No equipment yet — add components in Server, Rack, Camera or Projectors.</td></tr>`;
   const palletRows = S.pallets.length ? S.pallets.map(p=>{
     const cnt = places.filter(pl=>S.assign[pl.key]===p.id).reduce((a,pl)=>a+pl.items.length,0);
     return `<div class="palrow">
@@ -3225,7 +3245,7 @@ function pageShipping(){
     <div class="card">
       <div class="card-head"><h3>Equipment → Pallet</h3><span class="chip c-mut"><span class="cd"></span>${assignedPlaces}/${places.length} places on pallets</span></div>
       <table class="eq shipeq">
-        <thead><tr><th style="width:5%;text-align:right">#</th><th>Equipment</th><th style="text-align:right">Qty</th><th style="text-align:center">Link</th><th>Pallet</th></tr></thead>
+        <thead><tr><th style="width:4%;text-align:right">#</th><th>Equipment</th><th style="width:16%">Comment</th><th style="text-align:right">Qty</th><th style="text-align:center">Link</th><th style="width:6%">Pallet</th><th style="width:6%;text-align:center" title="Loaded on the pallet">On&nbsp;pallet</th></tr></thead>
         <tbody>${eqRows}</tbody>
       </table>
     </div>
@@ -3451,7 +3471,7 @@ function liveSlice(d){
     projectors: { list: (d.projectors && d.projectors.list) || [], selId: (d.projectors && d.projectors.selId) || null },
     validation:   d.validation || {},                 /* dashboard test chips — live now (BUILD 12.7) */
     vjValidation: d.vjValidation || {},
-    shipping: { date:(d.shipping&&d.shipping.date)||'', pallets:(d.shipping&&d.shipping.pallets)||[], assign:(d.shipping&&d.shipping.assign)||{} }   /* pallets + date sync; docs ride in the heavy json only (BUILD 12.45) */
+    shipping: { date:(d.shipping&&d.shipping.date)||'', pallets:(d.shipping&&d.shipping.pallets)||[], assign:(d.shipping&&d.shipping.assign)||{}, meta:(d.shipping&&d.shipping.meta)||{}, packed:(d.shipping&&d.shipping.packed)||{} }   /* pallets + date + comments + loaded flags sync; docs ride in the heavy json only (BUILD 12.54) */
   };
 }
 /* full live document = the shared data slice + the entry-level completion flag */
@@ -3487,7 +3507,7 @@ function liveApply(d, live){
   if(live.projectors){ d.projectors = d.projectors || {list:[],selId:null,models:{}}; setIf(d.projectors, 'list', live.projectors.list || []); setIf(d.projectors, 'selId', live.projectors.selId || null); }
   if(live.validation)   setIf(d, 'validation',   live.validation);      /* dashboard test chips (BUILD 12.7) */
   if(live.vjValidation) setIf(d, 'vjValidation', live.vjValidation);
-  if(live.shipping){ d.shipping = d.shipping || {date:'',pallets:[],assign:{},docs:[]}; setIf(d.shipping,'date',live.shipping.date||''); setIf(d.shipping,'pallets',live.shipping.pallets||[]); setIf(d.shipping,'assign',live.shipping.assign||{}); }
+  if(live.shipping){ d.shipping = d.shipping || {date:'',pallets:[],assign:{},docs:[],meta:{},packed:{}}; setIf(d.shipping,'date',live.shipping.date||''); setIf(d.shipping,'pallets',live.shipping.pallets||[]); setIf(d.shipping,'assign',live.shipping.assign||{}); if('meta' in live.shipping) setIf(d.shipping,'meta',live.shipping.meta||{}); if('packed' in live.shipping) setIf(d.shipping,'packed',live.shipping.packed||{}); }
   return changed;
 }
 /* ---- presence: who is in this project right now ---- */
