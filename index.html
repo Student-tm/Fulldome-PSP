@@ -135,7 +135,10 @@
   .mod-btn svg{width:15px;height:15px}
 
   /* summary grid */
-  .sumgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  .sumgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+  /* Dashboard order (BUILD 12.32): summary cards sit BETWEEN the readiness bar and the module cards */
+  .page.dash{display:flex;flex-direction:column}
+  .page.dash .modgrid{order:1;margin-bottom:0}
   .sum .srow{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--line);font-size:12.5px}
   .sum .srow:last-child{border-bottom:none}
   .sum .srow .k{color:var(--ink2)}
@@ -592,7 +595,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.31 · SIDEBAR HEADERS</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.32 · DASH ORDER</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -2335,7 +2338,7 @@ function pageDashboard(){
   const ready = state.server.ready;
   const comp = activeSrvRows().length;
   return `
-  <div class="page">
+  <div class="page dash">
     <div class="pagehead">
       <div class="eyebrow">Fulldome Projection SP</div>
       <h1>Main Dashboard</h1>
