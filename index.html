@@ -554,7 +554,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.7 · LIVE STATUS + SCROLL</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.8 · STATUS RECONCILE</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -3213,7 +3213,28 @@ async function cloudRefreshList(){
   _cloudFolders = j.files || [];
   saveState(); renderSideProject();                    /* names first — instant */
   _cloudMeta = await cloudLoadMeta(_cloudFolders);     /* then rich cards */
+  cloudReconcileFromMeta();                            /* pull Done + validation onto already-downloaded projects (BUILD 12.8) */
   renderSideProject();
+}
+/* for projects already downloaded locally (linked to a cloud folder), adopt the
+   shared status (Done + validation chips) from the folder meta on refresh/sign-in —
+   so completion and test results appear on every machine, not only the one that
+   opened the project last. The ACTIVE project is skipped (it's driven by live sync
+   and the user's own edits). */
+function cloudReconcileFromMeta(){
+  const map = driveMap(); let changed = false;
+  db.projects.forEach(e => {
+    if(e.id === db.activeId) return;
+    const m = map[e.id]; if(!m || !m.fid) return;
+    const meta = _cloudMeta[m.fid]; if(!meta) return;
+    if('done' in meta){
+      const wd = !!meta.done;
+      if(wd !== !!e.done){ if(wd){ e.done = true; e.doneAt = meta.doneAt || Date.now(); } else { delete e.done; delete e.doneAt; } changed = true; }
+    }
+    if(meta.validation && JSON.stringify(e.data.validation) !== JSON.stringify(meta.validation)){ e.data.validation = meta.validation; changed = true; }
+    if(meta.vjValidation && JSON.stringify(e.data.vjValidation) !== JSON.stringify(meta.vjValidation)){ e.data.vjValidation = meta.vjValidation; changed = true; }
+  });
+  if(changed){ saveState._skipCloud = true; saveState(); saveState._skipCloud = false; }
 }
 function cloudMetaOf(e){
   const P = e.data.project || {};
@@ -3223,6 +3244,7 @@ function cloudMetaOf(e){
     dome: P.domeDiameter || '', domeType: P.domeType || '', sysNumber: P.sysNumber || '',
     status: P.status || '', valid: !!validationOf(e.data),
     done: !!e.done, doneAt: e.doneAt || 0,                       /* completion status for the sidebar card, no heavy download */
+    validation: e.data.validation || {}, vjValidation: e.data.vjValidation || {},   /* test chips reconcile on refresh (BUILD 12.8) */
     savedBy: _gUser || '', savedAt: new Date().toISOString()
   };
 }
