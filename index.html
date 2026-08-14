@@ -553,7 +553,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.1 · TT SYNC</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.2 · TT KEY</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1394,7 +1394,15 @@ window.addEventListener('message', function(e){
   var d = e.data || {};
   if(!d || d.source !== 'fulldome-ttd') return;     /* only messages from TTD */
   if(d.type === 'tt-ready'){
-    try{ e.source.postMessage({ source:'fulldome-psp', type:'tt-prefill', fields: ttPrefillFields() }, e.origin); }catch(_){}
+    var ae = activeEntry();
+    var msg = {
+      source: 'fulldome-psp',
+      type:   'tt-prefill',
+      key:    ae ? ae.id : null,                                   /* stable per-project identity — TTD switches the form on change */
+      number: (ae && ae.data && ae.data.project && ae.data.project.number) || '',
+      fields: ttPrefillFields()
+    };
+    try{ e.source.postMessage(msg, e.origin); }catch(_){}
   }else if(d.type === 'tt-save'){
     var res = ttReceiveSave(d);
     try{ e.source.postMessage({ source:'fulldome-psp', type:'tt-save-result', ok:res.ok, msg:res.msg }, e.origin); }catch(_){}
