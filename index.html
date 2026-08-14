@@ -595,7 +595,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.36 · SAME-ACCOUNT SYNC FIX</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.37 · S&R CARD + FAST SYNC</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -2436,12 +2436,12 @@ function pageDashboard(){
       </div>
 
       <div class="card sum"><h3>Server &amp; Rack</h3>
-        <div class="srow"><span class="k">Server Name</span><span class="v">${P.sysNumber ? 'FDPSN#'+esc(P.sysNumber) : 'FDPSN# ****'}${P.type?' '+esc(P.type):''}</span></div>
-        <div class="srow"><span class="k">Server &amp; Rack Cost</span><span class="v">${fmt(serverTotal()+vjTotal()+rackTotal())}</span></div>
-        <div class="srow"><span class="k">Server Build</span><span class="v" style="display:inline-flex;align-items:center;gap:7px"><span class="led sm ${ready?'on':''}"></span>${ready?'Ready':'Not Ready'}</span></div>
-        ${P.vjRequired ? `<div class="srow"><span class="k">VJ Build</span><span class="v" style="display:inline-flex;align-items:center;gap:7px"><span class="led sm ${state.vj.ready?'on':''}"></span>${state.vj.ready?'Ready':'Not Ready'}</span></div>` : ''}
-        <div class="srow"><span class="k">Rack Size</span><span class="v">${state.rack.heightU}U</span></div>
-        <div class="srow"><span class="k">Rack Cost</span><span class="v">${fmt(rackTotal())}</span></div>
+        <div class="srow"><span class="k">Server Rack Size</span><span class="v">${state.rack.heightU}U</span></div>
+        <div class="srow"><span class="k">Dome Server Name</span><span class="v">${P.sysNumber ? 'FDPSN#'+esc(P.sysNumber) : 'FDPSN# ****'}${P.type?' '+esc(P.type):''}</span></div>
+        <div class="srow"><span class="k">Projector Model</span><span class="v">${(function(){ const ms=[...new Set(projList().map(p=>((p.mfr||'')+' '+(p.model||'')).trim()).filter(Boolean))]; return ms.length ? esc(ms.join(', ')) : (P.projectorModel ? esc(P.projectorModel) : '—'); })()}</span></div>
+        <div class="srow"><span class="k">Speaker Model</span><span class="v">${(P.speakersModel && String(P.speakersModel).trim()) ? esc(P.speakersModel) : '—'}</span></div>
+        <div class="srow"><span class="k">Camera Model</span><span class="v">${(function(){ const c=(state.camera.rows||[]).map(r=>(r.name||'').trim()).filter(Boolean); return c.length ? esc([...new Set(c)].join(', ')) : '—'; })()}</span></div>
+        <div class="srow"><span class="k">Server + Rack Cost</span><span class="v">${fmt(serverTotal()+vjTotal()+rackTotal())}</span></div>
         <div class="srow"><span class="k">Content List</span><span class="v">${state.contentList
           ? `<span style="display:inline-flex;align-items:center;gap:8px">
                <span style="display:inline-flex;align-items:center;gap:5px;color:var(--ink2)" title="${esc(state.contentList.name)}">
@@ -3360,7 +3360,7 @@ function cloudStartPoll(){
   if(_cloudPoll) return;
   _cloudPoll = setInterval(function(){
     if(_cloudOn && _gTok && !document.hidden){ cloudRefreshList().catch(function(){}); }
-  }, 45000);
+  }, 15000);   /* 15s so ANY text edit (name, rows, fields) converges online within ~15s while a tab is open (BUILD 12.37) */
 }
 function cloudStopPoll(){ if(_cloudPoll){ clearInterval(_cloudPoll); _cloudPoll = null; } }
 async function cloudRefreshList(){
