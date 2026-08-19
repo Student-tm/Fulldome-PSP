@@ -477,13 +477,14 @@
   .pj.done:hover{opacity:.85}
   .pjsec{font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:#6b7480;padding:10px 9px 4px;border-top:1px solid #2c313a;margin-top:6px}
   .pjsec:first-child{border-top:none;margin-top:0}
-  .donebadge{font-size:8.5px;letter-spacing:.5px;text-transform:uppercase;color:#43d17c;border:1px solid rgba(67,209,124,.35);border-radius:99px;padding:1px 7px;margin-left:6px;vertical-align:1px}
+  .donebadge{font-size:8.5px;letter-spacing:.5px;text-transform:uppercase;color:#43d17c;border:1px solid rgba(67,209,124,.35);border-radius:99px;padding:1px 7px;margin-left:6px;vertical-align:1px;flex:none;white-space:nowrap}
   .pj.sel::before{background:var(--fdp-red)}
   .pj{padding-top:10px;padding-bottom:10px}
   .pj .pjled{position:static;display:inline-block;margin-right:6px;vertical-align:1px;flex:none}
   .pj .pjmeta{flex:1;min-width:0}
-  .pj .pjn{font-size:13px;color:#9aa2ad;font-weight:500;letter-spacing:.3px;line-height:1.25;display:flex;align-items:center}
-  .pj .pjloc{margin-left:auto;padding-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52%}
+  .pj .pjn{font-size:13px;color:#9aa2ad;font-weight:500;letter-spacing:.3px;line-height:1.25;display:flex;align-items:center;flex-wrap:nowrap;overflow:hidden}
+  .pj .pjnum{flex:0 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pj .pjloc{margin-left:auto;flex:0 1 auto;padding-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52%}
   .pj.sel .pjn{color:#1b1e23}
   .pj.sel .pjled.on{background:#43d17c}
   .pj .pjt{font-size:11.5px;font-weight:400;color:#cfd4da;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;margin-top:1px}
@@ -615,7 +616,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.69 · STABLE PROJECT IDENTITY (PID)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.70 · DELETE TOMBSTONES + CARD FIX</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1680,13 +1681,15 @@ function doDelete(scope){
   const fid = (driveMap()[e.id] && driveMap()[e.id].fid) || null;
   if(scope === 'cloud'){
     if(!_cloudOn || !_gTok){ document.getElementById('delErr').textContent = 'Sign in to Google first to delete from the team folder.'; return; }
-    if(fid){
-      document.getElementById('delErr').textContent = 'Deleting from Google Drive…';
-      driveTrashFolder(fid)
-        .then(()=> finishDelete(e, fid))
-        .catch(err=>{ document.getElementById('delErr').textContent = 'Drive delete failed: ' + (err && err.message || 'error'); });
-      return;
-    }
+    const pid = e.data.project && e.data.project.pid;
+    document.getElementById('delErr').textContent = 'Deleting from Google Drive…';
+    /* tombstone FIRST so the deletion sticks on every machine even if the folder
+       trash itself hiccups; then trash the folder (BUILD 12.70) */
+    cloudTombstoneAdd(pid, fid)
+      .then(()=> fid ? driveTrashFolder(fid) : Promise.resolve())
+      .then(()=> finishDelete(e, fid))
+      .catch(err=>{ document.getElementById('delErr').textContent = 'Drive delete failed: ' + (err && err.message || 'error'); });
+    return;
   }
   finishDelete(e, null);                 /* local-only, or cloud with no Drive folder yet */
 }
@@ -1749,7 +1752,7 @@ function renderSideProject(){
     const cloc = (m && m.location && m.location!=='—') ? '<span class="pjloc">'+esc(m.location)+'</span>' : '';
     return `<div class="pj ${isDone?'done':''}" onclick="cloudOpenFolder('${f.id}','${esc(f.name).replace(/'/g,'&#39;')}')" title="Team project — click to open">
       <div class="pjmeta">
-        <div class="pjn"><span class="led sm pjled ${m && m.valid ? 'on' : ''}"></span>${head}${isDone?'<span class="donebadge">Done</span>':''}<span style="opacity:.5;margin-left:6px;font-size:11px">☁</span>${cloc}</div>
+        <div class="pjn"><span class="led sm pjled ${m && m.valid ? 'on' : ''}"></span><span class="pjnum">${head}</span>${isDone?'<span class="donebadge">Done</span>':''}<span style="opacity:.5;margin-left:6px;font-size:11px">☁</span>${cloc}</div>
         <div class="pjt">${sub}</div>
         ${foot}
       </div></div>`;
@@ -1770,7 +1773,7 @@ function renderSideProject(){
     const rc = readyCardColor(e.data); const rcCls = rc ? ' rc-'+rc : '';
     return `<div class="pj ${sel?'sel':''} ${e.done?'done':''}${rcCls}" onclick="setActive('${e.id}')" title="Select project">
       <div class="pjmeta">
-        <div class="pjn"><span class="led sm pjled ${validationOf(e.data)?'on':''}" title="${validationOf(e.data)?'Validation passed':'Validation not passed'}"></span>#${esc(P.number||'—')}${e.done?'<span class="donebadge">Done</span>':''}${loc}</div>
+        <div class="pjn"><span class="led sm pjled ${validationOf(e.data)?'on':''}" title="${validationOf(e.data)?'Validation passed':'Validation not passed'}"></span><span class="pjnum">#${esc(P.number||'—')}</span>${e.done?'<span class="donebadge">Done</span>':''}${loc}</div>
         <div class="pjt">${esc(P.title||'—')}</div>
         ${foot}
       </div>
@@ -3913,6 +3916,7 @@ async function cloudRefreshList(){
     _cloudMeta = await cloudLoadMeta(_cloudFolders);     /* then rich cards */
     cloudReconcileFromMeta();                            /* pull Done + validation onto already-downloaded projects (BUILD 12.8) */
     renderSideProject();
+    try{ await cloudLoadTombstones(); cloudApplyTombstones(); }catch(e){}   /* honor team deletions so they STICK and can't resurrect — BUILD 12.70 */
     try{ await cloudReconcileDeletions(); }catch(e){}    /* drop local projects a teammate deleted (folder trashed on Drive) — BUILD 12.68 */
     try{ await cloudPullContent(_forcePull); }catch(e){} /* pull teammate ROW edits over Drive (BUILD 12.34) — reliable fallback for the flaky live channel */
     _forcePull = false;
@@ -4043,6 +4047,69 @@ async function cloudReconcileDeletions(){
   saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
   renderSideProject();
   setCloudStat('Removed a project deleted by a teammate · ' + hhmm());
+}
+/* ---- TOMBSTONES (BUILD 12.70): make "Delete everywhere" STICK across machines ----
+   Without a backend, a machine that still has a deleted project can't tell "the team
+   deleted this on purpose" from "its folder just vanished" — so on its next push it
+   RECREATES the folder (the "deleted project came back" bug). A tombstone is a small
+   record in the team root (`tombstones.json`) listing the pids/fids that were
+   intentionally deleted. Every machine reads it each refresh, removes those projects
+   locally, and REFUSES to re-upload them. */
+var _tombstones = { pids:{}, fids:{} }, _tombId = null;
+async function cloudLoadTombstones(){
+  try{
+    const rootId = await driveRootId();
+    if(!_tombId) _tombId = await driveFindFile('tombstones.json', rootId);
+    if(!_tombId){ _tombstones = { pids:{}, fids:{} }; return _tombstones; }
+    const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + _tombId + '?alt=media');
+    if(r.status === 404){ _tombId = null; _tombstones = { pids:{}, fids:{} }; return _tombstones; }
+    const j = JSON.parse(await r.text());
+    _tombstones = { pids: j.pids || {}, fids: j.fids || {} };
+  }catch(e){}   /* keep the previous copy on a transient error */
+  return _tombstones;
+}
+async function cloudTombstoneAdd(pid, fid){
+  const rootId = await driveRootId();
+  await cloudLoadTombstones();                               /* merge onto the latest so we don't drop a teammate's tombstone */
+  const t = _tombstones, now = Date.now();
+  if(pid) t.pids[pid] = now;
+  if(fid) t.fids[fid] = now;
+  const cut = now - 60 * 864e5;                              /* prune entries older than 60 days */
+  ['pids','fids'].forEach(k => Object.keys(t[k]).forEach(key => { if(t[k][key] < cut) delete t[k][key]; }));
+  let id = _tombId; if(!id) id = await driveFindFile('tombstones.json', rootId);
+  _tombId = await driveUpload('tombstones.json', rootId, JSON.stringify(t), 'application/json', id);
+}
+function cloudProjectTombstoned(e){
+  if(!_tombstones) return false;
+  const pid = e.data.project && e.data.project.pid;
+  const fid = (driveMap()[e.id] || {}).fid;
+  return !!((pid && _tombstones.pids[pid]) || (fid && _tombstones.fids[fid]));
+}
+/* remove any LOCAL project that the team has tombstoned (deleted everywhere) — even if
+   its folder still shows briefly, the tombstone is authoritative */
+function cloudApplyTombstones(){
+  if(!_tombstones) return;
+  const map = driveMap(); let removed = false;
+  for(let i = db.projects.length - 1; i >= 0; i--){
+    const e = db.projects[i];
+    if(!cloudProjectTombstoned(e)) continue;
+    try{ if(typeof liveStop === 'function' && _fbPath && _fbPath.indexOf(fbProjectKey(e)) >= 0) liveStop(); }catch(_){}
+    const fid = (map[e.id] || {}).fid;
+    if(fid){ if(_cloudMeta) delete _cloudMeta[fid]; delete _metaId[fid]; }
+    db.projects.splice(i, 1);
+    delete map[e.id];
+    removed = true;
+  }
+  if(!removed) return;
+  if(!db.projects.find(p => p.id === db.activeId)){
+    const alt = db.projects.find(p => !p.frozen) || db.projects[0];
+    db.activeId = alt ? alt.id : null;
+    syncActive(); renderHeader();
+    goTo((state && state.project) ? '#/dashboard' : '#/create');
+  }
+  saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
+  renderSideProject();
+  setCloudStat('Removed a project the team deleted · ' + hhmm());
 }
 function cloudMetaOf(e){
   const P = e.data.project || {};
@@ -4200,6 +4267,7 @@ async function cloudPushActive(entry, quiet){
   if(!_cloudOn || !_gTok){ setCloudStat('⚠ Not signed in — click here to connect Google Drive'); return; }
   const e = (entry && entry.data && entry.data.project) ? entry : activeEntry();   /* can push a specific project (e.g. Done toggled on a non-active one) */
   if(!e || !e.data.project){ setCloudStat('No active project to sync'); return; }
+  if(cloudProjectTombstoned(e)){ setCloudStat('This project was deleted by the team — not re-uploading'); return; }   /* prevent resurrection (BUILD 12.70) */
   _pushing = true;
   try{
     setCloudStat('Saving…');
