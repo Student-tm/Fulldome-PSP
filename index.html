@@ -615,7 +615,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.64 · DELETE PHOTOS FROM DRIVE</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.66 · FIELD-LEVEL MERGE SYNC</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -3596,6 +3596,50 @@ function liveApply(d, live){
   if(live.shipping){ d.shipping = d.shipping || {date:'',pallets:[],assign:{},docs:[],meta:{},packed:{}}; setIf(d.shipping,'date',live.shipping.date||''); setIf(d.shipping,'pallets',live.shipping.pallets||[]); setIf(d.shipping,'assign',live.shipping.assign||{}); if('meta' in live.shipping) setIf(d.shipping,'meta',live.shipping.meta||{}); if('packed' in live.shipping) setIf(d.shipping,'packed',live.shipping.packed||{}); }
   return changed;
 }
+/* ---- FIELD-LEVEL 3-WAY MERGE (BUILD 12.66) ----
+   Two users editing DIFFERENT rows/fields of the same project must BOTH keep
+   their edits instead of the whole slice being overwritten (last-writer-wins).
+   merge3(base, local, remote) compares each side against the last agreed BASE:
+   a side that DIDN'T touch a field yields to the side that did; only a real
+   conflict (both changed the SAME leaf) falls back to whoever saved most
+   recently (remoteNewer). base is the last liveSlice we synced (m.base). */
+function eqj(a,b){ return JSON.stringify(a) === JSON.stringify(b); }
+function clone(v){ return v === undefined ? undefined : JSON.parse(JSON.stringify(v)); }
+function merge3(base, local, remote, remoteNewer){
+  if(eqj(local, remote)) return clone(local);
+  if(eqj(local, base))   return clone(remote);   /* we didn't touch it → take theirs */
+  if(eqj(remote, base))  return clone(local);    /* they didn't touch it → keep ours  */
+  const isObj = v => v && typeof v === 'object';
+  if(isObj(local) && isObj(remote)){
+    const la = Array.isArray(local), ra = Array.isArray(remote);
+    if(la && ra){
+      const bl = Array.isArray(base) ? base.length : -1;
+      /* same length on all three sides → merge ROW-BY-ROW, CELL-BY-CELL: the
+         exact "I edit row 2, you edit row 5, both survive" case */
+      if(local.length === remote.length && local.length === bl){
+        const out = [];
+        for(let i=0;i<local.length;i++) out[i] = merge3(base[i], local[i], remote[i], remoteNewer);
+        return out;
+      }
+      /* a row was added/removed on one side → can't safely index-merge; the
+         most recent save wins the whole array (rare vs. cell edits) */
+      return clone(remoteNewer ? remote : local);
+    }
+    if(!la && !ra){
+      const out = {}, keys = new Set([].concat(Object.keys(base||{}), Object.keys(local), Object.keys(remote)));
+      keys.forEach(k => {
+        const b = base ? base[k] : undefined, l = local[k], r = remote[k];
+        if(l === undefined && r === undefined) return;
+        if(l === undefined){ if(!eqj(r, b)) out[k] = clone(r); return; }   /* they added / we didn't remove */
+        if(r === undefined){ if(!eqj(l, b)) out[k] = clone(l); return; }
+        out[k] = merge3(b, l, r, remoteNewer);
+      });
+      return out;
+    }
+  }
+  /* scalar (or type-mismatch) conflict → last writer wins */
+  return clone(remoteNewer ? remote : local);
+}
 /* ---- presence: who is in this project right now ---- */
 var _presT = null, _presence = {};
 function presenceTick(){
@@ -3752,6 +3796,8 @@ async function cloudStart(silent){
     }
     _cloudOn = true;
     cloudGateHide();
+    cloudStartPoll();                                  /* BUILD 12.65: start the poll FIRST so a flaky first refresh can't leave a machine without auto-sync */
+    cloudBindVisibility();                             /* pull the instant a hidden tab is focused (BUILD 12.36) */
     setCloudStat('Loading team projects…');
     await cloudRefreshList();
     setCloudStat(_gUser ? ('Cloud ✓ ' + _gUser) : 'Cloud ✓');
@@ -3763,8 +3809,6 @@ async function cloudStart(silent){
     /* a project may already be open (loaded from disk before signing in) —
        make sure it reaches the team folder right away */
     if(activeEntry()) cloudPushActive();
-    cloudStartPoll();                                  /* keep the team list + statuses fresh even without live sync (BUILD 12.10) */
-    cloudBindVisibility();                             /* pull the instant a hidden tab is focused (BUILD 12.36) */
   }catch(e){
     if(silent){ setCloudStat('Not signed in — click here to sign in & sync'); return; }   /* silent attempt failed: no gate, one-click available */
     if(err) err.textContent = 'Sign-in failed: ' + (e && e.message || 'error') + '. Check that your email is in the test users list.';
@@ -3789,8 +3833,14 @@ var _forcePull = false;   /* set by a manual reset so the next pull ignores the 
 function cloudStartPoll(){
   if(_cloudPoll) return;
   _cloudPoll = setInterval(function(){
-    if(_cloudOn && _gTok && !document.hidden){ cloudRefreshList().catch(function(){}); }
-  }, 15000);   /* 15s so ANY text edit (name, rows, fields) converges online within ~15s while a tab is open (BUILD 12.37) */
+    /* BUILD 12.65: poll even when the window is in the BACKGROUND. The old
+       !document.hidden gate meant a machine that wasn't the frontmost window
+       NEVER pulled — so one user's sidebar stayed stale until a manual reload
+       (the "projects differ between users, only Ctrl+Shift+R fixes it" bug).
+       Polling only PULLS (reads Drive) — it never pushes on its own — so a
+       background machine can't clobber anyone by staying in sync. */
+    if(_cloudOn && _gTok){ cloudRefreshList().catch(function(){}); }
+  }, 10000);   /* 10s: any teammate edit shows up within ~10s on every open machine, foreground or not (BUILD 12.65) */
 }
 function cloudStopPoll(){ if(_cloudPoll){ clearInterval(_cloudPoll); _cloudPoll = null; } }
 async function cloudRefreshList(){
@@ -3817,6 +3867,7 @@ async function cloudPullContent(force){
   if(!_cloudOn || !_gTok) return;
   const map = driveMap();
   const entries = db.projects.filter(e => map[e.id] && map[e.id].fid);
+  const toPush = [];
   for(const e of entries){
     const m = map[e.id];
     const meta = _cloudMeta[m.fid];
@@ -3824,9 +3875,13 @@ async function cloudPullContent(force){
     const sigChanged  = ('sig' in meta)  && meta.sig  !== m.liveSig;   /* rows/fields/etc changed */
     const psigChanged = ('psig' in meta) && meta.psig !== m.psig;      /* a photo added/removed (BUILD 12.61) */
     if(!sigChanged && !psigChanged) continue;                    /* nothing new since we last applied/pushed */
-    if(!force && e._dirtyAt && (Date.now() - e._dirtyAt) < 30000) continue; /* protect a change made in the last 30s from being clobbered before its push lands (BUILD 12.41) */
     const isActive = (e.id === db.activeId);
-    if(isActive && (isTypingInInput() || _pushing || _fbApplying)) continue;   /* don't clobber active edits — retry next poll */
+    if(isActive && (isTypingInInput() || _pushing || _fbApplying)) continue;   /* don't touch state mid-keystroke; merge runs the moment they pause */
+    /* BUILD 12.66: with a merge BASE we can safely field-MERGE a recent local edit
+       with the teammate's, so drop the 30s block that used to delay incoming rows.
+       Only when there is NO base yet (pre-12.66 state) keep the old guard, because
+       without a base we'd fall back to whole-slice overwrite. */
+    if(!m.base && !force && e._dirtyAt && (Date.now() - e._dirtyAt) < 30000) continue;
     try{
       const jname = (m.name || '') + '.json';
       const jfid = await driveFindProjectJson(m.fid, jname);
@@ -3836,17 +3891,32 @@ async function cloudPullContent(force){
       const s = obj.state || obj;
       if(!s || !s.project || !('server' in s)) continue;
       let changed = false;
-      if(sigChanged){ if(liveApply(e.data, liveSlice(s))) changed = true; m.liveSig = meta.sig; }
+      if(sigChanged){
+        const remote = liveSlice(s);
+        const local  = liveSlice(e.data);
+        const remoteNewer = (Date.parse(meta.savedAt || 0) || 0) >= (e._dirtyAt || 0);
+        /* first contact (no base) → take remote (old behavior); otherwise 3-way merge
+           so OUR rows/fields and THEIR rows/fields both survive */
+        const merged = m.base ? merge3(m.base, local, remote, remoteNewer) : remote;
+        if(liveApply(e.data, merged)) changed = true;
+        m.base    = clone(merged);           /* new agreed base for the next merge */
+        m.liveSig = meta.sig;                /* we've incorporated the remote we saw */
+        if(liveSig(e.data) !== meta.sig) toPush.push(e);   /* merge kept local-only edits → push them back so the teammate gets them */
+      }
       if(psigChanged){ if(applyPhotosFrom(e.data, s)) changed = true; m.psig = meta.psig; }   /* pull photos (incl. pallet photos) */
       if('done' in obj){ const wd=!!obj.done; if(wd!==!!e.done){ if(wd){e.done=true;e.doneAt=obj.doneAt||Date.now();}else{delete e.done;delete e.doneAt;} changed=true; } }
       if(changed){
         saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
         renderSideProject();
         if(isActive && !isTypingInInput()) rerenderKeepScroll();
-        setCloudStat('Updated by teammate · ' + new Date().toTimeString().slice(0,5));
+        setCloudStat('Merged teammate changes · ' + new Date().toTimeString().slice(0,5));
       }
     }catch(err){}
   }
+  /* push back any project whose merge kept local-only edits, so the teammate
+     receives OUR rows too. Done outside the loop to avoid re-entering push while
+     iterating; cloudPushActive's no-op guard skips it if merged == remote. */
+  for(const pe of toPush){ try{ await cloudPushActive(pe); }catch(_){} }
 }
 /* for projects already downloaded locally (linked to a cloud folder), adopt the
    shared status (Done + validation chips) from the folder meta on refresh/sign-in —
@@ -4032,6 +4102,21 @@ async function cloudPushActive(entry){
          server/rack/etc. rows sync (BUILD 12.14). */
       if(e === activeEntry() && typeof liveStart === 'function' && fbReady()){ try{ liveStart(); }catch(_){} }
     }
+    /* NO-OP GUARD (BUILD 12.65): a passive machine must NOT re-write the project to Drive
+       when its content is exactly what it last synced — otherwise it clobbers a teammate's
+       newer version (the "my save disappears / their save reverts" bug in real multi-user).
+       Only push when SOMETHING actually changed (rows/fields, photos, doc files, folder name
+       or the Done flag). Incoming changes still arrive via cloudPullContent. */
+    if(m.liveSig !== undefined
+        && liveSig(e.data) === m.liveSig
+        && photoSigStr(e) === m.psig
+        && JSON.stringify(cloudDocsSig(e)) === JSON.stringify(m.docsSig||{})
+        && m.name === projDriveFolderName(e.data.project)
+        && (!!m._done === !!e.done)){
+      _pushing = false;
+      setCloudStat('Cloud ✓ ' + (_gUser || '') + ' · up to date ' + new Date().toTimeString().slice(0,5));
+      return;
+    }
     /* keep Drive names in sync with the project (BUILD 11.6):
        folder = "<number> <title>", json = same name + .json */
     const wantFolder = projDriveFolderName(e.data.project);
@@ -4127,7 +4212,9 @@ async function cloudPushActive(entry){
       const mex = await driveFindFile(metaName, m.fid);
       await driveUpload(metaName, m.fid, JSON.stringify(cloudMetaOf(e)), 'application/json', mex);
       m.liveSig = liveSig(e.data);        /* remember what WE just published — poll won't re-pull our own save */
+      m.base = clone(liveSlice(e.data));  /* the state we just published is the new merge base (BUILD 12.66) */
       m.psig = photoSigStr(e);            /* our photo set is now on Drive — poll won't re-pull (BUILD 12.61) */
+      m._done = !!e.done;                  /* remember completion for the no-op push guard (BUILD 12.65) */
       e._dirtyAt = 0;                      /* our local edits are now safely on Drive (BUILD 12.41) */
     }catch(err){}
     saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
