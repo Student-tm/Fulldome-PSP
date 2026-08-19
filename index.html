@@ -615,7 +615,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.68 · DELETE SYNC ACROSS MACHINES</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.69 · STABLE PROJECT IDENTITY (PID)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -734,6 +734,8 @@ var db = { projects: [], activeId: null, library: emptyLibrary(), customCats: {}
 var state = emptyState();                    // always points to the ACTIVE project data
 
 const newId = () => 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+/* US 12-hour clock for status timestamps, e.g. "2:04 PM" (BUILD 12.69) */
+function hhmm(){ let h=new Date().getHours(); const m=('0'+new Date().getMinutes()).slice(-2); const ap=h<12?'AM':'PM'; h=h%12; if(h===0)h=12; return h+':'+m+' '+ap; }
 function activeEntry(){ return db.projects.find(p => p.id === db.activeId) || null; }
 function syncActive(){
   const e = activeEntry();
@@ -1586,8 +1588,19 @@ function applyProjectText(text){
       const s = obj.state || obj;
       if(!s || typeof s!=='object' || !('server' in s) || !s.project) throw new Error('format');
       const data = Object.assign(emptyState(), s);
-      /* same FDPSN number already in the list → update that project, otherwise ADD */
-      let e = db.projects.find(p => p.data.project && p.data.project.number === data.project.number);
+      /* MATCH BY STABLE pid, never by number: two different projects can share a
+         number (esp. blank/placeholder like "000000000") and matching by number
+         made one OVERWRITE the other (BUILD 12.69). pid is unique per project and
+         rides in the json across machines. */
+      let e = null;
+      const _pid = data.project && data.project.pid;
+      if(_pid) e = db.projects.find(p => p.data.project && p.data.project.pid === _pid);
+      if(!e){
+        /* legacy file with no pid → fall back to number match, but ONLY against
+           another legacy (no-pid) project and ONLY when the number is non-empty */
+        const _num = (data.project && data.project.number || '').trim();
+        if(_num) e = db.projects.find(p => p.data.project && !p.data.project.pid && (p.data.project.number||'').trim() === _num);
+      }
       if(e){ e.data = data; }
       else { e = {id:newId(), frozen:false, data}; db.projects.push(e); }
       /* completion status rides with the project (BUILD 12.5) */
@@ -2298,7 +2311,7 @@ function createProjectInner(){
   validateForm(f);
   /* a new project is ADDED to the list — existing projects stay untouched */
   const data = emptyState();
-  data.project = Object.assign(f, {status:'Engineering', created:new Date().toISOString().slice(0,10)});
+  data.project = Object.assign(f, {status:'Engineering', created:new Date().toISOString().slice(0,10), pid:newId()});   /* stable identity from birth (BUILD 12.69) */
   data.server.rows = [blankRow(), blankRow(), blankRow()];
   if(f.captureRequired) data.server.rows.push({cat:'Capture Card', name:'', qty:1, price:'', link:''});
   if(f.vjRequired) data.vj.rows = [blankRow(), blankRow(), blankRow()];
@@ -3451,6 +3464,39 @@ async function driveEnsureFolder(name, parentId){
     method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
   return (await c.json()).id;
 }
+/* ALWAYS create a fresh folder — never reuse one that happens to share the name.
+   Two projects with the same/blank number+title must NOT land in one folder
+   (that cross-linked them and let a new project overwrite an existing one — BUILD 12.69). */
+async function driveCreateFolder(name, parentId){
+  const body = { name: name, mimeType: 'application/vnd.google-apps.folder' };
+  if(parentId) body.parents = [parentId];
+  const c = await gFetch('https://www.googleapis.com/drive/v3/files?fields=id', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  return (await c.json()).id;
+}
+/* find an already-existing team folder that belongs to THIS project by its stable
+   pid (written into meta.json), using the metas we already cached this poll — no
+   extra Drive calls. Lets a project re-link to its own folder across machines /
+   re-imports WITHOUT matching by name (BUILD 12.69). */
+function driveFidByPid(pid){
+  if(!pid) return null;
+  for(const fid in (_cloudMeta||{})){ const mt=_cloudMeta[fid]; if(mt && mt.pid && mt.pid === pid) return fid; }
+  return null;
+}
+/* legacy (pre-12.69) folder adoption: exactly ONE team folder with the wanted name
+   whose meta has NO pid yet → it's an old folder for this project; adopt & stamp it.
+   If any same-named folder already carries a pid, we must NOT adopt (it's another
+   project) → the caller creates a fresh folder instead. */
+function driveLegacyFidByName(name){
+  let hit = null, count = 0;
+  (_cloudFolders||[]).forEach(f => {
+    if(f.name !== name) return;
+    const mt = _cloudMeta && _cloudMeta[f.id];
+    if(mt && mt.pid) { count = 99; return; }   /* a same-named folder already owned by some project → block adoption */
+    hit = f.id; count++;
+  });
+  return count === 1 ? hit : null;
+}
 async function driveFindFile(name, parentId){
   const q = encodeURIComponent("name = '" + name.replace(/'/g, "\\'") + "' and '" + parentId + "' in parents and trashed = false");
   const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name)&pageSize=5');
@@ -3751,7 +3797,7 @@ function applyIncoming(e, live){
     saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
     if(!isTypingInInput()) route();
     renderHeader(); renderSideProject();
-    setCloudStat('Updated by teammate · ' + new Date().toTimeString().slice(0,5));
+    setCloudStat('Updated by teammate · ' + hhmm());
   }
   _fbApplying = false;
 }
@@ -3924,7 +3970,7 @@ async function cloudPullContent(force){
         saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
         renderSideProject();
         if(isActive && !isTypingInInput()) rerenderKeepScroll();
-        setCloudStat('Merged teammate changes · ' + new Date().toTimeString().slice(0,5));
+        setCloudStat('Merged teammate changes · ' + hhmm());
       }
     }catch(err){}
   }
@@ -3996,12 +4042,13 @@ async function cloudReconcileDeletions(){
   }
   saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
   renderSideProject();
-  setCloudStat('Removed a project deleted by a teammate · ' + new Date().toTimeString().slice(0,5));
+  setCloudStat('Removed a project deleted by a teammate · ' + hhmm());
 }
 function cloudMetaOf(e){
   const P = e.data.project || {};
   return {
     v: 1,
+    pid: P.pid || '',                                           /* stable project identity → folders matched by pid, never by name (BUILD 12.69) */
     number: P.number || '', title: P.title || '', type: P.type || '',
     dome: P.domeDiameter || '', domeType: P.domeType || '', sysNumber: P.sysNumber || '',
     location: P.location || '',                                  /* location on the sidebar card (BUILD 12.33) */
@@ -4161,14 +4208,23 @@ async function cloudPushActive(entry, quiet){
     /* the remembered project folder may have been deleted/emptied by hand */
     if(m && m.fid && !(await driveAlive(m.fid))) m = null;
     if(!m || !m.fid){
-      const fid = await driveEnsureFolder(projDriveFolderName(e.data.project), rootId);
-      m = driveMap()[e.id] = { fid, mtime: '', docsSig: {}, name: projDriveFolderName(e.data.project) };
+      const P = e.data.project;
+      const wantName = projDriveFolderName(P);
+      /* resolve by STABLE pid, never by bare name: (1) our own folder from another
+         machine (meta.pid === P.pid), (2) a legacy no-pid folder of the same name to
+         adopt once, else (3) a BRAND-NEW folder — so two same-named projects can NOT
+         share a folder (the cross-link/overwrite bug — BUILD 12.69) */
+      let fid = (P.pid && driveFidByPid(P.pid)) || driveLegacyFidByName(wantName);
+      if(!fid) fid = await driveCreateFolder(wantName, rootId);
+      if(!P.pid) P.pid = 'f' + fid;                     /* legacy project had no pid → derive it from the folder id (same on every machine that links this folder, no meta churn) */
+      m = driveMap()[e.id] = { fid, mtime: '', docsSig: {}, name: wantName };
       /* NEW project: the live stream may have started on the temporary local id
          (folder didn't exist yet). Now that the shared folder id is known, re-key
          the stream to projects/<fid> so BOTH machines share one live node and
          server/rack/etc. rows sync (BUILD 12.14). */
       if(e === activeEntry() && typeof liveStart === 'function' && fbReady()){ try{ liveStart(); }catch(_){} }
     }
+    if(!e.data.project.pid && m && m.fid) e.data.project.pid = 'f' + m.fid;   /* already-linked legacy project → stamp a stable pid derived from its folder (BUILD 12.69) */
     /* NO-OP GUARD (BUILD 12.65): a passive machine must NOT re-write the project to Drive
        when its content is exactly what it last synced — otherwise it clobbers a teammate's
        newer version (the "my save disappears / their save reverts" bug in real multi-user).
@@ -4181,7 +4237,7 @@ async function cloudPushActive(entry, quiet){
         && m.name === projDriveFolderName(e.data.project)
         && (!!m._done === !!e.done)){
       _pushing = false;
-      setCloudStat('Cloud ✓ ' + (_gUser || '') + ' · up to date ' + new Date().toTimeString().slice(0,5));
+      setCloudStat('Cloud ✓ ' + (_gUser || '') + ' · up to date ' + hhmm());
       return;
     }
     /* keep Drive names in sync with the project (BUILD 11.6):
@@ -4286,7 +4342,7 @@ async function cloudPushActive(entry, quiet){
     }catch(err){}
     saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
     if(!quiet) await cloudRefreshList();                 /* BUILD 12.66b: a merge push-back passes quiet=true so it doesn't trigger ANOTHER full refresh (that cascade multiplied Drive calls and stalled sync) */
-    setCloudStat('Cloud ✓ ' + (_gUser || '') + ' · saved ' + new Date().toTimeString().slice(0,5) + ' → ' + projDriveFolderName(e.data.project) + (_remoteMoved ? ' · teammate snapshot replaced (kept in Drive history)' : ''));
+    setCloudStat('Cloud ✓ ' + (_gUser || '') + ' · saved ' + hhmm() + ' → ' + projDriveFolderName(e.data.project) + (_remoteMoved ? ' · teammate snapshot replaced (kept in Drive history)' : ''));
   }catch(err){
     const msg = (err && err.message) || 'error';
     setCloudStat('⚠ NOT saved to cloud: ' + msg + ' — click to retry');
