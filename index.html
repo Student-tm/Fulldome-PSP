@@ -615,7 +615,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.66 · FIELD-LEVEL MERGE SYNC</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.67 · SYNC RATE-LIMIT FIX</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -3426,10 +3426,18 @@ async function gFetch(url, opts){
   if(!r.ok && r.status !== 404){
     let detail = '';
     try{ const t = await r.clone().text(); const j = JSON.parse(t); detail = (j.error && j.error.message) || t.slice(0,120); }catch(e){}
+    /* BUILD 12.66b: Drive per-user rate limit → back off the poll for 60s so we
+       stop hammering (the "works a couple minutes then stalls" symptom). Only for
+       rate/quota rejections, NOT real permission errors. */
+    if((r.status === 403 || r.status === 429) && /rate|quota|exceeded|limit/i.test(detail)){
+      _rateLimitedUntil = Date.now() + 60000;
+      setCloudStat('Google Drive rate limit — auto-resuming in ~60s');
+    }
     throw new Error('Drive ' + r.status + (detail ? ': ' + detail : ''));
   }
   return r;
 }
+var _rateLimitedUntil = 0;
 async function driveEnsureFolder(name, parentId){
   const q = encodeURIComponent(
     "name = '" + name.replace(/'/g, "\\'") + "' and mimeType = 'application/vnd.google-apps.folder' and trashed = false" +
@@ -3843,19 +3851,25 @@ function cloudStartPoll(){
   }, 10000);   /* 10s: any teammate edit shows up within ~10s on every open machine, foreground or not (BUILD 12.65) */
 }
 function cloudStopPoll(){ if(_cloudPoll){ clearInterval(_cloudPoll); _cloudPoll = null; } }
+var _refreshing = false;   /* BUILD 12.66b: re-entrancy guard — overlapping polls + push-back refreshes must not stack (they multiply Drive API calls and hit the per-user rate limit) */
 async function cloudRefreshList(){
-  const rootId = await driveRootId();
-  const q = encodeURIComponent("'" + rootId + "' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false");
-  const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name)&orderBy=name&pageSize=200');
-  const j = await r.json();
-  _cloudFolders = j.files || [];
-  saveState._skipCloud = true; saveState(); saveState._skipCloud = false;  /* saving the folder list is NOT a user edit — must NOT stamp _dirtyAt or it blocks incoming sync forever (BUILD 12.41 fix) */
-  renderSideProject();                                 /* names first — instant */
-  _cloudMeta = await cloudLoadMeta(_cloudFolders);     /* then rich cards */
-  cloudReconcileFromMeta();                            /* pull Done + validation onto already-downloaded projects (BUILD 12.8) */
-  renderSideProject();
-  try{ await cloudPullContent(_forcePull); }catch(e){} /* pull teammate ROW edits over Drive (BUILD 12.34) — reliable fallback for the flaky live channel */
-  _forcePull = false;
+  if(_refreshing) return;                               /* a refresh is already in flight — don't stack another (rate-limit protection) */
+  if(Date.now() < _rateLimitedUntil) return;            /* backing off after a Drive rate-limit — skip this tick */
+  _refreshing = true;
+  try{
+    const rootId = await driveRootId();
+    const q = encodeURIComponent("'" + rootId + "' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false");
+    const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name)&orderBy=name&pageSize=200');
+    const j = await r.json();
+    _cloudFolders = j.files || [];
+    saveState._skipCloud = true; saveState(); saveState._skipCloud = false;  /* saving the folder list is NOT a user edit — must NOT stamp _dirtyAt or it blocks incoming sync forever (BUILD 12.41 fix) */
+    renderSideProject();                                 /* names first — instant */
+    _cloudMeta = await cloudLoadMeta(_cloudFolders);     /* then rich cards */
+    cloudReconcileFromMeta();                            /* pull Done + validation onto already-downloaded projects (BUILD 12.8) */
+    renderSideProject();
+    try{ await cloudPullContent(_forcePull); }catch(e){} /* pull teammate ROW edits over Drive (BUILD 12.34) — reliable fallback for the flaky live channel */
+    _forcePull = false;
+  } finally { _refreshing = false; }
 }
 /* Poll-based content sync (BUILD 12.34): for every downloaded project linked to a
    cloud folder, if the folder meta's content signature differs from what we last
@@ -3916,7 +3930,7 @@ async function cloudPullContent(force){
   /* push back any project whose merge kept local-only edits, so the teammate
      receives OUR rows too. Done outside the loop to avoid re-entering push while
      iterating; cloudPushActive's no-op guard skips it if merged == remote. */
-  for(const pe of toPush){ try{ await cloudPushActive(pe); }catch(_){} }
+  for(const pe of toPush){ try{ await cloudPushActive(pe, true); }catch(_){} }   /* quiet: no trailing full refresh */
 }
 /* for projects already downloaded locally (linked to a cloud folder), adopt the
    shared status (Done + validation chips) from the folder meta on refresh/sign-in —
@@ -3954,14 +3968,22 @@ function cloudMetaOf(e){
     savedBy: _gUser || '', savedAt: new Date().toISOString()
   };
 }
+var _metaId = {};   /* BUILD 12.66b: cache folderId -> meta.json fileId so the 10s poll skips a search query PER FOLDER (the search queries, run every tick per project, were what drained the Drive rate limit and made it "stall after a couple minutes") */
 async function cloudLoadMeta(folders){
   /* tiny meta.json per project folder — lets the sidebar render FULL cards
      for team projects without downloading the heavy project json */
   const out = {};
   await Promise.all((folders||[]).map(async f => {
     try{
-      const mid = await driveFindFile('meta.json', f.id);
+      let mid = _metaId[f.id];
+      if(mid){
+        const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + mid + '?alt=media');   /* cheap GET by id — no search query */
+        if(r.status !== 404){ out[f.id] = JSON.parse(await r.text()); return; }
+        delete _metaId[f.id];                            /* cached id is stale (meta recreated) — fall through to re-find */
+      }
+      mid = await driveFindFile('meta.json', f.id);       /* one search, only on first sight or after a stale id */
       if(!mid) return;
+      _metaId[f.id] = mid;
       const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + mid + '?alt=media');
       out[f.id] = JSON.parse(await r.text());
     }catch(e){}
@@ -4081,7 +4103,7 @@ function cloudTouch(){
   clearTimeout(_pushTimer);
   _pushTimer = setTimeout(cloudPushActive, delay);
 }
-async function cloudPushActive(entry){
+async function cloudPushActive(entry, quiet){
   if(_pushing) return;
   if(!_cloudOn || !_gTok){ setCloudStat('⚠ Not signed in — click here to connect Google Drive'); return; }
   const e = (entry && entry.data && entry.data.project) ? entry : activeEntry();   /* can push a specific project (e.g. Done toggled on a non-active one) */
@@ -4218,7 +4240,7 @@ async function cloudPushActive(entry){
       e._dirtyAt = 0;                      /* our local edits are now safely on Drive (BUILD 12.41) */
     }catch(err){}
     saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
-    await cloudRefreshList();
+    if(!quiet) await cloudRefreshList();                 /* BUILD 12.66b: a merge push-back passes quiet=true so it doesn't trigger ANOTHER full refresh (that cascade multiplied Drive calls and stalled sync) */
     setCloudStat('Cloud ✓ ' + (_gUser || '') + ' · saved ' + new Date().toTimeString().slice(0,5) + ' → ' + projDriveFolderName(e.data.project) + (_remoteMoved ? ' · teammate snapshot replaced (kept in Drive history)' : ''));
   }catch(err){
     const msg = (err && err.message) || 'error';
