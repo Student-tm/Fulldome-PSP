@@ -615,7 +615,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.67 · SYNC RATE-LIMIT FIX</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.68 · DELETE SYNC ACROSS MACHINES</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -3867,6 +3867,7 @@ async function cloudRefreshList(){
     _cloudMeta = await cloudLoadMeta(_cloudFolders);     /* then rich cards */
     cloudReconcileFromMeta();                            /* pull Done + validation onto already-downloaded projects (BUILD 12.8) */
     renderSideProject();
+    try{ await cloudReconcileDeletions(); }catch(e){}    /* drop local projects a teammate deleted (folder trashed on Drive) — BUILD 12.68 */
     try{ await cloudPullContent(_forcePull); }catch(e){} /* pull teammate ROW edits over Drive (BUILD 12.34) — reliable fallback for the flaky live channel */
     _forcePull = false;
   } finally { _refreshing = false; }
@@ -3952,6 +3953,50 @@ function cloudReconcileFromMeta(){
     if('location' in meta && e.data.project && (e.data.project.location||'') !== (meta.location||'')){ e.data.project.location = meta.location || ''; changed = true; }
   });
   if(changed){ saveState._skipCloud = true; saveState(); saveState._skipCloud = false; }
+}
+/* DELETION SYNC (BUILD 12.68): a teammate's "Delete everywhere" trashes the Drive
+   folder, but on THIS machine the project is a LOCAL entry linked to that folder —
+   nothing removed it, so it kept hanging in the sidebar even after a reload. On every
+   refresh, for each local project linked to a cloud folder that is NO LONGER in the
+   freshly-fetched folder list, CONFIRM the folder is really trashed/gone (driveAlive
+   → GET by id, so a flaky/incomplete list can't cause a false delete) and only then
+   remove it locally. Fresh local edits (<30s) are spared until they've had a chance
+   to push (a project you're actively editing won't vanish under you). */
+async function cloudReconcileDeletions(){
+  if(!_cloudOn || !_gTok) return;
+  const map = driveMap();
+  const present = {}; (_cloudFolders||[]).forEach(f => { present[f.id] = 1; });
+  const candidates = db.projects.filter(e => {
+    const m = map[e.id];
+    if(!m || !m.fid) return false;                          /* purely local project, never on cloud → keep */
+    if(present[m.fid]) return false;                        /* folder still listed → keep */
+    if(e._dirtyAt && (Date.now() - e._dirtyAt) < 30000) return false;  /* has unsynced local edits → don't nuke yet */
+    return true;
+  });
+  if(!candidates.length) return;
+  let removedAny = false;
+  for(const e of candidates){
+    const m = map[e.id]; if(!m) continue;
+    if(await driveAlive(m.fid)) continue;                   /* folder actually still exists → the list was just incomplete, keep the project */
+    const i = db.projects.findIndex(p => p.id === e.id);
+    if(i > -1) db.projects.splice(i, 1);
+    try{ if(typeof liveStop === 'function' && _fbPath && _fbPath.indexOf(fbProjectKey(e)) >= 0) liveStop(); }catch(_){}
+    if(_cloudMeta) delete _cloudMeta[m.fid];
+    delete _metaId[m.fid];
+    delete map[e.id];
+    removedAny = true;
+  }
+  if(!removedAny) return;
+  if(!db.projects.find(p => p.id === db.activeId)){          /* the removed project was the active one — pick another */
+    const alt = db.projects.find(p => !p.frozen) || db.projects[0];
+    db.activeId = alt ? alt.id : null;
+    syncActive();
+    renderHeader();
+    goTo((state && state.project) ? '#/dashboard' : '#/create');
+  }
+  saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
+  renderSideProject();
+  setCloudStat('Removed a project deleted by a teammate · ' + new Date().toTimeString().slice(0,5));
 }
 function cloudMetaOf(e){
   const P = e.data.project || {};
