@@ -616,7 +616,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.70 · DELETE TOMBSTONES + CARD FIX</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.73 · FASTER SYNC + LIVE NEWEST-WINS</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -735,6 +735,7 @@ var db = { projects: [], activeId: null, library: emptyLibrary(), customCats: {}
 var state = emptyState();                    // always points to the ACTIVE project data
 
 const newId = () => 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+var _booting = true;   /* true until the first boot render finishes — boot/migration saves must NOT bump project _rev (else a reload would look "newest" and clobber) (BUILD 12.72) */
 /* US 12-hour clock for status timestamps, e.g. "2:04 PM" (BUILD 12.69) */
 function hhmm(){ let h=new Date().getHours(); const m=('0'+new Date().getMinutes()).slice(-2); const ap=h<12?'AM':'PM'; h=h%12; if(h===0)h=12; return h+':'+m+' '+ap; }
 function activeEntry(){ return db.projects.find(p => p.id === db.activeId) || null; }
@@ -865,7 +866,8 @@ function setActive(id){
   const e = db.projects.find(p => p.id === id);
   if(!e || e.frozen) return;                 // frozen projects are not selectable
   db.activeId = id; syncActive();
-  saveState(); renderHeader(); renderSideProject();
+  saveState._skipCloud = true; saveState(); saveState._skipCloud = false;   /* selecting a project is NOT an edit — must not bump its _rev (BUILD 12.72) */
+  renderHeader(); renderSideProject();
   location.hash = '#/dashboard'; route();
 }
 function toggleDone(id, ev){
@@ -895,7 +897,7 @@ function editProject(id, ev){
   if(ev) ev.stopPropagation();
   const e = db.projects.find(p => p.id === id);
   if(!e || e.frozen) return;
-  if(db.activeId !== id){ db.activeId = id; syncActive(); saveState(); }
+  if(db.activeId !== id){ db.activeId = id; syncActive(); saveState._skipCloud = true; saveState(); saveState._skipCloud = false; }   /* selecting a project is NOT an edit — must not bump its _rev (BUILD 12.72) */
   location.hash = '#/edit'; route();
 }
 
@@ -981,7 +983,7 @@ function saveState(){
      holds for ~30s after the last edit, then incoming sync resumes — so it can never get
      stuck and silently block teammate updates (that broke status sync after ~20 min open).
      Cleared outright once cloudPushActive confirms the upload. */
-  if(!saveState._skipCloud){ try{ const _e = activeEntry(); if(_e) _e._dirtyAt = Date.now(); }catch(e){} }
+  if(!saveState._skipCloud){ try{ const _e = activeEntry(); if(_e){ _e._dirtyAt = Date.now(); if(!_booting && _e.data && _e.data.project) _e.data.project._rev = Math.max(Date.now(), (_e.data.project._rev||0) + 1); } }catch(e){} }   /* monotonic revision: strictly increases on every genuine edit (never during boot) → "newest edit wins, no rollback" (BUILD 12.72) */
   if(!saveState._skipCloud && typeof cloudTouch === 'function'){ try{ cloudTouch(); }catch(e){} }
   if(!saveState._skipCloud && typeof liveTouch === 'function'){ try{ liveTouch(); }catch(e){} }
   if(!idbOk){
@@ -2314,7 +2316,7 @@ function createProjectInner(){
   validateForm(f);
   /* a new project is ADDED to the list — existing projects stay untouched */
   const data = emptyState();
-  data.project = Object.assign(f, {status:'Engineering', created:new Date().toISOString().slice(0,10), pid:newId()});   /* stable identity from birth (BUILD 12.69) */
+  data.project = Object.assign(f, {status:'Engineering', created:new Date().toISOString().slice(0,10), pid:newId(), _rev:Date.now()});   /* stable identity + revision from birth (BUILD 12.69/12.72) */
   data.server.rows = [blankRow(), blankRow(), blankRow()];
   if(f.captureRequired) data.server.rows.push({cat:'Capture Card', name:'', qty:1, price:'', link:''});
   if(f.vjRequired) data.vj.rows = [blankRow(), blankRow(), blankRow()];
@@ -3792,6 +3794,13 @@ function onLiveEvent(ev){
 }
 function applyIncoming(e, live){
   if(!live) return;
+  /* NEWEST-WINS (BUILD 12.73): the live channel must obey the same rule as the Drive poll —
+     never apply a slice that isn't newer than what we have, so a stale/echoed live event
+     can't roll back a fresh local edit. */
+  const inRev = (live.project && live.project._rev) || 0;
+  const locRev = (e.data.project && e.data.project._rev) || 0;
+  const doneChanged = ('done' in live) && (!!live.done !== !!e.done);
+  if(inRev <= locRev && !doneChanged) return;
   _fbApplying = true;
   let changed = liveApply(e.data, live);
   if(liveApplyDone(e, live)) changed = true;
@@ -3831,6 +3840,14 @@ async function livePush(){
    localProjectId -> {fid, mtime, docsSig}. Conflict guard: before a push the
    remote project.json modifiedTime is compared with the last one we saw. */
 var _cloudOn = false, _cloudFolders = [], _cloudMeta = {}, _pushTimer = null, _pushing = false;
+/* BUILD 12.72: auto-sync is BACK ON, but now governed by a per-project monotonic
+   revision (project._rev). The old stack reverted renames because a stale machine
+   re-pushed its old copy on reload and clobbered everywhere. Now every genuine edit
+   bumps _rev; a push REFUSES to overwrite a remote whose rev is newer, and a pull
+   only applies a remote whose rev is strictly newer than local — so "newest edit
+   wins, rollback impossible". Folder rename + normal cross-machine sync work as before. */
+var _AUTO_SYNC = true;
+var _manualPush = false;
 function driveMap(){ if(!db.driveMap || typeof db.driveMap!=='object') db.driveMap = {}; return db.driveMap; }
 function setCloudStat(t){ const el=document.getElementById('driveStat'); if(el) el.textContent = t; }
 function cloudGateShow(){ const g=document.getElementById('authGate'); if(g) g.style.display='flex'; }
@@ -3857,15 +3874,15 @@ async function cloudStart(silent){
     cloudBindVisibility();                             /* pull the instant a hidden tab is focused (BUILD 12.36) */
     setCloudStat('Loading team projects…');
     await cloudRefreshList();
-    setCloudStat(_gUser ? ('Cloud ✓ ' + _gUser) : 'Cloud ✓');
+    setCloudStat((_gUser ? ('Cloud ✓ ' + _gUser) : 'Cloud ✓') + (_AUTO_SYNC ? '' : ' · SYNC PAUSED (safe mode)'));
     /* live sync: Firebase session from the same Google session */
     try{
       await fbSignInWithAccessToken(_gTok);
       await liveStart();
     }catch(e){ setCloudStat('Cloud ✓ (live sync off: ' + (e.message||'') + ')'); }
-    /* a project may already be open (loaded from disk before signing in) —
-       make sure it reaches the team folder right away */
-    if(activeEntry()) cloudPushActive();
+    /* SAFE MODE (12.71): do NOT auto-push on sign-in/boot — reloading a stale machine
+       used to re-upload its old copy and rename folders everywhere. Manual only now. */
+    if(_AUTO_SYNC && activeEntry()) cloudPushActive();
   }catch(e){
     if(silent){ setCloudStat('Not signed in — click here to sign in & sync'); return; }   /* silent attempt failed: no gate, one-click available */
     if(err) err.textContent = 'Sign-in failed: ' + (e && e.message || 'error') + '. Check that your email is in the test users list.';
@@ -3897,7 +3914,7 @@ function cloudStartPoll(){
        Polling only PULLS (reads Drive) — it never pushes on its own — so a
        background machine can't clobber anyone by staying in sync. */
     if(_cloudOn && _gTok){ cloudRefreshList().catch(function(){}); }
-  }, 10000);   /* 10s: any teammate edit shows up within ~10s on every open machine, foreground or not (BUILD 12.65) */
+  }, 6000);   /* 6s (BUILD 12.73): snappier inbound sync; cheap now thanks to cached meta ids + re-entrancy guard + rate-limit backoff (12.67) */
 }
 function cloudStopPoll(){ if(_cloudPoll){ clearInterval(_cloudPoll); _cloudPoll = null; } }
 var _refreshing = false;   /* BUILD 12.66b: re-entrancy guard — overlapping polls + push-back refreshes must not stack (they multiply Drive API calls and hit the per-user rate limit) */
@@ -3914,11 +3931,18 @@ async function cloudRefreshList(){
     saveState._skipCloud = true; saveState(); saveState._skipCloud = false;  /* saving the folder list is NOT a user edit — must NOT stamp _dirtyAt or it blocks incoming sync forever (BUILD 12.41 fix) */
     renderSideProject();                                 /* names first — instant */
     _cloudMeta = await cloudLoadMeta(_cloudFolders);     /* then rich cards */
-    cloudReconcileFromMeta();                            /* pull Done + validation onto already-downloaded projects (BUILD 12.8) */
-    renderSideProject();
-    try{ await cloudLoadTombstones(); cloudApplyTombstones(); }catch(e){}   /* honor team deletions so they STICK and can't resurrect — BUILD 12.70 */
-    try{ await cloudReconcileDeletions(); }catch(e){}    /* drop local projects a teammate deleted (folder trashed on Drive) — BUILD 12.68 */
-    try{ await cloudPullContent(_forcePull); }catch(e){} /* pull teammate ROW edits over Drive (BUILD 12.34) — reliable fallback for the flaky live channel */
+    /* SAFE MODE (12.71): only REFRESH the team list (read-only). All the steps that
+       MUTATE local projects from Drive — status adoption, deletions, tombstones, content
+       pull — are gated off so nothing silently rewrites, deletes or reverts your work. */
+    if(_AUTO_SYNC){
+      cloudReconcileFromMeta();                          /* pull Done + validation onto already-downloaded projects (BUILD 12.8) */
+      renderSideProject();
+      try{ await cloudLoadTombstones(); cloudApplyTombstones(); }catch(e){}   /* honor team deletions so they STICK and can't resurrect — BUILD 12.70 */
+      try{ await cloudReconcileDeletions(); }catch(e){}  /* drop local projects a teammate deleted (folder trashed on Drive) — BUILD 12.68 */
+      try{ await cloudPullContent(_forcePull); }catch(e){} /* pull teammate ROW edits over Drive (BUILD 12.34) */
+    } else {
+      renderSideProject();
+    }
     _forcePull = false;
   } finally { _refreshing = false; }
 }
@@ -3928,25 +3952,26 @@ async function cloudRefreshList(){
    the shared slice (server/vj/rack/camera rows + projectors + validation). This makes
    server fields sync within ~45s even when the Firebase live channel is down. The
    ACTIVE project is not clobbered while the user is typing — it retries next tick. */
+/* NEWEST-WINS PULL (BUILD 12.72): for each downloaded project, apply the Drive copy
+   ONLY when its revision is strictly newer than ours (rollback is impossible), or when
+   its photo set changed. No 3-way merge, no base — just "newest edit wins", which is
+   predictable and can never revert a fresh local edit. */
 async function cloudPullContent(force){
+  if(!_AUTO_SYNC) return;
   if(!_cloudOn || !_gTok) return;
   const map = driveMap();
   const entries = db.projects.filter(e => map[e.id] && map[e.id].fid);
-  const toPush = [];
   for(const e of entries){
     const m = map[e.id];
     const meta = _cloudMeta[m.fid];
-    if(!meta || (!('sig' in meta) && !('psig' in meta))) continue;
-    const sigChanged  = ('sig' in meta)  && meta.sig  !== m.liveSig;   /* rows/fields/etc changed */
-    const psigChanged = ('psig' in meta) && meta.psig !== m.psig;      /* a photo added/removed (BUILD 12.61) */
-    if(!sigChanged && !psigChanged) continue;                    /* nothing new since we last applied/pushed */
+    if(!meta) continue;
+    const remoteRev   = meta.rev || 0;
+    const localRev    = (e.data.project && e.data.project._rev) || 0;
+    const contentNewer = remoteRev > localRev;                    /* remote is a genuinely newer edit */
+    const psigChanged  = ('psig' in meta) && meta.psig !== m.psig; /* a photo added/removed */
+    if(!contentNewer && !psigChanged) continue;
     const isActive = (e.id === db.activeId);
-    if(isActive && (isTypingInInput() || _pushing || _fbApplying)) continue;   /* don't touch state mid-keystroke; merge runs the moment they pause */
-    /* BUILD 12.66: with a merge BASE we can safely field-MERGE a recent local edit
-       with the teammate's, so drop the 30s block that used to delay incoming rows.
-       Only when there is NO base yet (pre-12.66 state) keep the old guard, because
-       without a base we'd fall back to whole-slice overwrite. */
-    if(!m.base && !force && e._dirtyAt && (Date.now() - e._dirtyAt) < 30000) continue;
+    if(isActive && (isTypingInInput() || _pushing || _fbApplying)) continue;   /* don't yank state mid-keystroke — retries next poll */
     try{
       const jname = (m.name || '') + '.json';
       const jfid = await driveFindProjectJson(m.fid, jname);
@@ -3955,33 +3980,23 @@ async function cloudPullContent(force){
       const obj = JSON.parse(await r.text());
       const s = obj.state || obj;
       if(!s || !s.project || !('server' in s)) continue;
+      /* re-check freshness against the ACTUAL downloaded file (meta could lag) */
+      const dlRev = (s.project && s.project._rev) || 0;
       let changed = false;
-      if(sigChanged){
-        const remote = liveSlice(s);
-        const local  = liveSlice(e.data);
-        const remoteNewer = (Date.parse(meta.savedAt || 0) || 0) >= (e._dirtyAt || 0);
-        /* first contact (no base) → take remote (old behavior); otherwise 3-way merge
-           so OUR rows/fields and THEIR rows/fields both survive */
-        const merged = m.base ? merge3(m.base, local, remote, remoteNewer) : remote;
-        if(liveApply(e.data, merged)) changed = true;
-        m.base    = clone(merged);           /* new agreed base for the next merge */
-        m.liveSig = meta.sig;                /* we've incorporated the remote we saw */
-        if(liveSig(e.data) !== meta.sig) toPush.push(e);   /* merge kept local-only edits → push them back so the teammate gets them */
+      if(contentNewer && dlRev > localRev){
+        if(liveApply(e.data, liveSlice(s))) changed = true;       /* adopt the newer copy wholesale — _rev rides in project, so localRev becomes remote's */
+        m.liveSig = liveSig(e.data);
+        if('done' in obj){ const wd=!!obj.done; if(wd!==!!e.done){ if(wd){e.done=true;e.doneAt=obj.doneAt||Date.now();}else{delete e.done;delete e.doneAt;} } }
       }
-      if(psigChanged){ if(applyPhotosFrom(e.data, s)) changed = true; m.psig = meta.psig; }   /* pull photos (incl. pallet photos) */
-      if('done' in obj){ const wd=!!obj.done; if(wd!==!!e.done){ if(wd){e.done=true;e.doneAt=obj.doneAt||Date.now();}else{delete e.done;delete e.doneAt;} changed=true; } }
+      if(psigChanged){ if(applyPhotosFrom(e.data, s)) changed = true; m.psig = meta.psig; }
       if(changed){
         saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
         renderSideProject();
         if(isActive && !isTypingInInput()) rerenderKeepScroll();
-        setCloudStat('Merged teammate changes · ' + hhmm());
+        setCloudStat('Updated from cloud (newer edit) · ' + hhmm());
       }
     }catch(err){}
   }
-  /* push back any project whose merge kept local-only edits, so the teammate
-     receives OUR rows too. Done outside the loop to avoid re-entering push while
-     iterating; cloudPushActive's no-op guard skips it if merged == remote. */
-  for(const pe of toPush){ try{ await cloudPushActive(pe, true); }catch(_){} }   /* quiet: no trailing full refresh */
 }
 /* for projects already downloaded locally (linked to a cloud folder), adopt the
    shared status (Done + validation chips) from the folder meta on refresh/sign-in —
@@ -4116,6 +4131,7 @@ function cloudMetaOf(e){
   return {
     v: 1,
     pid: P.pid || '',                                           /* stable project identity → folders matched by pid, never by name (BUILD 12.69) */
+    rev: P._rev || 0,                                           /* monotonic revision → poll compares freshness without downloading; newest wins, no rollback (BUILD 12.72) */
     number: P.number || '', title: P.title || '', type: P.type || '',
     dome: P.domeDiameter || '', domeType: P.domeType || '', sysNumber: P.sysNumber || '',
     location: P.location || '',                                  /* location on the sidebar card (BUILD 12.33) */
@@ -4257,10 +4273,14 @@ function cloudPushNow(){
 function cloudTouch(){
   /* called from saveState — schedule a quiet push of the active project.
      With live sync the Drive copy is an archive snapshot: write it rarely. */
+  if(!_AUTO_SYNC) return;
   if(!_cloudOn || !_gTok) return;
-  const delay = (typeof fbReady === 'function' && fbReady() && _fbPath) ? 25000 : 4000;
+  /* BUILD 12.73: push ~2s after the last edit, always. The old 25s delay "when live is
+     up" made order-dot / ship-checkbox changes take up to 25s to reach Drive (and the
+     user's live channel is flaky) — that felt like "poor sync". The Drive poll is the
+     reliable channel now, so publish quickly. */
   clearTimeout(_pushTimer);
-  _pushTimer = setTimeout(cloudPushActive, delay);
+  _pushTimer = setTimeout(cloudPushActive, 2000);
 }
 async function cloudPushActive(entry, quiet){
   if(_pushing) return;
@@ -4293,6 +4313,20 @@ async function cloudPushActive(entry, quiet){
       if(e === activeEntry() && typeof liveStart === 'function' && fbReady()){ try{ liveStart(); }catch(_){} }
     }
     if(!e.data.project.pid && m && m.fid) e.data.project.pid = 'f' + m.fid;   /* already-linked legacy project → stamp a stable pid derived from its folder (BUILD 12.69) */
+    /* NEWEST-WINS GUARD (BUILD 12.72): if the copy on Drive is NEWER than ours (higher
+       rev), we must NOT overwrite it — a stale machine reloading must never clobber a
+       fresh rename made elsewhere. Bail out; cloudPullContent will adopt the newer remote. */
+    if(!_manualPush){
+      const _rm = _cloudMeta && _cloudMeta[m.fid];
+      const _remoteRev = (_rm && _rm.rev) || 0;
+      const _localRev = (e.data.project && e.data.project._rev) || 0;
+      if(_remoteRev > _localRev){
+        _pushing = false;
+        setCloudStat('Cloud copy is newer — kept theirs, pulling · ' + hhmm());
+        try{ await cloudPullContent(true); }catch(_){}
+        return;
+      }
+    }
     /* NO-OP GUARD (BUILD 12.65): a passive machine must NOT re-write the project to Drive
        when its content is exactly what it last synced — otherwise it clobbers a teammate's
        newer version (the "my save disappears / their save reverts" bug in real multi-user).
@@ -4309,9 +4343,12 @@ async function cloudPushActive(entry, quiet){
       return;
     }
     /* keep Drive names in sync with the project (BUILD 11.6):
-       folder = "<number> <title>", json = same name + .json */
+       folder = "<number> <title>", json = same name + .json.
+       SAFE MODE (12.71): folder renaming is DISABLED — auto-rename cross-linked and
+       clobbered folders. The Drive folder keeps whatever name it has; only the json
+       content is written. */
     const wantFolder = projDriveFolderName(e.data.project);
-    if(m.name !== wantFolder){
+    if(_AUTO_SYNC && m.name !== wantFolder){
       try{
         const cur = await (await gFetch('https://www.googleapis.com/drive/v3/files/' + m.fid + '?fields=name')).json();
         if(cur && cur.name && cur.name !== wantFolder){
@@ -4337,7 +4374,8 @@ async function cloudPushActive(entry, quiet){
       }catch(err){}
     }
     const upUrl = 'https://www.googleapis.com/upload/drive/v3/files' + (jfid ? '/' + jfid : '') + '?uploadType=multipart&fields=id,modifiedTime';
-    const meta2 = jfid ? { name: wantedName } : { name: wantedName, parents:[m.fid] };
+    /* SAFE MODE (12.71): on PATCH don't rename the existing json (empty meta keeps its name) — only new files get the composed name */
+    const meta2 = jfid ? (_AUTO_SYNC ? { name: wantedName } : {}) : { name: wantedName, parents:[m.fid] };
     const boundary = 'fdp' + Math.random().toString(36).slice(2);
     const body = new Blob(['--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify(meta2)+'\r\n--'+boundary+'\r\nContent-Type: application/json\r\n\r\n', projPayload(e), '\r\n--'+boundary+'--']);
     const ur = await gFetch(upUrl, { method: jfid?'PATCH':'POST', headers:{'Content-Type':'multipart/related; boundary='+boundary}, body });
@@ -5702,6 +5740,7 @@ loadState(()=>{ restoreHandles(); renderHeader(); renderSideProject();
      project is the last-edited one and stays selected. */
   { const boot = activeEntry() ? '#/dashboard' : '#/create'; if(location.hash !== boot) location.hash = boot; }
   route();
+  _booting = false;   /* boot render done — from here genuine edits bump _rev (BUILD 12.72) */
   /* BUILD 12.13: no blocking sign-in gate. Try a silent Google reconnect at boot
      (connects with zero clicks if the session is alive); if it can't, the app is
      already open and the status line offers a one-click sign-in. */
