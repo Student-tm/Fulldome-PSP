@@ -626,7 +626,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.80 · TOMBSTONES OFF (STOP DELETIONS)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.81 · SHARED ROOT (B WRITES TO A'S FOLDER)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -4735,8 +4735,22 @@ async function driveAlive(id){
   }catch(e){ return false; }
 }
 async function driveRootId(){
-  /* never trust a cached id — a trashed folder still answers by id, and
-     writes would silently land in the trash (BUILD 10.5) */
+  /* BUILD 12.81: prefer the SHARED "Fulldome PSP" (owned by the team owner) over one this
+     account created itself — so a second (Editor) account writes into the SAME folder the
+     owner sees, instead of its own private copy ("only computer A could create on Drive").
+     Everyone converges on the owner's folder. */
+  try{
+    const q = encodeURIComponent("name = '" + GDRIVE_ROOT_NAME.replace(/'/g,"\\'") + "' and mimeType = 'application/vnd.google-apps.folder' and trashed = false");
+    const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name,ownedByMe)&pageSize=25&supportsAllDrives=true&includeItemsFromAllDrives=true');
+    const list = ((await r.json()).files) || [];
+    if(list.length){
+      const shared = list.find(f => f.ownedByMe === false);   /* the owner's folder, shared with me */
+      const pick = shared || list[0];
+      db.gdriveRootId = pick.id;
+      return pick.id;
+    }
+  }catch(e){}
+  /* fallback: cached id, else create our own (owner's first run) */
   if(db.gdriveRootId && await driveAlive(db.gdriveRootId)) return db.gdriveRootId;
   const id = await driveEnsureFolder(GDRIVE_ROOT_NAME, null);
   db.gdriveRootId = id;
