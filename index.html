@@ -628,7 +628,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.0 · FIRESTORE SYNC (per-section, live)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.2 · FIRESTORE + DIAGNOSTICS</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -3895,8 +3895,8 @@ async function livePush(){
    later absent was deleted by the team → removed locally, never re-pushed. A
    local project Firebase has NEVER seen (!_fbSeen) is a fresh create → pushed.
    Safety: a successful-but-EMPTY tree never mass-deletes (guards a DB wipe). */
-var _FS = true;                  /* BUILD 14.0: Firestore-primary sync is ON (the plan's target DB) */
-var _FBP = false;                /* Realtime-Database path kept as an emergency fallback (flip _FS off + _FBP on) */
+var _FS = true;                  /* BUILD 14.2: Firestore-primary is ON (finishing it, per user) — now with loud diagnostics so a live failure is visible instead of silent. */
+var _FBP = false;                /* Realtime-Database path kept as an emergency fallback (flip _FS off + _FBP on). */
 var _fbpStream = null, _fbpPushT = null, _fbpPoll = null, _fbpApplying = false, _fbpStarted = false;
 var _fbpLocal = {};              /* pid -> last JSON we pushed (skip no-op writes) */
 const FBP_ROOT = 'projects';
@@ -4271,14 +4271,28 @@ function fsLoadSdk(){
   })), Promise.resolve());
   return _fsSdkP;
 }
+function fsDiag(msg, isErr){ try{ (isErr?console.error:console.log)('[FS] ' + msg); }catch(_){} }
+var _fsFatal = '';                 /* sticky Firestore error text — backup status won't hide it */
 async function fsInit(){
+  fsDiag('loading SDK…');
   await fsLoadSdk();
+  fsDiag('SDK loaded: firebase=' + (!!window.firebase) + ' firestore=' + (!!(window.firebase && firebase.firestore)));
+  if(!window.firebase || !firebase.firestore) throw new Error('Firebase SDK did not load (network/CDN blocked?)');
   if(!_fsApp){ _fsApp = firebase.initializeApp({ apiKey: FB.apiKey, authDomain: FS_PROJECT_ID + '.firebaseapp.com', projectId: FS_PROJECT_ID }); }
   _fsDb = firebase.firestore(); _fsAuthObj = firebase.auth(); _fsCol = _fsDb.collection('projects');
+  fsDiag('init ok, project=' + FS_PROJECT_ID);
 }
 async function fsSignIn(){
-  const cred = firebase.auth.GoogleAuthProvider.credential(null, _gTok);   /* reuse the Google OAuth access token */
-  await _fsAuthObj.signInWithCredential(cred);
+  fsDiag('signing in (token len=' + ((_gTok||'').length) + ')…');
+  if(!_gTok) throw new Error('no Google token — sign in to Google first');
+  try{
+    const cred = firebase.auth.GoogleAuthProvider.credential(null, _gTok);   /* reuse the Google OAuth access token */
+    const res = await _fsAuthObj.signInWithCredential(cred);
+    fsDiag('signed in as ' + ((res && res.user && res.user.email) || '?'));
+  }catch(err){
+    fsDiag('signInWithCredential FAILED: ' + (err.code||'') + ' ' + (err.message||''), true);
+    throw new Error((err.code || '') + ' ' + (err.message || 'sign-in failed'));
+  }
 }
 /* the full document for a NEW project (all sections + per-section revisions) */
 function fsFullDoc(e){
@@ -4397,16 +4411,26 @@ function fsOnSnapshot(snap){
 }
 async function fsStart(){
   if(!_FS) return;
+  _fsFatal = '';
   setCloudStat('Connecting Firestore…');
-  await fsInit();
-  try{ await fsSignIn(); }
-  catch(e){ _fsReady = false; setCloudStat('Firestore sign-in failed: ' + (e.message || '') + ' — check the Google provider + rules'); throw e; }
+  try{
+    await fsInit();
+    await fsSignIn();
+  }catch(e){
+    _fsReady = false;
+    _fsFatal = 'Firestore NOT connected: ' + (e.message || 'error');
+    setCloudStat('⚠ ' + _fsFatal + ' — click to retry');
+    fsDiag('START FAILED → ' + (e.message||''), true);
+    if(!fsStart._alerted){ fsStart._alerted = true; try{ alert('Firestore could not connect:\n\n' + (e.message || 'unknown') + '\n\nSend this text to the developer. (Sync is off until fixed; your data is safe locally + in Drive backups.)'); }catch(_){} }
+    throw e;
+  }
   _fsReady = true; _fsStarted = true; _fsSeededPush = false;
-  /* every project needs a stable pid to live in Firestore */
   db.projects.forEach(e => { if(e.data && e.data.project && !e.data.project.pid) e.data.project.pid = newId(); });
   if(_fsUnsub){ try{ _fsUnsub(); }catch(_){} }
-  _fsUnsub = _fsCol.onSnapshot(function(snap){ fsOnSnapshot(snap); }, function(err){ setCloudStat('⚠ Firestore stream error: ' + (err.message || '') + ' — click to retry'); });
-  setCloudStat('Synced ✓ ' + (_gUser || ''));
+  fsDiag('attaching onSnapshot to projects…');
+  _fsUnsub = _fsCol.onSnapshot(function(snap){ fsDiag('snapshot: ' + snap.size + ' docs, ' + snap.docChanges().length + ' changes'); fsOnSnapshot(snap); }, function(err){ _fsFatal = 'Firestore stream error: ' + (err.message||''); fsDiag('SNAPSHOT ERROR: ' + (err.code||'') + ' ' + (err.message||''), true); setCloudStat('⚠ ' + _fsFatal + ' — click to retry'); });
+  fsDiag('start ok — listening');
+  setCloudStat('Firestore ✓ ' + (_gUser || ''));
 }
 function fsStop(){
   if(_fsUnsub){ try{ _fsUnsub(); }catch(_){} _fsUnsub = null; }
@@ -4639,7 +4663,7 @@ async function backupAllChanged(forced){
     for(const e of db.projects){
       try{ if(await backupMirrorProject(e, forced)) n++; }catch(_){}
     }
-    if(n) setCloudStat('Backup mirrored (' + n + ') · ' + hhmm());
+    if(n && !_fsFatal) setCloudStat('Backup mirrored (' + n + ') · ' + hhmm());   /* don't hide a Firestore connection error (BUILD 14.2) */
   } finally { _backupBusy = false; }
 }
 function backupStartLoop(){
