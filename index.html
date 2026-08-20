@@ -628,7 +628,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 13.0 · FIREBASE SYNC (LIVE, pid-keyed)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 13.1 · FIREBASE SYNC + MEDIA (photos/docs)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -3905,6 +3905,7 @@ function fbpPid(e){ return e && e.data && e.data.project && e.data.project.pid; 
 function fbpDoc(e){
   const d = Object.assign(liveSlice(e.data), { done: !!e.done, doneAt: e.doneAt || 0 });
   d.pid = fbpPid(e); d.updatedAt = Date.now(); d.updatedBy = _gUser || '';
+  d.msig = fbpMediaSig(e);                                  /* BUILD 13.1: media signature — lets other machines know photos/docs changed */
   return d;
 }
 /* ---- auth-resilient REST (idToken expires ~1h → re-mint the Google token + Firebase idToken, retry once) ---- */
@@ -3928,12 +3929,13 @@ function fbpApplyRecord(rec){
     if(!data.project) data.project = {}; data.project.pid = rec.pid;
     data.shipping = data.shipping || {date:'',pallets:[],assign:{},docs:[],meta:{},packed:{}};
     data.ready = data.ready || {}; data.docs = data.docs || {sitePh:[],files:{}};
-    e = { id:newId(), frozen:false, data:data, _fbSeen:true };
+    e = { id:newId(), frozen:false, data:data, _fbSeen:true, _remoteMsig: rec.msig || '' };
     if(rec.done){ e.done = true; e.doneAt = rec.doneAt || Date.now(); }
     db.projects.push(e);
     return 'added';
   }
   e._fbSeen = true;
+  e._remoteMsig = rec.msig || '';                          /* BUILD 13.1: remember the remote media signature so the media pass can pull changed photos/docs */
   /* never disturb the project the user is actively typing in — next poll catches it */
   if(e === activeEntry() && isTypingInInput()) return null;
   const inRev  = (rec.project && rec.project._rev) || 0;
@@ -3984,16 +3986,18 @@ async function fbpPushNow(entry){
   const e = (entry && entry.data && entry.data.project) ? entry : activeEntry();
   if(!e || !e.data.project) return;
   const pid = fbpPid(e); if(!pid) return;
-  const doc = fbpDoc(e), s = JSON.stringify(doc);
-  if(_fbpLocal[pid] === s){ e._fbSeen = true; return; }    /* nothing changed since our last push */
+  /* stable content signature (NOT the whole doc — fbpDoc.updatedAt changes every call) */
+  const sig = liveSig(e.data) + '|' + fbpMediaSig(e) + '|' + (e.done ? ('D' + (e.doneAt||0)) : '');
+  if(_fbpLocal[pid] === sig){ e._fbSeen = true; return; }  /* nothing changed since our last push */
   /* newest-wins: if the remote copy is strictly newer, don't overwrite — let the poll pull it */
   try{
     const rRev = (await fbGet2(FBP_ROOT + '/' + pid + '/project/_rev')) || 0;
     const lRev = (e.data.project._rev) || 0;
     if(rRev > lRev){ e._fbSeen = true; return; }
   }catch(_){}
-  await fbPatch2(FBP_ROOT + '/' + pid, doc);
-  _fbpLocal[pid] = s; e._fbSeen = true;
+  await fbPatch2(FBP_ROOT + '/' + pid, fbpDoc(e));
+  _fbpLocal[pid] = sig; e._fbSeen = true;
+  try{ await fbpMediaUpload(e); }catch(_){}                 /* BUILD 13.1: mirror changed photos/docs to Drive (pid-keyed) */
 }
 function fbpTouch(){
   if(!_FBP || !fbReady() || _fbpApplying) return;
@@ -4003,6 +4007,7 @@ function fbpTouch(){
 async function fbpDelete(e){
   const pid = fbpPid(e); if(!pid || !fbReady()) return;
   try{ await fbDelete2(FBP_ROOT + '/' + pid); delete _fbpLocal[pid]; }catch(_){}
+  try{ await fbpMediaDelete(e); }catch(_){}                 /* BUILD 13.1: also trash the project's media file on Drive */
 }
 /* ---- receive: stream + poll ---- */
 function fbpOnEvent(){ clearTimeout(fbpOnEvent._t); fbpOnEvent._t = setTimeout(function(){ fbpPoll().catch(function(){}); }, 300); }
@@ -4020,6 +4025,7 @@ async function fbpPoll(){
   try{
     const tree = await fbGet2(FBP_ROOT);
     fbpApplyTree(tree || {});
+    fbpMediaSync().catch(function(){});                    /* BUILD 13.1: pull changed photos/docs (async, best-effort) */
     setCloudStat((_gUser ? ('Synced ✓ ' + _gUser) : 'Synced ✓') + ' · ' + hhmm());
   }catch(_){ /* next tick retries */ }
   finally{ fbpPoll._busy = false; }
@@ -4038,6 +4044,7 @@ async function fbpStart(){
     const pid = fbpPid(e);
     if(pid && e.data.project && !e._fbSeen && !remotePids[pid]){ try{ await fbpPushNow(e); }catch(_){} }
   }
+  fbpMediaSync().catch(function(){});                      /* BUILD 13.1: pull any photos/docs for freshly-materialized projects */
   fbpStreamOpen();
   if(!_fbpPoll) _fbpPoll = setInterval(function(){ fbpPoll().catch(function(){}); }, 8000);
   setCloudStat((_gUser ? ('Synced ✓ ' + _gUser) : 'Synced ✓'));
@@ -4046,6 +4053,94 @@ function fbpStop(){
   if(_fbpStream){ try{ _fbpStream.close(); }catch(_){} _fbpStream = null; }
   if(_fbpPoll){ clearInterval(_fbpPoll); _fbpPoll = null; }
   _fbpStarted = false;
+}
+/* ============================================================================
+   MEDIA SYNC (BUILD 13.1, Phase 2) — photos + Documentation files travel between
+   machines through Google DRIVE, keyed by the STABLE pid (no Blaze plan needed).
+   One flat folder "Fulldome PSP — MEDIA" holds one compact file per project,
+   "<pid>.media.json" (all photo arrays + doc files + content list, base64). The
+   filename IS the pid → two projects can NEVER collide, an Editor can write/replace/
+   delete a FILE (no 403 — that only hit folder-trashing). The Firebase record carries
+   `msig` (photo+doc signature); a machine whose local msig differs from the record's
+   downloads the media file and applies it (reusing applyPhotosFrom/applyDocsFrom).
+   Heavy media only moves when it actually changed. Human-browsable images stay in the
+   Drive backup folder (write-only mirror). ========================================= */
+const MEDIA_ROOT_NAME = 'Fulldome PSP — MEDIA';
+var _fbpMediaBusy = false;
+function mediaMap(){ if(!db.mediaMap || typeof db.mediaMap !== 'object') db.mediaMap = {}; return db.mediaMap; }
+function fbpMediaSig(e){ try{ return photoSigStr(e) + '|' + docsSigStr(e); }catch(_){ return ''; } }
+function fbpMediaPayload(e){
+  const d = e.data || {};
+  return {
+    server:{ photos:(d.server&&d.server.photos)||[] },
+    vj:{ photos:(d.vj&&d.vj.photos)||[] },
+    rack:{ photos:(d.rack&&d.rack.photos)||[], frontPh:(d.rack&&d.rack.frontPh)||[], rearPh:(d.rack&&d.rack.rearPh)||[] },
+    camera:{ photos:(d.camera&&d.camera.photos)||[] },
+    docs:{ sitePh:(d.docs&&d.docs.sitePh)||[], files:(d.docs&&d.docs.files)||{} },
+    projectors:{ models:(d.projectors&&d.projectors.models)||{} },
+    shipping:{ palletPhotos:(d.shipping&&d.shipping.palletPhotos)||{} },
+    contentList: d.contentList || null
+  };
+}
+async function fbpMediaRoot(){
+  if(db.mediaRootId && await driveAlive(db.mediaRootId)) return db.mediaRootId;
+  let id = await backupFindChildFolder(MEDIA_ROOT_NAME, 'root');
+  if(!id) id = await backupCreateFolder(MEDIA_ROOT_NAME, null);
+  db.mediaRootId = id; return id;
+}
+async function fbpMediaUpload(e){
+  if(!_cloudOn || !_gTok) return;
+  const pid = fbpPid(e); if(!pid) return;
+  const sig = fbpMediaSig(e);
+  const rec = mediaMap()[pid] || {};
+  if(rec.msig === sig && rec.fileId) return;               /* media unchanged since our last upload */
+  const root = await fbpMediaRoot();
+  const content = JSON.stringify(fbpMediaPayload(e));
+  const fileId = await backupPutInPlace(pid + '.media.json', root, content, rec.fileId);   /* PATCH in place → one file + version history */
+  mediaMap()[pid] = { fileId, msig: sig };
+  saveState._skipCloud = true; saveState(); saveState._skipCloud = false;   /* persist the media cache without bumping _rev */
+}
+async function fbpMediaDownloadApply(e, wantSig){
+  if(!_cloudOn || !_gTok) return false;
+  const pid = fbpPid(e); if(!pid) return false;
+  const root = await fbpMediaRoot();
+  let fileId = (mediaMap()[pid] || {}).fileId;
+  if(!fileId) fileId = await backupFindFile(pid + '.media.json', root);
+  if(!fileId){ mediaMap()[pid] = { fileId:null, msig: wantSig }; return false; }   /* remote has no media file yet */
+  const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media');
+  const media = JSON.parse(await r.text());
+  let ch = applyPhotosFrom(e.data, media);
+  if(applyDocsFrom(e.data, media)) ch = true;
+  mediaMap()[pid] = { fileId, msig: wantSig || fbpMediaSig(e) };
+  if(ch){ saveState._skipCloud = true; saveState(); saveState._skipCloud = false; }
+  return ch;
+}
+async function fbpMediaDelete(e){
+  const pid = fbpPid(e); if(!pid || !_cloudOn || !_gTok) return;
+  try{
+    const root = await fbpMediaRoot();
+    const fileId = (mediaMap()[pid] || {}).fileId || await backupFindFile(pid + '.media.json', root);
+    if(fileId){ try{ await driveTrashFolder(fileId); }catch(_){} }   /* trash the media FILE (works for any id; an Editor may trash files) */
+    delete mediaMap()[pid];
+  }catch(_){}
+}
+/* pull changed media for every project whose remote msig differs from our local media */
+async function fbpMediaSync(){
+  if(!_FBP || !_cloudOn || !_gTok || _fbpMediaBusy) return;
+  _fbpMediaBusy = true;
+  let any = false;
+  try{
+    for(const e of db.projects){
+      const pid = fbpPid(e); if(!pid) continue;
+      const want = e._remoteMsig; if(want === undefined || want === null) continue;
+      const localSig = fbpMediaSig(e);
+      if(want === localSig) continue;                       /* our media already matches the record */
+      /* don't clobber the active project mid-edit; retry next tick */
+      if(e === activeEntry() && (isTypingInInput() || (e._dirtyAt && Date.now() - e._dirtyAt < 30000))) continue;
+      try{ if(await fbpMediaDownloadApply(e, want)) any = true; }catch(_){}
+    }
+  } finally { _fbpMediaBusy = false; }
+  if(any){ if(!isTypingInInput()) route(); renderHeader(); renderSideProject(); }
 }
 
 /* ---------- TRANSPARENT CLOUD (BUILD 10.2) ----------
