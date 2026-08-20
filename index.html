@@ -628,7 +628,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.89 · DOCUMENTATION SYNCS TO ALL MACHINES</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.91 · PID IDENTITY GUARD (NO CROSS-OVERWRITE)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -4224,7 +4224,8 @@ async function cloudPullContent(force){
     const localRev    = (e.data.project && e.data.project._rev) || 0;
     const contentNewer = remoteRev > localRev;                    /* remote is a genuinely newer edit */
     const psigChanged  = ('psig' in meta) && meta.psig !== m.psig; /* a photo added/removed */
-    if(!contentNewer && !psigChanged) continue;
+    const dsigChanged  = ('dsig' in meta) && meta.dsig !== m.dsig; /* a documentation file added/removed/changed (BUILD 12.89b) */
+    if(!contentNewer && !psigChanged && !dsigChanged) continue;
     const isActive = (e.id === db.activeId);
     if(isActive && (isTypingInInput() || _pushing || _fbApplying)) continue;   /* don't yank state mid-keystroke — retries next poll */
     try{
@@ -4235,6 +4236,11 @@ async function cloudPullContent(force){
       const obj = JSON.parse(await r.text());
       const s = obj.state || obj;
       if(!s || !s.project || !('server' in s)) continue;
+      /* IDENTITY GUARD (BUILD 12.91): if the folder's json is now a DIFFERENT project
+         (its pid ≠ our project's pid), the folder got cross-linked — do NOT overwrite our
+         project with someone else's data. Skip. This is what stops "another project
+         completely replaced mine". */
+      if(s.project.pid && e.data.project && e.data.project.pid && s.project.pid !== e.data.project.pid) continue;
       /* re-check freshness against the ACTUAL downloaded file (meta could lag) */
       const dlRev = (s.project && s.project._rev) || 0;
       let changed = false;
@@ -4245,6 +4251,7 @@ async function cloudPullContent(force){
         if('done' in obj){ const wd=!!obj.done; if(wd!==!!e.done){ if(wd){e.done=true;e.doneAt=obj.doneAt||Date.now();}else{delete e.done;delete e.doneAt;} } }
       }
       if(psigChanged){ if(applyPhotosFrom(e.data, s)) changed = true; m.psig = meta.psig; }
+      if(dsigChanged || contentNewer){ if(applyDocsFrom(e.data, s)) changed = true; m.dsig = meta.dsig; }   /* docs sync even when rev already matched (BUILD 12.89b) */
       if(changed){
         saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
         renderSideProject();
@@ -4409,6 +4416,7 @@ function cloudMetaOf(e){
     validation: e.data.validation || {}, vjValidation: e.data.vjValidation || {},   /* test chips reconcile on refresh (BUILD 12.8) */
     sig: liveSig(e.data),                                        /* content signature → poll-based row sync (BUILD 12.34) */
     psig: photoSigStr(e),                                        /* photo signature → poll-based photo sync (BUILD 12.61) */
+    dsig: docsSigStr(e),                                         /* documentation signature → poll-based doc sync, independent of rev (BUILD 12.89b) */
     savedBy: _gUser || '', savedAt: new Date().toISOString()
   };
 }
@@ -4459,7 +4467,7 @@ async function cloudOpenFolder(fid, name){
     const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + jfid + '?alt=media');
     const text = await r.text();
     const e = applyProjectText(text);
-    if(e){ driveMap()[e.id] = { fid, mtime: meta.modifiedTime || '' , docsSig: cloudDocsSig(e), name: name, liveSig: liveSig(e.data), psig: photoSigStr(e) }; saveState(); renderSideProject(); setTimeout(liveStart, 300); }
+    if(e){ driveMap()[e.id] = { fid, mtime: meta.modifiedTime || '' , docsSig: cloudDocsSig(e), name: name, liveSig: liveSig(e.data), psig: photoSigStr(e), dsig: docsSigStr(e) }; saveState(); renderSideProject(); setTimeout(liveStart, 300); }
     setCloudStat(_gUser ? ('Cloud ✓ ' + _gUser) : 'Cloud ✓');
   }catch(err){ setCloudStat('Cloud error: ' + (err && err.message || 'open failed')); }
 }
@@ -4515,6 +4523,14 @@ function cloudPhotoSig(e){
    lets the poll detect a photo added/removed elsewhere and pull it (BUILD 12.61) */
 function photoSigStr(e){
   const s = JSON.stringify(cloudPhotoSig(e)); let h = 5381;
+  for(let i=0;i<s.length;i++){ h = ((h<<5)+h + s.charCodeAt(i)) | 0; }
+  return (h>>>0).toString(36) + '.' + s.length;
+}
+/* short signature of the Documentation files + content list → lets the poll detect a
+   doc change INDEPENDENTLY of the project revision, so docs sync even when rows/rev already
+   matched on the other machine (BUILD 12.89b) */
+function docsSigStr(e){
+  const s = JSON.stringify(cloudDocsSig(e)); let h = 5381;
   for(let i=0;i<s.length;i++){ h = ((h<<5)+h + s.charCodeAt(i)) | 0; }
   return (h>>>0).toString(36) + '.' + s.length;
 }
@@ -4588,6 +4604,13 @@ async function cloudPushActive(entry, quiet){
     setCloudStat('Saving…');
     const rootId = await driveRootId();
     let m = driveMap()[e.id];
+    /* IDENTITY GUARD (BUILD 12.91): if our linked folder now belongs to a DIFFERENT project
+       (its meta.pid ≠ our pid), the link is crossed — drop it and resolve to our OWN folder
+       by pid, so we NEVER overwrite another project's folder with ours. */
+    if(m && m.fid && e.data.project.pid){
+      const _fm = _cloudMeta[m.fid];
+      if(_fm && _fm.pid && _fm.pid !== e.data.project.pid){ delete driveMap()[e.id]; m = null; }
+    }
     /* the remembered project folder may have been deleted/emptied by hand */
     let _folderVanished = false;
     if(m && m.fid && !(await driveAlive(m.fid))){ m = null; _folderVanished = true; }
@@ -4782,6 +4805,7 @@ async function cloudPushActive(entry, quiet){
       m.liveSig = liveSig(e.data);        /* remember what WE just published — poll won't re-pull our own save */
       m.base = clone(liveSlice(e.data));  /* the state we just published is the new merge base (BUILD 12.66) */
       m.psig = photoSigStr(e);            /* our photo set is now on Drive — poll won't re-pull (BUILD 12.61) */
+      m.dsig = docsSigStr(e);             /* our doc set is now on Drive — poll won't re-pull (BUILD 12.89b) */
       m._done = !!e.done;                  /* remember completion for the no-op push guard (BUILD 12.65) */
       e._dirtyAt = 0;                      /* our local edits are now safely on Drive (BUILD 12.41) */
     }catch(err){}
