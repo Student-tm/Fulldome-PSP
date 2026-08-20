@@ -628,7 +628,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 13.2 · MEDIA IN SHARED FOLDER (cross-account)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.0 · FIRESTORE SYNC (per-section, live)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -888,8 +888,8 @@ function toggleDone(id, ev){
   if(e.done){ delete e.done; delete e.doneAt; flashStat('Project reopened'); }
   else { e.done = true; e.doneAt = Date.now(); flashStat('Project marked completed'); }
   saveState(); renderSideProject();
-  /* sync completion for THIS project (BUILD 13.0: Firebase-primary; Drive fallback) */
-  if(_FBP && fbReady()){ setTimeout(()=>{ try{ fbpPushNow(e); }catch(_){} }, 60); }
+  /* sync completion for THIS project (BUILD 14.0: Firestore/RTDB primary; Drive fallback) */
+  if(_FS || _FBP){ setTimeout(()=>{ try{ syncPushNow(e); }catch(_){} }, 60); }
   else if(_cloudOn && _gTok){ clearTimeout(_pushTimer); setTimeout(()=>{ try{ cloudPushActive(e); }catch(_){} }, 100); }
 }
 function toggleFreeze(id, ev){
@@ -999,7 +999,7 @@ function saveState(){
   if(!saveState._skipCloud){ try{ const _e = activeEntry(); if(_e){ _e._dirtyAt = Date.now(); if(!_booting && _e.data && _e.data.project) _e.data.project._rev = Math.max(Date.now(), (_e.data.project._rev||0) + 1); } }catch(e){} }   /* monotonic revision: strictly increases on every genuine edit (never during boot) → "newest edit wins, no rollback" (BUILD 12.72) */
   if(!saveState._skipCloud && typeof cloudTouch === 'function'){ try{ cloudTouch(); }catch(e){} }
   if(!saveState._skipCloud && typeof liveTouch === 'function'){ try{ liveTouch(); }catch(e){} }
-  if(!saveState._skipCloud && typeof fbpTouch === 'function'){ try{ fbpTouch(); }catch(e){} }   /* BUILD 13.0: push the edit to Firebase (primary sync) */
+  if(!saveState._skipCloud && typeof syncTouch === 'function'){ try{ syncTouch(); }catch(e){} }   /* BUILD 14.0: push the edit to the active DB (Firestore, or RTDB fallback) */
   if(!idbOk){
     try{
       localStorage.setItem(STORE_KEY, JSON.stringify(db));
@@ -1711,12 +1711,12 @@ function doDelete(scope){
   const e = activeEntry();
   if(!e){ closeDelete(); return; }
   const fid = (driveMap()[e.id] && driveMap()[e.id].fid) || null;
-  /* BUILD 13.0: Firebase-primary — delete = remove the Firebase node (authoritative);
+  /* BUILD 14.0: Firestore/RTDB-primary — delete = remove the DB record (authoritative);
      absence propagates to every machine (they see it gone → remove locally, never resurrect).
-     Both delete buttons do the same here (no per-file owner in Firebase). */
-  if(_FBP){
+     Both delete buttons do the same here (no per-file owner in the database). */
+  if(_FS || _FBP){
     const delE = e;
-    if(fbReady()) fbpDelete(delE).catch(()=>{});           /* remove the record everywhere */
+    syncDelete(delE);                                      /* remove the record everywhere (+ media on Drive) */
     finishDelete(delE, null);                              /* local removal + UI */
     flashStat('Project deleted everywhere');
     return;
@@ -2374,7 +2374,7 @@ function createProjectInner(){
   db.projects.push(entry);
   db.activeId = entry.id; syncActive();
   saveState(); renderHeader(); renderSideProject();
-  setTimeout(()=>{ try{ if(_FBP && fbReady()) fbpPushNow(); else cloudPushNow(); }catch(e){} }, 200);   /* BUILD 13.0: create → publish to Firebase at once */
+  setTimeout(()=>{ try{ if(_FS || _FBP) syncPushNow(); else cloudPushNow(); }catch(e){} }, 200);   /* BUILD 14.0: create → publish at once */
   goTo('#/dashboard');
 }
 function saveProjectEdit(){
@@ -2395,7 +2395,7 @@ function saveProjectEditInner(){
   }
   revalidateReady();
   saveState(); renderHeader(); renderSideProject();
-  setTimeout(()=>{ try{ if(_FBP && fbReady()) fbpPushNow(); else cloudPushNow(); }catch(e){} }, 200);   /* BUILD 13.0 */
+  setTimeout(()=>{ try{ if(_FS || _FBP) syncPushNow(); else cloudPushNow(); }catch(e){} }, 200);   /* BUILD 14.0 */
   goTo('#/dashboard');
 }
 const blankRow = () => ({cat:'', name:'', qty:1, price:'', link:''});
@@ -3895,7 +3895,8 @@ async function livePush(){
    later absent was deleted by the team → removed locally, never re-pushed. A
    local project Firebase has NEVER seen (!_fbSeen) is a fresh create → pushed.
    Safety: a successful-but-EMPTY tree never mass-deletes (guards a DB wipe). */
-var _FBP = true;                 /* master switch for the Firebase-primary path */
+var _FS = true;                  /* BUILD 14.0: Firestore-primary sync is ON (the plan's target DB) */
+var _FBP = false;                /* Realtime-Database path kept as an emergency fallback (flip _FS off + _FBP on) */
 var _fbpStream = null, _fbpPushT = null, _fbpPoll = null, _fbpApplying = false, _fbpStarted = false;
 var _fbpLocal = {};              /* pid -> last JSON we pushed (skip no-op writes) */
 const FBP_ROOT = 'projects';
@@ -3929,13 +3930,14 @@ function fbpApplyRecord(rec){
     if(!data.project) data.project = {}; data.project.pid = rec.pid;
     data.shipping = data.shipping || {date:'',pallets:[],assign:{},docs:[],meta:{},packed:{}};
     data.ready = data.ready || {}; data.docs = data.docs || {sitePh:[],files:{}};
-    e = { id:newId(), frozen:false, data:data, _fbSeen:true, _remoteMsig: rec.msig || '' };
+    e = { id:newId(), frozen:false, data:data, _fbSeen:true, _remoteMsig: rec.msig || '', _browseFid: rec.browseFid || '' };
     if(rec.done){ e.done = true; e.doneAt = rec.doneAt || Date.now(); }
     db.projects.push(e);
     return 'added';
   }
   e._fbSeen = true;
   e._remoteMsig = rec.msig || '';                          /* BUILD 13.1: remember the remote media signature so the media pass can pull changed photos/docs */
+  if(rec.browseFid) e._browseFid = rec.browseFid;          /* BUILD 13.3: shared browsable-folder id so every machine mirrors into the same Drive folder */
   /* never disturb the project the user is actively typing in — next poll catches it */
   if(e === activeEntry() && isTypingInInput()) return null;
   const inRev  = (rec.project && rec.project._rev) || 0;
@@ -3997,7 +3999,10 @@ async function fbpPushNow(entry){
   }catch(_){}
   await fbPatch2(FBP_ROOT + '/' + pid, fbpDoc(e));
   _fbpLocal[pid] = sig; e._fbSeen = true;
-  try{ await fbpMediaUpload(e); }catch(_){}                 /* BUILD 13.1: mirror changed photos/docs to Drive (pid-keyed) */
+  try{
+    const mediaChanged = await fbpMediaUpload(e);           /* BUILD 13.1: compact sync file <pid>.media.json */
+    if(mediaChanged) await fbpBrowseMirror(e);              /* BUILD 13.3: browsable image/doc FILES in the project folder */
+  }catch(_){}
 }
 function fbpTouch(){
   if(!_FBP || !fbReady() || _fbpApplying) return;
@@ -4094,17 +4099,18 @@ async function fbpMediaRoot(){
   db.mediaRootId2 = id; return id;
 }
 async function fbpMediaUpload(e){
-  if(!_cloudOn || !_gTok) return;
-  const pid = fbpPid(e); if(!pid) return;
+  if(!_cloudOn || !_gTok) return false;
+  const pid = fbpPid(e); if(!pid) return false;
   const sig = fbpMediaSig(e);
   const rec = mediaMap()[pid] || {};
-  if(rec.msig === sig && rec.fileId) return;               /* media unchanged since our last upload */
+  if(rec.msig === sig && rec.fileId) return false;         /* media unchanged since our last upload */
   const root = await fbpMediaRoot();
   const content = JSON.stringify(fbpMediaPayload(e));
-  const fileId = await backupPutInPlace(pid + '.media.json', root, content, rec.fileId);   /* PATCH in place → one file + version history */
-  mediaMap()[pid] = { fileId, msig: sig };
+  const fileId = await backupPutInPlace(pid + '.media.json', root, content, rec.fileId);   /* PATCH in place → one compact sync file + version history */
+  mediaMap()[pid] = Object.assign(rec, { fileId, msig: sig });
   saveState._skipCloud = true; saveState(); saveState._skipCloud = false;   /* persist the media cache without bumping _rev */
   setCloudStat('Photos/docs uploaded ✓ · ' + hhmm());
+  return true;
 }
 async function fbpMediaDownloadApply(e, wantSig){
   if(!_cloudOn || !_gTok) return false;
@@ -4123,12 +4129,14 @@ async function fbpMediaDownloadApply(e, wantSig){
 }
 async function fbpMediaDelete(e){
   const pid = fbpPid(e); if(!pid || !_cloudOn || !_gTok) return;
+  const rec = mediaMap()[pid] || {};
   try{
     const root = await fbpMediaRoot();
-    const fileId = (mediaMap()[pid] || {}).fileId || await backupFindFile(pid + '.media.json', root);
-    if(fileId){ try{ await driveTrashFolder(fileId); }catch(_){} }   /* trash the media FILE (works for any id; an Editor may trash files) */
-    delete mediaMap()[pid];
+    const fileId = rec.fileId || await backupFindFile(pid + '.media.json', root);
+    if(fileId){ try{ await driveTrashFolder(fileId); }catch(_){} }   /* trash the compact media FILE */
   }catch(_){}
+  try{ const bfid = e._browseFid || rec.browseFid; if(bfid){ try{ await driveTrashFolder(bfid); }catch(_){} } }catch(_){}   /* trash the browsable project folder (BUILD 13.3) */
+  delete mediaMap()[pid];
 }
 /* pull changed media for every project whose remote msig differs from our local media */
 async function fbpMediaSync(){
@@ -4148,6 +4156,267 @@ async function fbpMediaSync(){
   } finally { _fbpMediaBusy = false; }
   if(any){ if(!isTypingInInput()) route(); renderHeader(); renderSideProject(); setCloudStat('Photos/docs updated from team ✓ · ' + hhmm()); }
 }
+/* ---- BROWSABLE MIRROR (BUILD 13.3, Phase 2b) — write each photo/document as a REAL
+   FILE into a per-project folder in the shared team root, so they can be viewed and
+   downloaded on Google Drive by hand (Photos/<Category>/… + Documentation/…). This is a
+   WRITE-ONLY human mirror — sync still runs through <pid>.media.json. The folder is
+   resolved by pid: its id (browseFid) is stored in the Firebase record so EVERY machine
+   writes into the SAME folder (no per-machine duplicate). Reuses the proven upload/diff/
+   trash helpers. Only new/changed files upload; files removed in the app are trashed. */
+async function fbpBrowseFolder(e){
+  const pid = fbpPid(e); if(!pid) return null;
+  const rec = mediaMap()[pid] || (mediaMap()[pid] = {});
+  const wantName = projDriveFolderName(e.data.project) || ('project ' + pid);
+  let fid = e._browseFid || rec.browseFid;
+  if(fid && !(await driveAlive(fid))) fid = null;
+  if(!fid){
+    const teamRoot = await driveRootId();
+    fid = await driveFindFolder(wantName, teamRoot) || await driveCreateFolder(wantName, teamRoot);
+    /* publish the folder id to the shared record so other machines reuse it */
+    try{ await fbPatch2(FBP_ROOT + '/' + pid, { browseFid: fid }); }catch(_){}
+  } else if(rec.browseName && rec.browseName !== wantName){
+    try{ await gFetch('https://www.googleapis.com/drive/v3/files/' + fid + '?fields=id', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: wantName }) }); }catch(_){}
+  }
+  e._browseFid = fid; rec.browseFid = fid; rec.browseName = wantName;
+  return fid;
+}
+async function fbpBrowseMirror(e){
+  if(!_cloudOn || !_gTok) return;
+  const pid = fbpPid(e); if(!pid) return;
+  const d = e.data, rec = mediaMap()[pid] || (mediaMap()[pid] = {});
+  const fid = await fbpBrowseFolder(e); if(!fid) return;
+  const _upFile = async (name, folderId, dataUrl) => {
+    try{ const ex = await driveFindFile(name, folderId); const mime = (dataUrl.match(/^data:([^;]+)/)||[])[1] || 'application/octet-stream'; await driveUpload(name, folderId, dataUrlToBytes(dataUrl), mime, ex); }catch(_){}
+  };
+  const _reconcile = async (folderId, keepNames) => {
+    try{ const ex = await backupList(folderId); for(const x of ex){ if(x.mimeType === 'application/vnd.google-apps.folder') continue; if(!keepNames.has(x.name)){ try{ await driveTrash(x.id); }catch(_){} } } }catch(_){}
+  };
+  /* ---- Documentation/ (+ TOOL DATABASES subfolder) ---- */
+  try{
+    const rootFiles = [], tdFiles = [];
+    if(d.docs && d.docs.files) Object.keys(d.docs.files).forEach(cat => (d.docs.files[cat]||[]).forEach(f => { if(f&&f.name&&f.data){ (TOOL_DB_CATS.indexOf(cat)>=0 ? tdFiles : rootFiles).push(f); } }));
+    if(d.contentList && d.contentList.data) rootFiles.push(d.contentList);
+    const curDsig = docsSigStr(e);
+    if(curDsig !== rec.browseDsig){
+      if(rootFiles.length || tdFiles.length){
+        const docId = await driveEnsureFolder('Documentation', fid);
+        for(const f of rootFiles) await _upFile(f.name, docId, f.data);
+        await _reconcile(docId, new Set(rootFiles.map(f=>f.name)));
+        if(tdFiles.length){ const tdId = await driveEnsureFolder(TOOL_DB_SUBFOLDER, docId); for(const f of tdFiles) await _upFile(f.name, tdId, f.data); await _reconcile(tdId, new Set(tdFiles.map(f=>f.name))); }
+      }
+      rec.browseDsig = curDsig;
+    }
+  }catch(_){}
+  /* ---- Photos/<Category>/… ---- */
+  try{
+    const jobs = cloudPhotoJobs(e);
+    const psig = cloudPhotoSig(e);
+    const prev = rec.browsePhotoSig || {};
+    const todo = jobs.filter(j => psig[j.dir + '/' + j.name] !== prev[j.dir + '/' + j.name]);
+    const curSet = new Set(jobs.map(j => j.dir + ' ' + j.name));
+    const removed = (rec.browsePhotoList || []).filter(pl => !curSet.has(pl.dir + ' ' + pl.name));
+    if(todo.length || removed.length){
+      const photosRoot = await driveEnsureFolder('Photos', fid);
+      const dirIds = {};
+      for(let k=0;k<todo.length;k++){
+        const j = todo[k];
+        setCloudStat('Uploading photo ' + (k+1) + '/' + todo.length + ' — ' + j.dir);
+        try{ if(!dirIds[j.dir]) dirIds[j.dir] = await driveEnsureFolder(j.dir, photosRoot); const ex = await driveFindFile(j.name, dirIds[j.dir]); const mime = (j.data.match(/^data:([^;]+)/)||[,'image/jpeg'])[1]; await driveUpload(j.name, dirIds[j.dir], dataUrlToBytes(j.data), mime, ex); }catch(_){}
+      }
+      for(const rp of removed){ try{ const folderId = await driveFindFolder(rp.dir, photosRoot); if(!folderId) continue; const fileId = await driveFindFile(rp.name, folderId); if(fileId) await driveTrash(fileId); }catch(_){} }
+    }
+    rec.browsePhotoSig = psig;
+    rec.browsePhotoList = jobs.map(j => ({ dir:j.dir, name:j.name }));
+  }catch(_){}
+  saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
+  setCloudStat('Photos/docs on Drive ✓ · ' + hhmm());
+}
+
+/* ============================================================================
+   FIRESTORE-PRIMARY SYNC (BUILD 14.0, Phase 3) — the plan's target DB. Firestore
+   replaces Realtime Database as the source of truth for structured project data.
+   WHY Firestore + the Firebase SDK (not REST polling): Firestore bills per document
+   READ, so polling would burn the free daily read quota at 5–20 users; the SDK's
+   onSnapshot listener reads only what actually changed and gives true ~1s real-time.
+   The SDK is loaded from Google's CDN (like heic2any/pdf.js) — the app stays one file.
+   PER-SECTION storage (the "Google-Sheets" requirement): each project is ONE document
+   projects/<pid>, but its sections (project/server/vj/rack/camera/projectors/validation/
+   vjValidation/shipping) are SEPARATE fields, each written on its own with a per-section
+   revision (revs.<section>). Two users editing DIFFERENT sections both survive, because a
+   field-level update never touches the other sections. Photos/documents STILL sync through
+   Google Drive (the 13.x media layer, untouched). A full project JSON is still assembled
+   locally for export/backup at any time. Master switch: `var _FS = true` (RTDB `_FBP` off). */
+const FS_PROJECT_ID = 'fulldome-psp';
+const FS_SECTIONS = ['project','server','vj','rack','camera','projectors','validation','vjValidation','shipping'];
+var _fsApp = null, _fsDb = null, _fsAuthObj = null, _fsCol = null, _fsUnsub = null, _fsSdkP = null;
+var _fsReady = false, _fsStarted = false, _fsApplying = false, _fsPushT = null, _fsSeededPush = false;
+var _fsLocal = {};   /* pid -> {section: sig, _seen, _done, _msig} — skip no-op section writes */
+function fsReady(){ return _FS && _fsReady && !!_fsCol; }
+/* strip `undefined` (Firestore rejects it) */
+function fsClean(v){
+  if(Array.isArray(v)) return v.map(fsClean);
+  if(v && typeof v === 'object'){ const o = {}; for(const k in v){ if(v[k] !== undefined) o[k] = fsClean(v[k]); } return o; }
+  return v === undefined ? null : v;
+}
+function fsLoadSdk(){
+  if(window.firebase && window.firebase.firestore) return Promise.resolve();
+  if(_fsSdkP) return _fsSdkP;
+  const urls = [
+    'https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js',
+    'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js',
+    'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js'
+  ];
+  _fsSdkP = urls.reduce((p, u) => p.then(() => new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = u; s.onload = res; s.onerror = () => rej(new Error('SDK load failed: ' + u)); document.head.appendChild(s);
+  })), Promise.resolve());
+  return _fsSdkP;
+}
+async function fsInit(){
+  await fsLoadSdk();
+  if(!_fsApp){ _fsApp = firebase.initializeApp({ apiKey: FB.apiKey, authDomain: FS_PROJECT_ID + '.firebaseapp.com', projectId: FS_PROJECT_ID }); }
+  _fsDb = firebase.firestore(); _fsAuthObj = firebase.auth(); _fsCol = _fsDb.collection('projects');
+}
+async function fsSignIn(){
+  const cred = firebase.auth.GoogleAuthProvider.credential(null, _gTok);   /* reuse the Google OAuth access token */
+  await _fsAuthObj.signInWithCredential(cred);
+}
+/* the full document for a NEW project (all sections + per-section revisions) */
+function fsFullDoc(e){
+  const sl = liveSlice(e.data), now = (e.data.project._rev || Date.now());
+  const doc = { pid: fbpPid(e), done: !!e.done, doneAt: e.doneAt || 0, updatedBy: _gUser || '', msig: fbpMediaSig(e), revs: {} };
+  FS_SECTIONS.forEach(s => { doc[s] = fsClean(sl[s] || {}); doc.revs[s] = now; });
+  if(e._browseFid) doc.browseFid = e._browseFid;
+  return fsClean(doc);
+}
+function fsChangedSections(e){
+  const pid = fbpPid(e), sl = liveSlice(e.data), last = _fsLocal[pid] || {};
+  return FS_SECTIONS.filter(s => last[s] !== JSON.stringify(sl[s] || {}));
+}
+function fsRememberPushed(e){
+  const pid = fbpPid(e), sl = liveSlice(e.data), rec = _fsLocal[pid] || {};
+  FS_SECTIONS.forEach(s => { rec[s] = JSON.stringify(sl[s] || {}); });
+  rec._seen = true; rec._done = e.done ? 1 : 0; rec._msig = fbpMediaSig(e);
+  _fsLocal[pid] = rec;
+}
+async function fsPushNow(entry){
+  if(!fsReady()) return;
+  const e = (entry && entry.data && entry.data.project) ? entry : activeEntry();
+  if(!e || !e.data.project) return;
+  const pid = fbpPid(e); if(!pid) return;
+  const rec = _fsLocal[pid] || {};
+  const changed = fsChangedSections(e);
+  const msig = fbpMediaSig(e);
+  const doneChanged = rec._done !== (e.done ? 1 : 0);
+  const msigChanged = rec._msig !== msig;
+  if(rec._seen && !changed.length && !doneChanged && !msigChanged) return;   /* nothing to write */
+  const ref = _fsCol.doc(pid);
+  try{
+    if(!rec._seen){
+      await ref.set(fsFullDoc(e));                          /* first time: create the whole document */
+    } else {
+      const now = Date.now(), sl = liveSlice(e.data), upd = { updatedBy: _gUser || '', pid };
+      changed.forEach(s => { upd[s] = fsClean(sl[s] || {}); upd['revs.' + s] = now; });   /* per-section: only changed fields, others untouched */
+      if(doneChanged){ upd.done = !!e.done; upd.doneAt = e.doneAt || 0; }
+      if(msigChanged) upd.msig = msig;
+      try{ await ref.update(upd); }
+      catch(err){ await ref.set(fsFullDoc(e)); }             /* doc vanished → recreate */
+    }
+    fsRememberPushed(e); e._fbSeen = true;
+    setCloudStat('Synced ✓ ' + (_gUser || '') + ' · ' + hhmm());
+    if(msigChanged){ try{ if(await fbpMediaUpload(e)) await fbpBrowseMirror(e); }catch(_){} }
+  }catch(err){ setCloudStat('⚠ Sync error: ' + (err.message || '') + ' — click to retry'); }
+}
+async function fsDelete(e){
+  const pid = fbpPid(e); if(!pid || !fsReady()) return;
+  try{ await _fsCol.doc(pid).delete(); delete _fsLocal[pid]; }catch(_){}
+  try{ await fbpMediaDelete(e); }catch(_){}
+}
+function fsTouch(){
+  if(!fsReady() || _fsApplying) return;
+  clearTimeout(_fsPushT);
+  _fsPushT = setTimeout(function(){ fsPushNow().catch(function(){}); }, 1000);
+}
+/* apply one section value onto local data (reuse liveApply's per-section logic) */
+function fsApplySection(d, s, val){ const o = {}; o[s] = val; return liveApply(d, o); }
+function fsApplyDoc(data){
+  const pid = data.pid; if(!pid) return false;
+  const revs = data.revs || {};
+  let e = fbpEntryByPid(pid);
+  if(!e){
+    const d = emptyState();
+    FS_SECTIONS.forEach(s => { if(data[s] !== undefined) fsApplySection(d, s, data[s]); });
+    if(!d.project) d.project = {}; d.project.pid = pid;
+    d.shipping = d.shipping || {date:'',pallets:[],assign:{},docs:[],meta:{},packed:{}}; d.ready = d.ready || {}; d.docs = d.docs || {sitePh:[],files:{}};
+    e = { id:newId(), frozen:false, data:d, _fbSeen:true, _fsRev:Object.assign({}, revs), _remoteMsig:data.msig||'', _browseFid:data.browseFid||'' };
+    if(data.done){ e.done = true; e.doneAt = data.doneAt || Date.now(); }
+    db.projects.push(e);
+    return true;
+  }
+  e._fbSeen = true; e._remoteMsig = data.msig || ''; if(data.browseFid) e._browseFid = data.browseFid;
+  e._fsRev = e._fsRev || {};
+  if(e === activeEntry() && isTypingInInput()) return false;   /* don't disturb active typing; next snapshot re-applies */
+  let ch = false;
+  FS_SECTIONS.forEach(s => {
+    const rrev = revs[s] || 0, lrev = e._fsRev[s] || 0;
+    if(data[s] !== undefined && rrev > lrev){ if(fsApplySection(e.data, s, data[s])) ch = true; e._fsRev[s] = rrev; }
+  });
+  if(!!data.done !== !!e.done){ if(data.done){ e.done = true; e.doneAt = data.doneAt || Date.now(); } else { delete e.done; delete e.doneAt; } ch = true; }
+  return ch;
+}
+function fsRemoveLocal(pid){
+  const i = db.projects.findIndex(p => fbpPid(p) === pid);
+  if(i < 0) return false;
+  const wasActive = db.projects[i].id === db.activeId;
+  db.projects.splice(i, 1);
+  if(wasActive){ const alt = db.projects.find(p => !p.frozen); db.activeId = alt ? alt.id : null; syncActive(); }
+  return true;
+}
+function fsOnSnapshot(snap){
+  _fsApplying = true;
+  let touched = false;
+  try{
+    snap.docChanges().forEach(ch => {
+      const data = ch.doc.data(); if(!data || !data.pid) return;
+      if(ch.type === 'removed'){ if(fsRemoveLocal(data.pid)) touched = true; return; }
+      if(fsApplyDoc(data)) touched = true;
+    });
+    if(!_fsSeededPush){                                       /* first snapshot: push local projects Firestore has never seen (migration) */
+      _fsSeededPush = true;
+      const present = {}; snap.forEach(doc => { const d = doc.data(); if(d && d.pid) present[d.pid] = 1; });
+      db.projects.forEach(e => { const pid = fbpPid(e); if(pid && e.data.project && !present[pid]){ fsPushNow(e).catch(function(){}); } });
+    }
+  }catch(err){ /* keep going */ }
+  if(touched){
+    saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
+    if(!isTypingInInput()) route();
+    renderHeader(); renderSideProject();
+  }
+  _fsApplying = false;
+  fbpMediaSync().catch(function(){});                        /* pull changed photos/docs from Drive */
+  setCloudStat('Synced ✓ ' + (_gUser || '') + ' · ' + hhmm());
+}
+async function fsStart(){
+  if(!_FS) return;
+  setCloudStat('Connecting Firestore…');
+  await fsInit();
+  try{ await fsSignIn(); }
+  catch(e){ _fsReady = false; setCloudStat('Firestore sign-in failed: ' + (e.message || '') + ' — check the Google provider + rules'); throw e; }
+  _fsReady = true; _fsStarted = true; _fsSeededPush = false;
+  /* every project needs a stable pid to live in Firestore */
+  db.projects.forEach(e => { if(e.data && e.data.project && !e.data.project.pid) e.data.project.pid = newId(); });
+  if(_fsUnsub){ try{ _fsUnsub(); }catch(_){} }
+  _fsUnsub = _fsCol.onSnapshot(function(snap){ fsOnSnapshot(snap); }, function(err){ setCloudStat('⚠ Firestore stream error: ' + (err.message || '') + ' — click to retry'); });
+  setCloudStat('Synced ✓ ' + (_gUser || ''));
+}
+function fsStop(){
+  if(_fsUnsub){ try{ _fsUnsub(); }catch(_){} _fsUnsub = null; }
+  _fsReady = false; _fsStarted = false;
+}
+/* ---- unified sync dispatch: Firestore (primary) → RTDB (fallback flag) ---- */
+function syncTouch(){ if(_FS) fsTouch(); else if(_FBP) fbpTouch(); }
+function syncPushNow(e){ if(_FS) return fsPushNow(e); if(_FBP) return fbpPushNow(e); }
+function syncDelete(e){ if(_FS) return fsDelete(e); if(_FBP) return fbpDelete(e); }
+function syncReady(){ return _FS ? fsReady() : (_FBP && fbReady()); }
 
 /* ---------- TRANSPARENT CLOUD (BUILD 10.2) ----------
    The user signs in once at start and just works. The sidebar shows every
@@ -4169,7 +4438,7 @@ function driveMap(){ if(!db.driveMap || typeof db.driveMap!=='object') db.driveM
 function setCloudStat(t){ const el=document.getElementById('driveStat'); if(el) el.textContent = t; }
 function cloudGateShow(){ const g=document.getElementById('authGate'); if(g) g.style.display='flex'; }
 function cloudGateHide(){ const g=document.getElementById('authGate'); if(g) g.style.display='none'; }
-function cloudOffline(){ _cloudOn=false; cloudStopPoll(); if(typeof fbpStop==='function') fbpStop(); backupStopLoop(); presenceStop(); cloudGateHide(); setCloudStat('Offline — click to sign in and sync'); }
+function cloudOffline(){ _cloudOn=false; cloudStopPoll(); if(typeof fbpStop==='function') fbpStop(); if(typeof fsStop==='function') fsStop(); backupStopLoop(); presenceStop(); cloudGateHide(); setCloudStat('Offline — click to sign in and sync'); }
 async function cloudStart(silent){
   const err = document.getElementById('authErr');
   try{
@@ -4191,9 +4460,13 @@ async function cloudStart(silent){
     var _fbAuthOk = false;
     try{ await fbSignInWithAccessToken(_gTok); _fbAuthOk = true; }
     catch(e){ setCloudStat('Signed in, but sync auth failed: ' + (e.message||'') + ' — enable Google provider + rules in Firebase'); }
-    if(_FBP){
-      /* BUILD 13.0: Firebase-primary — the project list + data come from Realtime DB,
-         NOT from Drive folders. No Drive folder poll, no folder identity → no overwrites. */
+    if(_FS){
+      /* BUILD 14.0: Firestore-primary — project list + data come from Firestore (SDK
+         onSnapshot live listeners). Structured data per-section; photos/docs via Drive. */
+      setCloudStat('Connecting Firestore…');
+      try{ await fsStart(); }catch(e){ setCloudStat('Firestore error: ' + (e.message||'')); }
+    } else if(_FBP){
+      /* Realtime-Database fallback path (BUILD 13.x) — only if _FS is off. */
       setCloudStat('Connecting sync…');
       if(_fbAuthOk){ try{ await fbpStart(); }catch(e){ setCloudStat('Sync error: ' + (e.message||'')); } }
     } else {
@@ -4741,7 +5014,7 @@ function folderTombstoned(f){
   return !!(mt && mt.pid && _tombstones.pids && _tombstones.pids[mt.pid]);
 }
 function cloudUnlinkedFolders(){
-  if(_FBP) return [];                                       /* BUILD 13.0: every project is a real local entry synced from Firebase — no ☁-only cards */
+  if(_FS || _FBP) return [];                                /* BUILD 14.0: every project is a real local entry synced from the DB — no ☁-only cards */
   const linked = {}; Object.values(driveMap()).forEach(m => { if(m && m.fid) linked[m.fid]=1; });
   return _cloudFolders.filter(f => !linked[f.id] && !folderTombstoned(f));
 }
@@ -4861,8 +5134,16 @@ function cloudDocsSig(e){
 }
 function cloudSyncNow(){
   if(!_cloudOn || !_gTok){ cloudGateShow(); return; }
+  if(_FS){
+    /* BUILD 14.0: manual refresh — (re)start the Firestore listener and push the active project */
+    (async ()=>{
+      try{ if(!fsReady()){ await fsStart(); } else { await fsPushNow(); } }
+      catch(e){ setCloudStat('Firestore error: ' + (e && e.message || 'failed') + ' — click to retry'); }
+    })();
+    return;
+  }
   if(_FBP){
-    /* BUILD 13.0: manual refresh — re-mint auth if needed, restart the stream, pull + push now */
+    /* RTDB fallback: re-mint auth, restart the stream, pull + push now */
     (async ()=>{
       try{ if(!fbReady()) await fbSignInWithAccessToken(_gTok); if(!_fbpStarted) await fbpStart(); else { fbpStreamOpen(); await fbpPoll(); await fbpPushNow(); } }
       catch(e){ setCloudStat('Sync error: ' + (e && e.message || 'failed') + ' — click to retry'); }
