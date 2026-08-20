@@ -628,7 +628,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.88 · SERVICE FOLDER RENAMED _system</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.89 · DOCUMENTATION SYNCS TO ALL MACHINES</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -4240,6 +4240,7 @@ async function cloudPullContent(force){
       let changed = false;
       if(contentNewer && dlRev > localRev){
         if(liveApply(e.data, liveSlice(s))) changed = true;       /* adopt the newer copy wholesale — _rev rides in project, so localRev becomes remote's */
+        if(applyDocsFrom(e.data, s)) changed = true;              /* BUILD 12.89: sync Documentation files + content list (they ride in the heavy json, not the liveSlice) */
         m.liveSig = liveSig(e.data);
         if('done' in obj){ const wd=!!obj.done; if(wd!==!!e.done){ if(wd){e.done=true;e.doneAt=obj.doneAt||Date.now();}else{delete e.done;delete e.doneAt;} } }
       }
@@ -4528,6 +4529,20 @@ function applyPhotosFrom(d, s){
   if(s.docs){ d.docs = d.docs || {}; setA(d.docs, 'sitePh', s.docs.sitePh); }
   if(s.projectors && s.projectors.models){ d.projectors = d.projectors || {}; if(JSON.stringify(d.projectors.models||{}) !== JSON.stringify(s.projectors.models)){ d.projectors.models = s.projectors.models; ch = true; } }
   if(s.shipping){ d.shipping = d.shipping || {}; if(JSON.stringify(d.shipping.palletPhotos||{}) !== JSON.stringify(s.shipping.palletPhotos||{})){ d.shipping.palletPhotos = s.shipping.palletPhotos || {}; ch = true; } }
+  return ch;
+}
+/* apply the DOCUMENTATION files + content list from a newer copy (BUILD 12.89) — these ride
+   only in the heavy json, NOT in the liveSlice, so the poll never used to sync them: docs
+   uploaded on A never reached an already-downloaded project on B. */
+function applyDocsFrom(d, s){
+  let ch = false;
+  if(s.docs && s.docs.files){
+    d.docs = d.docs || { files:{}, sitePh:[] };
+    if(JSON.stringify(d.docs.files || {}) !== JSON.stringify(s.docs.files)){ d.docs.files = s.docs.files; ch = true; }
+  }
+  if('contentList' in s){
+    if(JSON.stringify(d.contentList || null) !== JSON.stringify(s.contentList || null)){ d.contentList = s.contentList || null; ch = true; }
+  }
   return ch;
 }
 function cloudDocsSig(e){
