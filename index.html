@@ -626,7 +626,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.81 · SHARED ROOT (B WRITES TO A'S FOLDER)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.85 · TOOL DATABASES SECTION</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -706,8 +706,8 @@
     <div class="pin-err" id="delErr"></div>
     <div class="mb" style="flex-wrap:wrap">
       <button class="no" onclick="closeDelete()">Cancel</button>
-      <button class="no" onclick="doDelete('local')" title="Removes it from this computer only; the team's Google Drive copy stays">This computer only</button>
-      <button class="yes" onclick="doDelete('cloud')" title="Also moves the project's Google Drive folder to Trash">Delete everywhere</button>
+      <button class="no" id="delLocalBtn" onclick="doDelete('local')" title="Removes it from this computer only; the team's Google Drive copy stays">This computer only</button>
+      <button class="yes" id="delEverywhereBtn" onclick="doDelete('cloud')" title="Deletes the project for the whole team">Delete everywhere</button>
     </div>
   </div>
 </div>
@@ -1674,15 +1674,27 @@ const DELETE_PIN = '1008';
 function openDelete(){
   const e = activeEntry();
   if(!e || !e.data.project){ flashStat('No active project'); return; }
-  document.getElementById('delMsg').innerHTML =
-    'Delete <b>#' + esc(e.data.project.number) + ' — ' + esc(e.data.project.title||'') + '</b>.<br><br>' +
-    '<b>This computer only</b> — removes it here; the team\'s Google Drive copy stays and it will reappear on the next sign-in.<br>' +
-    '<b>Delete everywhere</b> — also moves the project\'s Google Drive folder to Trash (recoverable ~30 days on Drive).<br><br>' +
-    'Enter the code, then choose.';
+  /* BUILD 12.84: only the team-folder OWNER (admin, A) may delete for everyone. A shared
+     (Editor) account can only create projects — "Delete everywhere" is hidden for them, and
+     a local-only removal just comes back on sync, so it's hidden too. */
+  const owner = _isRootOwner || !_cloudOn;   /* offline/local-only mode: allow (single-user) */
+  const everyBtn = document.getElementById('delEverywhereBtn');
+  const localBtn = document.getElementById('delLocalBtn');
+  const pin = document.getElementById('delPin');
+  if(everyBtn) everyBtn.style.display = owner ? '' : 'none';
+  if(localBtn) localBtn.style.display = owner ? '' : 'none';
+  if(pin) pin.style.display = owner ? '' : 'none';
+  document.getElementById('delMsg').innerHTML = owner
+    ? ('Delete <b>#' + esc(e.data.project.number) + ' — ' + esc(e.data.project.title||'') + '</b>.<br><br>' +
+       '<b>This computer only</b> — removes it here; the team\'s Google Drive copy stays.<br>' +
+       '<b>Delete everywhere</b> — hides the project on every machine (its Drive folder stays, recoverable).<br><br>' +
+       'Enter the code, then choose.')
+    : ('<b>#' + esc(e.data.project.number) + ' — ' + esc(e.data.project.title||'') + '</b><br><br>' +
+       'Only the workspace <b>owner</b> can delete projects for the team. This account can create and edit, but not delete. Ask the owner to remove it.');
   const m = document.getElementById('deleteModal');
   document.getElementById('delPin').value=''; document.getElementById('delErr').textContent='';
   m.classList.add('open');
-  setTimeout(()=>document.getElementById('delPin').focus(), 50);
+  if(owner) setTimeout(()=>document.getElementById('delPin').focus(), 50);
 }
 function closeDelete(){ document.getElementById('deleteModal').classList.remove('open'); }
 function doDelete(scope){
@@ -3871,6 +3883,7 @@ var _cloudOn = false, _cloudFolders = [], _cloudMeta = {}, _pushTimer = null, _p
    wins, rollback impossible". Folder rename + normal cross-machine sync work as before. */
 var _AUTO_SYNC = true;
 var _manualPush = false;
+var _isRootOwner = true;   /* true = this account OWNS the team folder (the "admin", A) → may Delete everywhere; a shared (Editor) account can only create (BUILD 12.84) */
 function driveMap(){ if(!db.driveMap || typeof db.driveMap!=='object') db.driveMap = {}; return db.driveMap; }
 function setCloudStat(t){ const el=document.getElementById('driveStat'); if(el) el.textContent = t; }
 function cloudGateShow(){ const g=document.getElementById('authGate'); if(g) g.style.display='flex'; }
@@ -4167,8 +4180,7 @@ async function cloudRefreshList(){
     if(_AUTO_SYNC){
       cloudReconcileFromMeta();                          /* pull Done + validation onto already-downloaded projects (BUILD 12.8) */
       renderSideProject();
-      try{ cloudApplyTombstones(); }catch(e){}           /* honor team deletions so they STICK and can't resurrect — BUILD 12.70 */
-      try{ await cloudCleanupOwnedTombstoned(); }catch(e){}   /* if I OWN a tombstoned folder, trash it now (only the owner can) — BUILD 12.79 */
+      try{ cloudApplyTombstones(); }catch(e){}           /* HIDE deleted projects locally (safe: never trashes Drive) — BUILD 12.83 */
       try{ await cloudReconcileDeletions(); }catch(e){}  /* drop local projects a teammate deleted (folder trashed on Drive) — BUILD 12.68 */
       try{ await cloudPullContent(_forcePull); }catch(e){} /* pull teammate ROW edits over Drive (BUILD 12.34) */
     } else {
@@ -4302,18 +4314,22 @@ async function cloudReconcileDeletions(){
    intentionally deleted. Every machine reads it each refresh, removes those projects
    locally, and REFUSES to re-upload them. */
 var _tombstones = { pids:{}, fids:{} }, _tombId = null;
-/* BUILD 12.80: TOMBSTONES DISABLED. The accumulated tombstones.json (from all the earlier
-   delete testing) combined with 12.79's owner-cleanup TRASHED legitimate project folders.
-   Turned OFF: nothing is loaded from, written to, or ACTED ON from tombstones.json — so it
-   can never hide or delete a project again. Cross-account "delete everywhere" is deferred to
-   the Shared-Drive migration (TO-FIX #1). Delete now = remove locally + best-effort folder
-   trash (works for the folder owner; a non-owner just leaves the folder, no data loss). */
-var _TOMBSTONES_ON = false;
+/* BUILD 12.83: LOGICAL DELETE ("hide") — back ON, but HIDE-ONLY and SAFE.
+   "Delete everywhere" records the project's pid/fid in a FRESH file `hidden.json` (the old
+   `tombstones.json` was polluted from earlier testing → IGNORED). Every machine then HIDES
+   that project (removes it locally + hides its ☁ card) and REFUSES to re-upload it — so a
+   project deleted on ANY machine disappears on ALL machines, regardless of who owns the
+   Drive folder (fixes "B created, A deleted → came back after 2s"). CRITICAL SAFETY: this
+   NEVER auto-trashes Drive folders (that mass-deletion caused the 12.79/12.80 disaster). The
+   Drive folder just lingers (invisible in the app, recoverable); its owner can trash it by
+   hand. Full clean delete = Shared Drive (TO-FIX #1). */
+var _TOMBSTONES_ON = true;
+const HIDE_FILE = 'hidden.json';
 async function cloudLoadTombstones(){
   if(!_TOMBSTONES_ON){ _tombstones = { pids:{}, fids:{} }; return _tombstones; }   /* inert */
   try{
     const rootId = await driveRootId();
-    if(!_tombId) _tombId = await driveFindFile('tombstones.json', rootId);
+    if(!_tombId) _tombId = await driveFindFile(HIDE_FILE, rootId);
     if(!_tombId){ _tombstones = { pids:{}, fids:{} }; return _tombstones; }
     const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + _tombId + '?alt=media');
     if(r.status === 404){ _tombId = null; _tombstones = { pids:{}, fids:{} }; return _tombstones; }
@@ -4323,7 +4339,7 @@ async function cloudLoadTombstones(){
   return _tombstones;
 }
 async function cloudTombstoneAdd(pid, fid){
-  if(!_TOMBSTONES_ON) return;                                /* BUILD 12.80: don't write tombstones anymore */
+  if(!_TOMBSTONES_ON) return;
   const rootId = await driveRootId();
   await cloudLoadTombstones();                               /* merge onto the latest so we don't drop a teammate's tombstone */
   const t = _tombstones, now = Date.now();
@@ -4331,8 +4347,8 @@ async function cloudTombstoneAdd(pid, fid){
   if(fid) t.fids[fid] = now;
   const cut = now - 60 * 864e5;                              /* prune entries older than 60 days */
   ['pids','fids'].forEach(k => Object.keys(t[k]).forEach(key => { if(t[k][key] < cut) delete t[k][key]; }));
-  let id = _tombId; if(!id) id = await driveFindFile('tombstones.json', rootId);
-  _tombId = await driveUpload('tombstones.json', rootId, JSON.stringify(t), 'application/json', id);
+  let id = _tombId; if(!id) id = await driveFindFile(HIDE_FILE, rootId);
+  _tombId = await driveUpload(HIDE_FILE, rootId, JSON.stringify(t), 'application/json', id);
 }
 function cloudProjectTombstoned(e){
   if(!_TOMBSTONES_ON || !_tombstones) return false;
@@ -4417,15 +4433,10 @@ function cloudUnlinkedFolders(){
   const linked = {}; Object.values(driveMap()).forEach(m => { if(m && m.fid) linked[m.fid]=1; });
   return _cloudFolders.filter(f => !linked[f.id] && !folderTombstoned(f));
 }
-/* the folder OWNER (only account that can) trashes any tombstoned folder still on Drive */
-async function cloudCleanupOwnedTombstoned(){
-  if(!_tombstones) return;
-  for(const f of (_cloudFolders || [])){
-    if(f.ownedByMe && folderTombstoned(f)){
-      try{ await driveTrashFolder(f.id); }catch(_){}   /* best effort — we own it, so this succeeds */
-    }
-  }
-}
+/* DISABLED PERMANENTLY (BUILD 12.83): auto-trashing folders from the hidden-list is what
+   mass-deleted real projects (12.79/12.80). "Delete everywhere" now HIDES only; the Drive
+   folder is never auto-trashed. Kept as a no-op so any stray caller is harmless. */
+async function cloudCleanupOwnedTombstoned(){ return; }
 async function cloudOpenFolder(fid, name){
   try{
     setCloudStat('Opening "' + name + '"…');
@@ -4648,22 +4659,49 @@ async function cloudPushActive(entry, quiet){
     const ur = await gFetch(upUrl, { method: jfid?'PATCH':'POST', headers:{'Content-Type':'multipart/related; boundary='+boundary}, body });
     const uj = await ur.json();
     m.mtime = uj.modifiedTime || m.mtime;
-    /* mirror only NEW or CHANGED documentation files */
+    /* mirror documentation files: upload NEW/CHANGED and DELETE removed. Tool-database files
+       (toolDMT/TTD/SCD/MDT) go into a SEPARATE "TOOL DATABASES" subfolder; everything else
+       stays flat in Documentation/. Each folder is reconciled against its OWN file set, so a
+       delete in the app removes it from Drive and old orphans get cleaned (BUILD 12.82/12.85). */
     const sig = cloudDocsSig(e);
-    const jobs = [];
     const d = e.data;
-    const collect = (f)=>{ if(f && f.name && f.data && sig[f.name] !== (m.docsSig||{})[f.name]) jobs.push(f); };
-    if(d.docs && d.docs.files) Object.keys(d.docs.files).forEach(cat => (d.docs.files[cat]||[]).forEach(collect));
-    if(d.contentList && d.contentList.data) collect(d.contentList);
-    if(jobs.length){
-      const docId = await driveEnsureFolder('Documentation', m.fid);
-      for(let k=0;k<jobs.length;k++){
-        setCloudStat('Uploading ' + jobs[k].name + '…');
-        try{
-          const ex = await driveFindFile(jobs[k].name, docId);
-          const mime = (jobs[k].data.match(/^data:([^;]+)/)||[])[1] || 'application/octet-stream';
-          await driveUpload(jobs[k].name, docId, dataUrlToBytes(jobs[k].data), mime, ex);
-        }catch(err){}
+    const _prevSig = m.docsSig || {};
+    const rootSig = {}, tdSig = {}, rootJobs = [], tdJobs = [];
+    const route = (f, isTd) => {
+      if(!f || !f.name || !f.data) return;
+      (isTd ? tdSig : rootSig)[f.name] = 1;
+      if(sig[f.name] !== _prevSig[f.name]) (isTd ? tdJobs : rootJobs).push(f);
+    };
+    if(d.docs && d.docs.files) Object.keys(d.docs.files).forEach(cat => (d.docs.files[cat]||[]).forEach(f => route(f, TOOL_DB_CATS.indexOf(cat) >= 0)));
+    if(d.contentList && d.contentList.data) route(d.contentList, false);
+    const _docsChanged = JSON.stringify(sig) !== JSON.stringify(_prevSig);
+    const _upFile = async (f, folderId) => {
+      setCloudStat('Uploading ' + f.name + '…');
+      try{
+        const ex = await driveFindFile(f.name, folderId);
+        const mime = (f.data.match(/^data:([^;]+)/)||[])[1] || 'application/octet-stream';
+        await driveUpload(f.name, folderId, dataUrlToBytes(f.data), mime, ex);
+      }catch(err){}
+    };
+    const _reconcile = async (folderId, keepSig) => {
+      try{
+        const existing = await backupList(folderId);
+        for(const x of existing){
+          if(x.mimeType === 'application/vnd.google-apps.folder') continue;   /* never touch subfolders */
+          if(!(x.name in keepSig)){ try{ await driveTrash(x.id); }catch(_){} }
+        }
+      }catch(_){}
+    };
+    if(rootJobs.length || tdJobs.length || _docsChanged || !m.docReconciled){
+      const docId = (rootJobs.length || _docsChanged || !m.docReconciled) ? await driveEnsureFolder('Documentation', m.fid) : await driveFindFolder('Documentation', m.fid);
+      if(docId){
+        for(const f of rootJobs) await _upFile(f, docId);
+        await _reconcile(docId, rootSig);                       /* Documentation/ root — keeps the TOOL DATABASES subfolder */
+        if(tdJobs.length || Object.keys(tdSig).length){
+          const tdId = tdJobs.length ? await driveEnsureFolder(TOOL_DB_SUBFOLDER, docId) : await driveFindFolder(TOOL_DB_SUBFOLDER, docId);
+          if(tdId){ for(const f of tdJobs) await _upFile(f, tdId); await _reconcile(tdId, tdSig); }
+        }
+        m.docReconciled = true;
       }
     }
     m.docsSig = sig;
@@ -4746,6 +4784,7 @@ async function driveRootId(){
     if(list.length){
       const shared = list.find(f => f.ownedByMe === false);   /* the owner's folder, shared with me */
       const pick = shared || list[0];
+      _isRootOwner = (pick.ownedByMe !== false);              /* I OWN the team folder → I'm the admin (A) — only I may Delete everywhere (BUILD 12.84) */
       db.gdriveRootId = pick.id;
       return pick.id;
     }
@@ -4753,6 +4792,7 @@ async function driveRootId(){
   /* fallback: cached id, else create our own (owner's first run) */
   if(db.gdriveRootId && await driveAlive(db.gdriveRootId)) return db.gdriveRootId;
   const id = await driveEnsureFolder(GDRIVE_ROOT_NAME, null);
+  _isRootOwner = true;                                        /* we just created/own it */
   db.gdriveRootId = id;
   return id;
 }
@@ -5684,8 +5724,17 @@ const DOC_FILE_SECTIONS = [
   { key:'projdocs', label:'Project Documents', cats:[
     ['docEquip','Equipment List','.pdf,.xlsx,.xls,.csv,.docx,.txt'],
     ['docShip','Shipping Documents','.pdf,.xlsx,.xls,.docx,.jpg,.jpeg,.png'],
-    ['docClient','Client Documents','.pdf,.xlsx,.xls,.docx,.txt'] ]}
+    ['docClient','Client Documents','.pdf,.xlsx,.xls,.docx,.txt'] ]},
+  /* TOOL DATABASES (BUILD 12.85): source JSON/PDF from the Fulldome tools; these ride in
+     the project AND mirror into a SEPARATE Drive subfolder "Documentation/TOOL DATABASES/" */
+  { key:'tooldb', label:'Tool Databases', cats:[
+    ['toolDMT','Fulldome DMT — Dome Mapping Tool','.json,.pdf'],
+    ['toolTTD','Fulldome TTD — Technical Task Developer','.json,.pdf'],
+    ['toolSCD','Fulldome SCD — System Connection Diagram Builder','.json,.pdf'],
+    ['toolMDT','Fulldome MDT — Manual Documentation Tool','.json,.pdf'] ]}
 ];
+const TOOL_DB_CATS = ['toolDMT','toolTTD','toolSCD','toolMDT'];   /* mirror to Documentation/TOOL DATABASES/ */
+const TOOL_DB_SUBFOLDER = 'TOOL DATABASES';
 function docCatLabel(catKey){
   for(const s of DOC_FILE_SECTIONS){ const c = s.cats.find(x=>x[0]===catKey); if(c) return c[1]; }
   return catKey;
@@ -5910,6 +5959,9 @@ function pageDocumentation(){
 
     ${secHead('Project Documents','Equipment lists, shipping and client documents.')}
     ${fileSections[3]}
+
+    ${secHead('Tool Databases','Source JSON / PDF from the Fulldome tools. Each file rides in the project and mirrors to a separate "TOOL DATABASES" folder on Google Drive.')}
+    ${fileSections[4]}
   </div>`;
 }
 
