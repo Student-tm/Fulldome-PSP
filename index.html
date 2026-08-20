@@ -551,6 +551,8 @@
     letter-spacing:.5px;border-radius:20px;padding:3px 10px;background:#fdeeee;color:var(--fdp-red);border:1px solid #f4c9c9}
   .doctag.rk{background:#eef3fb;color:#3c66a8;border-color:#c8d6ec}
   .phtile .phorig{position:absolute;top:6px;left:6px}
+  .phdel{position:absolute;top:6px;right:6px;z-index:3;width:24px;height:24px;border:none;border-radius:50%;background:rgba(211,47,47,.94);color:#fff;font-size:16px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+  .phdel:hover{background:#b71c1c}
 
   /* lightbox */
   .lbx{position:fixed;inset:0;background:rgba(10,12,16,.82);display:none;align-items:center;justify-content:center;z-index:1200;cursor:zoom-out}
@@ -626,7 +628,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.85 · TOOL DATABASES SECTION</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.88 · SERVICE FOLDER RENAMED _system</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -4109,10 +4111,20 @@ async function presenceFetchMe(){
   info.color = presenceColor(info.email || info.name);
   _meInfo = info; return info;
 }
+const SYS_FOLDER = '_system';   /* BUILD 12.88: renamed from 'presence' — holds online heartbeats + hidden.json */
 async function presenceFolderId(){
   if(_presFid && await driveAlive(_presFid)) return _presFid;
   const rootId = await driveRootId();
-  let id = await backupFindChildFolder('presence', rootId) || await backupCreateFolder('presence', rootId);
+  let id = await backupFindChildFolder(SYS_FOLDER, rootId);
+  if(!id){
+    /* migrate: adopt the old 'presence' folder (keeps its hidden.json + heartbeats) and rename it */
+    const old = await backupFindChildFolder('presence', rootId);
+    if(old){
+      try{ await gFetch('https://www.googleapis.com/drive/v3/files/' + old + '?fields=id', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: SYS_FOLDER }) }); }catch(_){}
+      id = old;
+    }
+  }
+  if(!id) id = await backupCreateFolder(SYS_FOLDER, rootId);
   _presFid = id; return id;
 }
 async function presenceBeat(){
@@ -4167,7 +4179,7 @@ async function cloudRefreshList(){
     const q = encodeURIComponent("'" + rootId + "' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false");
     const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name,ownedByMe)&orderBy=name&pageSize=200');
     const j = await r.json();
-    _cloudFolders = (j.files || []).filter(f => f.name !== 'presence');   /* the presence heartbeat folder is not a project (BUILD 12.76) */
+    _cloudFolders = (j.files || []).filter(f => f.name !== 'presence' && f.name !== SYS_FOLDER);   /* the service folder is not a project (BUILD 12.76/12.88) */
     /* load tombstones EARLY so deleted-but-not-trashed folders (a non-owner couldn't trash
        them) are hidden from the team list right away (BUILD 12.79) */
     try{ await cloudLoadTombstones(); }catch(e){}
@@ -4328,8 +4340,8 @@ const HIDE_FILE = 'hidden.json';
 async function cloudLoadTombstones(){
   if(!_TOMBSTONES_ON){ _tombstones = { pids:{}, fids:{} }; return _tombstones; }   /* inert */
   try{
-    const rootId = await driveRootId();
-    if(!_tombId) _tombId = await driveFindFile(HIDE_FILE, rootId);
+    const pfid = await presenceFolderId();                    /* BUILD 12.87: keep hidden.json INSIDE the presence folder, not loose in the root */
+    if(!_tombId) _tombId = await driveFindFile(HIDE_FILE, pfid);
     if(!_tombId){ _tombstones = { pids:{}, fids:{} }; return _tombstones; }
     const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + _tombId + '?alt=media');
     if(r.status === 404){ _tombId = null; _tombstones = { pids:{}, fids:{} }; return _tombstones; }
@@ -4340,15 +4352,15 @@ async function cloudLoadTombstones(){
 }
 async function cloudTombstoneAdd(pid, fid){
   if(!_TOMBSTONES_ON) return;
-  const rootId = await driveRootId();
+  const pfid = await presenceFolderId();                     /* hidden.json lives inside the presence folder (BUILD 12.87) */
   await cloudLoadTombstones();                               /* merge onto the latest so we don't drop a teammate's tombstone */
   const t = _tombstones, now = Date.now();
   if(pid) t.pids[pid] = now;
   if(fid) t.fids[fid] = now;
   const cut = now - 60 * 864e5;                              /* prune entries older than 60 days */
   ['pids','fids'].forEach(k => Object.keys(t[k]).forEach(key => { if(t[k][key] < cut) delete t[k][key]; }));
-  let id = _tombId; if(!id) id = await driveFindFile(HIDE_FILE, rootId);
-  _tombId = await driveUpload(HIDE_FILE, rootId, JSON.stringify(t), 'application/json', id);
+  let id = _tombId; if(!id) id = await driveFindFile(HIDE_FILE, pfid);
+  _tombId = await driveUpload(HIDE_FILE, pfid, JSON.stringify(t), 'application/json', id);
 }
 function cloudProjectTombstoned(e){
   if(!_TOMBSTONES_ON || !_tombstones) return false;
@@ -4665,16 +4677,22 @@ async function cloudPushActive(entry, quiet){
        delete in the app removes it from Drive and old orphans get cleaned (BUILD 12.82/12.85). */
     const sig = cloudDocsSig(e);
     const d = e.data;
-    const _prevSig = m.docsSig || {};
+    /* PER-FOLDER change tracking (BUILD 12.86): a file in the TOOL DATABASES subfolder must be
+       uploaded even if a same-NAMED file was previously tracked in the root Documentation — the
+       old global-by-name compare skipped it (TTD files didn't reach the subfolder). */
+    const prevRoot = m.docsSigRoot || {}, prevTd = m.docsSigTd || {};
     const rootSig = {}, tdSig = {}, rootJobs = [], tdJobs = [];
     const route = (f, isTd) => {
       if(!f || !f.name || !f.data) return;
-      (isTd ? tdSig : rootSig)[f.name] = 1;
-      if(sig[f.name] !== _prevSig[f.name]) (isTd ? tdJobs : rootJobs).push(f);
+      const len = (f.data || '').length;
+      if(isTd){ tdSig[f.name] = len;   if(prevTd[f.name]   !== len) tdJobs.push(f); }
+      else    { rootSig[f.name] = len; if(prevRoot[f.name] !== len) rootJobs.push(f); }
     };
     if(d.docs && d.docs.files) Object.keys(d.docs.files).forEach(cat => (d.docs.files[cat]||[]).forEach(f => route(f, TOOL_DB_CATS.indexOf(cat) >= 0)));
     if(d.contentList && d.contentList.data) route(d.contentList, false);
-    const _docsChanged = JSON.stringify(sig) !== JSON.stringify(_prevSig);
+    const _rootChanged = JSON.stringify(rootSig) !== JSON.stringify(prevRoot);
+    const _tdChanged   = JSON.stringify(tdSig)   !== JSON.stringify(prevTd);
+    const _docsChanged = _rootChanged || _tdChanged;
     const _upFile = async (f, folderId) => {
       setCloudStat('Uploading ' + f.name + '…');
       try{
@@ -4693,15 +4711,16 @@ async function cloudPushActive(entry, quiet){
       }catch(_){}
     };
     if(rootJobs.length || tdJobs.length || _docsChanged || !m.docReconciled){
-      const docId = (rootJobs.length || _docsChanged || !m.docReconciled) ? await driveEnsureFolder('Documentation', m.fid) : await driveFindFolder('Documentation', m.fid);
+      const docId = (rootJobs.length || _rootChanged || tdJobs.length || _tdChanged || !m.docReconciled) ? await driveEnsureFolder('Documentation', m.fid) : await driveFindFolder('Documentation', m.fid);
       if(docId){
         for(const f of rootJobs) await _upFile(f, docId);
         await _reconcile(docId, rootSig);                       /* Documentation/ root — keeps the TOOL DATABASES subfolder */
         if(tdJobs.length || Object.keys(tdSig).length){
-          const tdId = tdJobs.length ? await driveEnsureFolder(TOOL_DB_SUBFOLDER, docId) : await driveFindFolder(TOOL_DB_SUBFOLDER, docId);
+          const tdId = (tdJobs.length || Object.keys(tdSig).length) ? await driveEnsureFolder(TOOL_DB_SUBFOLDER, docId) : await driveFindFolder(TOOL_DB_SUBFOLDER, docId);
           if(tdId){ for(const f of tdJobs) await _upFile(f, tdId); await _reconcile(tdId, tdSig); }
         }
         m.docReconciled = true;
+        m.docsSigRoot = rootSig; m.docsSigTd = tdSig;           /* remember per-folder so re-uploads only happen on real change */
       }
     }
     m.docsSig = sig;
@@ -5813,6 +5832,8 @@ function docFileIcon(name){
   return IC_FILE.any;
 }
 
+var _docGalEdit = false;   /* BUILD 12.86: gallery edit mode → shows a delete × on each photo tile */
+function toggleDocGalEdit(){ _docGalEdit = !_docGalEdit; rerenderKeepScroll(); }
 function pageDocumentation(){
   /* SCOPE (BUILD 9.7): Documentation shows ONLY the active project.
      Other projects' photos/files stay in their own entries and appear when
@@ -5823,6 +5844,7 @@ function pageDocumentation(){
     const mk = (arr, kind, tagCls, tagTxt) => (arr||[]).map((ph,i)=>`
       <div class="phtile">
         <span class="doctag ${tagCls} phorig">${tagTxt}</span>
+        ${_docGalEdit ? `<button class="phdel" title="Delete this photo" onclick="event.stopPropagation();rmPhoto('${kind}',${i})">×</button>` : ''}
         <img src="${ph.src}" alt="" onclick="openLightboxProj('${e.id}','${kind}',${i})">
         <div class="phcap" style="border-top:1px solid var(--line);padding:7px 9px;font-size:11.5px">
           <b>${esc(ph.caption||ph.name||'—')}</b>
@@ -5845,6 +5867,7 @@ function pageDocumentation(){
       arr.forEach((ph,i)=>{ shipN++; ship += `
         <div class="phtile">
           <span class="doctag phorig">${label}</span>
+          ${_docGalEdit ? `<button class="phdel" title="Delete this photo" onclick="event.stopPropagation();rmPalletPhoto('${p.id}',${i})">×</button>` : ''}
           <img src="${ph.src}" alt="" onclick="openLightboxPallet('${p.id}',${i})">
           <div class="phcap" style="border-top:1px solid var(--line);padding:7px 9px;font-size:11.5px">
             <b>${esc(ph.caption||ph.name||'—')}</b>
@@ -5857,7 +5880,9 @@ function pageDocumentation(){
     return `
     <div class="card docsec">
       <div class="card-head"><h3>#${esc(P.number)} — ${esc(P.title||'')}</h3>
-        <span class="chip c-mut"><span class="cd"></span>${modCount} photos</span></div>
+        <span class="chip c-mut"><span class="cd"></span>${modCount} photos</span>
+        <span style="flex:1"></span>
+        <button class="mod-btn ${_docGalEdit?'primary':''}" style="padding:4px 12px;font-size:12px" onclick="toggleDocGalEdit()">${_docGalEdit?'Done':'Edit'}</button></div>
       <div class="phgrid">${fr}${rr}${srv}${vjp}${rck}${cam}${ship}</div>
     </div>`;
   }).filter(Boolean).join('');
