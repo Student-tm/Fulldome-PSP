@@ -626,7 +626,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.79 · SHARED-DELETE (TOMBSTONE HIDES)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.80 · TOMBSTONES OFF (STOP DELETIONS)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -4302,7 +4302,15 @@ async function cloudReconcileDeletions(){
    intentionally deleted. Every machine reads it each refresh, removes those projects
    locally, and REFUSES to re-upload them. */
 var _tombstones = { pids:{}, fids:{} }, _tombId = null;
+/* BUILD 12.80: TOMBSTONES DISABLED. The accumulated tombstones.json (from all the earlier
+   delete testing) combined with 12.79's owner-cleanup TRASHED legitimate project folders.
+   Turned OFF: nothing is loaded from, written to, or ACTED ON from tombstones.json — so it
+   can never hide or delete a project again. Cross-account "delete everywhere" is deferred to
+   the Shared-Drive migration (TO-FIX #1). Delete now = remove locally + best-effort folder
+   trash (works for the folder owner; a non-owner just leaves the folder, no data loss). */
+var _TOMBSTONES_ON = false;
 async function cloudLoadTombstones(){
+  if(!_TOMBSTONES_ON){ _tombstones = { pids:{}, fids:{} }; return _tombstones; }   /* inert */
   try{
     const rootId = await driveRootId();
     if(!_tombId) _tombId = await driveFindFile('tombstones.json', rootId);
@@ -4315,6 +4323,7 @@ async function cloudLoadTombstones(){
   return _tombstones;
 }
 async function cloudTombstoneAdd(pid, fid){
+  if(!_TOMBSTONES_ON) return;                                /* BUILD 12.80: don't write tombstones anymore */
   const rootId = await driveRootId();
   await cloudLoadTombstones();                               /* merge onto the latest so we don't drop a teammate's tombstone */
   const t = _tombstones, now = Date.now();
@@ -4326,7 +4335,7 @@ async function cloudTombstoneAdd(pid, fid){
   _tombId = await driveUpload('tombstones.json', rootId, JSON.stringify(t), 'application/json', id);
 }
 function cloudProjectTombstoned(e){
-  if(!_tombstones) return false;
+  if(!_TOMBSTONES_ON || !_tombstones) return false;
   const pid = e.data.project && e.data.project.pid;
   const fid = (driveMap()[e.id] || {}).fid;
   return !!((pid && _tombstones.pids[pid]) || (fid && _tombstones.fids[fid]));
@@ -4399,7 +4408,7 @@ async function cloudLoadMeta(folders){
 /* a Drive folder is "deleted" if its fid or its project's pid is tombstoned — hide it from
    the team list even when it couldn't be trashed (non-owner 403) — BUILD 12.79 */
 function folderTombstoned(f){
-  if(!_tombstones || !f) return false;
+  if(!_TOMBSTONES_ON || !_tombstones || !f) return false;
   if(_tombstones.fids && _tombstones.fids[f.id]) return true;
   const mt = _cloudMeta && _cloudMeta[f.id];
   return !!(mt && mt.pid && _tombstones.pids && _tombstones.pids[mt.pid]);
