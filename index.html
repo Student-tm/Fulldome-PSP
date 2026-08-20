@@ -628,7 +628,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.91 · PID IDENTITY GUARD (NO CROSS-OVERWRITE)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 13.0 · FIREBASE SYNC (LIVE, pid-keyed)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -888,8 +888,9 @@ function toggleDone(id, ev){
   if(e.done){ delete e.done; delete e.doneAt; flashStat('Project reopened'); }
   else { e.done = true; e.doneAt = Date.now(); flashStat('Project marked completed'); }
   saveState(); renderSideProject();
-  /* sync completion to the team folder for THIS project (BUILD 12.5) */
-  if(_cloudOn && _gTok){ clearTimeout(_pushTimer); setTimeout(()=>{ try{ cloudPushActive(e); }catch(_){} }, 100); }
+  /* sync completion for THIS project (BUILD 13.0: Firebase-primary; Drive fallback) */
+  if(_FBP && fbReady()){ setTimeout(()=>{ try{ fbpPushNow(e); }catch(_){} }, 60); }
+  else if(_cloudOn && _gTok){ clearTimeout(_pushTimer); setTimeout(()=>{ try{ cloudPushActive(e); }catch(_){} }, 100); }
 }
 function toggleFreeze(id, ev){
   if(ev) ev.stopPropagation();
@@ -998,6 +999,7 @@ function saveState(){
   if(!saveState._skipCloud){ try{ const _e = activeEntry(); if(_e){ _e._dirtyAt = Date.now(); if(!_booting && _e.data && _e.data.project) _e.data.project._rev = Math.max(Date.now(), (_e.data.project._rev||0) + 1); } }catch(e){} }   /* monotonic revision: strictly increases on every genuine edit (never during boot) → "newest edit wins, no rollback" (BUILD 12.72) */
   if(!saveState._skipCloud && typeof cloudTouch === 'function'){ try{ cloudTouch(); }catch(e){} }
   if(!saveState._skipCloud && typeof liveTouch === 'function'){ try{ liveTouch(); }catch(e){} }
+  if(!saveState._skipCloud && typeof fbpTouch === 'function'){ try{ fbpTouch(); }catch(e){} }   /* BUILD 13.0: push the edit to Firebase (primary sync) */
   if(!idbOk){
     try{
       localStorage.setItem(STORE_KEY, JSON.stringify(db));
@@ -1709,6 +1711,16 @@ function doDelete(scope){
   const e = activeEntry();
   if(!e){ closeDelete(); return; }
   const fid = (driveMap()[e.id] && driveMap()[e.id].fid) || null;
+  /* BUILD 13.0: Firebase-primary — delete = remove the Firebase node (authoritative);
+     absence propagates to every machine (they see it gone → remove locally, never resurrect).
+     Both delete buttons do the same here (no per-file owner in Firebase). */
+  if(_FBP){
+    const delE = e;
+    if(fbReady()) fbpDelete(delE).catch(()=>{});           /* remove the record everywhere */
+    finishDelete(delE, null);                              /* local removal + UI */
+    flashStat('Project deleted everywhere');
+    return;
+  }
   if(scope === 'cloud'){
     if(!_cloudOn || !_gTok){ document.getElementById('delErr').textContent = 'Sign in to Google first to delete from the team folder.'; return; }
     const pid = e.data.project && e.data.project.pid;
@@ -2362,7 +2374,7 @@ function createProjectInner(){
   db.projects.push(entry);
   db.activeId = entry.id; syncActive();
   saveState(); renderHeader(); renderSideProject();
-  setTimeout(()=>{ try{ cloudPushNow(); }catch(e){} }, 200);
+  setTimeout(()=>{ try{ if(_FBP && fbReady()) fbpPushNow(); else cloudPushNow(); }catch(e){} }, 200);   /* BUILD 13.0: create → publish to Firebase at once */
   goTo('#/dashboard');
 }
 function saveProjectEdit(){
@@ -2383,7 +2395,7 @@ function saveProjectEditInner(){
   }
   revalidateReady();
   saveState(); renderHeader(); renderSideProject();
-  setTimeout(()=>{ try{ cloudPushNow(); }catch(e){} }, 200);
+  setTimeout(()=>{ try{ if(_FBP && fbReady()) fbpPushNow(); else cloudPushNow(); }catch(e){} }, 200);   /* BUILD 13.0 */
   goTo('#/dashboard');
 }
 const blankRow = () => ({cat:'', name:'', qty:1, price:'', link:''});
@@ -3870,6 +3882,172 @@ async function livePush(){
   catch(err){ setCloudStat('⚠ Live sync error: ' + (err.message||'') + ' — click to retry'); }
 }
 
+/* ============================================================================
+   FIREBASE-PRIMARY SYNC (BUILD 13.0) — Firebase Realtime Database is the SINGLE
+   SOURCE OF TRUTH for the PROJECT LIST + structural data. Each project is a
+   record at projects/<pid>, keyed by the STABLE pid (never a Drive folder name),
+   so two projects can NEVER collide in one slot → the entire overwrite / dup /
+   ownership-403 / delete-doesn't-propagate class of bugs is gone. Real-time via
+   one SSE stream on /projects + a cheap poll fallback. Photos + Documentation
+   stay LOCAL for now (Phase 2 = Firebase Storage). Google Drive keeps ONLY the
+   write-only backup mirror + online presence. Delete = remove the Firebase node
+   (authoritative absence); a project we have SEEN in Firebase (_fbSeen) that is
+   later absent was deleted by the team → removed locally, never re-pushed. A
+   local project Firebase has NEVER seen (!_fbSeen) is a fresh create → pushed.
+   Safety: a successful-but-EMPTY tree never mass-deletes (guards a DB wipe). */
+var _FBP = true;                 /* master switch for the Firebase-primary path */
+var _fbpStream = null, _fbpPushT = null, _fbpPoll = null, _fbpApplying = false, _fbpStarted = false;
+var _fbpLocal = {};              /* pid -> last JSON we pushed (skip no-op writes) */
+const FBP_ROOT = 'projects';
+function fbpPid(e){ return e && e.data && e.data.project && e.data.project.pid; }
+/* the record stored per project: shared slice + completion + identity/audit.
+   Photos/docs are NOT here (heavy) — they live in the local entry + Drive. */
+function fbpDoc(e){
+  const d = Object.assign(liveSlice(e.data), { done: !!e.done, doneAt: e.doneAt || 0 });
+  d.pid = fbpPid(e); d.updatedAt = Date.now(); d.updatedBy = _gUser || '';
+  return d;
+}
+/* ---- auth-resilient REST (idToken expires ~1h → re-mint the Google token + Firebase idToken, retry once) ---- */
+async function fbpReauth(){ try{ await fbSignInWithAccessToken(await driveToken(false)); return true; }catch(_){ return false; } }
+async function fbGet2(path){ try{ return await fbGet(path); }catch(e){ if(await fbpReauth()) return await fbGet(path); throw e; } }
+async function fbPatch2(path, obj){ try{ return await fbPatch(path, obj); }catch(e){ if(await fbpReauth()) return await fbPatch(path, obj); throw e; } }
+async function fbDelete2(path){
+  let r = await fetch(fbUrl(path), { method:'DELETE' });
+  if(!r.ok && r.status === 401 && await fbpReauth()) r = await fetch(fbUrl(path), { method:'DELETE' });
+  if(!r.ok) throw new Error('db delete ' + r.status);
+  return true;
+}
+function fbpEntryByPid(pid){ return db.projects.find(p => fbpPid(p) === pid) || null; }
+/* apply ONE remote record to the local store; returns 'added' | 'updated' | null */
+function fbpApplyRecord(rec){
+  if(!rec || !rec.pid || !rec.project) return null;
+  let e = fbpEntryByPid(rec.pid);
+  if(!e){
+    const data = emptyState();
+    liveApply(data, rec);                                  /* fills project + all module slices */
+    if(!data.project) data.project = {}; data.project.pid = rec.pid;
+    data.shipping = data.shipping || {date:'',pallets:[],assign:{},docs:[],meta:{},packed:{}};
+    data.ready = data.ready || {}; data.docs = data.docs || {sitePh:[],files:{}};
+    e = { id:newId(), frozen:false, data:data, _fbSeen:true };
+    if(rec.done){ e.done = true; e.doneAt = rec.doneAt || Date.now(); }
+    db.projects.push(e);
+    return 'added';
+  }
+  e._fbSeen = true;
+  /* never disturb the project the user is actively typing in — next poll catches it */
+  if(e === activeEntry() && isTypingInInput()) return null;
+  const inRev  = (rec.project && rec.project._rev) || 0;
+  const locRev = (e.data.project && e.data.project._rev) || 0;
+  const doneChanged = (!!rec.done !== !!e.done);
+  if(inRev <= locRev && !doneChanged) return null;         /* newest-wins: don't roll back a fresher local edit */
+  let ch = liveApply(e.data, rec);
+  if(rec.done && !e.done){ e.done = true; e.doneAt = rec.doneAt || Date.now(); ch = true; }
+  else if(!rec.done && e.done){ delete e.done; delete e.doneAt; ch = true; }
+  return ch ? 'updated' : null;
+}
+/* apply the WHOLE /projects tree: adds/updates + team-deletions. Returns the remotePids map. */
+function fbpApplyTree(tree){
+  _fbpApplying = true;
+  const remotePids = {};
+  let touched = false, activeGone = false;
+  if(tree && typeof tree === 'object'){
+    Object.keys(tree).forEach(k => {
+      const rec = tree[k]; if(!rec || !rec.pid) return;
+      remotePids[rec.pid] = 1;
+      if(fbpApplyRecord(rec)) touched = true;
+    });
+  }
+  /* deletions — only when the tree is NON-EMPTY (a successful-but-empty read must
+     never mass-delete: that would nuke everything on a DB wipe / rules glitch) */
+  if(Object.keys(remotePids).length){
+    for(let i = db.projects.length - 1; i >= 0; i--){
+      const e = db.projects[i], pid = fbpPid(e);
+      if(!pid) continue;
+      if(e._fbSeen && !remotePids[pid]){
+        if(e.id === db.activeId) activeGone = true;
+        db.projects.splice(i, 1); touched = true;
+      }
+    }
+  }
+  if(activeGone){ const alt = db.projects.find(p => !p.frozen); db.activeId = alt ? alt.id : null; syncActive(); }
+  if(touched){
+    saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
+    if(!isTypingInInput()) route();
+    renderHeader(); renderSideProject();
+  }
+  _fbpApplying = false;
+  return remotePids;
+}
+/* ---- push my edits ---- */
+async function fbpPushNow(entry){
+  if(!_FBP || !fbReady()) return;
+  const e = (entry && entry.data && entry.data.project) ? entry : activeEntry();
+  if(!e || !e.data.project) return;
+  const pid = fbpPid(e); if(!pid) return;
+  const doc = fbpDoc(e), s = JSON.stringify(doc);
+  if(_fbpLocal[pid] === s){ e._fbSeen = true; return; }    /* nothing changed since our last push */
+  /* newest-wins: if the remote copy is strictly newer, don't overwrite — let the poll pull it */
+  try{
+    const rRev = (await fbGet2(FBP_ROOT + '/' + pid + '/project/_rev')) || 0;
+    const lRev = (e.data.project._rev) || 0;
+    if(rRev > lRev){ e._fbSeen = true; return; }
+  }catch(_){}
+  await fbPatch2(FBP_ROOT + '/' + pid, doc);
+  _fbpLocal[pid] = s; e._fbSeen = true;
+}
+function fbpTouch(){
+  if(!_FBP || !fbReady() || _fbpApplying) return;
+  clearTimeout(_fbpPushT);
+  _fbpPushT = setTimeout(function(){ fbpPushNow().catch(function(){}); }, 1000);
+}
+async function fbpDelete(e){
+  const pid = fbpPid(e); if(!pid || !fbReady()) return;
+  try{ await fbDelete2(FBP_ROOT + '/' + pid); delete _fbpLocal[pid]; }catch(_){}
+}
+/* ---- receive: stream + poll ---- */
+function fbpOnEvent(){ clearTimeout(fbpOnEvent._t); fbpOnEvent._t = setTimeout(function(){ fbpPoll().catch(function(){}); }, 300); }
+function fbpStreamOpen(){
+  try{
+    if(_fbpStream){ try{ _fbpStream.close(); }catch(_){} }
+    _fbpStream = new EventSource(fbUrl(FBP_ROOT, ''));
+    _fbpStream.addEventListener('put', fbpOnEvent);
+    _fbpStream.addEventListener('patch', fbpOnEvent);
+  }catch(_){}
+}
+async function fbpPoll(){
+  if(!_FBP || !fbReady() || _fbpApplying) return;
+  if(fbpPoll._busy) return; fbpPoll._busy = true;
+  try{
+    const tree = await fbGet2(FBP_ROOT);
+    fbpApplyTree(tree || {});
+    setCloudStat((_gUser ? ('Synced ✓ ' + _gUser) : 'Synced ✓') + ' · ' + hhmm());
+  }catch(_){ /* next tick retries */ }
+  finally{ fbpPoll._busy = false; }
+}
+async function fbpStart(){
+  if(!_FBP || !fbReady()) return;
+  _fbpStarted = true;
+  /* every project must have a stable pid to live in Firebase (backfill legacy ones) */
+  db.projects.forEach(e => { if(e.data && e.data.project && !e.data.project.pid) e.data.project.pid = newId(); });
+  let tree;
+  try{ tree = await fbGet2(FBP_ROOT); }
+  catch(err){ setCloudStat('Sync unavailable: ' + (err.message||'error') + ' — check Firebase rules'); return; }
+  const remotePids = fbpApplyTree(tree || {});
+  /* migration: push LOCAL projects Firebase has NEVER seen (fresh creates / first run) */
+  for(const e of db.projects){
+    const pid = fbpPid(e);
+    if(pid && e.data.project && !e._fbSeen && !remotePids[pid]){ try{ await fbpPushNow(e); }catch(_){} }
+  }
+  fbpStreamOpen();
+  if(!_fbpPoll) _fbpPoll = setInterval(function(){ fbpPoll().catch(function(){}); }, 8000);
+  setCloudStat((_gUser ? ('Synced ✓ ' + _gUser) : 'Synced ✓'));
+}
+function fbpStop(){
+  if(_fbpStream){ try{ _fbpStream.close(); }catch(_){} _fbpStream = null; }
+  if(_fbpPoll){ clearInterval(_fbpPoll); _fbpPoll = null; }
+  _fbpStarted = false;
+}
+
 /* ---------- TRANSPARENT CLOUD (BUILD 10.2) ----------
    The user signs in once at start and just works. The sidebar shows every
    team project from the Drive folder; opening pulls it, edits auto-push
@@ -3883,14 +4061,14 @@ var _cloudOn = false, _cloudFolders = [], _cloudMeta = {}, _pushTimer = null, _p
    bumps _rev; a push REFUSES to overwrite a remote whose rev is newer, and a pull
    only applies a remote whose rev is strictly newer than local — so "newest edit
    wins, rollback impossible". Folder rename + normal cross-machine sync work as before. */
-var _AUTO_SYNC = true;
+var _AUTO_SYNC = false;   /* BUILD 12.93: auto-sync OFF for good until Shared Drive (TO-FIX #1). Repeated cross-machine overwrites/dupes proved the file-relay sync unsafe. No auto push, no auto pull, no folder rename, no reconcile — nothing can overwrite. Cross-machine transfer = manual Save/Load project file. Team list still shows read-only. */
 var _manualPush = false;
 var _isRootOwner = true;   /* true = this account OWNS the team folder (the "admin", A) → may Delete everywhere; a shared (Editor) account can only create (BUILD 12.84) */
 function driveMap(){ if(!db.driveMap || typeof db.driveMap!=='object') db.driveMap = {}; return db.driveMap; }
 function setCloudStat(t){ const el=document.getElementById('driveStat'); if(el) el.textContent = t; }
 function cloudGateShow(){ const g=document.getElementById('authGate'); if(g) g.style.display='flex'; }
 function cloudGateHide(){ const g=document.getElementById('authGate'); if(g) g.style.display='none'; }
-function cloudOffline(){ _cloudOn=false; cloudStopPoll(); backupStopLoop(); presenceStop(); cloudGateHide(); setCloudStat('Offline — click to sign in and sync'); }
+function cloudOffline(){ _cloudOn=false; cloudStopPoll(); if(typeof fbpStop==='function') fbpStop(); backupStopLoop(); presenceStop(); cloudGateHide(); setCloudStat('Offline — click to sign in and sync'); }
 async function cloudStart(silent){
   const err = document.getElementById('authErr');
   try{
@@ -3908,19 +4086,24 @@ async function cloudStart(silent){
     }
     _cloudOn = true;
     cloudGateHide();
-    cloudStartPoll();                                  /* BUILD 12.65: start the poll FIRST so a flaky first refresh can't leave a machine without auto-sync */
-    cloudBindVisibility();                             /* pull the instant a hidden tab is focused (BUILD 12.36) */
-    setCloudStat('Loading team projects…');
-    await cloudRefreshList();
-    setCloudStat((_gUser ? ('Cloud ✓ ' + _gUser) : 'Cloud ✓') + (_AUTO_SYNC ? '' : ' · SYNC PAUSED (safe mode)'));
-    /* live sync: Firebase session from the same Google session */
-    try{
-      await fbSignInWithAccessToken(_gTok);
-      await liveStart();
-    }catch(e){ setCloudStat('Cloud ✓ (live sync off: ' + (e.message||'') + ')'); }
-    /* SAFE MODE (12.71): do NOT auto-push on sign-in/boot — reloading a stale machine
-       used to re-upload its old copy and rename folders everywhere. Manual only now. */
-    if(_AUTO_SYNC && activeEntry()) cloudPushActive();
+    /* Firebase session from the same Google session (the primary sync auth) */
+    var _fbAuthOk = false;
+    try{ await fbSignInWithAccessToken(_gTok); _fbAuthOk = true; }
+    catch(e){ setCloudStat('Signed in, but sync auth failed: ' + (e.message||'') + ' — enable Google provider + rules in Firebase'); }
+    if(_FBP){
+      /* BUILD 13.0: Firebase-primary — the project list + data come from Realtime DB,
+         NOT from Drive folders. No Drive folder poll, no folder identity → no overwrites. */
+      setCloudStat('Connecting sync…');
+      if(_fbAuthOk){ try{ await fbpStart(); }catch(e){ setCloudStat('Sync error: ' + (e.message||'')); } }
+    } else {
+      cloudStartPoll();
+      cloudBindVisibility();
+      setCloudStat('Loading team projects…');
+      await cloudRefreshList();
+      setCloudStat((_gUser ? ('Cloud ✓ ' + _gUser) : 'Cloud ✓') + (_AUTO_SYNC ? '' : ' · SYNC PAUSED (safe mode)'));
+      try{ if(_fbAuthOk) await liveStart(); }catch(e){ setCloudStat('Cloud ✓ (live sync off: ' + (e.message||'') + ')'); }
+      if(_AUTO_SYNC && activeEntry()) cloudPushActive();
+    }
     backupStartLoop();                                  /* BUILD 12.74: write-only background backups every 15 min */
     setTimeout(function(){ backupAllChanged(false).catch(function(){}); }, 30000);   /* first backup ~30s after sign-in */
     presenceStart();                                    /* BUILD 12.76: show who's online (top-right avatars) */
@@ -4342,8 +4525,14 @@ var _tombstones = { pids:{}, fids:{} }, _tombId = null;
    Drive folder (fixes "B created, A deleted → came back after 2s"). CRITICAL SAFETY: this
    NEVER auto-trashes Drive folders (that mass-deletion caused the 12.79/12.80 disaster). The
    Drive folder just lingers (invisible in the app, recoverable); its owner can trash it by
-   hand. Full clean delete = Shared Drive (TO-FIX #1). */
-var _TOMBSTONES_ON = true;
+   hand. Full clean delete = Shared Drive (TO-FIX #1).
+   BUILD 12.83b (per user): the whole "hidden" mechanism is turned OFF — no hidden.json is
+   written/read/acted on, nothing is kept in a hidden state. Delete = remove locally + trash
+   the Drive folder (only the folder OWNER can; the trash then propagates to other machines
+   via cloudReconcileDeletions, which confirms the folder is gone before removing it). A
+   non-owner still can't trash the owner's folder → do deletions on the owner machine until
+   the Shared-Drive migration (TO-FIX #1). */
+var _TOMBSTONES_ON = false;
 const HIDE_FILE = 'hidden.json';
 async function cloudLoadTombstones(){
   if(!_TOMBSTONES_ON){ _tombstones = { pids:{}, fids:{} }; return _tombstones; }   /* inert */
@@ -4451,6 +4640,7 @@ function folderTombstoned(f){
   return !!(mt && mt.pid && _tombstones.pids && _tombstones.pids[mt.pid]);
 }
 function cloudUnlinkedFolders(){
+  if(_FBP) return [];                                       /* BUILD 13.0: every project is a real local entry synced from Firebase — no ☁-only cards */
   const linked = {}; Object.values(driveMap()).forEach(m => { if(m && m.fid) linked[m.fid]=1; });
   return _cloudFolders.filter(f => !linked[f.id] && !folderTombstoned(f));
 }
@@ -4570,6 +4760,14 @@ function cloudDocsSig(e){
 }
 function cloudSyncNow(){
   if(!_cloudOn || !_gTok){ cloudGateShow(); return; }
+  if(_FBP){
+    /* BUILD 13.0: manual refresh — re-mint auth if needed, restart the stream, pull + push now */
+    (async ()=>{
+      try{ if(!fbReady()) await fbSignInWithAccessToken(_gTok); if(!_fbpStarted) await fbpStart(); else { fbpStreamOpen(); await fbpPoll(); await fbpPushNow(); } }
+      catch(e){ setCloudStat('Sync error: ' + (e && e.message || 'failed') + ' — click to retry'); }
+    })();
+    return;
+  }
   clearTimeout(_pushTimer);
   _forcePull = true;                         /* manual reset: pull the latest even inside the 30s local-edit guard (BUILD 12.41) */
   cloudRefreshList().then(cloudPushActive)
