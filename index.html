@@ -84,6 +84,15 @@
     color:#fff;font-size:9.5px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 3px}
   .avatar{width:36px;height:36px;border-radius:50%;background:var(--fdp-red);color:#fff;font-size:13px;font-weight:700;
     display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto}
+  /* online-user avatars (BUILD 12.76) */
+  .online-users{display:flex;align-items:center;padding-right:4px}
+  .online-users:empty{display:none}
+  .ou{position:relative;width:28px;height:28px;border-radius:50%;margin-left:-7px;box-shadow:0 0 0 2px #14171b;flex:0 0 auto}
+  .ou:first-child{margin-left:0}
+  .ou.me{box-shadow:0 0 0 2px var(--fdp-red)}
+  .ou .oui{position:absolute;inset:0;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10.5px;font-weight:700;letter-spacing:.3px}
+  .ou .oup{position:absolute;inset:0;width:100%;height:100%;border-radius:50%;object-fit:cover}
+  .ou .oudot{position:absolute;right:-1px;bottom:-1px;width:8px;height:8px;border-radius:50%;background:#43d17c;box-shadow:0 0 0 2px #14171b}
 
   /* ---------- CONTENT ---------- */
   .content{flex:1;overflow-y:auto;padding:26px 30px 70px}
@@ -585,6 +594,7 @@
   <div class="top-actions">
     <button class="top-btn" onclick="openTT()" title="Create a Technical Task"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M9.5 13h5M9.5 17h5"/></svg>Technical Task</button>
     <button class="top-btn" onclick="location.hash='#/create'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New Project</button>
+    <div class="online-users" id="onlineUsers" title="Online now"></div>
     <button class="icon-btn" title="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/></svg></button>
     <div class="avatar" title="User">FD</div>
   </div>
@@ -616,7 +626,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.73 · FASTER SYNC + LIVE NEWEST-WINS</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 12.79 · SHARED-DELETE (TOMBSTONE HIDES)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1597,12 +1607,16 @@ function applyProjectText(text){
          rides in the json across machines. */
       let e = null;
       const _pid = data.project && data.project.pid;
-      if(_pid) e = db.projects.find(p => p.data.project && p.data.project.pid === _pid);
-      if(!e){
-        /* legacy file with no pid → fall back to number match, but ONLY against
-           another legacy (no-pid) project and ONLY when the number is non-empty */
+      if(_pid){
+        /* incoming project HAS a stable id → match ONLY by that id. If none matches,
+           it is its OWN project and is ADDED — it must NEVER overwrite another project
+           by a shared/placeholder number (that clobbered a finished project — BUILD 12.77). */
+        e = db.projects.find(p => p.data.project && p.data.project.pid === _pid);
+      } else {
+        /* legacy file with NO pid → match a legacy (no-pid) project by a REAL number only
+           (a number with a non-zero digit — never "0000"/"000000000"/"") */
         const _num = (data.project && data.project.number || '').trim();
-        if(_num) e = db.projects.find(p => p.data.project && !p.data.project.pid && (p.data.project.number||'').trim() === _num);
+        if(_num && /[1-9]/.test(_num)) e = db.projects.find(p => p.data.project && !p.data.project.pid && (p.data.project.number||'').trim() === _num);
       }
       if(e){ e.data = data; }
       else { e = {id:newId(), frozen:false, data}; db.projects.push(e); }
@@ -1685,12 +1699,21 @@ function doDelete(scope){
     if(!_cloudOn || !_gTok){ document.getElementById('delErr').textContent = 'Sign in to Google first to delete from the team folder.'; return; }
     const pid = e.data.project && e.data.project.pid;
     document.getElementById('delErr').textContent = 'Deleting from Google Drive…';
-    /* tombstone FIRST so the deletion sticks on every machine even if the folder
-       trash itself hiccups; then trash the folder (BUILD 12.70) */
-    cloudTombstoneAdd(pid, fid)
-      .then(()=> fid ? driveTrashFolder(fid) : Promise.resolve())
-      .then(()=> finishDelete(e, fid))
-      .catch(err=>{ document.getElementById('delErr').textContent = 'Drive delete failed: ' + (err && err.message || 'error'); });
+    /* ROBUST DELETE (BUILD 12.77): tombstone + trash are BEST-EFFORT, and the local
+       removal ALWAYS happens — so a network hiccup can't leave the project half-deleted
+       (which led to a retry that overwrote another project). The tombstone makes the
+       deletion stick on other machines; if it failed, re-deleting is now safe. */
+    (async () => {
+      /* The TOMBSTONE is the real "delete everywhere": it hides the project on every
+         machine. Trashing the Drive folder is a bonus that only the folder's OWNER can do
+         — a shared (Editor) teammate gets 403, which is EXPECTED and NOT a failure. The
+         owner's machine trashes the folder later during refresh cleanup (BUILD 12.79). */
+      let tomb = true;
+      try{ await cloudTombstoneAdd(pid, fid); }catch(_){ tomb = false; }
+      if(fid){ try{ await driveTrashFolder(fid); }catch(_){ /* 403 for non-owners — fine, tombstone already hid it */ } }
+      finishDelete(e, fid);
+      flashStat(tomb ? 'Project deleted everywhere' : 'Deleted here; could not record team deletion — retry when back online');
+    })();
     return;
   }
   finishDelete(e, null);                 /* local-only, or cloud with no Drive folder yet */
@@ -3852,7 +3875,7 @@ function driveMap(){ if(!db.driveMap || typeof db.driveMap!=='object') db.driveM
 function setCloudStat(t){ const el=document.getElementById('driveStat'); if(el) el.textContent = t; }
 function cloudGateShow(){ const g=document.getElementById('authGate'); if(g) g.style.display='flex'; }
 function cloudGateHide(){ const g=document.getElementById('authGate'); if(g) g.style.display='none'; }
-function cloudOffline(){ _cloudOn=false; cloudStopPoll(); cloudGateHide(); setCloudStat('Offline — click to sign in and sync'); }
+function cloudOffline(){ _cloudOn=false; cloudStopPoll(); backupStopLoop(); presenceStop(); cloudGateHide(); setCloudStat('Offline — click to sign in and sync'); }
 async function cloudStart(silent){
   const err = document.getElementById('authErr');
   try{
@@ -3883,6 +3906,9 @@ async function cloudStart(silent){
     /* SAFE MODE (12.71): do NOT auto-push on sign-in/boot — reloading a stale machine
        used to re-upload its old copy and rename folders everywhere. Manual only now. */
     if(_AUTO_SYNC && activeEntry()) cloudPushActive();
+    backupStartLoop();                                  /* BUILD 12.74: write-only background backups every 15 min */
+    setTimeout(function(){ backupAllChanged(false).catch(function(){}); }, 30000);   /* first backup ~30s after sign-in */
+    presenceStart();                                    /* BUILD 12.76: show who's online (top-right avatars) */
   }catch(e){
     if(silent){ setCloudStat('Not signed in — click here to sign in & sync'); return; }   /* silent attempt failed: no gate, one-click available */
     if(err) err.textContent = 'Sign-in failed: ' + (e && e.message || 'error') + '. Check that your email is in the test users list.';
@@ -3917,6 +3943,207 @@ function cloudStartPoll(){
   }, 6000);   /* 6s (BUILD 12.73): snappier inbound sync; cheap now thanks to cached meta ids + re-entrancy guard + rate-limit backoff (12.67) */
 }
 function cloudStopPoll(){ if(_cloudPoll){ clearInterval(_cloudPoll); _cloudPoll = null; } }
+/* ============================================================================
+   BACKGROUND BACKUP (BUILD 12.75) — a WRITE-ONLY MIRROR, independent of the working folder.
+   A SEPARATE Drive folder "Fulldome PSP — BACKUPS" (sibling of the working folder) holds an
+   exact copy of each project's folder — SAME NAMES as the real thing: "<name>/<name>.json",
+   "meta.json", "Photos/…", "Documentation/…". Updated IN PLACE (Google keeps 30-day version
+   history), never timestamped/duplicated. SMART: a project is mirrored only when it actually
+   changed (dedup by project._rev); the json is rewritten only when the project changed; and
+   Photos/Documentation are re-mirrored ONLY when their signature changed — and then copied
+   SERVER-SIDE (Drive file copy, no data pushed through the browser), skipping files already
+   present. The module NEVER deletes/trashes backups — no sync bug can harm them. */
+const BACKUP_ROOT_NAME = 'Fulldome PSP — BACKUPS';
+var _backupTimer = null, _backupBusy = false;
+function backupMap(){ if(!db.backupMap || typeof db.backupMap !== 'object') db.backupMap = {}; return db.backupMap; }
+async function backupFindChildFolder(name, parentId){
+  const q = encodeURIComponent("name = '" + name.replace(/'/g,"\\'") + "' and mimeType='application/vnd.google-apps.folder' and trashed=false and '" + parentId + "' in parents");
+  const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id)&pageSize=1');
+  const j = await r.json(); return (j.files && j.files[0]) ? j.files[0].id : null;
+}
+async function backupFindFile(name, parentId){
+  const q = encodeURIComponent("name = '" + name.replace(/'/g,"\\'") + "' and '" + parentId + "' in parents and trashed=false");
+  const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id)&pageSize=1');
+  const j = await r.json(); return (j.files && j.files[0]) ? j.files[0].id : null;
+}
+async function backupList(parentId){
+  const q = encodeURIComponent("'" + parentId + "' in parents and trashed=false");
+  const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name,mimeType)&pageSize=1000');
+  const j = await r.json(); return j.files || [];
+}
+async function backupCreateFolder(name, parentId){
+  const body = { name: name, mimeType: 'application/vnd.google-apps.folder' };
+  if(parentId) body.parents = [parentId];
+  const c = await gFetch('https://www.googleapis.com/drive/v3/files?fields=id', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  return (await c.json()).id;
+}
+async function backupCopyFile(srcId, dstParentId, name){
+  await gFetch('https://www.googleapis.com/drive/v3/files/' + srcId + '/copy?fields=id', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: name, parents: [dstParentId] }) });
+}
+async function backupRootId(){
+  if(db.backupRootId && await driveAlive(db.backupRootId)) return db.backupRootId;
+  let id = await backupFindChildFolder(BACKUP_ROOT_NAME, 'root');    /* at My Drive root, NOT inside the working folder */
+  if(!id) id = await backupCreateFolder(BACKUP_ROOT_NAME, null);
+  db.backupRootId = id; return id;
+}
+/* the per-project backup subfolder — same name as the working folder; renamed to follow */
+async function backupSubfolder(e, rec){
+  const P = e.data.project;
+  const wantName = projDriveFolderName(P) || 'project';
+  let fid = rec.fid;
+  if(fid && !(await driveAlive(fid))) fid = null;
+  if(!fid){
+    const rootId = await backupRootId();
+    fid = await backupFindChildFolder(wantName, rootId) || await backupCreateFolder(wantName, rootId);
+  } else if(rec.name && rec.name !== wantName){
+    try{ await gFetch('https://www.googleapis.com/drive/v3/files/' + fid + '?fields=id', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: wantName }) }); }catch(_){}
+  }
+  rec.fid = fid; rec.name = wantName;
+  return fid;
+}
+/* upload a small/large json IN PLACE (PATCH the same file → keeps one file + Google version history) */
+async function backupPutInPlace(name, parentId, content, cachedId){
+  let id = cachedId;
+  if(id && !(await driveAlive(id))) id = null;
+  if(!id) id = await backupFindFile(name, parentId);
+  const boundary = 'fdp' + Math.random().toString(36).slice(2);
+  const meta = id ? { name } : { name, parents: [parentId] };
+  const body = new Blob(['--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+JSON.stringify(meta)+'\r\n--'+boundary+'\r\nContent-Type: application/json\r\n\r\n', content, '\r\n--'+boundary+'--']);
+  const url = 'https://www.googleapis.com/upload/drive/v3/files' + (id ? '/'+id : '') + '?uploadType=multipart&fields=id';
+  const r = await gFetch(url, { method: id?'PATCH':'POST', headers:{'Content-Type':'multipart/related; boundary='+boundary}, body });
+  return (await r.json()).id;
+}
+/* mirror a working subfolder (Photos / Documentation, incl. nested categories) into the
+   backup — SERVER-SIDE copy of files not already present; recurse into subfolders. */
+async function backupMirrorFolder(srcId, dstParentId, folderName){
+  let dstId = await backupFindChildFolder(folderName, dstParentId) || await backupCreateFolder(folderName, dstParentId);
+  const kids = await backupList(srcId);
+  const existing = await backupList(dstId);
+  const haveFolder = {}, haveFile = {};
+  existing.forEach(x => { if(x.mimeType==='application/vnd.google-apps.folder') haveFolder[x.name]=x.id; else haveFile[x.name]=1; });
+  for(const k of kids){
+    if(k.mimeType === 'application/vnd.google-apps.folder'){
+      await backupMirrorFolder(k.id, dstId, k.name);                 /* recurse: Photos/<Category>/ */
+    } else if(!haveFile[k.name]){
+      try{ await backupCopyFile(k.id, dstId, k.name); }catch(_){}     /* only NEW files — no re-shoveling */
+    }
+  }
+}
+/* mirror ONE project — smart: skip if unchanged; json only unless photos/docs changed */
+async function backupMirrorProject(e, forced){
+  if(!_cloudOn || !_gTok) return false;
+  if(!e || !e.data || !e.data.project) return false;
+  const P = e.data.project;
+  const pid = P.pid || e.id;
+  const rev = P._rev || 0;
+  const bm = backupMap();
+  const rec = Object.assign({}, bm[pid]);
+  if(!forced && rec.rev === rev) return false;                       /* nothing changed → don't rewrite itself */
+  const bkSub = await backupSubfolder(e, rec);
+  const name = projDriveFolderName(P) || 'project';
+  rec.jsonId = await backupPutInPlace(name + '.json', bkSub, projPayload(e), rec.jsonId);   /* full project copy, same name, in place */
+  rec.metaId = await backupPutInPlace('meta.json', bkSub, JSON.stringify(cloudMetaOf(e)), rec.metaId);
+  const wf = driveMap()[e.id];
+  if(wf && wf.fid){
+    const curPS = photoSigStr(e);
+    if(forced || curPS !== rec.photoSig){                            /* photos changed → mirror new photo files (server-side) */
+      try{ const src = await backupFindChildFolder('Photos', wf.fid); if(src) await backupMirrorFolder(src, bkSub, 'Photos'); rec.photoSig = curPS; }catch(_){}
+    }
+    const curDS = JSON.stringify(cloudDocsSig(e));
+    if(forced || curDS !== rec.docsSig){                             /* docs changed → mirror new doc files (server-side) */
+      try{ const src = await backupFindChildFolder('Documentation', wf.fid); if(src) await backupMirrorFolder(src, bkSub, 'Documentation'); rec.docsSig = curDS; }catch(_){}
+    }
+  }
+  rec.rev = rev; rec.at = Date.now();
+  bm[pid] = rec;
+  saveState._skipCloud = true; saveState(); saveState._skipCloud = false;   /* persist backupMap without bumping any project _rev */
+  return true;
+}
+async function backupAllChanged(forced){
+  if(_backupBusy || !_cloudOn || !_gTok) return;
+  _backupBusy = true;
+  let n = 0;
+  try{
+    for(const e of db.projects){
+      try{ if(await backupMirrorProject(e, forced)) n++; }catch(_){}
+    }
+    if(n) setCloudStat('Backup mirrored (' + n + ') · ' + hhmm());
+  } finally { _backupBusy = false; }
+}
+function backupStartLoop(){
+  if(_backupTimer) return;
+  _backupTimer = setInterval(function(){ if(_cloudOn && _gTok){ backupAllChanged(false).catch(function(){}); } }, 15*60*1000);   /* every 15 min, changed projects only */
+}
+function backupStopLoop(){ if(_backupTimer){ clearInterval(_backupTimer); _backupTimer = null; } }
+/* ============================================================================
+   ONLINE PRESENCE (BUILD 12.76) — over Google Drive (reliable; Firebase live is flaky).
+   Each machine writes a tiny heartbeat file "presence/<email>.json" {email,name,picture,at}
+   into the team folder and refreshes it every ~20s; every machine reads them and shows the
+   avatars (Google account photo, or coloured initials) of everyone whose heartbeat is < 60s
+   old, in the top-right. Purely cosmetic — never touches project data. ============= */
+var _presTimer = null, _meInfo = null, _presFid = null, _presMyFileId = null, _onlineUsers = [];
+function presenceColor(s){ let h=0; s=s||'user'; for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return 'hsl(' + (h%360) + ',52%,42%)'; }
+function presenceKey(email){ return (email||'user').replace(/[^a-z0-9]/gi,'_').toLowerCase(); }
+function presenceInitials(u){ const s=(u.name||u.email||'?').trim(); const parts=s.split(/[\s@._-]+/).filter(Boolean); return ((parts[0]||'?')[0] + (parts[1]?parts[1][0]:'')).toUpperCase(); }
+async function presenceFetchMe(){
+  if(_meInfo) return _meInfo;
+  let info = { email:_gUser||'', name:(_gUser||'user').split('@')[0], picture:'' };
+  try{
+    const r = await gFetch('https://www.googleapis.com/oauth2/v3/userinfo');
+    const j = await r.json();
+    if(j && (j.email || j.name)) info = { email: j.email||_gUser||'', name: j.name || (j.email||_gUser||'').split('@')[0], picture: j.picture||'' };
+  }catch(e){}
+  info.color = presenceColor(info.email || info.name);
+  _meInfo = info; return info;
+}
+async function presenceFolderId(){
+  if(_presFid && await driveAlive(_presFid)) return _presFid;
+  const rootId = await driveRootId();
+  let id = await backupFindChildFolder('presence', rootId) || await backupCreateFolder('presence', rootId);
+  _presFid = id; return id;
+}
+async function presenceBeat(){
+  if(!_cloudOn || !_gTok) return;
+  const me = await presenceFetchMe();
+  const fid = await presenceFolderId();
+  const content = JSON.stringify({ email:me.email, name:me.name, picture:me.picture, color:me.color, at:Date.now() });
+  _presMyFileId = await backupPutInPlace(presenceKey(me.email)+'.json', fid, content, _presMyFileId);   /* one file per user, updated in place */
+}
+async function presenceRead(){
+  if(!_cloudOn || !_gTok) return;
+  const fid = await presenceFolderId();
+  const files = await backupList(fid);
+  const now = Date.now(), out = [];
+  await Promise.all(files.map(async f => {
+    if(f.mimeType === 'application/vnd.google-apps.folder') return;
+    try{
+      const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + f.id + '?alt=media');
+      const j = JSON.parse(await r.text());
+      if(j && j.email && (now - (j.at||0)) < 60000) out.push(j);              /* online = heartbeat < 60s old */
+    }catch(_){}
+  }));
+  out.sort((a,b)=> (a.email===((_meInfo&&_meInfo.email)||_gUser)?1:0) - (b.email===((_meInfo&&_meInfo.email)||_gUser)?1:0));  /* me last */
+  _onlineUsers = out;
+  renderOnline();
+}
+function renderOnline(){
+  const el = document.getElementById('onlineUsers'); if(!el) return;
+  const meEmail = (_meInfo && _meInfo.email) || _gUser || '';
+  el.innerHTML = (_onlineUsers||[]).map(u => {
+    const isMe = u.email === meEmail;
+    const img = u.picture ? '<img class="oup" src="'+esc(u.picture)+'" referrerpolicy="no-referrer" onerror="this.remove()">' : '';
+    return '<div class="ou'+(isMe?' me':'')+'" title="'+esc((u.name||u.email)+(isMe?' (you)':'')+' · online')+'">'
+      + '<span class="oui" style="background:'+esc(u.color||'#666')+'">'+esc(presenceInitials(u))+'</span>' + img
+      + '<span class="oudot"></span></div>';
+  }).join('');
+}
+async function presenceTickAll(){ try{ await presenceBeat(); await presenceRead(); }catch(_){} }
+function presenceStart(){
+  if(_presTimer) return;
+  presenceTickAll();                                     /* immediate */
+  _presTimer = setInterval(function(){ if(_cloudOn && _gTok) presenceTickAll(); }, 20000);   /* heartbeat + read every 20s */
+}
+function presenceStop(){ if(_presTimer){ clearInterval(_presTimer); _presTimer = null; } const el=document.getElementById('onlineUsers'); if(el) el.innerHTML=''; }
 var _refreshing = false;   /* BUILD 12.66b: re-entrancy guard — overlapping polls + push-back refreshes must not stack (they multiply Drive API calls and hit the per-user rate limit) */
 async function cloudRefreshList(){
   if(_refreshing) return;                               /* a refresh is already in flight — don't stack another (rate-limit protection) */
@@ -3925,9 +4152,12 @@ async function cloudRefreshList(){
   try{
     const rootId = await driveRootId();
     const q = encodeURIComponent("'" + rootId + "' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false");
-    const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name)&orderBy=name&pageSize=200');
+    const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name,ownedByMe)&orderBy=name&pageSize=200');
     const j = await r.json();
-    _cloudFolders = j.files || [];
+    _cloudFolders = (j.files || []).filter(f => f.name !== 'presence');   /* the presence heartbeat folder is not a project (BUILD 12.76) */
+    /* load tombstones EARLY so deleted-but-not-trashed folders (a non-owner couldn't trash
+       them) are hidden from the team list right away (BUILD 12.79) */
+    try{ await cloudLoadTombstones(); }catch(e){}
     saveState._skipCloud = true; saveState(); saveState._skipCloud = false;  /* saving the folder list is NOT a user edit — must NOT stamp _dirtyAt or it blocks incoming sync forever (BUILD 12.41 fix) */
     renderSideProject();                                 /* names first — instant */
     _cloudMeta = await cloudLoadMeta(_cloudFolders);     /* then rich cards */
@@ -3937,7 +4167,8 @@ async function cloudRefreshList(){
     if(_AUTO_SYNC){
       cloudReconcileFromMeta();                          /* pull Done + validation onto already-downloaded projects (BUILD 12.8) */
       renderSideProject();
-      try{ await cloudLoadTombstones(); cloudApplyTombstones(); }catch(e){}   /* honor team deletions so they STICK and can't resurrect — BUILD 12.70 */
+      try{ cloudApplyTombstones(); }catch(e){}           /* honor team deletions so they STICK and can't resurrect — BUILD 12.70 */
+      try{ await cloudCleanupOwnedTombstoned(); }catch(e){}   /* if I OWN a tombstoned folder, trash it now (only the owner can) — BUILD 12.79 */
       try{ await cloudReconcileDeletions(); }catch(e){}  /* drop local projects a teammate deleted (folder trashed on Drive) — BUILD 12.68 */
       try{ await cloudPullContent(_forcePull); }catch(e){} /* pull teammate ROW edits over Drive (BUILD 12.34) */
     } else {
@@ -4165,9 +4396,26 @@ async function cloudLoadMeta(folders){
   }));
   return out;
 }
+/* a Drive folder is "deleted" if its fid or its project's pid is tombstoned — hide it from
+   the team list even when it couldn't be trashed (non-owner 403) — BUILD 12.79 */
+function folderTombstoned(f){
+  if(!_tombstones || !f) return false;
+  if(_tombstones.fids && _tombstones.fids[f.id]) return true;
+  const mt = _cloudMeta && _cloudMeta[f.id];
+  return !!(mt && mt.pid && _tombstones.pids && _tombstones.pids[mt.pid]);
+}
 function cloudUnlinkedFolders(){
   const linked = {}; Object.values(driveMap()).forEach(m => { if(m && m.fid) linked[m.fid]=1; });
-  return _cloudFolders.filter(f => !linked[f.id]);
+  return _cloudFolders.filter(f => !linked[f.id] && !folderTombstoned(f));
+}
+/* the folder OWNER (only account that can) trashes any tombstoned folder still on Drive */
+async function cloudCleanupOwnedTombstoned(){
+  if(!_tombstones) return;
+  for(const f of (_cloudFolders || [])){
+    if(f.ownedByMe && folderTombstoned(f)){
+      try{ await driveTrashFolder(f.id); }catch(_){}   /* best effort — we own it, so this succeeds */
+    }
+  }
 }
 async function cloudOpenFolder(fid, name){
   try{
@@ -4294,15 +4542,25 @@ async function cloudPushActive(entry, quiet){
     const rootId = await driveRootId();
     let m = driveMap()[e.id];
     /* the remembered project folder may have been deleted/emptied by hand */
-    if(m && m.fid && !(await driveAlive(m.fid))) m = null;
+    let _folderVanished = false;
+    if(m && m.fid && !(await driveAlive(m.fid))){ m = null; _folderVanished = true; }
     if(!m || !m.fid){
+      /* RESURRECTION-RACE GUARD (BUILD 12.78): our folder VANISHED — a teammate likely
+         just deleted this project. Before recreating it (which spawns a duplicate + can
+         restart the whole mess), check a FRESH tombstone. If it was deliberately deleted,
+         remove it locally and DON'T re-upload. (This closes "A created, B deleted → A
+         recreates it" — the create-on-A vs delete-on-B race.) */
+      if(_folderVanished){
+        try{ await cloudLoadTombstones(); }catch(_){}
+        if(cloudProjectTombstoned(e)){ _pushing = false; try{ cloudApplyTombstones(); }catch(_){} return; }
+      }
       const P = e.data.project;
       const wantName = projDriveFolderName(P);
-      /* resolve by STABLE pid, never by bare name: (1) our own folder from another
-         machine (meta.pid === P.pid), (2) a legacy no-pid folder of the same name to
-         adopt once, else (3) a BRAND-NEW folder — so two same-named projects can NOT
-         share a folder (the cross-link/overwrite bug — BUILD 12.69) */
-      let fid = (P.pid && driveFidByPid(P.pid)) || driveLegacyFidByName(wantName);
+      /* resolve by STABLE pid, never by bare name. A project WITH a pid may ONLY reuse
+         its OWN folder (meta.pid === P.pid) or get a BRAND-NEW one — it must NEVER adopt
+         a same-named folder (that hijacked/overwrote another project — BUILD 12.77).
+         Only a legacy project (no pid) adopts one same-named no-pid folder, once. */
+      let fid = P.pid ? driveFidByPid(P.pid) : driveLegacyFidByName(wantName);
       if(!fid) fid = await driveCreateFolder(wantName, rootId);
       if(!P.pid) P.pid = 'f' + fid;                     /* legacy project had no pid → derive it from the folder id (same on every machine that links this folder, no meta churn) */
       m = driveMap()[e.id] = { fid, mtime: '', docsSig: {}, name: wantName };
