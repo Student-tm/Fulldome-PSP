@@ -628,7 +628,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.18 · MARK DEAD DRIVE FOLDER</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.19 · ANYONE CAN DELETE (FS)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1681,27 +1681,36 @@ const DELETE_PIN = '1008';
 function openDelete(){
   const e = activeEntry();
   if(!e || !e.data.project){ flashStat('No active project'); return; }
-  /* BUILD 12.84: only the team-folder OWNER (admin, A) may delete for everyone. A shared
-     (Editor) account can only create projects — "Delete everywhere" is hidden for them, and
-     a local-only removal just comes back on sync, so it's hidden too. */
-  const owner = _isRootOwner || !_cloudOn;   /* offline/local-only mode: allow (single-user) */
+  /* BUILD 14.19: under Firestore the DB record is the source of truth, so ANYONE on the team may
+     delete — deleting removes the record → the card disappears on every machine; the Drive folder
+     is trashed if this account owns it, otherwise renamed "🗑 DELETED — …" (14.18). The old
+     owner-only gate (12.84) is gone. "This computer only" is meaningless under the shared DB, so
+     under Firestore we show a single Delete button; legacy Drive/offline mode keeps both scopes. */
+  const fsMode = (_FS || _FBP);
   const everyBtn = document.getElementById('delEverywhereBtn');
   const localBtn = document.getElementById('delLocalBtn');
   const pin = document.getElementById('delPin');
-  if(everyBtn) everyBtn.style.display = owner ? '' : 'none';
-  if(localBtn) localBtn.style.display = owner ? '' : 'none';
-  if(pin) pin.style.display = owner ? '' : 'none';
-  document.getElementById('delMsg').innerHTML = owner
-    ? ('Delete <b>#' + esc(e.data.project.number) + ' — ' + esc(e.data.project.title||'') + '</b>.<br><br>' +
-       '<b>This computer only</b> — removes it here; the team\'s Google Drive copy stays.<br>' +
-       '<b>Delete everywhere</b> — hides the project on every machine (its Drive folder stays, recoverable).<br><br>' +
-       'Enter the code, then choose.')
-    : ('<b>#' + esc(e.data.project.number) + ' — ' + esc(e.data.project.title||'') + '</b><br><br>' +
-       'Only the workspace <b>owner</b> can delete projects for the team. This account can create and edit, but not delete. Ask the owner to remove it.');
+  if(pin) pin.style.display = '';
+  if(fsMode){
+    if(everyBtn){ everyBtn.style.display = ''; everyBtn.textContent = 'Delete project'; }
+    if(localBtn) localBtn.style.display = 'none';
+    document.getElementById('delMsg').innerHTML =
+      'Delete <b>#' + esc(e.data.project.number) + ' — ' + esc(e.data.project.title||'') + '</b>.<br><br>' +
+      'This removes the project for the whole team — it disappears on every machine. Its Google Drive folder is moved to Trash if this account owns it, otherwise renamed &ldquo;🗑 DELETED&rdquo; so the dead folder is easy to spot.<br><br>' +
+      'Enter the code, then Delete.';
+  } else {
+    if(everyBtn){ everyBtn.style.display = ''; everyBtn.textContent = 'Delete everywhere'; }
+    if(localBtn) localBtn.style.display = '';
+    document.getElementById('delMsg').innerHTML =
+      'Delete <b>#' + esc(e.data.project.number) + ' — ' + esc(e.data.project.title||'') + '</b>.<br><br>' +
+      '<b>This computer only</b> — removes it here; the team\'s Google Drive copy stays.<br>' +
+      '<b>Delete everywhere</b> — deletes the project for the whole team.<br><br>' +
+      'Enter the code, then choose.';
+  }
   const m = document.getElementById('deleteModal');
   document.getElementById('delPin').value=''; document.getElementById('delErr').textContent='';
   m.classList.add('open');
-  if(owner) setTimeout(()=>document.getElementById('delPin').focus(), 50);
+  setTimeout(()=>document.getElementById('delPin').focus(), 50);
 }
 function closeDelete(){ document.getElementById('deleteModal').classList.remove('open'); }
 function doDelete(scope){
