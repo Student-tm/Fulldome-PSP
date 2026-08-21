@@ -628,7 +628,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.4 · CLEAN-SLATE + LOAD→FIRESTORE</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.5 · PROJECTOR FILES OUT OF FIRESTORE</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -4073,7 +4073,22 @@ function fbpStop(){
 const MEDIA_ROOT_NAME = 'Fulldome PSP — MEDIA';
 var _fbpMediaBusy = false;
 function mediaMap(){ if(!db.mediaMap || typeof db.mediaMap !== 'object') db.mediaMap = {}; return db.mediaMap; }
-function fbpMediaSig(e){ try{ return photoSigStr(e) + '|' + docsSigStr(e); }catch(_){ return ''; } }
+/* projector Web-settings files (projectors.list[].web[] base64) are HEAVY — they must NOT go
+   into the DB document (Firestore 1 MiB limit; BUILD 14.5). They travel with the media instead. */
+function projWebSig(e){ const sig = {}; (((e.data||{}).projectors||{}).list||[]).forEach(p => { if(p && Array.isArray(p.web)) p.web.forEach(w => { if(w && w.name && w.data) sig[p.id + '/' + w.name] = (w.data||'').length; }); }); return sig; }
+function projWebSigStr(e){ const s = JSON.stringify(projWebSig(e)); let h = 5381; for(let i=0;i<s.length;i++) h = ((h<<5)+h + s.charCodeAt(i)) | 0; return (h>>>0).toString(36) + '.' + s.length; }
+function projWebPayload(d){ const o = {}; (((d||{}).projectors||{}).list||[]).forEach(p => { if(p && Array.isArray(p.web)){ const wd = p.web.filter(w => w && w.data); if(wd.length) o[p.id] = wd; } }); return o; }
+function applyProjWebFrom(d, media){
+  if(!media || !media.projectorsWeb) return false;
+  let ch = false;
+  ((d.projectors && d.projectors.list) || []).forEach(p => {
+    const inc = media.projectorsWeb[p.id];
+    if(!inc || !Array.isArray(p.web)) return;
+    p.web = p.web.map(w => { if(w.data) return w; const iw = inc.find(x => x.name === w.name); if(iw && iw.data){ ch = true; return Object.assign({}, w, { data: iw.data }); } return w; });
+  });
+  return ch;
+}
+function fbpMediaSig(e){ try{ return photoSigStr(e) + '|' + docsSigStr(e) + '|' + projWebSigStr(e); }catch(_){ return ''; } }
 function fbpMediaPayload(e){
   const d = e.data || {};
   return {
@@ -4083,6 +4098,7 @@ function fbpMediaPayload(e){
     camera:{ photos:(d.camera&&d.camera.photos)||[] },
     docs:{ sitePh:(d.docs&&d.docs.sitePh)||[], files:(d.docs&&d.docs.files)||{} },
     projectors:{ models:(d.projectors&&d.projectors.models)||{} },
+    projectorsWeb: projWebPayload(d),                       /* BUILD 14.5: projector Web-settings files travel here, not in the DB doc */
     shipping:{ palletPhotos:(d.shipping&&d.shipping.palletPhotos)||{} },
     contentList: d.contentList || null
   };
@@ -4123,6 +4139,7 @@ async function fbpMediaDownloadApply(e, wantSig){
   const media = JSON.parse(await r.text());
   let ch = applyPhotosFrom(e.data, media);
   if(applyDocsFrom(e.data, media)) ch = true;
+  if(applyProjWebFrom(e.data, media)) ch = true;             /* BUILD 14.5: restore projector Web-settings files */
   mediaMap()[pid] = { fileId, msig: wantSig || fbpMediaSig(e) };
   if(ch){ saveState._skipCloud = true; saveState(); saveState._skipCloud = false; }
   return ch;
@@ -4258,6 +4275,18 @@ function fsClean(v){
   if(v && typeof v === 'object'){ const o = {}; for(const k in v){ if(v[k] !== undefined) o[k] = fsClean(v[k]); } return o; }
   return v === undefined ? null : v;
 }
+/* the DB slice = liveSlice MINUS heavy base64 blobs (projector Web-settings files) — those would
+   blow Firestore's 1 MiB per-document limit, so they travel with the media on Drive instead
+   (projWebPayload / applyProjWebFrom). Metadata (name/size/type/added) stays for the UI. BUILD 14.5 */
+function fsSlice(d){
+  const s = liveSlice(d);
+  if(s.projectors && Array.isArray(s.projectors.list)){
+    s.projectors.list = s.projectors.list.map(p => (p && Array.isArray(p.web) && p.web.length)
+      ? Object.assign({}, p, { web: p.web.map(w => ({ name:w.name, size:w.size, type:w.type, added:w.added })) })
+      : p);
+  }
+  return s;
+}
 function fsLoadSdk(){
   if(window.firebase && window.firebase.firestore) return Promise.resolve();
   if(_fsSdkP) return _fsSdkP;
@@ -4296,18 +4325,18 @@ async function fsSignIn(){
 }
 /* the full document for a NEW project (all sections + per-section revisions) */
 function fsFullDoc(e){
-  const sl = liveSlice(e.data), now = (e.data.project._rev || Date.now());
+  const sl = fsSlice(e.data), now = (e.data.project._rev || Date.now());
   const doc = { pid: fbpPid(e), done: !!e.done, doneAt: e.doneAt || 0, updatedBy: _gUser || '', msig: fbpMediaSig(e), revs: {} };
   FS_SECTIONS.forEach(s => { doc[s] = fsClean(sl[s] || {}); doc.revs[s] = now; });
   if(e._browseFid) doc.browseFid = e._browseFid;
   return fsClean(doc);
 }
 function fsChangedSections(e){
-  const pid = fbpPid(e), sl = liveSlice(e.data), last = _fsLocal[pid] || {};
+  const pid = fbpPid(e), sl = fsSlice(e.data), last = _fsLocal[pid] || {};
   return FS_SECTIONS.filter(s => last[s] !== JSON.stringify(sl[s] || {}));
 }
 function fsRememberPushed(e){
-  const pid = fbpPid(e), sl = liveSlice(e.data), rec = _fsLocal[pid] || {};
+  const pid = fbpPid(e), sl = fsSlice(e.data), rec = _fsLocal[pid] || {};
   FS_SECTIONS.forEach(s => { rec[s] = JSON.stringify(sl[s] || {}); });
   rec._seen = true; rec._done = e.done ? 1 : 0; rec._msig = fbpMediaSig(e);
   _fsLocal[pid] = rec;
@@ -4328,7 +4357,7 @@ async function fsPushNow(entry){
     if(!rec._seen){
       await ref.set(fsFullDoc(e));                          /* first time: create the whole document */
     } else {
-      const now = Date.now(), sl = liveSlice(e.data), upd = { updatedBy: _gUser || '', pid };
+      const now = Date.now(), sl = fsSlice(e.data), upd = { updatedBy: _gUser || '', pid };
       changed.forEach(s => { upd[s] = fsClean(sl[s] || {}); upd['revs.' + s] = now; });   /* per-section: only changed fields, others untouched */
       if(doneChanged){ upd.done = !!e.done; upd.doneAt = e.doneAt || 0; }
       if(msigChanged) upd.msig = msig;
@@ -4350,8 +4379,27 @@ function fsTouch(){
   clearTimeout(_fsPushT);
   _fsPushT = setTimeout(function(){ fsPushNow().catch(function(){}); }, 1000);
 }
-/* apply one section value onto local data (reuse liveApply's per-section logic) */
-function fsApplySection(d, s, val){ const o = {}; o[s] = val; return liveApply(d, o); }
+/* apply one section value onto local data (reuse liveApply's per-section logic).
+   For projectors, the incoming Web-settings files carry only metadata (data lives on Drive) —
+   preserve any local base64 `data` for the same file so an incoming DB doc never wipes it;
+   the media pass (applyProjWebFrom) fills data that's genuinely new here. BUILD 14.5 */
+function fsApplySection(d, s, val){
+  if(s === 'projectors' && val && Array.isArray(val.list)){
+    const oldById = {}; ((d.projectors && d.projectors.list) || []).forEach(p => { if(p && p.id != null) oldById[p.id] = p; });
+    val = Object.assign({}, val, { list: val.list.map(p => {
+      const old = p && oldById[p.id];
+      if(p && Array.isArray(p.web) && old && Array.isArray(old.web)){
+        return Object.assign({}, p, { web: p.web.map(w => {
+          if(w.data) return w;
+          const ow = old.web.find(x => x.name === w.name);
+          return (ow && ow.data) ? Object.assign({}, w, { data: ow.data }) : w;
+        }) });
+      }
+      return p;
+    }) });
+  }
+  const o = {}; o[s] = val; return liveApply(d, o);
+}
 function fsApplyDoc(data){
   const pid = data.pid; if(!pid) return false;
   const revs = data.revs || {};
