@@ -628,7 +628,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.16 · FOLDER BY BROWSEFID (no dup)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.18 · MARK DEAD DRIVE FOLDER</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -2382,14 +2382,28 @@ function createProjectInner(){
   goTo('#/dashboard');
 }
 /* back a single project up right now, with visible status + logging (BUILD 14.11) */
+/* BUILD 14.17: immediate backup that RETRIES until sign-in is up (was one-shot at 3s → if the
+   silent Google sign-in hadn't finished yet, the fresh project waited for the 15-min loop). Now
+   it re-tries every 5s for up to ~60s both when not-yet-signed-in and on a transient error. */
 function backupSoon(entry){
-  setTimeout(function(){
-    if(!(_cloudOn && _gTok)){ try{ fsDiag('backupSoon skipped: not signed in'); }catch(_){} return; }
+  var attempts = 0, MAXA = 12;   /* 3s + 12×5s ≈ up to ~63s */
+  function tryOnce(){
+    attempts++;
+    if(!(_cloudOn && _gTok)){
+      if(attempts < MAXA){ try{ fsDiag('backupSoon waiting for sign-in (' + attempts + ')'); }catch(_){} setTimeout(tryOnce, 5000); }
+      else { try{ fsDiag('backupSoon gave up: not signed in'); }catch(_){} }
+      return;
+    }
     setCloudStat('Backing up project…');
     Promise.resolve().then(function(){ return backupMirrorProject(entry, true); })
       .then(function(ok){ try{ fsDiag('immediate backup ' + (ok?'written':'skipped')); }catch(_){} if(ok) setCloudStat('Backup saved ✓ · ' + hhmm()); })
-      .catch(function(err){ try{ fsDiag('immediate backup FAILED: ' + (err&&err.message||err), true); }catch(_){} setCloudStat('⚠ Backup failed: ' + (err&&err.message||'error') + ' — retries in 15 min'); });
-  }, 3000);
+      .catch(function(err){
+        try{ fsDiag('immediate backup FAILED: ' + (err&&err.message||err), true); }catch(_){}
+        if(attempts < MAXA){ setCloudStat('Backup retry…'); setTimeout(tryOnce, 5000); }
+        else setCloudStat('⚠ Backup failed: ' + (err&&err.message||'error') + ' — retries in 15 min');
+      });
+  }
+  setTimeout(tryOnce, 3000);
 }
 function saveProjectEdit(){
   try{ saveProjectEditInner(); }
@@ -4214,8 +4228,14 @@ async function fbpMediaDelete(e){
      (that 403s if the folder is owned by the OTHER account — only Shared Drive removes it fully). BUILD 14.10 */
   try{
     let bfid = e._browseFid || rec.browseFid;
+    if(!bfid){ try{ bfid = await syncGetBrowseFid(pid); }catch(_){} }   /* BUILD 14.18: resolve the ONE shared folder by browseFid, not by name */
     if(!bfid && wantName){ try{ const tr = await driveRootId(); bfid = await driveFindFolder(wantName, tr); }catch(_){} }
-    if(bfid){ await driveTrashTree(bfid); }
+    if(bfid){
+      await driveTrashTree(bfid);                                       /* trash the files inside (works cross-account) + best-effort the folder */
+      /* BUILD 14.18: if the folder is STILL there (owned by the other account → trash 403'd),
+         rename it "🗑 DELETED — <name>" so it's clearly a dead folder among the live ones. */
+      if(await driveAlive(bfid)){ try{ await driveMarkDeletedFolder(bfid, wantName); }catch(_){} }
+    }
   }catch(_){}
   /* BUILD 14.9: the BACKUP folder is deliberately LEFT ALONE — it is the safety copy. Delete cleans
      only the working traces (media file + browse folder); the backup json stays for recovery. */
@@ -4262,6 +4282,19 @@ async function syncSetBrowseFid(pid, fid){
   }catch(_){}
 }
 async function driveRenameFolder(fid, name){ if(!fid) return; try{ await gFetch('https://www.googleapis.com/drive/v3/files/' + fid + '?fields=id', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: name }) }); }catch(_){} }
+/* BUILD 14.18: mark a project's Drive folder as DELETED when we can't fully trash it (it's owned
+   by the OTHER Google account → 403 on trash, but an Editor CAN rename it). Prefix the folder name
+   with a loud marker so dead folders stand out among the live ones. Idempotent (won't double-prefix). */
+var DRIVE_DEL_PREFIX = '🗑 DELETED — ';   /* "🗑 DELETED — " */
+async function driveMarkDeletedFolder(fid, name){
+  if(!fid) return;
+  var cur = name || '';
+  /* read the REAL current Drive name (the app-side name never carries the prefix) so a repeat
+     delete can't double-prefix "🗑 DELETED — 🗑 DELETED — …" */
+  try{ const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + fid + '?fields=name'); const j = await r.json(); if(j && j.name) cur = j.name; }catch(_){}
+  if(cur.indexOf(DRIVE_DEL_PREFIX) === 0) return;      /* already marked */
+  await driveRenameFolder(fid, DRIVE_DEL_PREFIX + cur);
+}
 /* Resolve a project's browse folder STRICTLY by browseFid (pid-anchored), NEVER by name — so a rename
    on another machine renames the ONE shared folder instead of creating a duplicate (BUILD 14.16).
    Order: local cache → the browseFid published in the DB (same for all users) → create ONCE + publish. */
