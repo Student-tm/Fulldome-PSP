@@ -628,7 +628,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.14 · RENAME UPDATES DRIVE FOLDERS</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.16 · FOLDER BY BROWSEFID (no dup)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -2412,29 +2412,33 @@ function saveProjectEditInner(){
   saveState(); renderHeader(); renderSideProject();
   const _e = activeEntry();
   setTimeout(()=>{ try{ if(_FS || _FBP) syncPushNow(); else cloudPushNow(); }catch(e){} }, 200);   /* BUILD 14.0 */
-  /* BUILD 14.14: project renamed → rename its Drive folders (browse + backup) right away */
-  if(_e && projDriveFolderName(_e.data.project) !== _oldName){ setTimeout(()=>{ try{ if(_cloudOn && _gTok) driveRenameProjectFolders(_e).catch(function(){}); }catch(_){} }, 800); }
+  /* BUILD 14.14/14.15: project renamed → rename its Drive folders (browse + backup) right away */
+  if(_e && projDriveFolderName(_e.data.project) !== _oldName){ setTimeout(()=>{ try{ if(_cloudOn && _gTok) driveRenameProjectFolders(_e, _oldName).catch(function(){}); }catch(_){} }, 800); }
   goTo('#/dashboard');
 }
 /* rename a project's Drive folders (browsable + backup) to the current project name (BUILD 14.14).
    Cheap: PATCHes just the folder name using cached ids. Cross-account caveat: renaming a folder owned
    by the OTHER account 403s (same as delete) — works from the folder-owner account. */
-async function driveRenameProjectFolders(e){
+async function driveRenameProjectFolders(e, oldName){
   if(!_cloudOn || !_gTok || !e || !e.data || !e.data.project) return;
   const P = e.data.project, pid = P.pid; if(!pid) return;
   const wantName = projDriveFolderName(P) || 'project';
-  const _ren = async (fid) => { if(!fid) return; try{ await gFetch('https://www.googleapis.com/drive/v3/files/' + fid + '?fields=id', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: wantName }) }); }catch(_){} };
-  /* browsable per-project folder */
-  const mm = mediaMap()[pid] || {};
-  const bfid = e._browseFid || mm.browseFid;
-  if(bfid && mm.browseName !== wantName){ await _ren(bfid); mm.browseFid = bfid; mm.browseName = wantName; mediaMap()[pid] = mm; }
-  /* backup folder + its json — rename by PATCHing names only (no heavy re-upload) */
+  if(wantName === oldName) return;
+  setCloudStat('Renaming Drive folder…');
+  /* BROWSE folder = the ONE shared project folder — resolve by browseFid (local → Firestore),
+     NEVER by name, NEVER create. Rename the existing folder. (BUILD 14.16) */
+  const mm = mediaMap()[pid] || (mediaMap()[pid] = {});
+  let bfid = e._browseFid || mm.browseFid;
+  if(!bfid){ bfid = await syncGetBrowseFid(pid); }
+  if(bfid && !(await driveAlive(bfid))) bfid = null;
+  if(bfid){ await driveRenameFolder(bfid, wantName); mm.browseFid = bfid; mm.browseName = wantName; e._browseFid = bfid; await syncSetBrowseFid(pid, bfid); }
+  /* backup folder + json (per-account, by cached id — never by name) */
   const bm = (db.backupMap && db.backupMap[pid]) || {};
-  if(bm.fid && bm.name !== wantName){ await _ren(bm.fid); bm.name = wantName; }
-  if(bm.jsonId && bm.jsonName !== wantName + '.json'){ try{ await gFetch('https://www.googleapis.com/drive/v3/files/' + bm.jsonId + '?fields=id', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: wantName + '.json' }) }); bm.jsonName = wantName + '.json'; }catch(_){} }
+  if(bm.fid && bm.name !== wantName){ await driveRenameFolder(bm.fid, wantName); bm.name = wantName; }
+  if(bm.jsonId && bm.jsonName !== wantName + '.json'){ await driveRenameFolder(bm.jsonId, wantName + '.json'); bm.jsonName = wantName + '.json'; }
   if(db.backupMap) db.backupMap[pid] = bm;
   saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
-  setCloudStat('Drive folders renamed ✓ · ' + hhmm());
+  setCloudStat(bfid ? ('Drive folder renamed ✓ · ' + hhmm()) : ('Renamed (folder will follow) · ' + hhmm()));
 }
 const blankRow = () => ({cat:'', name:'', qty:1, price:'', link:''});
 const blankRackRow = () => ({cat:'', name:'', u:'', qty:1, price:'', link:''});
@@ -4242,19 +4246,41 @@ async function fbpMediaSync(){
    resolved by pid: its id (browseFid) is stored in the Firebase record so EVERY machine
    writes into the SAME folder (no per-machine duplicate). Reuses the proven upload/diff/
    trash helpers. Only new/changed files upload; files removed in the app are trashed. */
+/* read/write the shared browseFid from whichever DB is active (Firestore-primary, or RTDB fallback).
+   browseFid is the SINGLE identity of a project's Drive folder — anchored to pid, same for all users. */
+async function syncGetBrowseFid(pid){
+  try{
+    if(_FS && _fsCol){ const s = await _fsCol.doc(pid).get(); const d = s && s.exists ? s.data() : null; return (d && d.browseFid) || null; }
+    if(_FBP){ return await fbGet2(FBP_ROOT + '/' + pid + '/browseFid'); }
+  }catch(_){}
+  return null;
+}
+async function syncSetBrowseFid(pid, fid){
+  try{
+    if(_FS && _fsCol){ await _fsCol.doc(pid).set({ browseFid: fid }, { merge: true }); return; }
+    if(_FBP){ await fbPatch2(FBP_ROOT + '/' + pid, { browseFid: fid }); }
+  }catch(_){}
+}
+async function driveRenameFolder(fid, name){ if(!fid) return; try{ await gFetch('https://www.googleapis.com/drive/v3/files/' + fid + '?fields=id', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: name }) }); }catch(_){} }
+/* Resolve a project's browse folder STRICTLY by browseFid (pid-anchored), NEVER by name — so a rename
+   on another machine renames the ONE shared folder instead of creating a duplicate (BUILD 14.16).
+   Order: local cache → the browseFid published in the DB (same for all users) → create ONCE + publish. */
 async function fbpBrowseFolder(e){
   const pid = fbpPid(e); if(!pid) return null;
   const rec = mediaMap()[pid] || (mediaMap()[pid] = {});
   const wantName = projDriveFolderName(e.data.project) || ('project ' + pid);
   let fid = e._browseFid || rec.browseFid;
   if(fid && !(await driveAlive(fid))) fid = null;
-  if(!fid){
+  if(!fid){                                                  /* no local id → ask the DB (another user may have created + published it) */
+    const shared = await syncGetBrowseFid(pid);
+    if(shared && await driveAlive(shared)) fid = shared;
+  }
+  if(!fid){                                                  /* truly none anywhere → create ONCE and publish so everyone shares it */
     const teamRoot = await driveRootId();
-    fid = await driveFindFolder(wantName, teamRoot) || await driveCreateFolder(wantName, teamRoot);
-    /* publish the folder id to the shared record so other machines reuse it */
-    try{ await fbPatch2(FBP_ROOT + '/' + pid, { browseFid: fid }); }catch(_){}
-  } else if(rec.browseName && rec.browseName !== wantName){
-    try{ await gFetch('https://www.googleapis.com/drive/v3/files/' + fid + '?fields=id', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: wantName }) }); }catch(_){}
+    fid = await driveCreateFolder(wantName, teamRoot);
+    await syncSetBrowseFid(pid, fid);
+  } else if(rec.browseName && rec.browseName !== wantName){  /* name changed → rename the EXISTING folder by id (best-effort; 403 only if owned by another account) */
+    await driveRenameFolder(fid, wantName);
   }
   e._browseFid = fid; rec.browseFid = fid; rec.browseName = wantName;
   return fid;
@@ -6902,7 +6928,21 @@ function route(){
   renderNav(rr.nav);
   document.getElementById('content').innerHTML = rr.render();
   document.getElementById('content').scrollTop = 0;
+  if(h === '#/create' || h === '#/edit') noAutofill();   /* BUILD 14.15: stop the browser from auto-filling form fields (e.g. a stray project number into Screen Fan) */
   renderHeader(); renderSideProject();
+}
+/* Chrome/Firefox ignore autocomplete="off" on single fields and drop remembered values into the
+   Create/Edit form (e.g. a past project number into "Screen Fan System"). Give every field a UNIQUE
+   random name so the browser's form-history has nothing to match, and re-assert autocomplete=off.
+   Reading is by id (readForm/g('fFan')), so random names don't affect saving. BUILD 14.15 */
+function noAutofill(){
+  try{
+    const c = document.getElementById('content'); if(!c) return;
+    c.querySelectorAll('input, textarea, select').forEach(function(el){
+      el.setAttribute('autocomplete', 'off');
+      el.setAttribute('name', 'nf_' + Math.random().toString(36).slice(2, 10));
+    });
+  }catch(_){}
 }
 window.addEventListener('error', function(e){
   try{ flashStat('⚠ Error: ' + (e.message||'unknown')); }catch(_){}
