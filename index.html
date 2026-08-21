@@ -628,7 +628,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.2 · FIRESTORE + DIAGNOSTICS</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.4 · CLEAN-SLATE + LOAD→FIRESTORE</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -4140,7 +4140,7 @@ async function fbpMediaDelete(e){
 }
 /* pull changed media for every project whose remote msig differs from our local media */
 async function fbpMediaSync(){
-  if(!_FBP || !_cloudOn || !_gTok || _fbpMediaBusy) return;
+  if(!(_FS || _FBP) || !_cloudOn || !_gTok || _fbpMediaBusy) return;   /* BUILD 14.2: works under Firestore too (was _FBP-only) */
   _fbpMediaBusy = true;
   let any = false;
   try{
@@ -4441,6 +4441,29 @@ function syncTouch(){ if(_FS) fsTouch(); else if(_FBP) fbpTouch(); }
 function syncPushNow(e){ if(_FS) return fsPushNow(e); if(_FBP) return fbpPushNow(e); }
 function syncDelete(e){ if(_FS) return fsDelete(e); if(_FBP) return fbpDelete(e); }
 function syncReady(){ return _FS ? fsReady() : (_FBP && fbReady()); }
+/* CLEAN SLATE (BUILD 14.4) — wipe EVERY project from Firestore + this computer, so a fresh
+   set of loaded .json files becomes the new baseline everywhere. Run from the browser console:
+   fsWipeAll()  (deliberately console-only, never a clickable button, so it can't fire by accident).
+   Your local .json files are NOT touched. Other machines clear automatically via onSnapshot. */
+async function fsWipeAll(){
+  if(!_FS){ alert('Firestore is off — nothing to wipe there.'); return; }
+  if(!fsReady()){ alert('Firestore not connected yet. Open the app, wait for "Synced ✓ <email>", then run fsWipeAll() again.'); return; }
+  if(!confirm('CLEAR ALL PROJECTS EVERYWHERE?\n\nThis deletes every project from Firestore AND this computer (and, within seconds, every other machine).\nYour local .json files are NOT touched — use them to reload.\n\nContinue?')) return;
+  try{
+    setCloudStat('Wiping all projects…');
+    const snap = await _fsCol.get();
+    let n = 0;
+    for(const doc of snap.docs){ try{ await doc.ref.delete(); n++; }catch(_){} }
+    db.projects = []; db.activeId = null;
+    db.mediaMap = {}; db.backupMap = {}; db.driveMap = {};
+    _fsLocal = {}; try{ _fbpLocal = {}; }catch(_){}
+    syncActive(); saveState(); renderHeader(); renderSideProject();
+    goTo('#/create');
+    setCloudStat('Clean slate ✓ — load your .json projects now');
+    alert('Done. Deleted ' + n + ' project(s) from Firestore + this computer.\nOther machines clear within a few seconds.\n\nNow use "Load Project File" to load your 2 projects — they will sync everywhere.');
+  }catch(err){ alert('Wipe error: ' + (err.message || err)); setCloudStat('Wipe error: ' + (err.message||'')); }
+}
+try{ window.fsWipeAll = fsWipeAll; }catch(_){}
 
 /* ---------- TRANSPARENT CLOUD (BUILD 10.2) ----------
    The user signs in once at start and just works. The sidebar shows every
@@ -4626,6 +4649,11 @@ async function backupMirrorFolder(srcId, dstParentId, folderName){
   }
 }
 /* mirror ONE project — smart: skip if unchanged; json only unless photos/docs changed */
+/* BUILD 14.4: backup = a folder named after the project, containing ONLY the one
+   self-contained JSON (no meta.json, no Photos/Documentation subfolders). The project JSON
+   already embeds everything (fields + base64 photos + docs), so that single file is a
+   complete, restorable backup — Load Project File rebuilds the whole project (and the app
+   re-creates the Drive photo folders itself). Updated in place → 30-day version history. */
 async function backupMirrorProject(e, forced){
   if(!_cloudOn || !_gTok) return false;
   if(!e || !e.data || !e.data.project) return false;
@@ -4634,23 +4662,11 @@ async function backupMirrorProject(e, forced){
   const rev = P._rev || 0;
   const bm = backupMap();
   const rec = Object.assign({}, bm[pid]);
-  if(!forced && rec.rev === rev) return false;                       /* nothing changed → don't rewrite itself */
-  const bkSub = await backupSubfolder(e, rec);
-  const name = projDriveFolderName(P) || 'project';
-  rec.jsonId = await backupPutInPlace(name + '.json', bkSub, projPayload(e), rec.jsonId);   /* full project copy, same name, in place */
-  rec.metaId = await backupPutInPlace('meta.json', bkSub, JSON.stringify(cloudMetaOf(e)), rec.metaId);
-  const wf = driveMap()[e.id];
-  if(wf && wf.fid){
-    const curPS = photoSigStr(e);
-    if(forced || curPS !== rec.photoSig){                            /* photos changed → mirror new photo files (server-side) */
-      try{ const src = await backupFindChildFolder('Photos', wf.fid); if(src) await backupMirrorFolder(src, bkSub, 'Photos'); rec.photoSig = curPS; }catch(_){}
-    }
-    const curDS = JSON.stringify(cloudDocsSig(e));
-    if(forced || curDS !== rec.docsSig){                             /* docs changed → mirror new doc files (server-side) */
-      try{ const src = await backupFindChildFolder('Documentation', wf.fid); if(src) await backupMirrorFolder(src, bkSub, 'Documentation'); rec.docsSig = curDS; }catch(_){}
-    }
-  }
-  rec.rev = rev; rec.at = Date.now();
+  if(!forced && rec.rev === rev) return false;                       /* nothing changed → don't rewrite */
+  const bkSub = await backupSubfolder(e, rec);                       /* folder "<number> <title>" (renamed to follow the project) */
+  const name = (projDriveFolderName(P) || 'project') + '.json';
+  rec.jsonId = await backupPutInPlace(name, bkSub, projPayload(e), rec.jsonId);   /* the ONE complete file inside the project folder */
+  rec.jsonName = name; rec.rev = rev; rec.at = Date.now();
   bm[pid] = rec;
   saveState._skipCloud = true; saveState(); saveState._skipCloud = false;   /* persist backupMap without bumping any project _rev */
   return true;
@@ -5180,6 +5196,7 @@ function cloudSyncNow(){
     .catch(e => setCloudStat('Cloud error: ' + (e && e.message || 'sync failed') + ' — click to retry'));
 }
 function cloudPushNow(){
+  if(_FS || _FBP){ try{ syncPushNow(); }catch(_){} return; }   /* BUILD 14.4: under Firestore/RTDB primary, route legacy callers to the new sync (never the old Drive-folder push) */
   /* right after a project is created / loaded from a file — don't wait 4s */
   if(!_cloudOn || !_gTok){ setCloudStat('Offline — not synced to the team folder'); return; }
   clearTimeout(_pushTimer);
@@ -5198,6 +5215,7 @@ function cloudTouch(){
   _pushTimer = setTimeout(cloudPushActive, 2000);
 }
 async function cloudPushActive(entry, quiet){
+  if(_FS || _FBP) return;   /* BUILD 14.4: the old Drive-folder push (json+meta+Photos per project) is OFF under Firestore/RTDB primary — new sync + media/browse mirror handle everything */
   if(_pushing) return;
   if(!_cloudOn || !_gTok){ setCloudStat('⚠ Not signed in — click here to connect Google Drive'); return; }
   const e = (entry && entry.data && entry.data.project) ? entry : activeEntry();   /* can push a specific project (e.g. Done toggled on a non-active one) */
