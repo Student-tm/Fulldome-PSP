@@ -628,7 +628,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.5 · PROJECTOR FILES OUT OF FIRESTORE</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.6 · INSTANT BACKUP ON LOAD</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1670,6 +1670,8 @@ function applyProjectText(text){
       flashStat('Project loaded ✓');
       setTimeout(()=>{ try{ cloudPushNow(); }catch(e){} }, 200);
       if(_cloudOn && _gTok){ clearTimeout(_pushTimer); setTimeout(cloudPushActive, 200); }
+      /* BUILD 14.6: back this project up to Drive RIGHT AWAY (don't wait for the 15-min loop) */
+      setTimeout(()=>{ try{ if(_cloudOn && _gTok) backupMirrorProject(e, true).catch(function(){}); }catch(_){} }, 6000);
       return e;
     }catch(err){ flashStat('Invalid project file'); return null; }
 }
@@ -2375,6 +2377,7 @@ function createProjectInner(){
   db.activeId = entry.id; syncActive();
   saveState(); renderHeader(); renderSideProject();
   setTimeout(()=>{ try{ if(_FS || _FBP) syncPushNow(); else cloudPushNow(); }catch(e){} }, 200);   /* BUILD 14.0: create → publish at once */
+  setTimeout(()=>{ try{ if(_cloudOn && _gTok) backupMirrorProject(entry, true).catch(function(){}); }catch(_){} }, 6000);   /* BUILD 14.6: immediate backup */
   goTo('#/dashboard');
 }
 function saveProjectEdit(){
@@ -4735,6 +4738,9 @@ function backupStartLoop(){
   _backupTimer = setInterval(function(){ if(_cloudOn && _gTok){ backupAllChanged(false).catch(function(){}); } }, 15*60*1000);   /* every 15 min, changed projects only */
 }
 function backupStopLoop(){ if(_backupTimer){ clearInterval(_backupTimer); _backupTimer = null; } }
+/* force a backup of ALL projects now (console: backupNow()) — BUILD 14.6 */
+async function backupNow(){ if(!_cloudOn || !_gTok){ alert('Sign in first'); return; } setCloudStat('Backing up all projects…'); await backupAllChanged(true); setCloudStat('Backup done ✓ · ' + hhmm()); }
+try{ window.backupNow = backupNow; }catch(_){}
 /* ============================================================================
    ONLINE PRESENCE (BUILD 12.76) — over Google Drive (reliable; Firebase live is flaky).
    Each machine writes a tiny heartbeat file "presence/<email>.json" {email,name,picture,at}
