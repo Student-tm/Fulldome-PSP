@@ -628,7 +628,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.9 · DELETE KEEPS BACKUP</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.11 · VISIBLE BACKUP ON CREATE/LOAD</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1670,8 +1670,8 @@ function applyProjectText(text){
       flashStat('Project loaded ✓');
       setTimeout(()=>{ try{ cloudPushNow(); }catch(e){} }, 200);
       if(_cloudOn && _gTok){ clearTimeout(_pushTimer); setTimeout(cloudPushActive, 200); }
-      /* BUILD 14.6: back this project up to Drive RIGHT AWAY (don't wait for the 15-min loop) */
-      setTimeout(()=>{ try{ if(_cloudOn && _gTok) backupMirrorProject(e, true).catch(function(){}); }catch(_){} }, 6000);
+      /* BUILD 14.11: back this project up to Drive RIGHT AWAY, with visible status */
+      backupSoon(e);
       return e;
     }catch(err){ flashStat('Invalid project file'); return null; }
 }
@@ -2377,8 +2377,18 @@ function createProjectInner(){
   db.activeId = entry.id; syncActive();
   saveState(); renderHeader(); renderSideProject();
   setTimeout(()=>{ try{ if(_FS || _FBP) syncPushNow(); else cloudPushNow(); }catch(e){} }, 200);   /* BUILD 14.0: create → publish at once */
-  setTimeout(()=>{ try{ if(_cloudOn && _gTok) backupMirrorProject(entry, true).catch(function(){}); }catch(_){} }, 6000);   /* BUILD 14.6: immediate backup */
+  backupSoon(entry);   /* BUILD 14.11: immediate, VISIBLE backup */
   goTo('#/dashboard');
+}
+/* back a single project up right now, with visible status + logging (BUILD 14.11) */
+function backupSoon(entry){
+  setTimeout(function(){
+    if(!(_cloudOn && _gTok)){ try{ fsDiag('backupSoon skipped: not signed in'); }catch(_){} return; }
+    setCloudStat('Backing up project…');
+    Promise.resolve().then(function(){ return backupMirrorProject(entry, true); })
+      .then(function(ok){ try{ fsDiag('immediate backup ' + (ok?'written':'skipped')); }catch(_){} if(ok) setCloudStat('Backup saved ✓ · ' + hhmm()); })
+      .catch(function(err){ try{ fsDiag('immediate backup FAILED: ' + (err&&err.message||err), true); }catch(_){} setCloudStat('⚠ Backup failed: ' + (err&&err.message||'error') + ' — retries in 15 min'); });
+  }, 3000);
 }
 function saveProjectEdit(){
   try{ saveProjectEditInner(); }
@@ -4147,6 +4157,19 @@ async function fbpMediaDownloadApply(e, wantSig){
   if(ch){ saveState._skipCloud = true; saveState(); saveState._skipCloud = false; }
   return ch;
 }
+/* trash every FILE inside a folder (recursing into subfolders), then best-effort trash the folder
+   itself. Files are trashable by any editor even if the folder is owned by another account; the
+   folder-trash only succeeds for its owner. BUILD 14.10 */
+async function driveTrashTree(folderId){
+  try{
+    const items = await backupList(folderId);
+    for(const it of items){
+      if(it.mimeType === 'application/vnd.google-apps.folder'){ await driveTrashTree(it.id); }
+      else { try{ await driveTrashFolder(it.id); }catch(_){} }
+    }
+  }catch(_){}
+  try{ await driveTrashFolder(folderId); }catch(_){}
+}
 async function fbpMediaDelete(e){
   const pid = fbpPid(e); if(!pid || !_cloudOn || !_gTok) return;
   const rec = mediaMap()[pid] || {};
@@ -4157,11 +4180,13 @@ async function fbpMediaDelete(e){
     const fileId = rec.fileId || await backupFindFile(pid + '.media.json', root);
     if(fileId){ try{ await driveTrashFolder(fileId); }catch(_){} }
   }catch(_){}
-  /* 2) the browsable per-project folder in the shared team root (BUILD 13.3) */
+  /* 2) the browsable per-project folder in the shared team root (BUILD 13.3). Its FILES are trashed
+     recursively (works cross-account — an editor may trash files), then the folder itself best-effort
+     (that 403s if the folder is owned by the OTHER account — only Shared Drive removes it fully). BUILD 14.10 */
   try{
     let bfid = e._browseFid || rec.browseFid;
     if(!bfid && wantName){ try{ const tr = await driveRootId(); bfid = await driveFindFolder(wantName, tr); }catch(_){} }
-    if(bfid){ try{ await driveTrashFolder(bfid); }catch(_){} }
+    if(bfid){ await driveTrashTree(bfid); }
   }catch(_){}
   /* BUILD 14.9: the BACKUP folder is deliberately LEFT ALONE — it is the safety copy. Delete cleans
      only the working traces (media file + browse folder); the backup json stays for recovery. */
