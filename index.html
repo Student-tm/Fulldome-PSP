@@ -628,7 +628,11 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
+<<<<<<< HEAD
     <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.13 · FIRESTORE IS TRUTH (localNew)</div>
+=======
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.11 · VISIBLE BACKUP ON CREATE/LOAD</div>
+>>>>>>> 422ccd99f8e68438f3223a720021c5be4d1016ef
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -4402,7 +4406,11 @@ async function fsPushNow(entry){
       try{ await ref.update(upd); }
       catch(err){ await ref.set(fsFullDoc(e)); }             /* doc vanished → recreate */
     }
+<<<<<<< HEAD
     fsRememberPushed(e); e._fbSeen = true; delete e._localNew;   /* BUILD 14.13: it's in Firestore now — no longer a pending local addition */
+=======
+    fsRememberPushed(e); e._fbSeen = true;
+>>>>>>> 422ccd99f8e68438f3223a720021c5be4d1016ef
     setCloudStat('Synced ✓ ' + (_gUser || '') + ' · ' + hhmm());
     if(msigChanged){ try{ if(await fbpMediaUpload(e)) await fbpBrowseMirror(e); }catch(_){} }
   }catch(err){ setCloudStat('⚠ Sync error: ' + (err.message || '') + ' — click to retry'); }
@@ -4475,14 +4483,18 @@ function fsOnSnapshot(snap){
   _fsApplying = true;
   let touched = false;
   try{
+<<<<<<< HEAD
     /* the FULL current set of pids in Firestore (snap always reflects the whole query result,
        not just the delta) — this is the authority for reconciling what should exist locally */
     const present = {}; snap.forEach(doc => { const d = doc.data(); if(d && d.pid) present[d.pid] = 1; });
+=======
+>>>>>>> 422ccd99f8e68438f3223a720021c5be4d1016ef
     snap.docChanges().forEach(ch => {
       const data = ch.doc.data(); if(!data || !data.pid) return;
       if(ch.type === 'removed'){ if(fsRemoveLocal(data.pid)) touched = true; return; }
       if(fsApplyDoc(data)) touched = true;
     });
+<<<<<<< HEAD
     /* DEDUPE (BUILD 14.12): drop any duplicate local entries that share a pid (keep the first) */
     { const seen = {}; for(let i = db.projects.length - 1; i >= 0; i--){ const pid = fbpPid(db.projects[i]); if(!pid) continue; if(seen[pid]){ db.projects.splice(i,1); touched = true; } else seen[pid] = 1; } }
     /* FULL RECONCILE (BUILD 14.13) — Firestore is the SINGLE SOURCE OF TRUTH. The local list is made
@@ -4506,6 +4518,13 @@ function fsOnSnapshot(snap){
     /* push ONLY the user's explicit in-app additions that aren't in Firestore yet — never old cache */
     if(!_fsSeededPush) _fsSeededPush = true;
     db.projects.forEach(e => { const pid = fbpPid(e); if(pid && e.data.project && e._localNew && !present[pid]){ fsPushNow(e).catch(function(){}); } });
+=======
+    if(!_fsSeededPush){                                       /* first snapshot: push local projects Firestore has never seen (migration) */
+      _fsSeededPush = true;
+      const present = {}; snap.forEach(doc => { const d = doc.data(); if(d && d.pid) present[d.pid] = 1; });
+      db.projects.forEach(e => { const pid = fbpPid(e); if(pid && e.data.project && !present[pid]){ fsPushNow(e).catch(function(){}); } });
+    }
+>>>>>>> 422ccd99f8e68438f3223a720021c5be4d1016ef
   }catch(err){ /* keep going */ }
   if(touched){
     saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
@@ -4579,6 +4598,7 @@ async function fsWipeAll(){
   }catch(err){ alert('Wipe error: ' + (err.message || err)); setCloudStat('Wipe error: ' + (err.message||'')); }
 }
 try{ window.fsWipeAll = fsWipeAll; }catch(_){}
+<<<<<<< HEAD
 /* RESYNC THIS MACHINE to match the database (BUILD 14.12) — drops the local list and reloads the
    current projects from Firestore. Fixes a machine that came online with stale/duplicate/deleted
    projects. Nothing on the server or other machines changes. Console: fsResyncLocal() */
@@ -4602,6 +4622,8 @@ async function fsResyncLocal(){
   }catch(e){ alert('Resync error: ' + (e.message || e)); setCloudStat('Resync error: ' + (e.message||'')); }
 }
 try{ window.fsResyncLocal = fsResyncLocal; }catch(_){}
+=======
+>>>>>>> 422ccd99f8e68438f3223a720021c5be4d1016ef
 
 /* ---------- TRANSPARENT CLOUD (BUILD 10.2) ----------
    The user signs in once at start and just works. The sidebar shows every
