@@ -628,7 +628,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.33 · CABLES 3 SUB-TABLES</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.35 · LIBRARY MERGE-IN-TXN + AUTO-RESTORE</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1644,7 +1644,7 @@ async function openProjectFile(){
   try{
     const file = await handle.getFile();
     const text = await file.text();
-    const e = applyProjectText(text);
+    const e = applyProjectText(text, 'import');
     if(e){ _fh[e.id] = handle; persistHandles(); }
   }catch(err){ flashStat('Could not read the file'); }
 }
@@ -1652,11 +1652,28 @@ function loadFromFile(ev){
   const f = ev.target.files && ev.target.files[0];
   if(!f) return;
   const rd = new FileReader();
-  rd.onload = () => { applyProjectText(rd.result); };
+  rd.onload = () => { applyProjectText(rd.result, 'import'); };
   rd.readAsText(f);
   ev.target.value = '';
 }
-function applyProjectText(text){
+/* BUILD 14.35: Project Files are INTERNAL backups (created by this PSP, used only for backup/restore).
+   So Load Project File auto-restores MISSING library items (never replaces existing ones) — no prompt.
+   merge ONLY missing items + categories from the file into the local library. */
+function importFileLibrary(obj){
+  if(obj && obj.library && typeof obj.library==='object'){
+    LIB_GROUPS.forEach(g=>{
+      const inc = obj.library[g.key]; if(!Array.isArray(inc)) return;
+      const have = new Set(ensureLibGroup(g.key).map(it=>(it.name||'').trim().toLowerCase()).filter(Boolean));
+      inc.forEach(it=>{ const nm=(it&&it.name||'').trim(); if(nm && !have.has(nm.toLowerCase())){ db.library[g.key].push({cat:it.cat||'', name:nm, price:it.price||'', link:it.link||''}); have.add(nm.toLowerCase()); } });
+    });
+  }
+  const _mergeCats = src => { if(!src || typeof src!=='object') return; Object.keys(src).forEach(k=>{ (src[k]||[]).forEach(c=>{ if(c && !catsOf(k).some(x=>x.toLowerCase()===String(c).toLowerCase())) catsOf(k).push(c); }); }); };
+  _mergeCats(obj.cats); _mergeCats(obj.customCats);
+}
+/* libMode: 'skip' (default — cloud/TT never touch the library), 'import' (Load Project File:
+   auto-restore missing library items from the backup, existing ones untouched). */
+function applyProjectText(text, libMode){
+    libMode = libMode || 'skip';
     try{
       const obj = JSON.parse(text);
       const s = obj.state || obj;
@@ -1684,18 +1701,6 @@ function applyProjectText(text){
       e._localNew = 1;   /* BUILD 14.13: explicit user load → eligible to push to Firestore (cleared once pushed) */
       /* completion status rides with the project (BUILD 12.5) */
       if('done' in obj){ if(obj.done){ e.done = true; e.doneAt = obj.doneAt || Date.now(); } else { delete e.done; delete e.doneAt; } }
-      /* project files (v4+) carry a library backup — merge missing items back */
-      if(obj.library && typeof obj.library==='object'){
-        LIB_GROUPS.forEach(g=>{
-          const inc = obj.library[g.key];
-          if(!Array.isArray(inc)) return;
-          const have = new Set(ensureLibGroup(g.key).map(it=>(it.name||'').trim().toLowerCase()).filter(Boolean));
-          inc.forEach(it=>{
-            const nm = (it && it.name || '').trim();
-            if(nm && !have.has(nm.toLowerCase())){ db.library[g.key].push({cat:it.cat||'', name:nm, price:it.price||'', link:it.link||''}); have.add(nm.toLowerCase()); }
-          });
-        });
-      }
       /* project files (BUILD 6.8+) also carry the projector model DB — merge by brand+model */
       if(Array.isArray(obj.projLib)){
         obj.projLib.forEach(inc=>{
@@ -1713,10 +1718,9 @@ function applyProjectText(text){
         });
       }
       if(obj.projIpStart && !db.projIpStart) db.projIpStart = obj.projIpStart;
-      /* categories from a project file — merge missing ones into the editable list (BUILD 14.22:
-         cats live in db.cats now; still accept legacy obj.customCats) */
-      const _mergeCats = src => { if(!src || typeof src!=='object') return; Object.keys(src).forEach(k=>{ (src[k]||[]).forEach(c=>{ if(c && !catsOf(k).some(x=>x.toLowerCase()===String(c).toLowerCase())) catsOf(k).push(c); }); }); };
-      _mergeCats(obj.cats); _mergeCats(obj.customCats);
+      /* BUILD 14.35: Load Project File auto-restores missing library items from the backup (project
+         files are internal backups); cloud/TT ('skip') never touch the library — it syncs via Firestore. */
+      if(libMode === 'import'){ importFileLibrary(obj); }
       if(!e.frozen) db.activeId = e.id;
       syncActive();
       normalizeSort();
@@ -4677,39 +4681,99 @@ function fsRemoveLocal(pid){
    was rejected on write (silently, in the .catch), so the shared library never actually reached
    the DB. Use a plain id (no double-underscore wrapper); it never collides with a real pid. */
 var LIB_DOC_ID = 'shared_library';
-var _fsLibT = null, _libSigLast = '';
+var _fsLibT = null, _libSigLast = '', _libDirty = false, _libPushing = false;
 function libSig(){ try{ const o = {}; LIB_GROUPS.forEach(g => { o[g.key] = ((db.library&&db.library[g.key])||[]).map(it => [it.cat||'', it.name||'', it.price||'', it.link||'']); }); return JSON.stringify([o, db.cats||{}]); }catch(_){ return ''; } }
-/* BUILD 14.24: NEWEST-WINS shared library. A genuine local edit bumps a monotonic `db.libRev`;
-   pull applies a remote ONLY when its rev is strictly newer → adds, edits AND deletes propagate
-   (a deleted item can't come back). Guard unchanged: a machine NEVER publishes an empty library,
-   so an empty peer can't clobber a filled one. */
+function libNonEmpty(){ return LIB_GROUPS.some(g => ((db.library&&db.library[g.key])||[]).some(it => (it.name||'').trim())); }
+/* BUILD 14.34: CLOCK-INDEPENDENT shared library revision. `db.libRev` is no longer a wall-clock
+   timestamp — it's a monotonic COUNTER incremented SERVER-SIDE inside a Firestore transaction
+   (read current rev → write rev+1). A local edit sets `_libDirty`; while dirty, incoming snapshots
+   do NOT overwrite the library (protects the unconfirmed local edit). On a successful transaction we
+   clear `_libDirty` and adopt the server rev; on error we KEEP dirty, show "Library sync failed" and
+   retry. This removes the clock dependency that stalled sync when two machines' clocks were skewed. */
 function libTouch(){
   if(!fsReady()) return;
   const s = libSig();
   if(s === _libSigLast) return;                 /* library genuinely unchanged → nothing to publish */
   _libSigLast = s;
-  db.libRev = Math.max(Date.now(), (db.libRev||0) + 1);   /* genuine local edit → strictly newer revision */
-  clearTimeout(_fsLibT); _fsLibT = setTimeout(fsPushLibrary, 1500);
+  _libDirty = true;                             /* unconfirmed local edit — protects against being overwritten */
+  clearTimeout(_fsLibT); _fsLibT = setTimeout(fsPushLibrary, 1200);
 }
-function fsPushLibrary(){
-  if(!fsReady()) return;
-  const lib = {};
-  LIB_GROUPS.forEach(g => { lib[g.key] = ((db.library&&db.library[g.key])||[]).map(it => ({cat:it.cat||'', name:it.name||'', price:it.price||'', link:it.link||''})); });
-  const cats = {}; LIB_GROUPS.forEach(g => { cats[g.key] = (catsOf(g.key)||[]).slice(); });
-  const hasItems = LIB_GROUPS.some(g => (lib[g.key]||[]).some(it => (it.name||'').trim()));
-  if(!hasItems) return;   /* NEVER publish an empty library (guards a fresh machine clobbering the shared one) */
-  if(!db.libRev) db.libRev = Date.now();   /* establish an initial revision so an empty peer (rev 0) adopts ours */
-  _libSigLast = libSig();
-  _fsCol.doc(LIB_DOC_ID).set({ kind:'library', library:lib, cats:cats, rev:db.libRev, customCats:db.customCats||{}, updatedBy:_gUser||'', at:Date.now() })
-    .then(function(){ try{ fsDiag('shared library published (rev ' + db.libRev + ', ' + LIB_GROUPS.reduce(function(n,g){return n+(lib[g.key]||[]).length;},0) + ' items)'); }catch(_){} })
-    .catch(function(err){ try{ fsDiag('shared library PUBLISH FAILED: ' + (err&&err.message||err), true); }catch(_){} setCloudStat('⚠ Library sync failed: ' + (err&&err.message||'error')); });
+/* BUILD 14.35: instead of overwriting the shared library with our whole local copy, we 3-WAY MERGE
+   our local changes onto the CURRENT server library inside the transaction. Effect = "apply only the
+   local operations (adds/edits/deletes) to the server copy", so two users' concurrent adds BOTH
+   survive (no last-writer-wins loss). `db.libBase` = the library state we last synced (the merge base);
+   items are identified by name (no equipmentId yet). */
+function _libIdx(arr){ const m={}; (arr||[]).forEach(it=>{ const k=((it&&it.name)||'').trim().toLowerCase(); if(k) m[k]=it; }); return m; }
+function _libItemEq(a,b){ a=a||{}; b=b||{}; return (a.cat||'')===(b.cat||'') && (a.name||'')===(b.name||'') && (a.price||'')===(b.price||'') && (a.link||'')===(b.link||''); }
+function _libSnapshot(src){ const o={library:{},cats:{}}; LIB_GROUPS.forEach(g=>{ o.library[g.key]=(((src&&src.library)||{})[g.key]||[]).map(it=>({cat:it.cat||'',name:it.name||'',price:it.price||'',link:it.link||''})); o.cats[g.key]=(((src&&src.cats)||{})[g.key]||[]).map(String); }); return o; }
+/* merge base+local vs server per group; delete = in base & not in local; add/edit = local wins; server-only add = kept */
+function libMerge3(base, local, server){
+  const out={library:{},cats:{}};
+  LIB_GROUPS.forEach(g=>{
+    const bA=(base.library&&base.library[g.key])||[], lA=(local.library&&local.library[g.key])||[], sA=(server.library&&server.library[g.key])||[];
+    const bI=_libIdx(bA), lI=_libIdx(lA), sI=_libIdx(sA);
+    const res=[], seen={};
+    const order=[]; lA.forEach(it=>{const k=(it.name||'').trim().toLowerCase(); if(k&&order.indexOf(k)<0)order.push(k);}); sA.forEach(it=>{const k=(it.name||'').trim().toLowerCase(); if(k&&order.indexOf(k)<0)order.push(k);});
+    order.forEach(nm=>{ if(seen[nm])return; const b=bI[nm],l=lI[nm],s=sI[nm],inB=!!b,inL=!!l,inS=!!s;
+      if(inB && !inL) return;                         /* we deleted it locally → drop */
+      if(inL){ seen[nm]=1; res.push((inB && _libItemEq(l,b) && inS) ? s : l); return; }  /* unchanged locally → take server's (maybe edited elsewhere); else our add/edit */
+      if(inS && !inB){ seen[nm]=1; res.push(s); }     /* server-added by another machine → keep */
+    });
+    out.library[g.key]=res;
+    /* categories, same 3-way logic by name */
+    const bC=((base.cats&&base.cats[g.key])||[]).map(String), lC=((local.cats&&local.cats[g.key])||[]).map(String), sC=((server.cats&&server.cats[g.key])||[]).map(String);
+    const low=x=>String(x).toLowerCase(), has=(arr,k)=>arr.some(x=>low(x)===k);
+    const cres=[], cseen={}, corder=[]; lC.forEach(c=>{const k=low(c); if(corder.indexOf(k)<0)corder.push(k);}); sC.forEach(c=>{const k=low(c); if(corder.indexOf(k)<0)corder.push(k);});
+    corder.forEach(k=>{ if(cseen[k])return; const inB=has(bC,k),inL=has(lC,k),inS=has(sC,k);
+      if(inB && !inL) return;
+      if(inL){ cseen[k]=1; cres.push(lC.find(c=>low(c)===k)); return; }
+      if(inS && !inB){ cseen[k]=1; cres.push(sC.find(c=>low(c)===k)); }
+    });
+    out.cats[g.key]=cres;
+  });
+  return out;
 }
-/* apply an incoming shared library — NEWEST-WINS: adopt it wholesale only when its rev is newer
-   than ours, so adds/edits/deletes all propagate. Returns true if the local library changed. */
+async function fsPushLibrary(){
+  if(!fsReady() || _libPushing) return;
+  const local = { library:{}, cats:{} };
+  LIB_GROUPS.forEach(g => { local.library[g.key] = ((db.library&&db.library[g.key])||[]).map(it => ({cat:it.cat||'', name:it.name||'', price:it.price||'', link:it.link||''})); local.cats[g.key] = (catsOf(g.key)||[]).slice(); });
+  const base = db.libBase || {library:{},cats:{}};
+  const localEmpty = !LIB_GROUPS.some(g => (local.library[g.key]||[]).some(it => (it.name||'').trim()));
+  const baseEmpty  = !LIB_GROUPS.some(g => ((base.library&&base.library[g.key])||[]).some(it => (it.name||'').trim()));
+  if(localEmpty && baseEmpty){ _libDirty = false; return; }   /* fresh empty machine → nothing to contribute */
+  _libPushing = true;
+  const ref = _fsCol.doc(LIB_DOC_ID);
+  try{
+    const result = await _fsDb.runTransaction(async function(t){
+      const snap = await t.get(ref);
+      const cur = (snap && snap.exists ? snap.data() : {}) || {};
+      const server = { library: cur.library || {}, cats: cur.cats || {} };
+      const merged = libMerge3(base, local, server);            /* apply ONLY our local ops onto the current server copy */
+      const rev = ((typeof cur.rev === 'number' && isFinite(cur.rev)) ? cur.rev : 0) + 1;
+      t.set(ref, { kind:'library', library:merged.library, cats:merged.cats, rev:rev, customCats:db.customCats||{}, updatedBy:_gUser||'', at:Date.now() });
+      return { rev:rev, merged:merged };
+    });
+    /* adopt the merged result locally so all machines converge to the union */
+    db.library = emptyLibrary(); LIB_GROUPS.forEach(g=>{ db.library[g.key] = (result.merged.library[g.key]||[]).map(it=>({cat:it.cat||'',name:it.name||'',price:it.price||'',link:it.link||''})); });
+    db.cats = {}; LIB_GROUPS.forEach(g=>{ db.cats[g.key] = (result.merged.cats[g.key]||[]).map(String); });
+    db.libRev = result.rev; db.libBase = _libSnapshot(result.merged); _libDirty = false; _libSigLast = libSig();
+    try{ normalizeSort(); }catch(_){}
+    try{ fsDiag('shared library merged+published (rev ' + result.rev + ')'); }catch(_){}
+    saveState._skipCloud = true; saveState(); saveState._skipCloud = false;   /* persist libRev/base + cleared dirty */
+    if(!isTypingInInput() && (location.hash==='#/library')){ try{ rerenderKeepScroll(); }catch(_){} }
+  }catch(err){
+    try{ fsDiag('shared library PUBLISH FAILED: ' + (err&&err.message||err), true); }catch(_){}
+    setCloudStat('⚠ Library sync failed: ' + (err&&err.message||'error') + ' — retrying');
+    clearTimeout(_fsLibT); _fsLibT = setTimeout(fsPushLibrary, 4000);
+  } finally { _libPushing = false; }
+}
+/* adopt an incoming shared library — only when the SERVER rev (a monotonic counter) is strictly newer
+   and we hold NO unconfirmed local edit (`_libDirty`, whose pending transaction will merge instead). */
 function fsApplyLibrary(data){
   if(!data || data.kind !== 'library') return false;
+  if(_libDirty) return false;                    /* unconfirmed local edit pending → our transaction merges it */
   const rrev = data.rev || 0, lrev = db.libRev || 0;
-  if(rrev <= lrev) return false;                 /* our library is newer or same → keep ours */
+  if(rrev <= lrev) return false;                 /* server counter not newer → keep ours */
   const inLib = data.library || {};
   const nextLib = emptyLibrary();
   LIB_GROUPS.forEach(g => { const inc = inLib[g.key]; nextLib[g.key] = Array.isArray(inc) ? inc.map(it => ({cat:(it&&it.cat)||'', name:(it&&it.name)||'', price:(it&&it.price)||'', link:(it&&it.link)||''})) : []; });
@@ -4720,9 +4784,16 @@ function fsApplyLibrary(data){
     Object.keys(data.cats).forEach(k => { if(Array.isArray(data.cats[k])) db.cats[k] = data.cats[k].map(c => String(c)); });
   }
   db.libRev = rrev;
-  _libSigLast = libSig();                         /* adopt remote as our baseline — don't re-publish it as a "local edit" */
+  db.libBase = _libSnapshot({library:db.library, cats:db.cats});   /* this adopted state is our new merge base */
+  _libSigLast = libSig();
   try{ normalizeSort(); }catch(_){}
   return before !== _libSigLast;
+}
+/* run once shortly after connect: publish our library ONLY if the server has none yet (seed) or we
+   hold genuine local changes not on the server — never force-bumps the rev on a plain reconnect. */
+function fsLibSyncOnConnect(){
+  if(!fsReady()) return;
+  if(libNonEmpty() && (!(db.libRev>0) || libSig() !== _libSigLast)){ _libDirty = true; fsPushLibrary(); }
 }
 function fsOnSnapshot(snap){
   _fsApplying = true;
@@ -4796,11 +4867,9 @@ async function fsStart(){
   fsDiag('attaching onSnapshot to projects…');
   _fsUnsub = _fsCol.onSnapshot(function(snap){ fsDiag('snapshot: ' + snap.size + ' docs, ' + snap.docChanges().length + ' changes'); fsOnSnapshot(snap); }, function(err){ _fsFatal = 'Firestore stream error: ' + (err.message||''); fsDiag('SNAPSHOT ERROR: ' + (err.code||'') + ' ' + (err.message||''), true); setCloudStat('⚠ ' + _fsFatal + ' — click to retry'); });
   fsDiag('start ok — listening');
-  /* BUILD 14.24: publish THIS machine's library shortly after connect — by now onSnapshot has
-     delivered any newer shared library doc (adopted). We publish at our CURRENT rev WITHOUT
-     bumping it (opening the app is not an edit), so a stale machine can't "win" just by connecting;
-     the guard still prevents publishing an empty library. */
-  setTimeout(function(){ try{ _libSigLast = libSig(); fsPushLibrary(); }catch(_){} }, 3500);
+  /* BUILD 14.34: shortly after connect, seed/publish our library only if the server has none yet or
+     we hold genuine local changes — a plain reconnect never force-bumps the transaction counter. */
+  setTimeout(function(){ try{ fsLibSyncOnConnect(); }catch(_){} }, 3500);
   /* BUILD 14.7: photos/docs live on Drive, pulled by fbpMediaSync. onSnapshot only fires it on a
      DB change — if the media file lagged behind the doc's msig (upload race), the pull got the old
      file and never retried until a reload (the "sync only after Ctrl+Shift+R" bug). A steady 12s
@@ -4832,7 +4901,11 @@ async function fsWipeAll(){
     setCloudStat('Wiping all projects…');
     const snap = await _fsCol.get();
     let n = 0;
-    for(const doc of snap.docs){ try{ await doc.ref.delete(); n++; }catch(_){} }
+    for(const doc of snap.docs){
+      const d = doc.data();
+      if(doc.id === LIB_DOC_ID || (d && d.kind === 'library')) continue;   /* BUILD 14.34: NEVER wipe the shared Equipment Library */
+      try{ await doc.ref.delete(); n++; }catch(_){}
+    }
     db.projects = []; db.activeId = null;
     db.mediaMap = {}; db.backupMap = {}; db.driveMap = {};
     _fsLocal = {}; try{ _fbpLocal = {}; }catch(_){}
