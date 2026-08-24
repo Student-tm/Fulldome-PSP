@@ -628,7 +628,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.31 · CABLES MODULE</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.32 · SYNC FIX (clock-skew per-section)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -4643,8 +4643,15 @@ function fsApplyDoc(data){
   if(e === activeEntry() && isTypingInInput()) return false;   /* don't disturb active typing; next snapshot re-applies */
   let ch = false;
   FS_SECTIONS.forEach(s => {
-    const rrev = revs[s] || 0, lrev = e._fsRev[s] || 0;
-    if(data[s] !== undefined && rrev > lrev){ if(fsApplySection(e.data, s, data[s])) ch = true; e._fsRev[s] = rrev; }
+    /* BUILD 14.32: apply a section whenever its remote revision DIFFERS from what we last applied —
+       NOT strictly-greater. The Firestore snapshot is the authoritative latest state, so "differs"
+       means someone changed it → adopt it. The old `rrev > lrev` gate broke sync between two users
+       whose machine CLOCKS were skewed: once the faster clock's timestamp was stored, every later
+       edit from the slower machine (smaller timestamp) was permanently ignored ("synced 1-2 times
+       then stopped"). Comparing by inequality is clock-independent. Applying our own echo is a no-op
+       (identical data → liveApply reports no change) and never loops (applies use _skipCloud). */
+    const rrev = revs[s] || 0, lrev = e._fsRev[s];
+    if(data[s] !== undefined && rrev !== lrev){ if(fsApplySection(e.data, s, data[s])) ch = true; e._fsRev[s] = rrev; }
   });
   if(!!data.done !== !!e.done){ if(data.done){ e.done = true; e.doneAt = data.doneAt || Date.now(); } else { delete e.done; delete e.doneAt; } ch = true; }
   return ch;
