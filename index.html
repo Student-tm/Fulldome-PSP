@@ -628,7 +628,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.28 · LIBRARY HEAD — RED EDIT ICON</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.29 · ACTIVE DOT + READINESS BY ROWS</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -808,8 +808,8 @@ function readyModuleHasData(key, d){
                         || ((d.rack&&d.rack.frontPh)||[]).length>0
                         || ((d.rack&&d.rack.rearPh)||[]).length>0;
     case 'camera':   return rows('camera').some(r=>(r.name||'').trim());
-    case 'speakers': return rows('speakers').some(r=>(r.name||'').trim()) || !!((P.speakersModel||'').trim() || (P.subwooferModel||'').trim() || (P.audioSystem||'').trim());
-    case 'fan':      return rows('fan').some(r=>(r.name||'').trim()) || !!((P.screenFan||'').trim());
+    case 'speakers': return rows('speakers').some(r=>(r.name||'').trim());   /* BUILD 14.29: module rows only, not the legacy project fields */
+    case 'fan':      return rows('fan').some(r=>(r.name||'').trim());
     default:         return false;   /* net / cables / tools have no section yet */
   }
 }
@@ -842,6 +842,13 @@ function readyCardColor(d){
   if(cols.some(c => c !== 'red')) return 'yellow';   /* any progress anywhere */
   return '';
 }
+/* BUILD 14.29: the dashboard module "ACTIVE" badge — dot is GREEN when the section has at least one
+   piece of equipment, RED (but still labelled Active) when it's empty, so you can see at a glance which
+   sections have actually been started/filled. */
+function modActiveBadge(hasData){
+  return '<span class="mod-badge b-active" title="' + (hasData ? 'Active — has equipment' : 'Active — nothing added yet') + '"><span class="bd" style="background:' + (hasData ? '#3fb950' : 'var(--fdp-red)') + '"></span>Active</span>';
+}
+const _named = rows => (rows||[]).some(r=>(r.name||'').trim());
 const READY_LABEL = { red:'Not started', yellow:'In progress', green:'Ready' };
 const READY_CHIP  = { red:'c-off', yellow:'c-warn', green:'c-ok' };
 /* Projectors migration — old saves get an empty projectors box */
@@ -2581,7 +2588,7 @@ function pageDashboard(){
         <div class="mod-top">
           <div class="mod-ic">${IC.server}</div>
           <div><div class="mod-name">Server &amp; Rack</div>
-            <span class="mod-badge b-active"><span class="bd"></span>Active</span></div>
+            ${modActiveBadge(_named(state.server.rows) || _named(state.rack.rows))}</div>
         </div>
         <div class="mod-desc">Server hardware configuration, compatibility, assembly, rack layout, power distribution and documentation.</div>
         <div class="mod-stats">
@@ -2595,7 +2602,7 @@ function pageDashboard(){
 
       <div class="mod active${_lastMod==='#/projectors'?' lastmod':''}">
         <div class="mod-top"><div class="mod-ic">${IC.beam}</div>
-          <div><div class="mod-name">Projectors</div><span class="mod-badge b-active"><span class="bd"></span>Active</span></div></div>
+          <div><div class="mod-name">Projectors</div>${modActiveBadge(projList().length>0)}</div></div>
         <div class="mod-desc">Projector inventory, installation and configuration status, live web interfaces and saved web settings per projector.</div>
         <div class="mod-stats">
           <div class="ms"><span class="k">Brand &amp; Model</span><span class="v ${projList().length?'ok':''}">${projList().length ? esc([...new Set(projList().map(p=>((p.mfr||'')+' '+(p.model||'')).trim()).filter(Boolean))].join(', ') || '—') + (projList().length>1 ? ' × '+projList().length : '') : 'None'}</span></div>
@@ -2608,7 +2615,7 @@ function pageDashboard(){
 
       <div class="mod active${_lastMod==='#/speakers'?' lastmod':''}">
         <div class="mod-top"><div class="mod-ic">${IC.spk}</div>
-          <div><div class="mod-name">Speakers</div><span class="mod-badge b-active"><span class="bd"></span>Active</span></div></div>
+          <div><div class="mod-name">Speakers</div>${modActiveBadge(_named(state.speakers.rows))}</div></div>
         <div class="mod-desc">Audio system — main speakers, subwoofer, amplification and audio interface, picked from the Equipment Library, with photos and Ready check.</div>
         <div class="mod-stats">
           <div class="ms"><span class="k">Components</span><span class="v ${state.speakers.rows.filter(r=>(r.name||'').trim()).length?'ok':''}">${state.speakers.rows.filter(r=>(r.name||'').trim()).length || 'None'}</span></div>
@@ -2621,7 +2628,7 @@ function pageDashboard(){
 
       <div class="mod active${_lastMod==='#/camera'?' lastmod':''}">
         <div class="mod-top"><div class="mod-ic">${IC.cam}</div>
-          <div><div class="mod-name">Calibration Camera</div><span class="mod-badge b-active"><span class="bd"></span>Active</span></div></div>
+          <div><div class="mod-name">Calibration Camera</div>${modActiveBadge(_named(state.camera.rows))}</div></div>
         <div class="mod-desc">Calibration camera kit — camera, lens, mount and accessories, picked from the Equipment Library, with photos and Ready check.</div>
         <div class="mod-stats">
           <div class="ms"><span class="k">Components</span><span class="v ${state.camera.rows.filter(r=>(r.name||'').trim()).length?'ok':''}">${state.camera.rows.filter(r=>(r.name||'').trim()).length || 'None'}</span></div>
@@ -2641,7 +2648,7 @@ function pageDashboard(){
 
       <div class="mod active${_lastMod==='#/fan'?' lastmod':''}">
         <div class="mod-top"><div class="mod-ic">${IC.fan}</div>
-          <div><div class="mod-name">Screen Fan</div><span class="mod-badge b-active"><span class="bd"></span>Active</span></div></div>
+          <div><div class="mod-name">Screen Fan</div>${modActiveBadge(_named(state.fan.rows))}</div></div>
         <div class="mod-desc">Dome screen ventilation — fan units, controllers, ducting, mounts and power, picked from the Equipment Library, with photos and Ready check.</div>
         <div class="mod-stats">
           <div class="ms"><span class="k">Components</span><span class="v ${state.fan.rows.filter(r=>(r.name||'').trim()).length?'ok':''}">${state.fan.rows.filter(r=>(r.name||'').trim()).length || 'None'}</span></div>
@@ -2668,7 +2675,7 @@ function pageDashboard(){
 
       <div class="mod active${_lastMod==='#/shipping'?' lastmod':''}">
         <div class="mod-top"><div class="mod-ic">${IC.ship}</div>
-          <div><div class="mod-name">Equipment &amp; Shipping</div><span class="mod-badge b-active"><span class="bd"></span>Active</span></div></div>
+          <div><div class="mod-name">Equipment &amp; Shipping</div>${modActiveBadge(shipItems().length>0)}</div></div>
         <div class="mod-desc">Full equipment inventory, pallet packing, shipping date and shipping documents.</div>
         <div class="mod-stats">
           <div class="ms"><span class="k">Total Equipment</span><span class="v ${shipItems().length?'ok':''}">${shipItems().length || '—'} items</span></div>
