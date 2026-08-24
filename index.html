@@ -628,7 +628,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.35 · LIBRARY MERGE-IN-TXN + AUTO-RESTORE</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.36 · LIBRARY ADD-ROW FIX (keep in-progress)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -4706,6 +4706,9 @@ function libTouch(){
 function _libIdx(arr){ const m={}; (arr||[]).forEach(it=>{ const k=((it&&it.name)||'').trim().toLowerCase(); if(k) m[k]=it; }); return m; }
 function _libItemEq(a,b){ a=a||{}; b=b||{}; return (a.cat||'')===(b.cat||'') && (a.name||'')===(b.name||'') && (a.price||'')===(b.price||'') && (a.link||'')===(b.link||''); }
 function _libSnapshot(src){ const o={library:{},cats:{}}; LIB_GROUPS.forEach(g=>{ o.library[g.key]=(((src&&src.library)||{})[g.key]||[]).map(it=>({cat:it.cat||'',name:it.name||'',price:it.price||'',link:it.link||''})); o.cats[g.key]=(((src&&src.cats)||{})[g.key]||[]).map(String); }); return o; }
+/* order-independent signature of the NAMED library content (+cats) — blank/in-progress rows (no name)
+   are ignored, so adding an empty "+ Add item" row is NOT a publishable change (BUILD 14.36). */
+function _libNamedSig(src){ const x={},c={}; LIB_GROUPS.forEach(g=>{ x[g.key]=(((src&&src.library)||{})[g.key]||[]).filter(it=>(it.name||'').trim()).map(it=>[(it.cat||''),(it.name||''),(it.price||''),(it.link||'')]).sort(); c[g.key]=(((src&&src.cats)||{})[g.key]||[]).map(String).sort(); }); return JSON.stringify([x,c]); }
 /* merge base+local vs server per group; delete = in base & not in local; add/edit = local wins; server-only add = kept */
 function libMerge3(base, local, server){
   const out={library:{},cats:{}};
@@ -4738,9 +4741,10 @@ async function fsPushLibrary(){
   const local = { library:{}, cats:{} };
   LIB_GROUPS.forEach(g => { local.library[g.key] = ((db.library&&db.library[g.key])||[]).map(it => ({cat:it.cat||'', name:it.name||'', price:it.price||'', link:it.link||''})); local.cats[g.key] = (catsOf(g.key)||[]).slice(); });
   const base = db.libBase || {library:{},cats:{}};
-  const localEmpty = !LIB_GROUPS.some(g => (local.library[g.key]||[]).some(it => (it.name||'').trim()));
-  const baseEmpty  = !LIB_GROUPS.some(g => ((base.library&&base.library[g.key])||[]).some(it => (it.name||'').trim()));
-  if(localEmpty && baseEmpty){ _libDirty = false; return; }   /* fresh empty machine → nothing to contribute */
+  /* BUILD 14.36: only NAMED content is publishable. If our named library+cats equal the base's, there
+     is nothing to sync (e.g. the user just clicked "+ Add item" → a blank in-progress row) — do NOT
+     run the transaction and do NOT touch db.library, so the blank row survives while it's being filled. */
+  if(_libNamedSig(local) === _libNamedSig(base)){ _libDirty = false; return; }
   _libPushing = true;
   const ref = _fsCol.doc(LIB_DOC_ID);
   try{
@@ -4753,14 +4757,20 @@ async function fsPushLibrary(){
       t.set(ref, { kind:'library', library:merged.library, cats:merged.cats, rev:rev, customCats:db.customCats||{}, updatedBy:_gUser||'', at:Date.now() });
       return { rev:rev, merged:merged };
     });
-    /* adopt the merged result locally so all machines converge to the union */
-    db.library = emptyLibrary(); LIB_GROUPS.forEach(g=>{ db.library[g.key] = (result.merged.library[g.key]||[]).map(it=>({cat:it.cat||'',name:it.name||'',price:it.price||'',link:it.link||''})); });
-    db.cats = {}; LIB_GROUPS.forEach(g=>{ db.cats[g.key] = (result.merged.cats[g.key]||[]).map(String); });
-    db.libRev = result.rev; db.libBase = _libSnapshot(result.merged); _libDirty = false; _libSigLast = libSig();
-    try{ normalizeSort(); }catch(_){}
+    db.libRev = result.rev; db.libBase = _libSnapshot(result.merged); _libDirty = false;
+    /* adopt the merged result locally ONLY when the server actually contributed something new — never
+       reshuffle/replace the user's in-progress rows. Local blank/in-progress rows are always preserved. */
+    if(_libNamedSig(result.merged) !== _libNamedSig(local)){
+      const curUnnamed = {}; LIB_GROUPS.forEach(g=>{ curUnnamed[g.key] = ((db.library&&db.library[g.key])||[]).filter(it=>!(it.name||'').trim()).map(it=>({cat:it.cat||'',name:it.name||'',price:it.price||'',link:it.link||''})); });
+      const nl = emptyLibrary(); LIB_GROUPS.forEach(g=>{ nl[g.key] = (result.merged.library[g.key]||[]).map(it=>({cat:it.cat||'',name:it.name||'',price:it.price||'',link:it.link||''})).concat(curUnnamed[g.key]); });
+      db.library = nl;
+      db.cats = {}; LIB_GROUPS.forEach(g=>{ db.cats[g.key] = (result.merged.cats[g.key]||[]).map(String); });
+      try{ normalizeSort(); }catch(_){}
+      if(!isTypingInInput() && (location.hash==='#/library')){ try{ rerenderKeepScroll(); }catch(_){} }
+    }
+    _libSigLast = libSig();
     try{ fsDiag('shared library merged+published (rev ' + result.rev + ')'); }catch(_){}
     saveState._skipCloud = true; saveState(); saveState._skipCloud = false;   /* persist libRev/base + cleared dirty */
-    if(!isTypingInInput() && (location.hash==='#/library')){ try{ rerenderKeepScroll(); }catch(_){} }
   }catch(err){
     try{ fsDiag('shared library PUBLISH FAILED: ' + (err&&err.message||err), true); }catch(_){}
     setCloudStat('⚠ Library sync failed: ' + (err&&err.message||'error') + ' — retrying');
