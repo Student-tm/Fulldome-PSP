@@ -628,7 +628,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.22 · EDITABLE CATEGORIES</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.23 · FIX LIBRARY SYNC DOC ID</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -4613,7 +4613,10 @@ function fsRemoveLocal(pid){
    MERGE-BY-NAME (union), never overwrite/delete: an empty machine GAINS the full library and can
    never wipe a filled one. New items propagate both ways; the price/link/category of an item that
    already exists by name is not force-changed across machines (safe, additive). */
-var LIB_DOC_ID = '__shared_library__';
+/* BUILD 14.23: Firestore RESERVES document IDs matching /__.*__/ — the old '__shared_library__'
+   was rejected on write (silently, in the .catch), so the shared library never actually reached
+   the DB. Use a plain id (no double-underscore wrapper); it never collides with a real pid. */
+var LIB_DOC_ID = 'shared_library';
 var _fsLibT = null, _libSigLast = '';
 function libSig(){ try{ const o = {}; LIB_GROUPS.forEach(g => { o[g.key] = ((db.library&&db.library[g.key])||[]).map(it => [it.cat||'', it.name||'', it.price||'', it.link||'']); }); return JSON.stringify([o, db.cats||{}]); }catch(_){ return ''; } }
 function libTouch(){
@@ -4631,7 +4634,9 @@ function fsPushLibrary(){
   const hasItems = LIB_GROUPS.some(g => (lib[g.key]||[]).some(it => (it.name||'').trim()));
   if(!hasItems) return;   /* NEVER publish an empty library (guards a fresh machine clobbering the shared one) */
   _libSigLast = libSig();
-  _fsCol.doc(LIB_DOC_ID).set({ kind:'library', library:lib, cats:cats, customCats:db.customCats||{}, updatedBy:_gUser||'', at:Date.now() }).catch(function(){});
+  _fsCol.doc(LIB_DOC_ID).set({ kind:'library', library:lib, cats:cats, customCats:db.customCats||{}, updatedBy:_gUser||'', at:Date.now() })
+    .then(function(){ try{ fsDiag('shared library published (' + LIB_GROUPS.reduce(function(n,g){return n+(lib[g.key]||[]).length;},0) + ' items)'); }catch(_){} })
+    .catch(function(err){ try{ fsDiag('shared library PUBLISH FAILED: ' + (err&&err.message||err), true); }catch(_){} setCloudStat('⚠ Library sync failed: ' + (err&&err.message||'error')); });
 }
 /* union-merge an incoming shared library onto the local one; returns true if anything was added */
 function fsApplyLibrary(data){
