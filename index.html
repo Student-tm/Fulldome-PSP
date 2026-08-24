@@ -628,7 +628,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.32 · SYNC FIX (clock-skew per-section)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.33 · CABLES 3 SUB-TABLES</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -6244,8 +6244,7 @@ function cycOrd(kind, i, el){
   ['kSpk','stSpk','spkFoot'].forEach(id=>{const e2=document.getElementById(id); if(e2) e2.textContent=t;});
   t = fmt(fanTotal());
   ['kFan','stFan','fanFoot'].forEach(id=>{const e2=document.getElementById(id); if(e2) e2.textContent=t;});
-  t = fmt(cabTotal());
-  ['kCab','stCab','cabFoot'].forEach(id=>{const e2=document.getElementById(id); if(e2) e2.textContent=t;});
+  if(typeof refreshCabTotals==='function') refreshCabTotals();
   renderHeader();
 }
 
@@ -6580,7 +6579,18 @@ function pageFan(){
 const cabListId = cat => 'dlCabCat' + Math.max(0, ciIndexOf(cabCats(), cat));
 const libCabByCat = cat => libByGroupCat('cables', cat);
 function cabTotal(){ return state.cables.rows.reduce((s,r)=> s + rowSum(r), 0); }
-function addCab(){ state.cables.rows.push(blankRow()); saveState(); route(); }
+/* BUILD 14.33: the Cables module is split into THREE sub-tables (Power / Video / Audio) — a purely
+   visual grouping via a per-row `grp` tag. It is still ONE module (one total, one Ready, one photos
+   card) and ships as a single "Cables" group. Rows with no grp default to 'power'. */
+const CAB_GROUPS = [ {key:'power', label:'Power Cables'}, {key:'video', label:'Video Cables'}, {key:'audio', label:'Audio Cables'} ];
+const cabGrpOf = r => { const g=(r&&r.grp)||'power'; return CAB_GROUPS.some(b=>b.key===g)?g:'power'; };
+function cabSubTotal(grp){ return state.cables.rows.reduce((s,r)=> s + (cabGrpOf(r)===grp ? rowSum(r) : 0), 0); }
+function refreshCabTotals(){
+  const g = fmt(cabTotal());
+  ['kCab','stCab'].forEach(id=>{const e=document.getElementById(id); if(e) e.textContent=g;});
+  CAB_GROUPS.forEach(b=>{ const e=document.getElementById('cabFoot_'+b.key); if(e) e.textContent=fmt(cabSubTotal(b.key)); });
+}
+function addCab(grp){ const r=blankRow(); r.grp = (grp&&CAB_GROUPS.some(b=>b.key===grp))?grp:'power'; state.cables.rows.push(r); saveState(); route(); }
 function rmCab(i){ state.cables.rows.splice(i,1); saveState(); route(); }
 function setCabCat(i, v){
   state.cables.rows[i].cat = v;
@@ -6607,8 +6617,7 @@ function updCab(i, k, v){
   const r = state.cables.rows[i];
   const t = priceNum(r.price)*(parseFloat(r.qty)||1);
   const cell = document.getElementById('cabRowT'+i); if(cell) cell.textContent = t ? fmt(t) : '—';
-  const s = fmt(cabTotal());
-  ['kCab','stCab','cabFoot'].forEach(id=>{const e=document.getElementById(id); if(e) e.textContent=s;});
+  refreshCabTotals();
 }
 function addCabRowToLib(i){
   const row = state.cables.rows[i]; if(!row) return;
@@ -6637,10 +6646,8 @@ function refreshCabReadyUI(){
   set('cabBtnLbl', e=>e.textContent = ready?'Cables Ready':'Mark as Ready');
   set('kCabLedTxt', e=>e.textContent = ready?'Ready':'Not Ready');
 }
-function pageCables(){
-  const ready = state.cables.ready;
-  const P = state.project;
-  const cabRows = state.cables.rows.map((r,i)=>`
+function cabRowHtml(r, i){
+  return `
     <tr>
       <td class="tight" style="width:17%"><select class="cell ${!(r.cat||'').trim()?'empty':''}" onchange="setCabCat(${i},this.value);this.classList.toggle('empty',!this.value)">
         <option value="" ${!(r.cat||'').trim()?'selected':''}>— Category —</option>
@@ -6656,7 +6663,24 @@ function pageCables(){
       <td class="tight" style="width:15%"><div style="display:flex;align-items:center;gap:4px"><input class="cell" id="cabL${i}" onmouseenter="lpShow(this)" onmouseleave="lpHide()" value="${esc(r.link)}" placeholder="https://" oninput="updCab(${i},'link',this.value)"><button class="mod-btn" style="padding:4px 7px;flex:none" title="Copy link" onclick="copyRowLink('cabL${i}', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button><button class="mod-btn" style="padding:4px 7px;flex:none" title="Open link" onclick="openRowLink('cabL${i}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><path d="M15 3h6v6M10 14L21 3"/></svg></button></div></td>
       <td class="tolib">${(r.name||'').trim() && !libFind(r.name) ? `<button title="Add to Library" onclick="addCabRowToLib(${i})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M9 9.5h6M12 6.5v6"/></svg></button>` : ''}</td>
       <td class="rm"><button title="Remove" onclick="rmCab(${i})">×</button></td>
-    </tr>`).join('');
+    </tr>`;
+}
+function pageCables(){
+  const ready = state.cables.ready;
+  const P = state.project;
+  const cabTable = (bucket) => {
+    const rowsHtml = state.cables.rows.map((r,i)=>({r,i})).filter(x=>cabGrpOf(x.r)===bucket.key).map(x=>cabRowHtml(x.r, x.i)).join('');
+    return `
+    <div class="card" style="margin-top:14px">
+      <div class="card-head"><h3>${bucket.label}</h3><span class="chip c-mut" style="margin-left:8px"><span class="cd"></span>${state.cables.rows.filter(r=>cabGrpOf(r)===bucket.key && (r.name||'').trim()).length}</span></div>
+      <table class="eq">
+        <thead><tr><th>Category</th><th>Hardware</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:center" title="Combine into one shipping place">Ship</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th><th>Link</th><th></th><th></th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+        <tfoot><tr><td colspan="6">${esc(bucket.label)} total</td><td class="num" id="cabFoot_${bucket.key}">${fmt(cabSubTotal(bucket.key))}</td><td colspan="3"></td></tr></tfoot>
+      </table>
+      <button class="add-line" onclick="addCab('${bucket.key}')">+ Add ${esc(bucket.label.replace(/ Cables$/,''))} cable</button>
+    </div>`;
+  };
 
   return `
   <div class="page">
@@ -6677,24 +6701,20 @@ function pageCables(){
         <div class="kvv" style="font-size:15px;display:flex;align-items:center;gap:8px"><span class="led ${ready?'on':''}" id="kCabLed"></span><span id="kCabLedTxt">${ready?'Ready':'Not Ready'}</span></div></div>
     </div>
 
-    <!-- ================= CABLES BUILDER ================= -->
+    <!-- ================= CABLES BUILDER (Power / Video / Audio) ================= -->
     <div class="sec-title" id="cables">
       <div class="stic">${IC.cable}</div>
-      <div><h2>Cables Builder</h2><div class="st-sub">Hardware is picked from the Equipment Library — Cables & Adapters group.</div></div>
+      <div><h2>Cables Builder</h2><div class="st-sub">Three sub-lists — Power, Video, Audio — all one Cables module (ships as one "Cables"). Picked from the Equipment Library — Cables & Adapters group.</div></div>
       <div class="st-total"><div class="l">Components total</div><div class="v" id="stCab">${fmt(cabTotal())}</div></div>
     </div>
-    <div class="card">
+    <div class="card" style="padding-bottom:6px">
       <div class="card-head"><h3>Hardware configuration</h3><button class="mod-btn" style="padding:5px 11px;font-size:11.5px;margin-right:8px" title="Fetch fresh prices from the links" onclick="refreshPrices('cables')">↻ Prices</button>
         <button class="ready-btn ${ready?'on':''}" id="cabReadyBtn" onclick="toggleCabReady()">
           <span class="led ${ready?'on':''}" id="cabBtnLed"></span><span id="cabBtnLbl">${ready ? 'Cables Ready' : 'Mark as Ready'}</span></button>
       </div>
-      <table class="eq">
-        <thead><tr><th>Category</th><th>Hardware</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:center" title="Combine into one shipping place">Ship</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th><th>Link</th><th></th><th></th></tr></thead>
-        <tbody>${cabRows}</tbody>
-        <tfoot><tr><td colspan="6">Cables total</td><td class="num" id="cabFoot">${fmt(cabTotal())}</td><td colspan="3"></td></tr></tfoot>
-      </table>
-      <button class="add-line" onclick="addCab()">+ Add component</button>
+      <div style="font-size:12px;color:var(--ink2);margin:-4px 0 2px">All three lists below are part of one Cables module — combined into a single "Cables" place in Equipment &amp; Shipping.</div>
     </div>
+    ${CAB_GROUPS.map(cabTable).join('')}
 
     ${photoCard('cables','Cable Photos','Cabling and connector photos — up to '+PHOTO_MAX.cables+'. Shown in Documentation as "Cables — #'+esc(P.number)+'".')}
 
