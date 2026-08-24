@@ -628,7 +628,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.27 · SCREEN FAN MODULE</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.28 · LIBRARY HEAD — RED EDIT ICON</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -7384,17 +7384,19 @@ function pageLibrary(){
     </div>`;
   }).join('');
 
+  const editIcon = editing
+    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="width:17px;height:17px"><path d="M20 6L9 17l-5-5"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>';
   return `
   <div class="page">
     <div class="pagehead">
-      <div class="eyebrow">Fulldome Projection SP</div>
-      <h1>Equipment Library</h1>
-      <div style="display:flex;gap:8px;margin-top:8px;justify-content:center;flex-wrap:wrap">
-        <button class="mod-btn ${editing?'primary':''}" style="padding:6px 14px;font-size:12px" onclick="toggleLibGroupsEdit()">${editing?'Done' : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;vertical-align:-2px"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> Edit sections`}</button>
-        <button class="mod-btn" style="padding:6px 14px;font-size:12px" onclick="refreshLibPrices()">↻ Update all prices from links</button>
-        <button class="mod-btn" style="padding:6px 14px;font-size:12px" onclick="setPriceApiKey()">${(db.priceApiKey||'').trim() ? '⚙ Price API: connected ✓' : '⚙ Connect price API'}</button>
+      <div style="position:relative;display:flex;flex-direction:column;align-items:center">
+        <div class="eyebrow">Fulldome Projection SP</div>
+        <h1 style="margin:0">Equipment Library</h1>
+        <button onclick="toggleLibGroupsEdit()" title="${editing?'Done — exit section edit':'Edit sections — reorder (▲▼) or freeze (❄) whole sections'}"
+          style="position:absolute;right:0;top:50%;transform:translateY(-50%);width:36px;height:36px;border:none;border-radius:9px;background:var(--fdp-red);color:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1px 5px rgba(211,47,47,.35)">${editIcon}</button>
       </div>
-      <div class="sub">${editing ? 'Edit mode — use ▲▼ to reorder sections and the snowflake to freeze one (a frozen section is locked shut). Press Done when finished.' : 'Fill the library first — server and rack hardware in every project is then picked from these lists. The library is shared across all projects.'}</div>
+      <div class="sub">${editing ? 'Edit mode — use ▲▼ to reorder sections and the snowflake to freeze one (a frozen section is locked shut). Press the red button again when finished.' : 'Fill the library first — server and rack hardware in every project is then picked from these lists. The library is shared across all projects.'}</div>
     </div>
     ${groups}
   </div>`;
