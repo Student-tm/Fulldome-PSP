@@ -628,7 +628,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.23 · FIX LIBRARY SYNC DOC ID</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.25 · LIB REORDER + FREEZE ROW</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1267,7 +1267,8 @@ function sortByCat(arr, list){ arr.sort((a,b)=> catIndexOf(list, a.cat) - catInd
    storage or from a project file that was saved before sorting existed. */
 function normalizeSort(){
   try{
-    LIB_GROUPS.forEach(g => { if(Array.isArray(db.library && db.library[g.key])) sortByCat(db.library[g.key], groupCats(g.key)); });
+    /* BUILD 14.25: the LIBRARY is no longer force-sorted by category here — its row order is now a
+       user-controlled, LOCAL preference (▲/▼ arrows in Edit mode). Only project rows are auto-grouped. */
     db.projects.forEach(e => {
       if(e.data && e.data.server && Array.isArray(e.data.server.rows)) sortByCat(e.data.server.rows, groupCats('server'));
       if(e.data && e.data.rack && Array.isArray(e.data.rack.rows)) sortByCat(e.data.rack.rows, rackCatList());
@@ -1415,6 +1416,24 @@ function updLib(group, i, k, v){
 }
 function addLib(group){ ensureLibGroup(group).push(blankLibItem()); saveState(); route(); }
 function rmLib(group, i){ ensureLibGroup(group).splice(i,1); saveState(); route(); }
+/* BUILD 14.25: manual row order in the library — a LOCAL preference (arrows in Edit mode). Reordering
+   changes only the array order; libSig is order-independent, so it never publishes / never syncs. */
+var _libEdit = {};
+function toggleLibEdit(key){ _libEdit[key] = !_libEdit[key]; rerenderKeepScroll(); }
+function moveLibItem(group, i, dir){
+  const arr = ensureLibGroup(group); const j = i + dir;
+  if(i<0 || i>=arr.length || j<0 || j>=arr.length) return;
+  const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+  saveState(); rerenderKeepScroll();   /* order-only: no publish (libSig ignores order) */
+}
+/* BUILD 14.25: freeze/lock a library row — a LOCAL protection so a row you rely on can't be edited
+   or deleted by accident. Frozen state is kept locally (stripped from the sync payload, preserved on
+   adopt) so it neither publishes nor gets wiped by a teammate's update. */
+function toggleLibFreeze(group, i){
+  const arr = ensureLibGroup(group); if(!arr[i]) return;
+  if(arr[i].frozen) delete arr[i].frozen; else arr[i].frozen = true;
+  saveState(); rerenderKeepScroll();
+}
 
 /* ---------- server component categories ---------- */
 const CATS = SRV_CATS;
@@ -4618,12 +4637,20 @@ function fsRemoveLocal(pid){
    the DB. Use a plain id (no double-underscore wrapper); it never collides with a real pid. */
 var LIB_DOC_ID = 'shared_library';
 var _fsLibT = null, _libSigLast = '';
-function libSig(){ try{ const o = {}; LIB_GROUPS.forEach(g => { o[g.key] = ((db.library&&db.library[g.key])||[]).map(it => [it.cat||'', it.name||'', it.price||'', it.link||'']); }); return JSON.stringify([o, db.cats||{}]); }catch(_){ return ''; } }
+/* ORDER-INDEPENDENT signature (BUILD 14.25): row order is a local-only preference, so it must NOT
+   count as a library change (reordering never publishes / never bumps the rev). Sort item tuples +
+   category lists before hashing → only content (add/edit/delete) changes the signature. */
+function libSig(){ try{ const o = {}; LIB_GROUPS.forEach(g => { o[g.key] = ((db.library&&db.library[g.key])||[]).map(it => (it.cat||'')+''+(it.name||'')+''+(it.price||'')+''+(it.link||'')).sort(); }); const c = {}; Object.keys(db.cats||{}).forEach(k => { c[k] = ((db.cats[k])||[]).slice().sort(); }); return JSON.stringify([o, c]); }catch(_){ return ''; } }
+/* BUILD 14.24: NEWEST-WINS shared library. A genuine local edit bumps a monotonic `db.libRev`;
+   pull applies a remote ONLY when its rev is strictly newer → adds, edits AND deletes propagate
+   (a deleted item can't come back). Guard unchanged: a machine NEVER publishes an empty library,
+   so an empty peer can't clobber a filled one. */
 function libTouch(){
   if(!fsReady()) return;
   const s = libSig();
   if(s === _libSigLast) return;                 /* library genuinely unchanged → nothing to publish */
   _libSigLast = s;
+  db.libRev = Math.max(Date.now(), (db.libRev||0) + 1);   /* genuine local edit → strictly newer revision */
   clearTimeout(_fsLibT); _fsLibT = setTimeout(fsPushLibrary, 1500);
 }
 function fsPushLibrary(){
@@ -4633,29 +4660,41 @@ function fsPushLibrary(){
   const cats = {}; LIB_GROUPS.forEach(g => { cats[g.key] = (catsOf(g.key)||[]).slice(); });
   const hasItems = LIB_GROUPS.some(g => (lib[g.key]||[]).some(it => (it.name||'').trim()));
   if(!hasItems) return;   /* NEVER publish an empty library (guards a fresh machine clobbering the shared one) */
+  if(!db.libRev) db.libRev = Date.now();   /* establish an initial revision so an empty peer (rev 0) adopts ours */
   _libSigLast = libSig();
-  _fsCol.doc(LIB_DOC_ID).set({ kind:'library', library:lib, cats:cats, customCats:db.customCats||{}, updatedBy:_gUser||'', at:Date.now() })
-    .then(function(){ try{ fsDiag('shared library published (' + LIB_GROUPS.reduce(function(n,g){return n+(lib[g.key]||[]).length;},0) + ' items)'); }catch(_){} })
+  _fsCol.doc(LIB_DOC_ID).set({ kind:'library', library:lib, cats:cats, rev:db.libRev, customCats:db.customCats||{}, updatedBy:_gUser||'', at:Date.now() })
+    .then(function(){ try{ fsDiag('shared library published (rev ' + db.libRev + ', ' + LIB_GROUPS.reduce(function(n,g){return n+(lib[g.key]||[]).length;},0) + ' items)'); }catch(_){} })
     .catch(function(err){ try{ fsDiag('shared library PUBLISH FAILED: ' + (err&&err.message||err), true); }catch(_){} setCloudStat('⚠ Library sync failed: ' + (err&&err.message||'error')); });
 }
-/* union-merge an incoming shared library onto the local one; returns true if anything was added */
+/* apply an incoming shared library — NEWEST-WINS: adopt it wholesale only when its rev is newer
+   than ours, so adds/edits/deletes all propagate. Returns true if the local library changed. */
 function fsApplyLibrary(data){
   if(!data || data.kind !== 'library') return false;
-  let changed = false;
-  if(!db.library || typeof db.library!=='object') db.library = emptyLibrary();
-  if(!db.customCats || typeof db.customCats!=='object') db.customCats = {};
+  const rrev = data.rev || 0, lrev = db.libRev || 0;
+  if(rrev <= lrev) return false;                 /* our library is newer or same → keep ours */
   const inLib = data.library || {};
+  const nextLib = emptyLibrary();
   LIB_GROUPS.forEach(g => {
-    const inc = inLib[g.key]; if(!Array.isArray(inc)) return;
-    if(!Array.isArray(db.library[g.key])) db.library[g.key] = [];
-    const have = new Set(db.library[g.key].map(it => (it.name||'').trim().toLowerCase()).filter(Boolean));
-    inc.forEach(it => { const nm = (it && it.name || '').trim(); if(nm && !have.has(nm.toLowerCase())){ db.library[g.key].push({cat:it.cat||'', name:nm, price:it.price||'', link:it.link||''}); have.add(nm.toLowerCase()); changed = true; } });
+    const inc = Array.isArray(inLib[g.key]) ? inLib[g.key].map(it => ({cat:(it&&it.cat)||'', name:(it&&it.name)||'', price:(it&&it.price)||'', link:(it&&it.link)||''})) : [];
+    /* BUILD 14.25: keep MY local row order — order incoming items by my existing order (by name),
+       append items I don't have yet at the end. Content (adds/edits/deletes) still comes from the
+       remote; only the ORDER is preserved locally, so a teammate's edit never reshuffles my list. */
+    const byName = {}; inc.forEach(it => { byName[(it.name||'').trim().toLowerCase()] = it; });
+    const ordered = [];
+    ((db.library&&db.library[g.key])||[]).forEach(it => { const k = (it.name||'').trim().toLowerCase(); if(k && byName[k]){ const adopted = byName[k]; if(it.frozen) adopted.frozen = true; ordered.push(adopted); delete byName[k]; } });   /* preserve LOCAL frozen flag across a sync adopt (BUILD 14.25) */
+    inc.forEach(it => { const k = (it.name||'').trim().toLowerCase(); if(byName[k]){ ordered.push(it); delete byName[k]; } });
+    nextLib[g.key] = ordered;
   });
-  /* categories: union-merge incoming cats (and legacy customCats) into the editable list (BUILD 14.22) */
-  const mergeCats = src => { if(!src || typeof src!=='object') return; Object.keys(src).forEach(k => { const inc = src[k]; if(!Array.isArray(inc)) return; const arr = catsOf(k); inc.forEach(c => { const nm = String(c||'').trim(); if(nm && !arr.some(x => String(x).toLowerCase() === nm.toLowerCase())){ arr.push(nm); changed = true; } }); }); };
-  mergeCats(data.cats); mergeCats(data.customCats);
-  if(changed){ try{ normalizeSort(); }catch(_){} }
-  return changed;
+  const before = libSig();
+  db.library = nextLib;
+  if(data.cats && typeof data.cats === 'object'){
+    db.cats = {};
+    Object.keys(data.cats).forEach(k => { if(Array.isArray(data.cats[k])) db.cats[k] = data.cats[k].map(c => String(c)); });
+  }
+  db.libRev = rrev;
+  _libSigLast = libSig();                         /* adopt remote as our baseline — don't re-publish it as a "local edit" */
+  try{ normalizeSort(); }catch(_){}
+  return before !== _libSigLast;
 }
 function fsOnSnapshot(snap){
   _fsApplying = true;
@@ -4668,7 +4707,7 @@ function fsOnSnapshot(snap){
       const data = ch.doc.data();
       /* BUILD 14.21: the reserved shared-library doc (no pid, kind:'library') — merge it, never as a project */
       if(ch.doc.id === LIB_DOC_ID || (data && data.kind === 'library')){
-        if(ch.type !== 'removed' && fsApplyLibrary(data)){ touched = true; libTouch(); }   /* merged new items → republish the union so the other side gets ours too */
+        if(ch.type !== 'removed' && fsApplyLibrary(data)) touched = true;   /* newest-wins: adopt the remote library (adds/edits/deletes), no republish */
         return;
       }
       if(!data || !data.pid) return;
@@ -4729,10 +4768,11 @@ async function fsStart(){
   fsDiag('attaching onSnapshot to projects…');
   _fsUnsub = _fsCol.onSnapshot(function(snap){ fsDiag('snapshot: ' + snap.size + ' docs, ' + snap.docChanges().length + ' changes'); fsOnSnapshot(snap); }, function(err){ _fsFatal = 'Firestore stream error: ' + (err.message||''); fsDiag('SNAPSHOT ERROR: ' + (err.code||'') + ' ' + (err.message||''), true); setCloudStat('⚠ ' + _fsFatal + ' — click to retry'); });
   fsDiag('start ok — listening');
-  /* BUILD 14.21: publish THIS machine's library shortly after connect — by now onSnapshot has
-     delivered any shared library doc (merged in), so we push the union (guarded: never publishes
-     an empty library). Machines converge to the union of everyone's items. */
-  setTimeout(function(){ try{ libTouch(); }catch(_){} }, 3500);
+  /* BUILD 14.24: publish THIS machine's library shortly after connect — by now onSnapshot has
+     delivered any newer shared library doc (adopted). We publish at our CURRENT rev WITHOUT
+     bumping it (opening the app is not an edit), so a stale machine can't "win" just by connecting;
+     the guard still prevents publishing an empty library. */
+  setTimeout(function(){ try{ _libSigLast = libSig(); fsPushLibrary(); }catch(_){} }, 3500);
   /* BUILD 14.7: photos/docs live on Drive, pulled by fbpMediaSync. onSnapshot only fires it on a
      DB change — if the media file lagged behind the doc's msig (upload race), the pull got the old
      file and never retried until a reload (the "sync only after Ctrl+Shift+R" bug). A steady 12s
@@ -7133,26 +7173,41 @@ function pageLibrary(){
   const groups = LIB_GROUPS.map(g=>{
     const items = db.library[g.key] || [];
     const collapsed = !!_libCollapsed[g.key];
-    const rows = items.map((it,i)=>`
-      <tr>
-        <td class="tight" style="width:17%"><select class="cell ${!(it.cat||'').trim()?'empty':''}"
+    const editing = !!_libEdit[g.key];
+    const arrowBtn = 'border:none;background:#eef0f3;cursor:pointer;color:var(--ink);border-radius:5px;width:22px;height:18px;line-height:1;font-size:11px;padding:0;margin:0 1px';
+    const rows = items.map((it,i)=>{
+      const fz = !!it.frozen; const dis = fz ? 'disabled' : '';
+      const lockClosed = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;vertical-align:-1px"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>';
+      const lockOpen = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;vertical-align:-1px"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 017.5-2"/></svg>';
+      const lockBtn = `<button title="${fz?'Frozen — click to unlock':'Freeze row (protect from edits/delete)'}" style="${arrowBtn};background:${fz?'#ffe3e3':'#eef0f3'};color:${fz?'var(--fdp-red)':'var(--ink2)'};width:26px" onclick="toggleLibFreeze('${g.key}',${i})">${fz?lockClosed:lockOpen}</button>`;
+      return `
+      <tr style="${fz?'opacity:.6':''}">
+        ${editing ? `<td class="tight" style="width:80px;white-space:nowrap;text-align:center">
+          <button title="Move up" style="${arrowBtn}" ${(i===0||fz)?'disabled':''} onclick="moveLibItem('${g.key}',${i},-1)">▲</button>
+          <button title="Move down" style="${arrowBtn}" ${(i===items.length-1||fz)?'disabled':''} onclick="moveLibItem('${g.key}',${i},1)">▼</button>
+          ${lockBtn}
+        </td>` : ''}
+        <td class="tight" style="width:17%"><select ${dis} class="cell ${!(it.cat||'').trim()?'empty':''}"
             onchange="updLib('${g.key}',${i},'cat',this.value);this.classList.toggle('empty',!this.value)">
             <option value="" ${!(it.cat||'').trim()?'selected':''}>— Category —</option>
             ${groupCats(g.key).map(c=>`<option value="${c}" ${it.cat===c?'selected':''}>${c}</option>`).join('')}
             ${(it.cat||'').trim() && !groupCats(g.key).includes(it.cat) ? `<option value="${esc(it.cat)}" selected>${esc(it.cat)}</option>` : ''}
           </select></td>
-        <td class="tight"><input class="cell b" value="${esc(it.name)}" placeholder="Item name" oninput="updLib('${g.key}',${i},'name',this.value)"></td>
-        <td class="tight" style="width:13%"><input class="cell num" value="${esc(it.price)}" placeholder="—" oninput="updLib('${g.key}',${i},'price',this.value)"></td>
-        <td class="tight" style="width:24%"><input class="cell" value="${esc(it.link)}" placeholder="https://" oninput="updLib('${g.key}',${i},'link',this.value)"></td>
-        <td class="rm"><button title="Remove" onclick="rmLib('${g.key}',${i})">×</button></td>
-      </tr>`).join('');
+        <td class="tight"><input ${dis} class="cell b" value="${esc(it.name)}" placeholder="Item name" oninput="updLib('${g.key}',${i},'name',this.value)">${fz?' <span title="Frozen" style="color:var(--fdp-red)">'+lockClosed+'</span>':''}</td>
+        <td class="tight" style="width:13%"><input ${dis} class="cell num" value="${esc(it.price)}" placeholder="—" oninput="updLib('${g.key}',${i},'price',this.value)"></td>
+        <td class="tight" style="width:24%"><input ${dis} class="cell" value="${esc(it.link)}" placeholder="https://" oninput="updLib('${g.key}',${i},'link',this.value)"></td>
+        <td class="rm"><button title="${fz?'Frozen — unlock to remove':'Remove'}" ${dis} onclick="rmLib('${g.key}',${i})">×</button></td>
+      </tr>`;
+    }).join('');
     return `
     <div class="card">
       <div class="card-head" style="cursor:pointer;user-select:none" onclick="toggleLibGroup('${g.key}')" title="${collapsed?'Expand':'Collapse'}">
         <span style="display:inline-flex;width:16px;flex:none;color:var(--ink2);transition:transform .15s;transform:rotate(${collapsed?'-90deg':'0deg'})">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="width:14px;height:14px"><path d="M6 9l6 6 6-6"/></svg></span>
         <h3 style="margin:0">${g.label}</h3>
-        <span class="chip c-mut"><span class="cd"></span>${items.filter(x=>(x.name||'').trim()).length} items</span></div>
+        <span class="chip c-mut"><span class="cd"></span>${items.filter(x=>(x.name||'').trim()).length} items</span>
+        <span style="flex:1"></span>
+        ${!collapsed ? `<button title="${editing?'Done reordering':'Reorder rows (▲▼)'}" onclick="event.stopPropagation();toggleLibEdit('${g.key}')" class="mod-btn ${editing?'primary':''}" style="padding:4px 10px;font-size:12px;flex:none">${editing?'Done':`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;vertical-align:-2px"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> Edit`}</button>` : ''}</div>
       <div style="display:${collapsed?'none':'block'}">
         <div style="font-size:12px;color:var(--ink2);margin:4px 0 10px">${g.hint}</div>
         <div class="catbar">
@@ -7169,7 +7224,7 @@ function pageLibrary(){
             </span>`).join('') || `<span style="font-size:11.5px;color:#9aa2ad">No categories yet — add one above.</span>`}
         </div>
         <table class="eq">
-          <thead><tr><th>Category</th><th>Name</th><th style="text-align:right">Price</th><th>Link</th><th></th></tr></thead>
+          <thead><tr>${editing?'<th style="width:80px"></th>':''}<th>Category</th><th>Name</th><th style="text-align:right">Price</th><th>Link</th><th></th></tr></thead>
           <tbody>${rows || ''}</tbody>
         </table>
         <button class="add-line" onclick="addLib('${g.key}')">+ Add item</button>
