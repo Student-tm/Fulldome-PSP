@@ -628,7 +628,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.19 · ANYONE CAN DELETE (FS)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.20 · SPEAKERS MODULE + LIB COLLAPSE</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -735,14 +735,15 @@ const emptyState = () => ({
   vjValidation: { cpu:false, mem:false, gpu:false },
   docs: { sitePh: [], files: {} },   /* Documentation archive: site photos + files per DOC category */
   projectors: { list: [], selId: null },   /* Projectors module: inventory, setup, web settings */
-  camera: { rows: [], ready: false, photos: [] }   /* Calibration Camera module (mirrors server builder) */
+  camera: { rows: [], ready: false, photos: [] },   /* Calibration Camera module (mirrors server builder) */
+  speakers: { rows: [], ready: false, photos: [] }   /* Speaker / Audio System module (mirrors camera builder) — BUILD 14.20 */
 });
 
 /* Multi-project database: creating a new project ADDS an entry,
    it never overwrites existing ones. A project can be frozen —
    a frozen project cannot be selected or edited (mistake guard
    when several projects are in work at the same time). */
-const emptyLibrary = () => ({ server: [], rack: [], cameras: [], video: [], cables: [] });
+const emptyLibrary = () => ({ server: [], rack: [], cameras: [], speakers: [], video: [], cables: [] });
 var db = { projects: [], activeId: null, library: emptyLibrary(), customCats: {} };   // projects: [{id, frozen, data}]
 var state = emptyState();                    // always points to the ACTIVE project data
 
@@ -776,6 +777,9 @@ function syncActive(){
   if(!state.camera || typeof state.camera!=='object') state.camera = { rows:[], ready:false, photos:[] };
   if(!Array.isArray(state.camera.rows)) state.camera.rows = [];
   if(!Array.isArray(state.camera.photos)) state.camera.photos = [];
+  if(!state.speakers || typeof state.speakers!=='object') state.speakers = { rows:[], ready:false, photos:[] };   /* BUILD 14.20 */
+  if(!Array.isArray(state.speakers.rows)) state.speakers.rows = [];
+  if(!Array.isArray(state.speakers.photos)) state.speakers.photos = [];
   if(!state.ready || typeof state.ready!=='object') state.ready = {};   /* readiness lights per module (BUILD 12.15) */
 }
 /* ---------- MODULE READINESS (BUILD 12.29) — DATA-DRIVEN, read-only in the bar.
@@ -800,7 +804,7 @@ function readyModuleHasData(key, d){
                         || ((d.rack&&d.rack.frontPh)||[]).length>0
                         || ((d.rack&&d.rack.rearPh)||[]).length>0;
     case 'camera':   return rows('camera').some(r=>(r.name||'').trim());
-    case 'speakers': return !!((P.speakersModel||'').trim() || (P.subwooferModel||'').trim() || (P.audioSystem||'').trim());
+    case 'speakers': return rows('speakers').some(r=>(r.name||'').trim()) || !!((P.speakersModel||'').trim() || (P.subwooferModel||'').trim() || (P.audioSystem||'').trim());
     case 'fan':      return !!((P.screenFan||'').trim());
     default:         return false;   /* net / cables / tools have no section yet */
   }
@@ -810,6 +814,7 @@ function readyModuleGreen(key, d){
   d = d || state;
   if(key==='server') return !!(d.server && d.server.ready);
   if(key==='camera') return !!(d.camera && d.camera.ready);
+  if(key==='speakers') return !!(d.speakers && d.speakers.ready);   /* BUILD 14.20 */
   if(key==='vj')     return !!(d.vj && d.vj.ready);
   return false;
 }
@@ -1189,6 +1194,7 @@ const RACK_CATS = [];   /* rack categories are fully user-defined via "+ Categor
 const CAM_CATS  = ['Camera','Lens','Mount','Filter','Accessory','Other'];
 const VID_CATS  = ['HDBT Module','Splitter','Extender','Switcher','Converter','Scaler','Other'];
 const CAB_CATS  = ['Power','Network','HDBT','HDMI','DisplayPort','USB','Fiber','Audio','Adapter','Other'];
+const SPK_CATS  = ['Main Speaker','Subwoofer','Amplifier','Audio Processor','Audio Interface','Speaker Mount','Audio Cable','Other'];
 
 /* Each library group has its OWN category list — server categories for
    server hardware, rack categories for rack equipment, and so on.
@@ -1197,6 +1203,7 @@ const LIB_GROUPS = [
   {key:'server',  label:'Server Hardware',            cats:SRV_CATS,  hint:'Chassis, motherboards, CPU, RAM, GPU, storage, PSU, capture and sync cards'},
   {key:'rack',    label:'Rack Equipment',             cats:RACK_CATS, hint:'Rack cases, shelves, drawers, PDU, UPS, switches, patch panels, blanks, rails'},
   {key:'cameras', label:'Cameras',                    cats:CAM_CATS,  hint:'Calibration and reference cameras, lenses, mounts'},
+  {key:'speakers',label:'Speaker / Audio System',     cats:SPK_CATS,  hint:'Main speakers, subwoofers, amplifiers, audio processors/interfaces, mounts and audio cabling'},
   {key:'video',   label:'Video Equipment & Splitters',cats:VID_CATS,  hint:'HDBT modules, splitters, extenders, switchers, converters'},
   {key:'cables',  label:'Cables & Adapters',          cats:CAB_CATS,  hint:'Power, network, HDMI, DP, USB, fiber, audio cables and adapters'}
 ];
@@ -1328,6 +1335,7 @@ function extendCats(base){
 }
 function srvCats(){ return extendCats(groupCats('server')); }
 function camCats(){ return extendCats(groupCats('cameras')); }
+function spkCats(){ return extendCats(groupCats('speakers')); }
 /* Native datalists filter by the current text — a filled field shows only
    itself. On focus, if the value is a library item, clear it temporarily so
    the WHOLE category list opens; restore on blur if nothing new was picked.
@@ -1916,12 +1924,13 @@ function docPhotoCount(){
 function docContentListCount(){ return docScope().filter(e=>e.data.contentList).length; }
 
 /* ---------- photos (server: max 6, rack: max 4) ---------- */
-const PHOTO_MAX = { server: 10, vj: 10, rack: 10, front: 1, rear: 1, site: 20, camera: 10 };
-var photoEdit = { server: false, vj: false, rack: false, views: false, site: false, projviews: false, camera: false };   /* Edit mode: shows delete crosses */
+const PHOTO_MAX = { server: 10, vj: 10, rack: 10, front: 1, rear: 1, site: 20, camera: 10, speakers: 10 };
+var photoEdit = { server: false, vj: false, rack: false, views: false, site: false, projviews: false, camera: false, speakers: false };   /* Edit mode: shows delete crosses */
 function togglePhotoEdit(kind){ photoEdit[kind] = !photoEdit[kind]; rerenderKeepScroll(); }
 function photosOf(kind){
   if(kind==='site'){ return ensureDocs(state).sitePh; }
   if(kind==='camera'){ if(!state.camera) state.camera={rows:[],ready:false,photos:[]}; if(!Array.isArray(state.camera.photos)) state.camera.photos=[]; return state.camera.photos; }
+  if(kind==='speakers'){ if(!state.speakers) state.speakers={rows:[],ready:false,photos:[]}; if(!Array.isArray(state.speakers.photos)) state.speakers.photos=[]; return state.speakers.photos; }
   if(kind==='vj'){ if(!state.vj) state.vj={rows:[],ready:false,photos:[]}; if(!Array.isArray(state.vj.photos)) state.vj.photos=[]; return state.vj.photos; }
   if(kind==='front'){ if(!Array.isArray(state.rack.frontPh)) state.rack.frontPh=[]; return state.rack.frontPh; }
   if(kind==='rear'){ if(!Array.isArray(state.rack.rearPh)) state.rack.rearPh=[]; return state.rack.rearPh; }
@@ -1938,6 +1947,7 @@ function entryPhotos(e, kind){
   if(kind==='rear')   return (d.rack && d.rack.rearPh) || [];
   if(kind==='site')   return (d.docs && d.docs.sitePh) || [];
   if(kind==='camera') return (d.camera && d.camera.photos) || [];
+  if(kind==='speakers') return (d.speakers && d.speakers.photos) || [];
   return [];
 }
 function pickPhotos(kind){
@@ -2041,7 +2051,7 @@ function openLightboxProj(id, kind, i){
   const p = entryPhotos(e, kind)[i];
   if(p){
     const P = e.data.project || {};
-    const lbl = kind==='server' ? 'Dome Server' : kind==='vj' ? 'VJ Server' : kind==='front' ? 'Rack — Front' : kind==='rear' ? 'Rack — Rear' : kind==='site' ? 'Site' : kind==='camera' ? 'Camera' : 'Rack';
+    const lbl = kind==='server' ? 'Dome Server' : kind==='vj' ? 'VJ Server' : kind==='front' ? 'Rack — Front' : kind==='rear' ? 'Rack — Rear' : kind==='site' ? 'Site' : kind==='camera' ? 'Camera' : kind==='speakers' ? 'Speakers' : 'Rack';
     openLightbox(p.src, lbl + ' — #' + (P.number||'') + ' · ' + (p.caption||p.name||''));
   }
 }
@@ -2564,15 +2574,17 @@ function pageDashboard(){
         <a class="mod-btn primary" href="#/projectors">Open Module ${IC.open}</a>
       </div>
 
-      <div class="mod${_lastMod==='#/speakers'?' lastmod':''}">
+      <div class="mod active${_lastMod==='#/speakers'?' lastmod':''}">
         <div class="mod-top"><div class="mod-ic">${IC.spk}</div>
-          <div><div class="mod-name">Speakers</div><span class="mod-badge b-plan"><span class="bd"></span>Planned</span></div></div>
-        <div class="mod-desc">Main speakers and subwoofer selection, amplification and audio system layout.</div>
+          <div><div class="mod-name">Speakers</div><span class="mod-badge b-active"><span class="bd"></span>Active</span></div></div>
+        <div class="mod-desc">Audio system — main speakers, subwoofer, amplification and audio interface, picked from the Equipment Library, with photos and Ready check.</div>
         <div class="mod-stats">
-          <div class="ms"><span class="k">Speaker Model</span><span class="v ${(P.speakersModel||'').trim()?'ok':''}">${(P.speakersModel||'').trim() ? esc(P.speakersModel) : '—'}</span></div>
-          <div class="ms"><span class="k">Subwoofer</span><span class="v ${(P.subwooferModel||'').trim()?'ok':''}">${(P.subwooferModel||'').trim() ? esc(P.subwooferModel) : '—'}</span></div>
+          <div class="ms"><span class="k">Components</span><span class="v ${state.speakers.rows.filter(r=>(r.name||'').trim()).length?'ok':''}">${state.speakers.rows.filter(r=>(r.name||'').trim()).length || 'None'}</span></div>
+          <div class="ms"><span class="k">Components Cost</span><span class="v">${fmt(spkTotal())}</span></div>
+          <div class="ms"><span class="k">Photos</span><span class="v">${photosOf('speakers').length} / ${PHOTO_MAX.speakers}</span></div>
+          <div class="ms"><span class="k">Audio Build</span><span class="v" style="display:inline-flex;align-items:center;gap:6px"><span class="led sm ${state.speakers.ready?'on':''}"></span>${state.speakers.ready?'Ready':'Not Ready'}</span></div>
         </div>
-        <a class="mod-btn disabled" href="#/speakers">Coming Soon</a>
+        <a class="mod-btn primary" href="#/speakers">Open Module ${IC.open}</a>
       </div>
 
       <div class="mod active${_lastMod==='#/camera'?' lastmod':''}">
@@ -3171,6 +3183,11 @@ function shipPlaces(){
   srSeparate.forEach((it,i)=> places.push({key:'pl|sr-sep|'+i, name:it.name, module:'Server & Rack', items:[it]}));
   /* ---- Projectors — each unit its own place ---- */
   ((state.projectors&&state.projectors.list)||[]).forEach((p,i)=>{ const nm=((p.mfr||'')+' '+(p.model||'')).trim(); if(!nm) return; places.push({key:'pl|proj|'+(p.id||i), name: nm + (p.serial?(' · SN '+p.serial):(p.num?(' #'+p.num):'')), module:'Projectors', items:[{key:'i|proj|'+(p.id||i), name:nm, qty:1, link:''}]}); });
+  /* ---- Speakers / Audio (BUILD 14.20) ---- */
+  const spkCombined = [], spkSeparate = [];
+  ((state.speakers&&state.speakers.rows)||[]).forEach((r,idx)=>{ if(!(r.name||'').trim()) return; (isCombined(r)?spkCombined:spkSeparate).push(mkItem(r,'i|spk|'+idx)); });
+  if(spkCombined.length) places.push({key:'pl|spk', name:'Speakers', module:'Speakers', items:spkCombined});
+  spkSeparate.forEach((it,i)=> places.push({key:'pl|spk-sep|'+i, name:it.name, module:'Speakers', items:[it]}));
   /* ---- Camera ---- */
   const camCombined = [], camSeparate = [];
   ((state.camera&&state.camera.rows)||[]).forEach((r,idx)=>{ if(!(r.name||'').trim()) return; (isCombined(r)?camCombined:camSeparate).push(mkItem(r,'i|cam|'+idx)); });
@@ -3727,6 +3744,7 @@ function liveSlice(d){
     vj:      { rows: (d.vj && d.vj.rows) || [], ready: !!(d.vj && d.vj.ready) },
     rack:    { rows: d.rack.rows || [], heightU: d.rack.heightU || 12, slots: d.rack.slots || {} },
     camera:  { rows: (d.camera && d.camera.rows) || [], ready: !!(d.camera && d.camera.ready) },
+    speakers:{ rows: (d.speakers && d.speakers.rows) || [], ready: !!(d.speakers && d.speakers.ready) },
     projectors: { list: (d.projectors && d.projectors.list) || [], selId: (d.projectors && d.projectors.selId) || null },
     validation:   d.validation || {},                 /* dashboard test chips — live now (BUILD 12.7) */
     vjValidation: d.vjValidation || {},
@@ -3763,6 +3781,7 @@ function liveApply(d, live){
   if(live.vj){ d.vj = d.vj || {rows:[],ready:false,photos:[]}; setIf(d.vj, 'rows', live.vj.rows || []); setIf(d.vj, 'ready', !!live.vj.ready); }
   if(live.rack){ setIf(d.rack, 'rows', live.rack.rows || []); setIf(d.rack, 'heightU', live.rack.heightU || 12); setIf(d.rack, 'slots', live.rack.slots || {}); }
   if(live.camera){ d.camera = d.camera || {rows:[],ready:false,photos:[]}; setIf(d.camera, 'rows', live.camera.rows || []); setIf(d.camera, 'ready', !!live.camera.ready); }
+  if(live.speakers){ d.speakers = d.speakers || {rows:[],ready:false,photos:[]}; setIf(d.speakers, 'rows', live.speakers.rows || []); setIf(d.speakers, 'ready', !!live.speakers.ready); }
   if(live.projectors){ d.projectors = d.projectors || {list:[],selId:null,models:{}}; setIf(d.projectors, 'list', live.projectors.list || []); setIf(d.projectors, 'selId', live.projectors.selId || null); }
   if(live.validation)   setIf(d, 'validation',   live.validation);      /* dashboard test chips (BUILD 12.7) */
   if(live.vjValidation) setIf(d, 'vjValidation', live.vjValidation);
@@ -4394,7 +4413,7 @@ async function fbpBrowseMirror(e){
    Google Drive (the 13.x media layer, untouched). A full project JSON is still assembled
    locally for export/backup at any time. Master switch: `var _FS = true` (RTDB `_FBP` off). */
 const FS_PROJECT_ID = 'fulldome-psp';
-const FS_SECTIONS = ['project','server','vj','rack','camera','projectors','validation','vjValidation','shipping'];
+const FS_SECTIONS = ['project','server','vj','rack','camera','speakers','projectors','validation','vjValidation','shipping'];
 var _fsApp = null, _fsDb = null, _fsAuthObj = null, _fsCol = null, _fsUnsub = null, _fsSdkP = null;
 var _fsReady = false, _fsStarted = false, _fsApplying = false, _fsPushT = null, _fsSeededPush = false;
 var _fsLocal = {};   /* pid -> {section: sig, _seen, _done, _msig} — skip no-op section writes */
@@ -5313,7 +5332,8 @@ const PHOTO_DIRS = [
   ['server', 'Dome Server'],
   ['vj',     'VJ Server'],
   ['rack',   'Rack'],
-  ['camera', 'Camera']
+  ['camera', 'Camera'],
+  ['speakers', 'Speakers']
 ];
 function cloudPhotoJobs(e){
   /* every photo of the project as {dir, name, data} — projector model shots
@@ -5889,7 +5909,7 @@ var _pfBusy = false;
 async function refreshPrices(kind){
   if(_pfBusy){ flashStat('Price update already running…'); return; }
   const rows = ordRowsOf(kind);
-  const pid = kind==='rack' ? 'rackP' : kind==='vj' ? 'vjP' : kind==='camera' ? 'camP' : 'srvP';
+  const pid = kind==='rack' ? 'rackP' : kind==='vj' ? 'vjP' : kind==='camera' ? 'camP' : kind==='speakers' ? 'spkP' : 'srvP';
   const targets = rows.map((r,i)=>({r,i})).filter(t => lpUrlOf({value:t.r.link||''}));
   if(!targets.length){ flashStat('No links in this table'); return; }
   _pfBusy = true;
@@ -5941,7 +5961,7 @@ function schedAutoPrice(kind, i){
     const r2 = ordRowsOf(kind)[i];
     if(p && r2 && !String(r2.price||'').trim()){
       r2.price = p; saveState();
-      const pid = kind==='rack' ? 'rackP' : kind==='vj' ? 'vjP' : kind==='camera' ? 'camP' : 'srvP';
+      const pid = kind==='rack' ? 'rackP' : kind==='vj' ? 'vjP' : kind==='camera' ? 'camP' : kind==='speakers' ? 'spkP' : 'srvP';
       const el = document.getElementById(pid + i); if(el) el.value = p;
       if(typeof refreshTotals==='function') refreshTotals();
       flashStat('Price fetched from the link: ' + fmt(parseFloat(p)) + ' ✓');
@@ -6039,7 +6059,7 @@ function lpHide(){
    place, no rerender. */
 const ORD_TITLES = ['Not ordered', 'Ordered', 'Received'];
 function ordRowsOf(kind){
-  return kind==='rack' ? state.rack.rows : kind==='vj' ? state.vj.rows : kind==='camera' ? state.camera.rows : state.server.rows;
+  return kind==='rack' ? state.rack.rows : kind==='vj' ? state.vj.rows : kind==='camera' ? state.camera.rows : kind==='speakers' ? state.speakers.rows : state.server.rows;
 }
 function ordDot(kind, i, r){
   const s = parseInt(r.ord)||0;
@@ -6049,7 +6069,7 @@ function ordDot(kind, i, r){
    checked = this item ships in its module's combined place; unchecked = its own place.
    Default: checked, EXCEPT tripods (they ship separately). */
 function isCombined(r){ if(!r) return false; return (r.ship===undefined) ? !/tripod/i.test(r.name||'') : !!r.ship; }
-function shipRowsOf(kind){ return kind==='server'?state.server.rows : kind==='vj'?(state.vj&&state.vj.rows||[]) : kind==='rack'?state.rack.rows : kind==='camera'?(state.camera&&state.camera.rows||[]) : []; }
+function shipRowsOf(kind){ return kind==='server'?state.server.rows : kind==='vj'?(state.vj&&state.vj.rows||[]) : kind==='rack'?state.rack.rows : kind==='camera'?(state.camera&&state.camera.rows||[]) : kind==='speakers'?(state.speakers&&state.speakers.rows||[]) : []; }
 function toggleShip(kind, i, checked){ const rows=shipRowsOf(kind); if(!rows[i]) return; rows[i].ship = !!checked; saveState(); }
 function shipChk(kind, i, r){ return `<td style="width:4%;text-align:center" title="Shipping — combine into one place (uncheck = ships as its own place)"><input type="checkbox" style="width:15px;height:15px;cursor:pointer;accent-color:var(--fdp-red)" ${isCombined(r)?'checked':''} onchange="toggleShip('${kind}',${i},this.checked)"></td>`; }
 function cycOrd(kind, i, el){
@@ -6065,6 +6085,8 @@ function cycOrd(kind, i, el){
   ['kVj','stVj','vjFoot'].forEach(id=>{const e2=document.getElementById(id); if(e2) e2.textContent=t;});
   t = fmt(camTotal());
   ['kCam','stCam','camFoot'].forEach(id=>{const e2=document.getElementById(id); if(e2) e2.textContent=t;});
+  t = fmt(spkTotal());
+  ['kSpk','stSpk','spkFoot'].forEach(id=>{const e2=document.getElementById(id); if(e2) e2.textContent=t;});
   renderHeader();
 }
 
@@ -6131,6 +6153,136 @@ function refreshCamReadyUI(){
   set('camReadyBtn', e=>e.classList.toggle('on',ready));
   set('camBtnLbl', e=>e.textContent = ready?'Camera Ready':'Mark as Ready');
   set('kCamLedTxt', e=>e.textContent = ready?'Ready':'Not Ready');
+}
+
+/* ---------- SPEAKER / AUDIO SYSTEM MODULE (BUILD 14.20) ----------
+   Mirrors the Calibration Camera module: hardware rows picked from the Equipment
+   Library "Speaker / Audio System" group (SPK_CATS), qty/price/link, per-row totals
+   without full rerender, Mark as Ready toggle, photos card (kind 'speakers').
+   The rows flow into Equipment & Shipping (a "Speakers" module group). */
+const spkListId = cat => 'dlSpkCat' + Math.max(0, ciIndexOf(spkCats(), cat));
+const libSpkByCat = cat => libByGroupCat('speakers', cat);
+function spkTotal(){ return state.speakers.rows.reduce((s,r)=> s + rowSum(r), 0); }
+function addSpk(){ state.speakers.rows.push(blankRow()); saveState(); route(); }
+function rmSpk(i){ state.speakers.rows.splice(i,1); saveState(); route(); }
+function setSpkCat(i, v){
+  state.speakers.rows[i].cat = v;
+  if(autoFillFromCat(state.speakers.rows[i], libSpkByCat(v))) flashStat('Filled from Library ✓');
+  saveState(); rerenderKeepScroll();
+}
+function updSpk(i, k, v){
+  state.speakers.rows[i][k] = v;
+  if(k === 'link') schedAutoPrice('speakers', i);
+  if(k === 'name'){
+    const it = libFind(v);
+    if(it){
+      if(!(String(state.speakers.rows[i].price||'').trim()) && String(it.price||'').trim()){
+        state.speakers.rows[i].price = it.price;
+        const pe = document.getElementById('spkP'+i); if(pe) pe.value = it.price;
+      }
+      if(!(String(state.speakers.rows[i].link||'').trim()) && (it.link||'').trim()){
+        state.speakers.rows[i].link = it.link;
+        const le = document.getElementById('spkL'+i); if(le) le.value = it.link;
+      }
+    }
+  }
+  saveState();
+  const r = state.speakers.rows[i];
+  const t = priceNum(r.price)*(parseFloat(r.qty)||1);
+  const cell = document.getElementById('spkRowT'+i); if(cell) cell.textContent = t ? fmt(t) : '—';
+  const s = fmt(spkTotal());
+  ['kSpk','stSpk','spkFoot'].forEach(id=>{const e=document.getElementById(id); if(e) e.textContent=s;});
+}
+function addSpkRowToLib(i){
+  const row = state.speakers.rows[i]; if(!row) return;
+  const name = (row.name||'').trim();
+  if(!name || libFind(name)) return;
+  let cat = (row.cat||'').trim();
+  if(cat && !groupCats('speakers').includes(cat)) cat = '';
+  ensureLibGroup('speakers').push({cat, name, price: row.price||'', link: row.link||''});
+  sortByCat(db.library.speakers, groupCats('speakers'));
+  saveState(); rerenderKeepScroll();
+  flashStat('Added to Library ✓');
+}
+function toggleSpkReady(){
+  if(state.speakers.ready){ state.speakers.ready = false; saveState(); refreshSpkReadyUI(); renderSideProject(); return; }
+  if(!state.speakers.rows.some(r=>(r.name||'').trim())){
+    alert('Add at least one speaker component before marking Ready.'); return;
+  }
+  state.speakers.ready = true; saveState(); refreshSpkReadyUI(); renderSideProject();
+}
+function refreshSpkReadyUI(){
+  const ready = state.speakers.ready;
+  const set = (id,fn)=>{const e=document.getElementById(id); if(e) fn(e);};
+  set('spkBtnLed', e=>e.classList.toggle('on',ready));
+  set('kSpkLed', e=>e.classList.toggle('on',ready));
+  set('spkReadyBtn', e=>e.classList.toggle('on',ready));
+  set('spkBtnLbl', e=>e.textContent = ready?'Speakers Ready':'Mark as Ready');
+  set('kSpkLedTxt', e=>e.textContent = ready?'Ready':'Not Ready');
+}
+function pageSpeakers(){
+  const ready = state.speakers.ready;
+  const P = state.project;
+  const spkRows = state.speakers.rows.map((r,i)=>`
+    <tr>
+      <td class="tight" style="width:17%"><select class="cell ${!(r.cat||'').trim()?'empty':''}" onchange="setSpkCat(${i},this.value);this.classList.toggle('empty',!this.value)">
+        <option value="" ${!(r.cat||'').trim()?'selected':''}>— Category —</option>
+        ${spkCats().map(c=>`<option value="${c}" ${r.cat===c?'selected':''}>${c}</option>`).join('')}
+        ${(r.cat||'').trim() && ciIndexOf(spkCats(), r.cat)===-1 ? `<option value="${esc(r.cat)}" selected>${esc(r.cat)}</option>` : ''}
+      </select></td>
+      <td class="tight"><input class="cell b" id="spkN${i}" onfocus="dlFocus(this)" onblur="dlBlur(this)" list="${(r.cat||'').trim()?spkListId(r.cat):'dlLibAll'}" value="${esc(r.name)}" placeholder="Pick from Library or type" oninput="updSpk(${i},'name',this.value)"></td>
+      <td style="width:6%;text-align:center">${ordDot('speakers', i, r)}</td>
+      ${shipChk('speakers', i, r)}
+      <td class="tight" style="width:7%"><input class="cell num" value="${esc(r.qty)}" oninput="updSpk(${i},'qty',this.value)"></td>
+      <td class="tight" style="width:11%"><input class="cell num" id="spkP${i}" value="${esc(r.price)}" placeholder="—" oninput="updSpk(${i},'price',this.value)"></td>
+      <td class="num" style="width:11%"><span id="spkRowT${i}">${fmt(priceNum(r.price)*(parseFloat(r.qty)||1) || null)}</span></td>
+      <td class="tight" style="width:15%"><div style="display:flex;align-items:center;gap:4px"><input class="cell" id="spkL${i}" onmouseenter="lpShow(this)" onmouseleave="lpHide()" value="${esc(r.link)}" placeholder="https://" oninput="updSpk(${i},'link',this.value)"><button class="mod-btn" style="padding:4px 7px;flex:none" title="Copy link" onclick="copyRowLink('spkL${i}', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button><button class="mod-btn" style="padding:4px 7px;flex:none" title="Open link" onclick="openRowLink('spkL${i}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><path d="M15 3h6v6M10 14L21 3"/></svg></button></div></td>
+      <td class="tolib">${(r.name||'').trim() && !libFind(r.name) ? `<button title="Add to Library" onclick="addSpkRowToLib(${i})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M9 9.5h6M12 6.5v6"/></svg></button>` : ''}</td>
+      <td class="rm"><button title="Remove" onclick="rmSpk(${i})">×</button></td>
+    </tr>`).join('');
+
+  return `
+  <div class="page">
+    <div class="crumbs"><a href="#/dashboard">Dashboard</a> › <span class="cur">Speakers</span></div>
+    <datalist id="dlLibAll">${libAllItems().map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>
+    ${spkCats().map((c,ci)=>`<datalist id="dlSpkCat${ci}">${libSpkByCat(c).map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>`).join('')}
+    <div class="pagehead">
+      <div class="eyebrow">#${esc(P.number)} · ${esc(P.title)}${P.type?' · System: '+esc(P.type):''}${P.domeDiameter?' · '+esc(P.domeDiameter)+' m '+esc(P.domeType||''):''}</div>
+      <h1>Speakers</h1>
+      <div class="sub">Assemble and document the audio system — main speakers, subwoofer, amplification and audio interface — picked from the Equipment Library.</div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi red"><div class="kl">Audio components cost</div><div class="kvv" id="kSpk">${fmt(spkTotal())}</div></div>
+      <div class="kpi"><div class="kl">Components</div><div class="kvv">${state.speakers.rows.filter(r=>(r.name||'').trim()).length}</div></div>
+      <div class="kpi"><div class="kl">Photos</div><div class="kvv">${photosOf('speakers').length} <small>/ ${PHOTO_MAX.speakers}</small></div></div>
+      <div class="kpi"><div class="kl">Audio build</div>
+        <div class="kvv" style="font-size:15px;display:flex;align-items:center;gap:8px"><span class="led ${ready?'on':''}" id="kSpkLed"></span><span id="kSpkLedTxt">${ready?'Ready':'Not Ready'}</span></div></div>
+    </div>
+
+    <!-- ================= SPEAKER BUILDER ================= -->
+    <div class="sec-title" id="speakers">
+      <div class="stic">${IC.spk}</div>
+      <div><h2>Speaker Builder</h2><div class="st-sub">Hardware is picked from the Equipment Library — Speaker / Audio System group.</div></div>
+      <div class="st-total"><div class="l">Components total</div><div class="v" id="stSpk">${fmt(spkTotal())}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Hardware configuration</h3><button class="mod-btn" style="padding:5px 11px;font-size:11.5px;margin-right:8px" title="Fetch fresh prices from the links" onclick="refreshPrices('speakers')">↻ Prices</button>
+        <button class="ready-btn ${ready?'on':''}" id="spkReadyBtn" onclick="toggleSpkReady()">
+          <span class="led ${ready?'on':''}" id="spkBtnLed"></span><span id="spkBtnLbl">${ready ? 'Speakers Ready' : 'Mark as Ready'}</span></button>
+      </div>
+      <table class="eq">
+        <thead><tr><th>Category</th><th>Hardware</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:center" title="Combine into one shipping place">Ship</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th><th>Link</th><th></th><th></th></tr></thead>
+        <tbody>${spkRows}</tbody>
+        <tfoot><tr><td colspan="6">Audio total</td><td class="num" id="spkFoot">${fmt(spkTotal())}</td><td colspan="3"></td></tr></tfoot>
+      </table>
+      <button class="add-line" onclick="addSpk()">+ Add component</button>
+    </div>
+
+    ${photoCard('speakers','Speaker Photos','Speakers, subwoofer and installation photos — up to '+PHOTO_MAX.speakers+'. Shown in Documentation as "Speakers — #'+esc(P.number)+'".')}
+
+    <a class="backlink" href="#/dashboard">${IC.back} Back to Dashboard</a>
+  </div>`;
 }
 
 function pageCamera(){
@@ -6751,6 +6903,7 @@ function pageDocumentation(){
     const rr  = mk(entryPhotos(e,'rear'), 'rear', 'rk', 'Rack · Rear');
     const rck = mk(entryPhotos(e,'rack'), 'rack', 'rk', 'Rack');
     const cam = mk(entryPhotos(e,'camera'), 'camera', '', 'Camera');
+    const spk = mk(entryPhotos(e,'speakers'), 'speakers', '', 'Speakers');
     /* Shipping — pallet photos, one label per pallet */
     const pp = (e.data.shipping && e.data.shipping.palletPhotos) || {};
     const pals = (e.data.shipping && e.data.shipping.pallets) || [];
@@ -6769,15 +6922,15 @@ function pageDocumentation(){
           </div>
         </div>`; });
     });
-    if(!srv && !vjp && !rck && !fr && !rr && !cam && !ship) return '';
-    const modCount = entryPhotos(e,'server').length + entryPhotos(e,'vj').length + entryPhotos(e,'rack').length + entryPhotos(e,'front').length + entryPhotos(e,'rear').length + entryPhotos(e,'camera').length + shipN;
+    if(!srv && !vjp && !rck && !fr && !rr && !cam && !spk && !ship) return '';
+    const modCount = entryPhotos(e,'server').length + entryPhotos(e,'vj').length + entryPhotos(e,'rack').length + entryPhotos(e,'front').length + entryPhotos(e,'rear').length + entryPhotos(e,'camera').length + entryPhotos(e,'speakers').length + shipN;
     return `
     <div class="card docsec">
       <div class="card-head"><h3>#${esc(P.number)} — ${esc(P.title||'')}</h3>
         <span class="chip c-mut"><span class="cd"></span>${modCount} photos</span>
         <span style="flex:1"></span>
         <button class="mod-btn ${_docGalEdit?'primary':''}" style="padding:4px 12px;font-size:12px" onclick="toggleDocGalEdit()">${_docGalEdit?'Done':'Edit'}</button></div>
-      <div class="phgrid">${fr}${rr}${srv}${vjp}${rck}${cam}${ship}</div>
+      <div class="phgrid">${fr}${rr}${srv}${vjp}${rck}${cam}${spk}${ship}</div>
     </div>`;
   }).filter(Boolean).join('');
 
@@ -6885,10 +7038,16 @@ function pageDocumentation(){
 }
 
 /* ---------- EQUIPMENT LIBRARY ---------- */
+/* BUILD 14.20: collapsible library groups. Every group starts COLLAPSED each time the
+   Equipment Library tab is entered (reset in route()); the user expands what they need.
+   Toggling a single group does NOT reset the others (rerenderKeepScroll keeps the state). */
+var _libCollapsed = {};
+function toggleLibGroup(key){ _libCollapsed[key] = !_libCollapsed[key]; rerenderKeepScroll(); }
 function pageLibrary(){
   normalizeSort();
   const groups = LIB_GROUPS.map(g=>{
     const items = db.library[g.key] || [];
+    const collapsed = !!_libCollapsed[g.key];
     const rows = items.map((it,i)=>`
       <tr>
         <td class="tight" style="width:17%"><select class="cell ${!(it.cat||'').trim()?'empty':''}"
@@ -6904,19 +7063,24 @@ function pageLibrary(){
       </tr>`).join('');
     return `
     <div class="card">
-      <div class="card-head"><h3>${g.label}</h3>
+      <div class="card-head" style="cursor:pointer;user-select:none" onclick="toggleLibGroup('${g.key}')" title="${collapsed?'Expand':'Collapse'}">
+        <span style="display:inline-flex;width:16px;flex:none;color:var(--ink2);transition:transform .15s;transform:rotate(${collapsed?'-90deg':'0deg'})">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="width:14px;height:14px"><path d="M6 9l6 6 6-6"/></svg></span>
+        <h3 style="margin:0">${g.label}</h3>
         <span class="chip c-mut"><span class="cd"></span>${items.filter(x=>(x.name||'').trim()).length} items</span></div>
-      <div style="font-size:12px;color:var(--ink2);margin:-6px 0 10px">${g.hint}</div>
-      <div class="catbar">
-        <input class="catinput" id="catNew_${g.key}" placeholder="New category"
-          onkeydown="if(event.key==='Enter')addCategory('${g.key}')">
-        <button class="catadd" title="Add category" onclick="addCategory('${g.key}')">+</button>
+      <div style="display:${collapsed?'none':'block'}">
+        <div style="font-size:12px;color:var(--ink2);margin:4px 0 10px">${g.hint}</div>
+        <div class="catbar">
+          <input class="catinput" id="catNew_${g.key}" placeholder="New category"
+            onkeydown="if(event.key==='Enter')addCategory('${g.key}')">
+          <button class="catadd" title="Add category" onclick="addCategory('${g.key}')">+</button>
+        </div>
+        <table class="eq">
+          <thead><tr><th>Category</th><th>Name</th><th style="text-align:right">Price</th><th>Link</th><th></th></tr></thead>
+          <tbody>${rows || ''}</tbody>
+        </table>
+        <button class="add-line" onclick="addLib('${g.key}')">+ Add item</button>
       </div>
-      <table class="eq">
-        <thead><tr><th>Category</th><th>Name</th><th style="text-align:right">Price</th><th>Link</th><th></th></tr></thead>
-        <tbody>${rows || ''}</tbody>
-      </table>
-      <button class="add-line" onclick="addLib('${g.key}')">+ Add item</button>
     </div>`;
   }).join('');
 
@@ -6947,7 +7111,7 @@ const ROUTES = {
   '#/camera':        {nav:'dashboard', render:pageCamera},
   '#/cables':        {nav:'dashboard', render:()=>pagePlaceholder('Cables', IC.cable, 'Cable ID, type, from/to, length, connectors, statuses — planned module.', 'Coming Soon')},
   '#/equipment':     {nav:'dashboard', render:pageShipping},   /* merged into Equipment & Shipping (BUILD 12.46) — alias kept for old links */
-  '#/speakers':      {nav:'dashboard', render:()=>pagePlaceholder('Speakers', IC.spk, 'Main speakers and subwoofer selection, amplification and audio layout — planned module.', 'Coming Soon')},
+  '#/speakers':      {nav:'dashboard', render:pageSpeakers},
   '#/network':       {nav:'dashboard', render:()=>pagePlaceholder('Network', IC.net, 'Switches, VLANs, IP plan and connectivity for the dome system — planned module.', 'Coming Soon')},
   '#/fan':           {nav:'dashboard', render:()=>pagePlaceholder('Screen Fan', IC.fan, 'Screen ventilation / fan system for the dome surface — planned module.', 'Coming Soon')},
   '#/tools':         {nav:'dashboard', render:()=>pagePlaceholder('Tools', IC.tool, 'Installation tools, rigging and calibration equipment checklist — planned module.', 'Coming Soon')},
@@ -6967,6 +7131,10 @@ function route(){
   if(!state.project && !r.noProject) h = '#/create';
   const rr = ROUTES[h];
   if(MODULE_ROUTES.indexOf(h) >= 0) _lastMod = h;   /* remember which module we entered */
+  /* BUILD 14.20: entering the Equipment Library tab collapses every group (in-page
+     rerenders keep the state — route._prevHash stays '#/library'). */
+  if(h === '#/library' && route._prevHash !== '#/library'){ _libCollapsed = {}; LIB_GROUPS.forEach(g=>{ _libCollapsed[g.key] = true; }); }
+  route._prevHash = h;
   renderNav(rr.nav);
   document.getElementById('content').innerHTML = rr.render();
   document.getElementById('content').scrollTop = 0;
