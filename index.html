@@ -628,7 +628,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.29 · ACTIVE DOT + READINESS BY ROWS</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.30 · EMPTY ACTIVE BADGE FULLY RED</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -846,7 +846,9 @@ function readyCardColor(d){
    piece of equipment, RED (but still labelled Active) when it's empty, so you can see at a glance which
    sections have actually been started/filled. */
 function modActiveBadge(hasData){
-  return '<span class="mod-badge b-active" title="' + (hasData ? 'Active — has equipment' : 'Active — nothing added yet') + '"><span class="bd" style="background:' + (hasData ? '#3fb950' : 'var(--fdp-red)') + '"></span>Active</span>';
+  if(hasData) return '<span class="mod-badge b-active" title="Active — has equipment"><span class="bd" style="background:#3fb950"></span>Active</span>';
+  /* empty section: the WHOLE badge is red — red text, red border, red dot */
+  return '<span class="mod-badge" title="Active — nothing added yet" style="color:var(--fdp-red);background:#fdecec;border:1px solid #f2b8b8"><span class="bd" style="background:var(--fdp-red)"></span>Active</span>';
 }
 const _named = rows => (rows||[]).some(r=>(r.name||'').trim());
 const READY_LABEL = { red:'Not started', yellow:'In progress', green:'Ready' };
