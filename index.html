@@ -628,7 +628,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.20 · SPEAKERS MODULE + LIB COLLAPSE</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.22 · EDITABLE CATEGORIES</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1005,6 +1005,7 @@ function saveState(){
   if(!saveState._skipCloud && typeof cloudTouch === 'function'){ try{ cloudTouch(); }catch(e){} }
   if(!saveState._skipCloud && typeof liveTouch === 'function'){ try{ liveTouch(); }catch(e){} }
   if(!saveState._skipCloud && typeof syncTouch === 'function'){ try{ syncTouch(); }catch(e){} }   /* BUILD 14.0: push the edit to the active DB (Firestore, or RTDB fallback) */
+  if(!saveState._skipCloud && _FS && typeof libTouch === 'function'){ try{ libTouch(); }catch(e){} }   /* BUILD 14.21: publish shared library changes (debounced, no-op unless the library actually changed) */
   if(!idbOk){
     try{
       localStorage.setItem(STORE_KEY, JSON.stringify(db));
@@ -1209,27 +1210,51 @@ const LIB_GROUPS = [
 ];
 const blankLibItem = () => ({cat:'', name:'', price:'', link:''});
 
-/* ---------- custom categories (per group, user-defined) ---------- */
-function customCats(key){
+/* ---------- categories (per group) — BUILD 14.22 fully user-editable ----------
+   Categories are now stored per group in db.cats[key] (an ordered array), SEEDED once from the
+   built-in defaults (LIB_GROUPS[].cats) + any legacy db.customCats. From then on EVERY category —
+   including the seeded defaults — can be renamed (pencil) or removed (cross); adding is unchanged.
+   Rows/items that referenced a removed/renamed category keep their string (shown as a one-off option),
+   so nothing is lost. db.customCats is kept only for backward reading. */
+function customCats(key){   /* legacy accessor — kept so old code/paths don't break */
   if(!db.customCats) db.customCats = {};
   if(!Array.isArray(db.customCats[key])) db.customCats[key] = [];
   return db.customCats[key];
 }
-function groupCats(key){
-  const g = LIB_GROUPS.find(x=>x.key===key);
-  return (g ? g.cats : []).concat(customCats(key));
+function catsBase(key){ const g = LIB_GROUPS.find(x=>x.key===key); return (g ? g.cats : []); }
+/* the editable category list for a group — seeds itself once from defaults + legacy custom cats */
+function catsOf(key){
+  if(!db.cats || typeof db.cats!=='object') db.cats = {};
+  if(!Array.isArray(db.cats[key])){
+    const seed = [], seen = {};
+    catsBase(key).concat(customCats(key)).forEach(c=>{ const k=String(c||'').trim(); if(k && !seen[k.toLowerCase()]){ seen[k.toLowerCase()]=1; seed.push(k); } });
+    db.cats[key] = seed;
+  }
+  return db.cats[key];
 }
+function groupCats(key){ return catsOf(key); }
 function addCategory(key){
   const el = document.getElementById('catNew_'+key);
   const v = (el && el.value || '').trim();
   if(!v) return;
-  if(groupCats(key).some(c=>c.toLowerCase()===v.toLowerCase())){ el.value=''; return; }
-  customCats(key).push(v);
+  if(catsOf(key).some(c=>c.toLowerCase()===v.toLowerCase())){ el.value=''; return; }
+  catsOf(key).push(v);
   saveState(); rerenderKeepScroll();
   const el2 = document.getElementById('catNew_'+key); if(el2) el2.focus();
 }
 function removeCategory(key, idx){
-  customCats(key).splice(idx,1);
+  const arr = catsOf(key); if(idx<0 || idx>=arr.length) return;
+  arr.splice(idx,1);
+  saveState(); rerenderKeepScroll();
+}
+/* rename a category in place; library items in THIS group that used the old name follow (BUILD 14.22) */
+function renameCategory(key, idx){
+  const arr = catsOf(key); const old = arr[idx]; if(old==null) return;
+  const v = (prompt('Rename category', old) || '').trim();
+  if(!v || v===old) return;
+  if(arr.some((c,i)=>i!==idx && c.toLowerCase()===v.toLowerCase())){ alert('A category named "'+v+'" already exists in this group.'); return; }
+  arr[idx] = v;
+  ((db.library && db.library[key]) || []).forEach(it=>{ if((it.cat||'')===old) it.cat = v; });   /* keep library items attached */
   saveState(); rerenderKeepScroll();
 }
 
@@ -1335,7 +1360,7 @@ function extendCats(base){
 }
 function srvCats(){ return extendCats(groupCats('server')); }
 function camCats(){ return extendCats(groupCats('cameras')); }
-function spkCats(){ return extendCats(groupCats('speakers')); }
+function spkCats(){ return groupCats('speakers'); }   /* BUILD 14.21: speakers show ONLY speaker categories (own base + custom), NOT the cross-group extended list */
 /* Native datalists filter by the current text — a filled field shows only
    itself. On focus, if the value is a library item, clear it temporarily so
    the WHOLE category list opens; restore on blur if nothing new was picked.
@@ -1431,7 +1456,7 @@ function restoreHandles(){ if(idbOk){ idbGet2('handles').then(v=>{ if(v && typeo
 function projPayload(e){
   return JSON.stringify({app:'Fulldome Projection SP', version:4, saved:new Date().toISOString(),
     done:!!e.done, doneAt:e.doneAt||0,                          /* completion status travels with the project */
-    state:e.data, library:db.library, customCats:db.customCats,
+    state:e.data, library:db.library, customCats:db.customCats, cats:db.cats||{},
     projLib:db.projLib||[], projIpStart:db.projIpStart||null}, null, 2);
 }
 function downloadPayload(e, data){
@@ -1664,13 +1689,10 @@ function applyProjectText(text){
         });
       }
       if(obj.projIpStart && !db.projIpStart) db.projIpStart = obj.projIpStart;
-      if(obj.customCats && typeof obj.customCats==='object'){
-        Object.keys(obj.customCats).forEach(k=>{
-          (obj.customCats[k]||[]).forEach(c=>{
-            if(c && !groupCats(k).some(x=>x.toLowerCase()===String(c).toLowerCase())) customCats(k).push(c);
-          });
-        });
-      }
+      /* categories from a project file — merge missing ones into the editable list (BUILD 14.22:
+         cats live in db.cats now; still accept legacy obj.customCats) */
+      const _mergeCats = src => { if(!src || typeof src!=='object') return; Object.keys(src).forEach(k=>{ (src[k]||[]).forEach(c=>{ if(c && !catsOf(k).some(x=>x.toLowerCase()===String(c).toLowerCase())) catsOf(k).push(c); }); }); };
+      _mergeCats(obj.cats); _mergeCats(obj.customCats);
       if(!e.frozen) db.activeId = e.id;
       syncActive();
       normalizeSort();
@@ -2517,7 +2539,7 @@ function loadDemo(){
     3:'Tripp Lite PDU 12-Outlet',2:'Blank Panel',1:'Blank Panel'};
   /* register demo rack categories as user categories */
   const demoCats = [...new Set(data.rack.rows.map(r=>r.cat).filter(Boolean))];
-  demoCats.forEach(c => { if(!groupCats('rack').includes(c)) customCats('rack').push(c); });
+  demoCats.forEach(c => { if(!groupCats('rack').includes(c)) catsOf('rack').push(c); });
   const entry = {id:newId(), frozen:false, data};
   db.projects.push(entry);
   db.activeId = entry.id; syncActive();
@@ -4582,6 +4604,54 @@ function fsRemoveLocal(pid){
   if(wasActive){ const alt = db.projects.find(p => !p.frozen); db.activeId = alt ? alt.id : null; syncActive(); }
   return true;
 }
+/* ---------- SHARED EQUIPMENT LIBRARY SYNC (BUILD 14.21) ----------
+   The library (db.library + db.customCats) is NOT project data — it used to live ONLY in the
+   local browser (and inside project files), so a second machine that had the projects still
+   showed an EMPTY library. Now it syncs through Firestore as ONE reserved doc
+   `projects/__shared_library__` (no `pid`, `kind:'library'` → the project code skips it, and the
+   existing email-allowlist rule on projects/{pid} already permits it — no rules change needed).
+   MERGE-BY-NAME (union), never overwrite/delete: an empty machine GAINS the full library and can
+   never wipe a filled one. New items propagate both ways; the price/link/category of an item that
+   already exists by name is not force-changed across machines (safe, additive). */
+var LIB_DOC_ID = '__shared_library__';
+var _fsLibT = null, _libSigLast = '';
+function libSig(){ try{ const o = {}; LIB_GROUPS.forEach(g => { o[g.key] = ((db.library&&db.library[g.key])||[]).map(it => [it.cat||'', it.name||'', it.price||'', it.link||'']); }); return JSON.stringify([o, db.cats||{}]); }catch(_){ return ''; } }
+function libTouch(){
+  if(!fsReady()) return;
+  const s = libSig();
+  if(s === _libSigLast) return;                 /* library genuinely unchanged → nothing to publish */
+  _libSigLast = s;
+  clearTimeout(_fsLibT); _fsLibT = setTimeout(fsPushLibrary, 1500);
+}
+function fsPushLibrary(){
+  if(!fsReady()) return;
+  const lib = {};
+  LIB_GROUPS.forEach(g => { lib[g.key] = ((db.library&&db.library[g.key])||[]).map(it => ({cat:it.cat||'', name:it.name||'', price:it.price||'', link:it.link||''})); });
+  const cats = {}; LIB_GROUPS.forEach(g => { cats[g.key] = (catsOf(g.key)||[]).slice(); });
+  const hasItems = LIB_GROUPS.some(g => (lib[g.key]||[]).some(it => (it.name||'').trim()));
+  if(!hasItems) return;   /* NEVER publish an empty library (guards a fresh machine clobbering the shared one) */
+  _libSigLast = libSig();
+  _fsCol.doc(LIB_DOC_ID).set({ kind:'library', library:lib, cats:cats, customCats:db.customCats||{}, updatedBy:_gUser||'', at:Date.now() }).catch(function(){});
+}
+/* union-merge an incoming shared library onto the local one; returns true if anything was added */
+function fsApplyLibrary(data){
+  if(!data || data.kind !== 'library') return false;
+  let changed = false;
+  if(!db.library || typeof db.library!=='object') db.library = emptyLibrary();
+  if(!db.customCats || typeof db.customCats!=='object') db.customCats = {};
+  const inLib = data.library || {};
+  LIB_GROUPS.forEach(g => {
+    const inc = inLib[g.key]; if(!Array.isArray(inc)) return;
+    if(!Array.isArray(db.library[g.key])) db.library[g.key] = [];
+    const have = new Set(db.library[g.key].map(it => (it.name||'').trim().toLowerCase()).filter(Boolean));
+    inc.forEach(it => { const nm = (it && it.name || '').trim(); if(nm && !have.has(nm.toLowerCase())){ db.library[g.key].push({cat:it.cat||'', name:nm, price:it.price||'', link:it.link||''}); have.add(nm.toLowerCase()); changed = true; } });
+  });
+  /* categories: union-merge incoming cats (and legacy customCats) into the editable list (BUILD 14.22) */
+  const mergeCats = src => { if(!src || typeof src!=='object') return; Object.keys(src).forEach(k => { const inc = src[k]; if(!Array.isArray(inc)) return; const arr = catsOf(k); inc.forEach(c => { const nm = String(c||'').trim(); if(nm && !arr.some(x => String(x).toLowerCase() === nm.toLowerCase())){ arr.push(nm); changed = true; } }); }); };
+  mergeCats(data.cats); mergeCats(data.customCats);
+  if(changed){ try{ normalizeSort(); }catch(_){} }
+  return changed;
+}
 function fsOnSnapshot(snap){
   _fsApplying = true;
   let touched = false;
@@ -4590,7 +4660,13 @@ function fsOnSnapshot(snap){
        not just the delta) — this is the authority for reconciling what should exist locally */
     const present = {}; snap.forEach(doc => { const d = doc.data(); if(d && d.pid) present[d.pid] = 1; });
     snap.docChanges().forEach(ch => {
-      const data = ch.doc.data(); if(!data || !data.pid) return;
+      const data = ch.doc.data();
+      /* BUILD 14.21: the reserved shared-library doc (no pid, kind:'library') — merge it, never as a project */
+      if(ch.doc.id === LIB_DOC_ID || (data && data.kind === 'library')){
+        if(ch.type !== 'removed' && fsApplyLibrary(data)){ touched = true; libTouch(); }   /* merged new items → republish the union so the other side gets ours too */
+        return;
+      }
+      if(!data || !data.pid) return;
       if(ch.type === 'removed'){ if(fsRemoveLocal(data.pid)) touched = true; return; }
       if(fsApplyDoc(data)) touched = true;
     });
@@ -4648,6 +4724,10 @@ async function fsStart(){
   fsDiag('attaching onSnapshot to projects…');
   _fsUnsub = _fsCol.onSnapshot(function(snap){ fsDiag('snapshot: ' + snap.size + ' docs, ' + snap.docChanges().length + ' changes'); fsOnSnapshot(snap); }, function(err){ _fsFatal = 'Firestore stream error: ' + (err.message||''); fsDiag('SNAPSHOT ERROR: ' + (err.code||'') + ' ' + (err.message||''), true); setCloudStat('⚠ ' + _fsFatal + ' — click to retry'); });
   fsDiag('start ok — listening');
+  /* BUILD 14.21: publish THIS machine's library shortly after connect — by now onSnapshot has
+     delivered any shared library doc (merged in), so we push the union (guarded: never publishes
+     an empty library). Machines converge to the union of everyone's items. */
+  setTimeout(function(){ try{ libTouch(); }catch(_){} }, 3500);
   /* BUILD 14.7: photos/docs live on Drive, pulled by fbpMediaSync. onSnapshot only fires it on a
      DB change — if the media file lagged behind the doc's msig (upload race), the pull got the old
      file and never retried until a reload (the "sync only after Ctrl+Shift+R" bug). A steady 12s
@@ -7074,6 +7154,14 @@ function pageLibrary(){
           <input class="catinput" id="catNew_${g.key}" placeholder="New category"
             onkeydown="if(event.key==='Enter')addCategory('${g.key}')">
           <button class="catadd" title="Add category" onclick="addCategory('${g.key}')">+</button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 12px">
+          ${groupCats(g.key).map((c,ci)=>`
+            <span style="display:inline-flex;align-items:center;gap:5px;background:#eef0f3;border:1px solid var(--line);border-radius:14px;padding:3px 4px 3px 10px;font-size:12px">
+              <span>${esc(c)}</span>
+              <button title="Rename category" onclick="renameCategory('${g.key}',${ci})" style="border:none;background:none;cursor:pointer;color:var(--ink2);padding:2px;display:inline-flex"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
+              <button title="Delete category" onclick="removeCategory('${g.key}',${ci})" style="border:none;background:none;cursor:pointer;color:var(--fdp-red);font-size:15px;line-height:1;padding:0 4px 0 0;font-weight:700">×</button>
+            </span>`).join('') || `<span style="font-size:11.5px;color:#9aa2ad">No categories yet — add one above.</span>`}
         </div>
         <table class="eq">
           <thead><tr><th>Category</th><th>Name</th><th style="text-align:right">Price</th><th>Link</th><th></th></tr></thead>
