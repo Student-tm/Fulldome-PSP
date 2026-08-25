@@ -311,8 +311,9 @@
   .fld textarea{resize:vertical;min-height:70px;line-height:1.5}
   .fld input:focus,.fld select:focus,.fld textarea:focus{outline:none;border-color:var(--fdp-red)}
   .fld .hint{font-size:11px;color:#9aa2ad;margin-top:4px}
-  .libic{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;flex:none;margin-right:2px;transition:background .15s,color .15s}
-  .libic svg{width:17px;height:17px}
+  .libic{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:11px;flex:none;transition:background .15s,color .15s}
+  .libic svg{width:30px;height:30px}
+  .libcount{display:flex;align-items:center;gap:14px;flex:none}
   .create-btn{width:100%;margin-top:18px;background:var(--fdp-red);color:#fff;border:none;border-radius:9px;padding:13px;
     font-family:inherit;font-size:14.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
   .create-btn:hover{background:#b71c1c}
@@ -631,7 +632,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.48 · LIBRARY GROUP ICONS (RED/GREEN)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.49 · LIBRARY ICONS ALIGNED + 2× SIZE</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -8166,9 +8167,8 @@ function pageLibrary(){
     <div class="card" style="${cardStyle}">
       <div class="card-head" style="cursor:${(editing||frozen)?'default':'pointer'};user-select:none" ${(editing||frozen)?'':`onclick="toggleLibGroup('${g.key}')"`} title="${editing?'':(frozen?'Frozen — unfreeze in Edit to open':(collapsed?'Expand':'Collapse'))}">
         ${editing||frozen ? '' : `<span style="display:inline-flex;width:16px;flex:none;color:var(--ink2);transition:transform .15s;transform:rotate(${collapsed?'-90deg':'0deg'})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="width:14px;height:14px"><path d="M6 9l6 6 6-6"/></svg></span>`}
-        <h3 style="margin:0;${frozen?'color:#3a4658':''}">${g.label}</h3>
-        ${libGroupIcon(g.key, collapsed)}
-        <span class="chip c-mut"><span class="cd"></span>${items.filter(x=>(x.name||'').trim()).length} items</span>
+        <h3 style="margin:0;flex:1;${frozen?'color:#3a4658':''}">${g.label}</h3>
+        <div class="libcount">${libGroupIcon(g.key, collapsed)}<span class="chip c-mut" style="min-width:66px;justify-content:center"><span class="cd"></span>${items.filter(x=>(x.name||'').trim()).length} items</span></div>
         ${headCtrls}</div>
       <div style="display:${collapsed?'none':'block'}">${body}
       </div>
