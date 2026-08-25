@@ -628,7 +628,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.38 · TOOLS RIGGING CATEGORIES</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.39 · LIBRARY TOOLS · 4 SUB-TABLES</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1225,8 +1225,19 @@ const CAB_CATS  = ['Power','Network','HDBT','HDMI','DisplayPort','USB','Fiber','
 const SPK_CATS  = ['Main Speaker','Subwoofer','Amplifier','Audio Processor','Audio Interface','Speaker Mount','Audio Cable','Other'];
 const FAN_CATS  = ['Fan Unit','Fan Controller','Ducting','Fan Mount','Power Supply','Filter','Cable','Other'];
 const TOOL_CAT_RIGGING = ['Ropes','Crane Slings','Ratchet Straps','Shackles','Carabiners','Zip Ties'];   /* BUILD 14.38: Ropes, Slings & Rigging sub-table categories */
-const TOOL_CATS = TOOL_CAT_RIGGING.concat(['Other']);   /* BUILD 14.37/14.38: Tools & Installation Hardware — library categories (union of the sub-tables' own categories) */
+const TOOL_CATS = TOOL_CAT_RIGGING.concat(['Other']);   /* BUILD 14.37/14.38: seeds the Ropes/Slings/Rigging bucket (catKey 'tools') */
 const TOOL_CATS_OLD = ['Rigging & Straps','Hand Tools','Power Tools','Fasteners & Hardware','Other'];   /* 14.37 generic defaults — migrated away in 14.38 */
+/* BUILD 14.39: Tools & Installation Hardware is FOUR sub-tables (in the project builder AND the Equipment
+   Library). Each sub-table has its OWN category list, stored under its `catKey` in db.cats (so categories
+   sync like any group's). Library items in db.library.tools carry a `grp` tag = the bucket they belong to. */
+const TOOL_BUCKETS = [
+  {key:'rigging',   catKey:'tools',     label:'Ropes, Slings & Rigging', hint:'Ropes, crane slings, ratchet straps, shackles, carabiners, zip ties.'},
+  {key:'hand',      catKey:'toolsHand', label:'Hand Tools',              hint:'Wrenches, screwdrivers, pliers, hammers, measuring tools.'},
+  {key:'power',     catKey:'toolsPow',  label:'Power Tools',             hint:'Drills, impact drivers, grinder.'},
+  {key:'fasteners', catKey:'toolsFas',  label:'Fasteners & Hardware',    hint:'Screws, bolts, nuts, washers, anchors and clamps.'}
+];
+const TOOL_EXTRA_CATKEYS = ['toolsHand','toolsPow','toolsFas'];   /* tool bucket cat keys beyond the LIB_GROUPS 'tools' key */
+function libCatKeys(){ return LIB_GROUPS.map(g=>g.key).concat(TOOL_EXTRA_CATKEYS); }   /* every db.cats key the library sync must carry */
 
 /* Each library group has its OWN category list — server categories for
    server hardware, rack categories for rack equipment, and so on.
@@ -1254,7 +1265,7 @@ function customCats(key){   /* legacy accessor — kept so old code/paths don't 
   if(!Array.isArray(db.customCats[key])) db.customCats[key] = [];
   return db.customCats[key];
 }
-function catsBase(key){ const g = LIB_GROUPS.find(x=>x.key===key); return (g ? g.cats : []); }
+function catsBase(key){ if(TOOL_EXTRA_CATKEYS.indexOf(key)>=0) return []; const g = LIB_GROUPS.find(x=>x.key===key); return (g ? g.cats : []); }
 /* the editable category list for a group — seeds itself once from defaults + legacy custom cats */
 function catsOf(key){
   if(!db.cats || typeof db.cats!=='object') db.cats = {};
@@ -1300,7 +1311,7 @@ function sortByCat(arr, list){ arr.sort((a,b)=> catIndexOf(list, a.cat) - catInd
    storage or from a project file that was saved before sorting existed. */
 function normalizeSort(){
   try{
-    LIB_GROUPS.forEach(g => { if(Array.isArray(db.library && db.library[g.key])) sortByCat(db.library[g.key], groupCats(g.key)); });
+    LIB_GROUPS.forEach(g => { if(g.key!=='tools' && Array.isArray(db.library && db.library[g.key])) sortByCat(db.library[g.key], groupCats(g.key)); });   /* tools items are bucketed by grp, not sorted by cat (BUILD 14.39) */
     db.projects.forEach(e => {
       if(e.data && e.data.server && Array.isArray(e.data.server.rows)) sortByCat(e.data.server.rows, groupCats('server'));
       if(e.data && e.data.rack && Array.isArray(e.data.rack.rows)) sortByCat(e.data.rack.rows, rackCatList());
@@ -1396,7 +1407,18 @@ function camCats(){ return extendCats(groupCats('cameras')); }
 function spkCats(){ return groupCats('speakers'); }   /* BUILD 14.21: speakers show ONLY speaker categories (own base + custom), NOT the cross-group extended list */
 function fanCats(){ return groupCats('fan'); }   /* BUILD 14.27: Screen Fan categories — own only */
 function cabCats(){ return groupCats('cables'); }   /* BUILD 14.31: Cables categories — own only */
-function toolCats(){ return groupCats('tools'); }   /* BUILD 14.37: Tools categories — own only */
+/* BUILD 14.39: which catKey stores a bucket's categories, and which bucket an item/row belongs to */
+function toolCatKey(grp){ const b = TOOL_BUCKETS.find(x=>x.key===grp); return b ? b.catKey : 'tools'; }
+function toolBucketCats(grp){ return groupCats(toolCatKey(grp)); }
+/* a library item's bucket = its `grp` tag if valid, else inferred from its category, else the first bucket */
+function toolItemGrp(it){
+  const g = (it&&it.grp)||''; if(TOOL_BUCKETS.some(b=>b.key===g)) return g;
+  const c = (it&&it.cat||'').trim().toLowerCase();
+  if(c){ const b = TOOL_BUCKETS.find(bk=>groupCats(bk.catKey).some(x=>String(x).toLowerCase()===c)); if(b) return b.key; }
+  return TOOL_BUCKETS[0].key;
+}
+/* union of all four buckets' categories — drives the project-page name datalists */
+function toolCats(){ const u=[], seen={}; TOOL_BUCKETS.forEach(b=>groupCats(b.catKey).forEach(c=>{ const k=String(c).toLowerCase(); if(k && !seen[k]){ seen[k]=1; u.push(c); } })); return u; }
 /* BUILD 14.38: if db.cats.tools was already seeded (in 14.37) with the OLD generic defaults
    (Rigging & Straps / Hand Tools / Power Tools / Fasteners & Hardware), replace it with the new
    category set. Skipped once the user has any custom category, so real edits are never clobbered. */
@@ -1454,7 +1476,7 @@ function updLib(group, i, k, v){
   arr[i][k] = v;
   if(k === 'link') schedAutoLibPrice(group, i);
   if(k === 'cat'){
-    sortByCat(arr, groupCats(group));
+    if(group !== 'tools') sortByCat(arr, groupCats(group));   /* tools items are bucketed by grp, not cat — keep their position */
     saveState(); rerenderKeepScroll(); return;
   }
   saveState();
@@ -1686,7 +1708,7 @@ function importFileLibrary(obj){
     LIB_GROUPS.forEach(g=>{
       const inc = obj.library[g.key]; if(!Array.isArray(inc)) return;
       const have = new Set(ensureLibGroup(g.key).map(it=>(it.name||'').trim().toLowerCase()).filter(Boolean));
-      inc.forEach(it=>{ const nm=(it&&it.name||'').trim(); if(nm && !have.has(nm.toLowerCase())){ db.library[g.key].push({cat:it.cat||'', name:nm, price:it.price||'', link:it.link||''}); have.add(nm.toLowerCase()); } });
+      inc.forEach(it=>{ const nm=(it&&it.name||'').trim(); if(nm && !have.has(nm.toLowerCase())){ db.library[g.key].push({cat:it.cat||'', name:nm, price:it.price||'', link:it.link||'', grp:it.grp||''}); have.add(nm.toLowerCase()); } });
     });
   }
   const _mergeCats = src => { if(!src || typeof src!=='object') return; Object.keys(src).forEach(k=>{ (src[k]||[]).forEach(c=>{ if(c && !catsOf(k).some(x=>x.toLowerCase()===String(c).toLowerCase())) catsOf(k).push(c); }); }); };
@@ -4719,7 +4741,7 @@ function fsRemoveLocal(pid){
    the DB. Use a plain id (no double-underscore wrapper); it never collides with a real pid. */
 var LIB_DOC_ID = 'shared_library';
 var _fsLibT = null, _libSigLast = '', _libDirty = false, _libPushing = false;
-function libSig(){ try{ const o = {}; LIB_GROUPS.forEach(g => { o[g.key] = ((db.library&&db.library[g.key])||[]).map(it => [it.cat||'', it.name||'', it.price||'', it.link||'']); }); return JSON.stringify([o, db.cats||{}]); }catch(_){ return ''; } }
+function libSig(){ try{ const o = {}; LIB_GROUPS.forEach(g => { o[g.key] = ((db.library&&db.library[g.key])||[]).map(it => [it.cat||'', it.name||'', it.price||'', it.link||'', it.grp||'']); }); return JSON.stringify([o, db.cats||{}]); }catch(_){ return ''; } }
 function libNonEmpty(){ return LIB_GROUPS.some(g => ((db.library&&db.library[g.key])||[]).some(it => (it.name||'').trim())); }
 /* BUILD 14.34: CLOCK-INDEPENDENT shared library revision. `db.libRev` is no longer a wall-clock
    timestamp — it's a monotonic COUNTER incremented SERVER-SIDE inside a Firestore transaction
@@ -4741,11 +4763,11 @@ function libTouch(){
    survive (no last-writer-wins loss). `db.libBase` = the library state we last synced (the merge base);
    items are identified by name (no equipmentId yet). */
 function _libIdx(arr){ const m={}; (arr||[]).forEach(it=>{ const k=((it&&it.name)||'').trim().toLowerCase(); if(k) m[k]=it; }); return m; }
-function _libItemEq(a,b){ a=a||{}; b=b||{}; return (a.cat||'')===(b.cat||'') && (a.name||'')===(b.name||'') && (a.price||'')===(b.price||'') && (a.link||'')===(b.link||''); }
-function _libSnapshot(src){ const o={library:{},cats:{}}; LIB_GROUPS.forEach(g=>{ o.library[g.key]=(((src&&src.library)||{})[g.key]||[]).map(it=>({cat:it.cat||'',name:it.name||'',price:it.price||'',link:it.link||''})); o.cats[g.key]=(((src&&src.cats)||{})[g.key]||[]).map(String); }); return o; }
+function _libItemEq(a,b){ a=a||{}; b=b||{}; return (a.cat||'')===(b.cat||'') && (a.name||'')===(b.name||'') && (a.price||'')===(b.price||'') && (a.link||'')===(b.link||'') && (a.grp||'')===(b.grp||''); }
+function _libSnapshot(src){ const o={library:{},cats:{}}; LIB_GROUPS.forEach(g=>{ o.library[g.key]=(((src&&src.library)||{})[g.key]||[]).map(it=>({cat:it.cat||'',name:it.name||'',price:it.price||'',link:it.link||'',grp:it.grp||''})); }); libCatKeys().forEach(k=>{ o.cats[k]=(((src&&src.cats)||{})[k]||[]).map(String); }); return o; }
 /* order-independent signature of the NAMED library content (+cats) — blank/in-progress rows (no name)
    are ignored, so adding an empty "+ Add item" row is NOT a publishable change (BUILD 14.36). */
-function _libNamedSig(src){ const x={},c={}; LIB_GROUPS.forEach(g=>{ x[g.key]=(((src&&src.library)||{})[g.key]||[]).filter(it=>(it.name||'').trim()).map(it=>[(it.cat||''),(it.name||''),(it.price||''),(it.link||'')]).sort(); c[g.key]=(((src&&src.cats)||{})[g.key]||[]).map(String).sort(); }); return JSON.stringify([x,c]); }
+function _libNamedSig(src){ const x={},c={}; LIB_GROUPS.forEach(g=>{ x[g.key]=(((src&&src.library)||{})[g.key]||[]).filter(it=>(it.name||'').trim()).map(it=>[(it.cat||''),(it.name||''),(it.price||''),(it.link||''),(it.grp||'')]).sort(); }); libCatKeys().forEach(k=>{ c[k]=(((src&&src.cats)||{})[k]||[]).map(String).sort(); }); return JSON.stringify([x,c]); }
 /* merge base+local vs server per group; delete = in base & not in local; add/edit = local wins; server-only add = kept */
 function libMerge3(base, local, server){
   const out={library:{},cats:{}};
@@ -4760,23 +4782,26 @@ function libMerge3(base, local, server){
       if(inS && !inB){ seen[nm]=1; res.push(s); }     /* server-added by another machine → keep */
     });
     out.library[g.key]=res;
-    /* categories, same 3-way logic by name */
-    const bC=((base.cats&&base.cats[g.key])||[]).map(String), lC=((local.cats&&local.cats[g.key])||[]).map(String), sC=((server.cats&&server.cats[g.key])||[]).map(String);
-    const low=x=>String(x).toLowerCase(), has=(arr,k)=>arr.some(x=>low(x)===k);
-    const cres=[], cseen={}, corder=[]; lC.forEach(c=>{const k=low(c); if(corder.indexOf(k)<0)corder.push(k);}); sC.forEach(c=>{const k=low(c); if(corder.indexOf(k)<0)corder.push(k);});
-    corder.forEach(k=>{ if(cseen[k])return; const inB=has(bC,k),inL=has(lC,k),inS=has(sC,k);
+  });
+  /* categories, same 3-way logic by name — over EVERY cat key (incl. the tool bucket keys) */
+  libCatKeys().forEach(k=>{
+    const bC=((base.cats&&base.cats[k])||[]).map(String), lC=((local.cats&&local.cats[k])||[]).map(String), sC=((server.cats&&server.cats[k])||[]).map(String);
+    const low=x=>String(x).toLowerCase(), has=(arr,kk)=>arr.some(x=>low(x)===kk);
+    const cres=[], cseen={}, corder=[]; lC.forEach(c=>{const kk=low(c); if(corder.indexOf(kk)<0)corder.push(kk);}); sC.forEach(c=>{const kk=low(c); if(corder.indexOf(kk)<0)corder.push(kk);});
+    corder.forEach(kk=>{ if(cseen[kk])return; const inB=has(bC,kk),inL=has(lC,kk),inS=has(sC,kk);
       if(inB && !inL) return;
-      if(inL){ cseen[k]=1; cres.push(lC.find(c=>low(c)===k)); return; }
-      if(inS && !inB){ cseen[k]=1; cres.push(sC.find(c=>low(c)===k)); }
+      if(inL){ cseen[kk]=1; cres.push(lC.find(c=>low(c)===kk)); return; }
+      if(inS && !inB){ cseen[kk]=1; cres.push(sC.find(c=>low(c)===kk)); }
     });
-    out.cats[g.key]=cres;
+    out.cats[k]=cres;
   });
   return out;
 }
 async function fsPushLibrary(){
   if(!fsReady() || _libPushing) return;
   const local = { library:{}, cats:{} };
-  LIB_GROUPS.forEach(g => { local.library[g.key] = ((db.library&&db.library[g.key])||[]).map(it => ({cat:it.cat||'', name:it.name||'', price:it.price||'', link:it.link||''})); local.cats[g.key] = (catsOf(g.key)||[]).slice(); });
+  LIB_GROUPS.forEach(g => { local.library[g.key] = ((db.library&&db.library[g.key])||[]).map(it => ({cat:it.cat||'', name:it.name||'', price:it.price||'', link:it.link||'', grp:it.grp||''})); });
+  libCatKeys().forEach(k => { local.cats[k] = (catsOf(k)||[]).slice(); });
   const base = db.libBase || {library:{},cats:{}};
   /* BUILD 14.36: only NAMED content is publishable. If our named library+cats equal the base's, there
      is nothing to sync (e.g. the user just clicked "+ Add item" → a blank in-progress row) — do NOT
@@ -4798,10 +4823,10 @@ async function fsPushLibrary(){
     /* adopt the merged result locally ONLY when the server actually contributed something new — never
        reshuffle/replace the user's in-progress rows. Local blank/in-progress rows are always preserved. */
     if(_libNamedSig(result.merged) !== _libNamedSig(local)){
-      const curUnnamed = {}; LIB_GROUPS.forEach(g=>{ curUnnamed[g.key] = ((db.library&&db.library[g.key])||[]).filter(it=>!(it.name||'').trim()).map(it=>({cat:it.cat||'',name:it.name||'',price:it.price||'',link:it.link||''})); });
-      const nl = emptyLibrary(); LIB_GROUPS.forEach(g=>{ nl[g.key] = (result.merged.library[g.key]||[]).map(it=>({cat:it.cat||'',name:it.name||'',price:it.price||'',link:it.link||''})).concat(curUnnamed[g.key]); });
+      const curUnnamed = {}; LIB_GROUPS.forEach(g=>{ curUnnamed[g.key] = ((db.library&&db.library[g.key])||[]).filter(it=>!(it.name||'').trim()).map(it=>({cat:it.cat||'',name:it.name||'',price:it.price||'',link:it.link||'',grp:it.grp||''})); });
+      const nl = emptyLibrary(); LIB_GROUPS.forEach(g=>{ nl[g.key] = (result.merged.library[g.key]||[]).map(it=>({cat:it.cat||'',name:it.name||'',price:it.price||'',link:it.link||'',grp:it.grp||''})).concat(curUnnamed[g.key]); });
       db.library = nl;
-      db.cats = {}; LIB_GROUPS.forEach(g=>{ db.cats[g.key] = (result.merged.cats[g.key]||[]).map(String); });
+      db.cats = {}; libCatKeys().forEach(k=>{ db.cats[k] = (result.merged.cats[k]||[]).map(String); });
       try{ normalizeSort(); }catch(_){}
       if(!isTypingInInput() && (location.hash==='#/library')){ try{ rerenderKeepScroll(); }catch(_){} }
     }
@@ -4823,7 +4848,7 @@ function fsApplyLibrary(data){
   if(rrev <= lrev) return false;                 /* server counter not newer → keep ours */
   const inLib = data.library || {};
   const nextLib = emptyLibrary();
-  LIB_GROUPS.forEach(g => { const inc = inLib[g.key]; nextLib[g.key] = Array.isArray(inc) ? inc.map(it => ({cat:(it&&it.cat)||'', name:(it&&it.name)||'', price:(it&&it.price)||'', link:(it&&it.link)||''})) : []; });
+  LIB_GROUPS.forEach(g => { const inc = inLib[g.key]; nextLib[g.key] = Array.isArray(inc) ? inc.map(it => ({cat:(it&&it.cat)||'', name:(it&&it.name)||'', price:(it&&it.price)||'', link:(it&&it.link)||'', grp:(it&&it.grp)||''})) : []; });
   const before = libSig();
   db.library = nextLib;
   if(data.cats && typeof data.cats === 'object'){
@@ -6852,16 +6877,11 @@ function pageCables(){
 const toolListId = cat => 'dlToolCat' + Math.max(0, ciIndexOf(toolCats(), cat));
 const libToolByCat = cat => libByGroupCat('tools', cat);
 function toolTotal(){ return state.tools.rows.reduce((s,r)=> s + rowSum(r), 0); }
-const TOOL_GROUPS = [
-  {key:'rigging',   label:'Ropes, Slings & Rigging', hint:'Ropes, crane slings, ratchet straps, shackles, carabiners, zip ties.', cats:TOOL_CAT_RIGGING},
-  {key:'hand',      label:'Hand Tools',           hint:'Wrenches, screwdrivers, pliers, hammers, measuring tools.', cats:[]},
-  {key:'power',     label:'Power Tools',          hint:'Drills, impact drivers, grinder.', cats:[]},
-  {key:'fasteners', label:'Fasteners & Hardware', hint:'Screws, bolts, nuts, washers, anchors and clamps.', cats:[]}
-];
+const TOOL_GROUPS = TOOL_BUCKETS;   /* BUILD 14.39: the four sub-tables (key/catKey/label/hint) */
 const toolGrpOf = r => { const g=(r&&r.grp)||'rigging'; return TOOL_GROUPS.some(b=>b.key===g)?g:'rigging'; };
 /* categories offered in a row's Category dropdown = that sub-table's OWN categories (+ Other) */
 function toolGrpCats(grp){
-  const g = TOOL_GROUPS.find(b=>b.key===grp), base = (g&&g.cats)||[];
+  const base = toolBucketCats(grp);
   return base.concat(base.some(c=>String(c).toLowerCase()==='other')?[]:['Other']);
 }
 function toolSubTotal(grp){ return state.tools.rows.reduce((s,r)=> s + (toolGrpOf(r)===grp ? rowSum(r) : 0), 0); }
@@ -6903,13 +6923,15 @@ function addToolRowToLib(i){
   const row = state.tools.rows[i]; if(!row) return;
   const name = (row.name||'').trim();
   if(!name || libFind(name)) return;
+  const grp = toolGrpOf(row);                      /* add it to the same sub-table the row lives in */
   let cat = (row.cat||'').trim();
-  if(cat && !groupCats('tools').includes(cat)) cat = '';
-  ensureLibGroup('tools').push({cat, name, price: row.price||'', link: row.link||''});
-  sortByCat(db.library.tools, groupCats('tools'));
+  if(cat && !toolBucketCats(grp).some(x=>String(x).toLowerCase()===cat.toLowerCase())) cat = '';
+  ensureLibGroup('tools').push({cat, name, price: row.price||'', link: row.link||'', grp});
   saveState(); rerenderKeepScroll();
   flashStat('Added to Library ✓');
 }
+/* add a blank library item into a specific Tools sub-table (Equipment Library page) */
+function addLibTool(bucketKey){ ensureLibGroup('tools').push({cat:'', name:'', price:'', link:'', grp: (TOOL_BUCKETS.some(b=>b.key===bucketKey)?bucketKey:'rigging')}); saveState(); route(); }
 function toggleToolReady(){
   if(state.tools.ready){ state.tools.ready = false; saveState(); refreshToolReadyUI(); renderSideProject(); return; }
   if(!state.tools.rows.some(r=>(r.name||'').trim())){
@@ -7802,23 +7824,40 @@ function pageLibrary(){
   const SNOW = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;vertical-align:-2px"><path d="M12 2v20M4.2 6.5l15.6 9M19.8 6.5l-15.6 9"/></svg>';
   const secBtn = 'border:none;background:#eef0f3;cursor:pointer;color:var(--ink);border-radius:6px;width:30px;height:26px;line-height:1;font-size:13px;padding:0;margin:0 2px;flex:none';
   const ordered = libGroupsOrdered();
+  /* one library item row — the Category dropdown is fed the supplied category list (per-group,
+     or per-sub-table for Tools). gkey is the db.library group the item is stored in. */
+  const libItemRow = (gkey, it, idx, catList)=>`
+      <tr>
+        <td class="tight" style="width:17%"><select class="cell ${!(it.cat||'').trim()?'empty':''}"
+            onchange="updLib('${gkey}',${idx},'cat',this.value);this.classList.toggle('empty',!this.value)">
+            <option value="" ${!(it.cat||'').trim()?'selected':''}>— Category —</option>
+            ${catList.map(c=>`<option value="${esc(c)}" ${it.cat===c?'selected':''}>${esc(c)}</option>`).join('')}
+            ${(it.cat||'').trim() && !catList.some(x=>String(x)===it.cat) ? `<option value="${esc(it.cat)}" selected>${esc(it.cat)}</option>` : ''}
+          </select></td>
+        <td class="tight"><input class="cell b" value="${esc(it.name)}" placeholder="Item name" oninput="updLib('${gkey}',${idx},'name',this.value)"></td>
+        <td class="tight" style="width:13%"><input class="cell num" value="${esc(it.price)}" placeholder="—" oninput="updLib('${gkey}',${idx},'price',this.value)"></td>
+        <td class="tight" style="width:24%"><input class="cell" value="${esc(it.link)}" placeholder="https://" oninput="updLib('${gkey}',${idx},'link',this.value)"></td>
+        <td class="rm"><button title="Remove" onclick="rmLib('${gkey}',${idx})">×</button></td>
+      </tr>`;
+  const libCatBar = (ck)=>`
+        <div class="catbar">
+          <input class="catinput" id="catNew_${ck}" placeholder="New category" onkeydown="if(event.key==='Enter')addCategory('${ck}')">
+          <button class="catadd" title="Add category" onclick="addCategory('${ck}')">+</button>
+        </div>`;
+  const libCatChips = (ck)=>`
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 12px">
+          ${groupCats(ck).map((c,ci)=>`
+            <span style="display:inline-flex;align-items:center;gap:5px;background:#eef0f3;border:1px solid var(--line);border-radius:14px;padding:3px 4px 3px 10px;font-size:12px">
+              <span>${esc(c)}</span>
+              <button title="Rename category" onclick="renameCategory('${ck}',${ci})" style="border:none;background:none;cursor:pointer;color:var(--ink2);padding:2px;display:inline-flex"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
+              <button title="Delete category" onclick="removeCategory('${ck}',${ci})" style="border:none;background:none;cursor:pointer;color:var(--fdp-red);font-size:15px;line-height:1;padding:0 4px 0 0;font-weight:700">×</button>
+            </span>`).join('') || `<span style="font-size:11.5px;color:#9aa2ad">No categories yet — add one above.</span>`}
+        </div>`;
+  const libTableHead = `<thead><tr><th>Category</th><th>Name</th><th style="text-align:right">Price</th><th>Link</th><th></th></tr></thead>`;
   const groups = ordered.map((g, gi)=>{
     const items = db.library[g.key] || [];
     const frozen = libGroupFrozen(g.key);
     const collapsed = editing ? true : (frozen ? true : !!_libCollapsed[g.key]);
-    const rows = items.map((it,i)=>`
-      <tr>
-        <td class="tight" style="width:17%"><select class="cell ${!(it.cat||'').trim()?'empty':''}"
-            onchange="updLib('${g.key}',${i},'cat',this.value);this.classList.toggle('empty',!this.value)">
-            <option value="" ${!(it.cat||'').trim()?'selected':''}>— Category —</option>
-            ${groupCats(g.key).map(c=>`<option value="${c}" ${it.cat===c?'selected':''}>${c}</option>`).join('')}
-            ${(it.cat||'').trim() && !groupCats(g.key).includes(it.cat) ? `<option value="${esc(it.cat)}" selected>${esc(it.cat)}</option>` : ''}
-          </select></td>
-        <td class="tight"><input class="cell b" value="${esc(it.name)}" placeholder="Item name" oninput="updLib('${g.key}',${i},'name',this.value)"></td>
-        <td class="tight" style="width:13%"><input class="cell num" value="${esc(it.price)}" placeholder="—" oninput="updLib('${g.key}',${i},'price',this.value)"></td>
-        <td class="tight" style="width:24%"><input class="cell" value="${esc(it.link)}" placeholder="https://" oninput="updLib('${g.key}',${i},'link',this.value)"></td>
-        <td class="rm"><button title="Remove" onclick="rmLib('${g.key}',${i})">×</button></td>
-      </tr>`).join('');
     /* frozen section: dark shade + thin blue border, cannot expand (BUILD 14.26) */
     const cardStyle = frozen ? 'background:#d9dee7;border:1px solid #2f6fed' : '';
     const headCtrls = editing
@@ -7827,6 +7866,37 @@ function pageLibrary(){
          <button title="Move section down" style="${secBtn}" ${gi===ordered.length-1?'disabled':''} onclick="event.stopPropagation();moveLibGroup('${g.key}',1)">▼</button>
          <button title="${frozen?'Frozen — click to unfreeze':'Freeze this section (locked shut)'}" style="${secBtn};background:${frozen?'#2f6fed':'#eef0f3'};color:${frozen?'#fff':'var(--ink2)'};width:34px" onclick="event.stopPropagation();toggleLibGroupFreeze('${g.key}')">${SNOW}</button>`
       : `${frozen ? `<span title="Frozen section" style="color:#2f6fed;display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;flex:none">${SNOW} FROZEN</span>` : ''}`;
+    /* body: Tools & Installation Hardware is ONE section that expands into FOUR sub-tables
+       (Ropes/Slings/Rigging · Hand Tools · Power Tools · Fasteners), each with its OWN
+       categories + items (BUILD 14.39). Every other group is one table as before. */
+    let body;
+    if(g.key === 'tools'){
+      body = `
+        <div style="font-size:12px;color:var(--ink2);margin:4px 0 12px">${g.hint}</div>
+        ${TOOL_BUCKETS.map(b=>{
+          const list = items.map((it,i)=>({it,idx:i})).filter(x=>toolItemGrp(x.it)===b.key);
+          const bcats = groupCats(b.catKey);
+          return `
+          <div style="border:1px solid var(--line);border-radius:10px;padding:12px 12px 8px;margin:0 0 14px;background:#fafbfc">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              <h4 style="margin:0;font-size:12.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--ink)">${esc(b.label)}</h4>
+              <span class="chip c-mut"><span class="cd"></span>${list.filter(x=>(x.it.name||'').trim()).length} items</span>
+            </div>
+            <div style="font-size:11.5px;color:var(--ink2);margin:0 0 8px">${esc(b.hint)}</div>
+            ${libCatBar(b.catKey)}
+            ${libCatChips(b.catKey)}
+            <table class="eq">${libTableHead}<tbody>${list.map(x=>libItemRow('tools', x.it, x.idx, bcats)).join('')}</tbody></table>
+            <button class="add-line" onclick="addLibTool('${b.key}')">+ Add ${esc(b.label)} item</button>
+          </div>`;
+        }).join('')}`;
+    } else {
+      body = `
+        <div style="font-size:12px;color:var(--ink2);margin:4px 0 10px">${g.hint}</div>
+        ${libCatBar(g.key)}
+        ${libCatChips(g.key)}
+        <table class="eq">${libTableHead}<tbody>${items.map((it,i)=>libItemRow(g.key, it, i, groupCats(g.key))).join('') || ''}</tbody></table>
+        <button class="add-line" onclick="addLib('${g.key}')">+ Add item</button>`;
+    }
     return `
     <div class="card" style="${cardStyle}">
       <div class="card-head" style="cursor:${(editing||frozen)?'default':'pointer'};user-select:none" ${(editing||frozen)?'':`onclick="toggleLibGroup('${g.key}')"`} title="${editing?'':(frozen?'Frozen — unfreeze in Edit to open':(collapsed?'Expand':'Collapse'))}">
@@ -7834,26 +7904,7 @@ function pageLibrary(){
         <h3 style="margin:0;${frozen?'color:#3a4658':''}">${g.label}</h3>
         <span class="chip c-mut"><span class="cd"></span>${items.filter(x=>(x.name||'').trim()).length} items</span>
         ${headCtrls}</div>
-      <div style="display:${collapsed?'none':'block'}">
-        <div style="font-size:12px;color:var(--ink2);margin:4px 0 10px">${g.hint}</div>
-        <div class="catbar">
-          <input class="catinput" id="catNew_${g.key}" placeholder="New category"
-            onkeydown="if(event.key==='Enter')addCategory('${g.key}')">
-          <button class="catadd" title="Add category" onclick="addCategory('${g.key}')">+</button>
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 12px">
-          ${groupCats(g.key).map((c,ci)=>`
-            <span style="display:inline-flex;align-items:center;gap:5px;background:#eef0f3;border:1px solid var(--line);border-radius:14px;padding:3px 4px 3px 10px;font-size:12px">
-              <span>${esc(c)}</span>
-              <button title="Rename category" onclick="renameCategory('${g.key}',${ci})" style="border:none;background:none;cursor:pointer;color:var(--ink2);padding:2px;display:inline-flex"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
-              <button title="Delete category" onclick="removeCategory('${g.key}',${ci})" style="border:none;background:none;cursor:pointer;color:var(--fdp-red);font-size:15px;line-height:1;padding:0 4px 0 0;font-weight:700">×</button>
-            </span>`).join('') || `<span style="font-size:11.5px;color:#9aa2ad">No categories yet — add one above.</span>`}
-        </div>
-        <table class="eq">
-          <thead><tr><th>Category</th><th>Name</th><th style="text-align:right">Price</th><th>Link</th><th></th></tr></thead>
-          <tbody>${rows || ''}</tbody>
-        </table>
-        <button class="add-line" onclick="addLib('${g.key}')">+ Add item</button>
+      <div style="display:${collapsed?'none':'block'}">${body}
       </div>
     </div>`;
   }).join('');
