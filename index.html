@@ -639,7 +639,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.50 · PROJECT CONSTRUCTOR (SETTINGS)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.51 · MEDIA UPLOAD RETRIES ON FAIL</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -5010,7 +5010,10 @@ function fsChangedSections(e){
 function fsRememberPushed(e){
   const pid = fbpPid(e), sl = fsSlice(e.data), rec = _fsLocal[pid] || {};
   FS_SECTIONS.forEach(s => { rec[s] = JSON.stringify(sl[s] || {}); });
-  rec._seen = true; rec._done = e.done ? 1 : 0; rec._msig = fbpMediaSig(e);
+  rec._seen = true; rec._done = e.done ? 1 : 0;
+  /* BUILD 14.51: DON'T mark media (_msig) as pushed here — only after the Drive media upload + browse
+     mirror actually SUCCEED (below), so a failed upload (e.g. Drive rate limit) retries instead of
+     being silently skipped forever. */
   _fsLocal[pid] = rec;
 }
 async function fsPushNow(entry){
@@ -5038,7 +5041,15 @@ async function fsPushNow(entry){
     }
     fsRememberPushed(e); e._fbSeen = true; delete e._localNew;   /* BUILD 14.13: it's in Firestore now — no longer a pending local addition */
     setCloudStat('Synced ✓ ' + (_gUser || '') + ' · ' + hhmm());
-    if(msigChanged){ try{ if(await fbpMediaUpload(e)) await fbpBrowseMirror(e); }catch(_){} }
+    if(msigChanged){
+      try{
+        if(await fbpMediaUpload(e)) await fbpBrowseMirror(e);   /* photos/docs → _media/<pid>.media.json + browsable folder */
+        (_fsLocal[pid] = _fsLocal[pid] || {})._msig = msig;     /* BUILD 14.51: mark pushed ONLY on success */
+      }catch(_){
+        setCloudStat('⚠ Photos/docs upload failed (Drive) — will retry');
+        setTimeout(function(){ try{ fsPushNow(e); }catch(_){ } }, 8000);   /* retry (rate limit / transient) — _msig stays unset so it re-fires */
+      }
+    }
   }catch(err){ setCloudStat('⚠ Sync error: ' + (err.message || '') + ' — click to retry'); }
 }
 async function fsDelete(e){
