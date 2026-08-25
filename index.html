@@ -306,9 +306,10 @@
   .fsec{grid-column:1 / -1;font-size:11px;letter-spacing:1.2px;color:var(--fdp-red);font-weight:700;text-transform:uppercase;border-bottom:2px solid var(--fdp-red);padding-bottom:6px;margin:8px 0 2px}
   .fsec:first-child{margin-top:0}
   .fld label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ink2);margin-bottom:5px}
-  .fld input,.fld select{width:100%;font-family:inherit;font-size:14px;color:var(--ink);
+  .fld input,.fld select,.fld textarea{width:100%;font-family:inherit;font-size:14px;color:var(--ink);
     border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#fff}
-  .fld input:focus,.fld select:focus{outline:none;border-color:var(--fdp-red)}
+  .fld textarea{resize:vertical;min-height:70px;line-height:1.5}
+  .fld input:focus,.fld select:focus,.fld textarea:focus{outline:none;border-color:var(--fdp-red)}
   .fld .hint{font-size:11px;color:#9aa2ad;margin-top:4px}
   .create-btn{width:100%;margin-top:18px;background:var(--fdp-red);color:#fff;border:none;border-radius:9px;padding:13px;
     font-family:inherit;font-size:14.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
@@ -628,7 +629,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.11 · VISIBLE BACKUP ON CREATE/LOAD</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.41 · PROJECTS PAGE (PROJECT INFO FORM)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -735,14 +736,18 @@ const emptyState = () => ({
   vjValidation: { cpu:false, mem:false, gpu:false },
   docs: { sitePh: [], files: {} },   /* Documentation archive: site photos + files per DOC category */
   projectors: { list: [], selId: null },   /* Projectors module: inventory, setup, web settings */
-  camera: { rows: [], ready: false, photos: [] }   /* Calibration Camera module (mirrors server builder) */
+  camera: { rows: [], ready: false, photos: [] },   /* Calibration Camera module (mirrors server builder) */
+  speakers: { rows: [], ready: false, photos: [] },   /* Speaker / Audio System module (mirrors camera builder) — BUILD 14.20 */
+  fan: { rows: [], ready: false, photos: [] },   /* Screen Fan / Ventilation module (mirrors speakers) — BUILD 14.27 */
+  cables: { rows: [], ready: false, photos: [] },   /* Cables & Adapters module (mirrors fan) — BUILD 14.31 */
+  tools: { rows: [], ready: false, photos: [] }   /* Tools & Installation Hardware module (mirrors cables) — BUILD 14.37 */
 });
 
 /* Multi-project database: creating a new project ADDS an entry,
    it never overwrites existing ones. A project can be frozen —
    a frozen project cannot be selected or edited (mistake guard
    when several projects are in work at the same time). */
-const emptyLibrary = () => ({ server: [], rack: [], cameras: [], video: [], cables: [] });
+const emptyLibrary = () => ({ server: [], rack: [], cameras: [], speakers: [], fan: [], video: [], cables: [], tools: [] });
 var db = { projects: [], activeId: null, library: emptyLibrary(), customCats: {} };   // projects: [{id, frozen, data}]
 var state = emptyState();                    // always points to the ACTIVE project data
 
@@ -751,6 +756,21 @@ var _booting = true;   /* true until the first boot render finishes — boot/mig
 /* US 12-hour clock for status timestamps, e.g. "2:04 PM" (BUILD 12.69) */
 function hhmm(){ let h=new Date().getHours(); const m=('0'+new Date().getMinutes()).slice(-2); const ap=h<12?'AM':'PM'; h=h%12; if(h===0)h=12; return h+':'+m+' '+ap; }
 function activeEntry(){ return db.projects.find(p => p.id === db.activeId) || null; }
+/* BUILD 14.41: full Project Information form fields (commercial / logistics / dome / AV). They live on
+   state.project and sync through the existing Firestore `project` section. Existing projects get EMPTY
+   defaults added on load — no existing field is touched or lost. projectorModel maps to the existing key;
+   title mirrors Deal Title and location mirrors Country of Installation (both existing keys). */
+const PROJ_FIELDS = {
+  dealType:'', dealTitle:'', client:'', contactName:'', phone:'', email:'',
+  totalAmount:'', currency:'', closeDate:'', salesOffice:'', termsOfPayment:'', projectManager:'',
+  countryInstall:'', installAddress:'', installDateTime:'', breakdownDateTime:'',
+  shippingBudget:'', travelBudget:'', localLabourQty:'', localLabourBy:'',
+  domeSize:'', indoorOutdoor:'', domeStructure:'', outerCover:'', coverColorNote:'',
+  screenType:'', inflatableCover:'',
+  server:'', projectionSystem:'', resolution:'', projectorQty:'',
+  soundSystem:'', hvac:'', safetySigns:'', contentType:'', contentNotes:'', eventNotes:''
+};
+function ensureProjectFields(d){ if(!d || !d.project) return; const P=d.project; Object.keys(PROJ_FIELDS).forEach(k=>{ if(P[k]===undefined) P[k]=PROJ_FIELDS[k]; }); }
 function syncActive(){
   const e = activeEntry();
   state = e ? e.data : emptyState();
@@ -776,7 +796,21 @@ function syncActive(){
   if(!state.camera || typeof state.camera!=='object') state.camera = { rows:[], ready:false, photos:[] };
   if(!Array.isArray(state.camera.rows)) state.camera.rows = [];
   if(!Array.isArray(state.camera.photos)) state.camera.photos = [];
+  if(!state.speakers || typeof state.speakers!=='object') state.speakers = { rows:[], ready:false, photos:[] };   /* BUILD 14.20 */
+  if(!Array.isArray(state.speakers.rows)) state.speakers.rows = [];
+  if(!Array.isArray(state.speakers.photos)) state.speakers.photos = [];
+  if(!state.fan || typeof state.fan!=='object') state.fan = { rows:[], ready:false, photos:[] };   /* BUILD 14.27 */
+  if(!Array.isArray(state.fan.rows)) state.fan.rows = [];
+  if(!Array.isArray(state.fan.photos)) state.fan.photos = [];
+  if(!state.cables || typeof state.cables!=='object') state.cables = { rows:[], ready:false, photos:[] };   /* BUILD 14.31 */
+  if(!Array.isArray(state.cables.rows)) state.cables.rows = [];
+  if(!Array.isArray(state.cables.photos)) state.cables.photos = [];
+  if(!state.tools || typeof state.tools!=='object') state.tools = { rows:[], ready:false, photos:[] };   /* BUILD 14.37 */
+  if(!Array.isArray(state.tools.rows)) state.tools.rows = [];
+  if(!Array.isArray(state.tools.photos)) state.tools.photos = [];
+  if(typeof migrateToolCats==='function') migrateToolCats();   /* BUILD 14.38 */
   if(!state.ready || typeof state.ready!=='object') state.ready = {};   /* readiness lights per module (BUILD 12.15) */
+  if(state.project) ensureProjectFields(state);   /* BUILD 14.41: backfill Project Information fields */
 }
 /* ---------- MODULE READINESS (BUILD 12.29) — DATA-DRIVEN, read-only in the bar.
    red (empty) → yellow (has data) → green (its own module's "Mark as Ready" pressed).
@@ -800,9 +834,11 @@ function readyModuleHasData(key, d){
                         || ((d.rack&&d.rack.frontPh)||[]).length>0
                         || ((d.rack&&d.rack.rearPh)||[]).length>0;
     case 'camera':   return rows('camera').some(r=>(r.name||'').trim());
-    case 'speakers': return !!((P.speakersModel||'').trim() || (P.subwooferModel||'').trim() || (P.audioSystem||'').trim());
-    case 'fan':      return !!((P.screenFan||'').trim());
-    default:         return false;   /* net / cables / tools have no section yet */
+    case 'speakers': return rows('speakers').some(r=>(r.name||'').trim());   /* BUILD 14.29: module rows only, not the legacy project fields */
+    case 'fan':      return rows('fan').some(r=>(r.name||'').trim());
+    case 'cables':   return rows('cables').some(r=>(r.name||'').trim());   /* BUILD 14.31 */
+    case 'tools':    return rows('tools').some(r=>(r.name||'').trim());   /* BUILD 14.37 */
+    default:         return false;   /* net has no section yet */
   }
 }
 /* GREEN is allowed ONLY for modules that own a real "Mark as Ready" button */
@@ -810,6 +846,10 @@ function readyModuleGreen(key, d){
   d = d || state;
   if(key==='server') return !!(d.server && d.server.ready);
   if(key==='camera') return !!(d.camera && d.camera.ready);
+  if(key==='speakers') return !!(d.speakers && d.speakers.ready);   /* BUILD 14.20 */
+  if(key==='fan')      return !!(d.fan && d.fan.ready);   /* BUILD 14.27 */
+  if(key==='cables')   return !!(d.cables && d.cables.ready);   /* BUILD 14.31 */
+  if(key==='tools')    return !!(d.tools && d.tools.ready);   /* BUILD 14.37 */
   if(key==='vj')     return !!(d.vj && d.vj.ready);
   return false;
 }
@@ -832,6 +872,15 @@ function readyCardColor(d){
   if(cols.some(c => c !== 'red')) return 'yellow';   /* any progress anywhere */
   return '';
 }
+/* BUILD 14.29: the dashboard module "ACTIVE" badge — dot is GREEN when the section has at least one
+   piece of equipment, RED (but still labelled Active) when it's empty, so you can see at a glance which
+   sections have actually been started/filled. */
+function modActiveBadge(hasData){
+  if(hasData) return '<span class="mod-badge b-active" title="Active — has equipment"><span class="bd" style="background:#3fb950"></span>Active</span>';
+  /* empty section: the WHOLE badge is red — red text, red border, red dot */
+  return '<span class="mod-badge" title="Active — nothing added yet" style="color:var(--fdp-red);background:#fdecec;border:1px solid #f2b8b8"><span class="bd" style="background:var(--fdp-red)"></span>Active</span>';
+}
+const _named = rows => (rows||[]).some(r=>(r.name||'').trim());
 const READY_LABEL = { red:'Not started', yellow:'In progress', green:'Ready' };
 const READY_CHIP  = { red:'c-off', yellow:'c-warn', green:'c-ok' };
 /* Projectors migration — old saves get an empty projectors box */
@@ -1000,6 +1049,7 @@ function saveState(){
   if(!saveState._skipCloud && typeof cloudTouch === 'function'){ try{ cloudTouch(); }catch(e){} }
   if(!saveState._skipCloud && typeof liveTouch === 'function'){ try{ liveTouch(); }catch(e){} }
   if(!saveState._skipCloud && typeof syncTouch === 'function'){ try{ syncTouch(); }catch(e){} }   /* BUILD 14.0: push the edit to the active DB (Firestore, or RTDB fallback) */
+  if(!saveState._skipCloud && _FS && typeof libTouch === 'function'){ try{ libTouch(); }catch(e){} }   /* BUILD 14.21: publish shared library changes (debounced, no-op unless the library actually changed) */
   if(!idbOk){
     try{
       localStorage.setItem(STORE_KEY, JSON.stringify(db));
@@ -1189,6 +1239,22 @@ const RACK_CATS = [];   /* rack categories are fully user-defined via "+ Categor
 const CAM_CATS  = ['Camera','Lens','Mount','Filter','Accessory','Other'];
 const VID_CATS  = ['HDBT Module','Splitter','Extender','Switcher','Converter','Scaler','Other'];
 const CAB_CATS  = ['Power','Network','HDBT','HDMI','DisplayPort','USB','Fiber','Audio','Adapter','Other'];
+const SPK_CATS  = ['Main Speaker','Subwoofer','Amplifier','Audio Processor','Audio Interface','Speaker Mount','Audio Cable','Other'];
+const FAN_CATS  = ['Fan Unit','Fan Controller','Ducting','Fan Mount','Power Supply','Filter','Cable','Other'];
+const TOOL_CAT_RIGGING = ['Ropes','Crane Slings','Ratchet Straps','Shackles','Carabiners','Zip Ties'];   /* BUILD 14.38: Ropes, Slings & Rigging sub-table categories */
+const TOOL_CATS = TOOL_CAT_RIGGING.concat(['Other']);   /* BUILD 14.37/14.38: seeds the Ropes/Slings/Rigging bucket (catKey 'tools') */
+const TOOL_CATS_OLD = ['Rigging & Straps','Hand Tools','Power Tools','Fasteners & Hardware','Other'];   /* 14.37 generic defaults — migrated away in 14.38 */
+/* BUILD 14.39: Tools & Installation Hardware is FOUR sub-tables (in the project builder AND the Equipment
+   Library). Each sub-table has its OWN category list, stored under its `catKey` in db.cats (so categories
+   sync like any group's). Library items in db.library.tools carry a `grp` tag = the bucket they belong to. */
+const TOOL_BUCKETS = [
+  {key:'rigging',   catKey:'tools',     label:'Ropes, Slings & Rigging', hint:'Ropes, crane slings, ratchet straps, shackles, carabiners, zip ties.'},
+  {key:'hand',      catKey:'toolsHand', label:'Hand Tools',              hint:'Wrenches, screwdrivers, pliers, hammers, measuring tools.'},
+  {key:'power',     catKey:'toolsPow',  label:'Power Tools',             hint:'Drills, impact drivers, grinder.'},
+  {key:'fasteners', catKey:'toolsFas',  label:'Fasteners & Hardware',    hint:'Screws, bolts, nuts, washers, anchors and clamps.'}
+];
+const TOOL_EXTRA_CATKEYS = ['toolsHand','toolsPow','toolsFas'];   /* tool bucket cat keys beyond the LIB_GROUPS 'tools' key */
+function libCatKeys(){ return LIB_GROUPS.map(g=>g.key).concat(TOOL_EXTRA_CATKEYS); }   /* every db.cats key the library sync must carry */
 
 /* Each library group has its OWN category list — server categories for
    server hardware, rack categories for rack equipment, and so on.
@@ -1197,32 +1263,59 @@ const LIB_GROUPS = [
   {key:'server',  label:'Server Hardware',            cats:SRV_CATS,  hint:'Chassis, motherboards, CPU, RAM, GPU, storage, PSU, capture and sync cards'},
   {key:'rack',    label:'Rack Equipment',             cats:RACK_CATS, hint:'Rack cases, shelves, drawers, PDU, UPS, switches, patch panels, blanks, rails'},
   {key:'cameras', label:'Cameras',                    cats:CAM_CATS,  hint:'Calibration and reference cameras, lenses, mounts'},
+  {key:'speakers',label:'Speaker / Audio System',     cats:SPK_CATS,  hint:'Main speakers, subwoofers, amplifiers, audio processors/interfaces, mounts and audio cabling'},
+  {key:'fan',     label:'Screen Fan / Ventilation',   cats:FAN_CATS,  hint:'Fan units, controllers, ducting, mounts, power supplies and filters for the dome screen'},
   {key:'video',   label:'Video Equipment & Splitters',cats:VID_CATS,  hint:'HDBT modules, splitters, extenders, switchers, converters'},
-  {key:'cables',  label:'Cables & Adapters',          cats:CAB_CATS,  hint:'Power, network, HDMI, DP, USB, fiber, audio cables and adapters'}
+  {key:'cables',  label:'Cables & Adapters',          cats:CAB_CATS,  hint:'Power, network, HDMI, DP, USB, fiber, audio cables and adapters'},
+  {key:'tools',   label:'Tools & Installation Hardware',cats:TOOL_CATS,hint:'Rigging & straps, hand tools, power tools, fasteners & hardware for installation'}
 ];
 const blankLibItem = () => ({cat:'', name:'', price:'', link:''});
 
-/* ---------- custom categories (per group, user-defined) ---------- */
-function customCats(key){
+/* ---------- categories (per group) — BUILD 14.22 fully user-editable ----------
+   Categories are now stored per group in db.cats[key] (an ordered array), SEEDED once from the
+   built-in defaults (LIB_GROUPS[].cats) + any legacy db.customCats. From then on EVERY category —
+   including the seeded defaults — can be renamed (pencil) or removed (cross); adding is unchanged.
+   Rows/items that referenced a removed/renamed category keep their string (shown as a one-off option),
+   so nothing is lost. db.customCats is kept only for backward reading. */
+function customCats(key){   /* legacy accessor — kept so old code/paths don't break */
   if(!db.customCats) db.customCats = {};
   if(!Array.isArray(db.customCats[key])) db.customCats[key] = [];
   return db.customCats[key];
 }
-function groupCats(key){
-  const g = LIB_GROUPS.find(x=>x.key===key);
-  return (g ? g.cats : []).concat(customCats(key));
+function catsBase(key){ if(TOOL_EXTRA_CATKEYS.indexOf(key)>=0) return []; const g = LIB_GROUPS.find(x=>x.key===key); return (g ? g.cats : []); }
+/* the editable category list for a group — seeds itself once from defaults + legacy custom cats */
+function catsOf(key){
+  if(!db.cats || typeof db.cats!=='object') db.cats = {};
+  if(!Array.isArray(db.cats[key])){
+    const seed = [], seen = {};
+    catsBase(key).concat(customCats(key)).forEach(c=>{ const k=String(c||'').trim(); if(k && !seen[k.toLowerCase()]){ seen[k.toLowerCase()]=1; seed.push(k); } });
+    db.cats[key] = seed;
+  }
+  return db.cats[key];
 }
+function groupCats(key){ return catsOf(key); }
 function addCategory(key){
   const el = document.getElementById('catNew_'+key);
   const v = (el && el.value || '').trim();
   if(!v) return;
-  if(groupCats(key).some(c=>c.toLowerCase()===v.toLowerCase())){ el.value=''; return; }
-  customCats(key).push(v);
+  if(catsOf(key).some(c=>c.toLowerCase()===v.toLowerCase())){ el.value=''; return; }
+  catsOf(key).push(v);
   saveState(); rerenderKeepScroll();
-  const el2 = document.getElementById('catNew_'+key); if(el2) el2.focus();
+  const el2 = document.getElementById('catNew_'+key); if(el2){ try{ el2.focus({preventScroll:true}); }catch(_){ el2.focus(); } }
 }
 function removeCategory(key, idx){
-  customCats(key).splice(idx,1);
+  const arr = catsOf(key); if(idx<0 || idx>=arr.length) return;
+  arr.splice(idx,1);
+  saveState(); rerenderKeepScroll();
+}
+/* rename a category in place; library items in THIS group that used the old name follow (BUILD 14.22) */
+function renameCategory(key, idx){
+  const arr = catsOf(key); const old = arr[idx]; if(old==null) return;
+  const v = (prompt('Rename category', old) || '').trim();
+  if(!v || v===old) return;
+  if(arr.some((c,i)=>i!==idx && c.toLowerCase()===v.toLowerCase())){ alert('A category named "'+v+'" already exists in this group.'); return; }
+  arr[idx] = v;
+  ((db.library && db.library[key]) || []).forEach(it=>{ if((it.cat||'')===old) it.cat = v; });   /* keep library items attached */
   saveState(); rerenderKeepScroll();
 }
 
@@ -1235,23 +1328,27 @@ function sortByCat(arr, list){ arr.sort((a,b)=> catIndexOf(list, a.cat) - catInd
    storage or from a project file that was saved before sorting existed. */
 function normalizeSort(){
   try{
-    LIB_GROUPS.forEach(g => { if(Array.isArray(db.library && db.library[g.key])) sortByCat(db.library[g.key], groupCats(g.key)); });
+    LIB_GROUPS.forEach(g => { if(g.key!=='tools' && Array.isArray(db.library && db.library[g.key])) sortByCat(db.library[g.key], groupCats(g.key)); });   /* tools items are bucketed by grp, not sorted by cat (BUILD 14.39) */
     db.projects.forEach(e => {
       if(e.data && e.data.server && Array.isArray(e.data.server.rows)) sortByCat(e.data.server.rows, groupCats('server'));
       if(e.data && e.data.rack && Array.isArray(e.data.rack.rows)) sortByCat(e.data.rack.rows, rackCatList());
     });
   }catch(err){}
 }
+var _keepScrollTop = null;   /* while set, route() restores THIS scroll offset instead of resetting to 0 */
 function rerenderKeepScroll(){
   const c = document.getElementById('content');
   const st = c ? c.scrollTop : 0;
+  _keepScrollTop = st;                 /* route() applies it synchronously after innerHTML (no jump-then-restore flicker) */
   route();
-  /* restore immediately AND again after layout/image-decode settles, so re-rendering
-     a page with base64 images (e.g. pallet photos) no longer jumps to the top (BUILD 12.63) */
-  const restore = () => { const c2 = document.getElementById('content'); if(c2 && c2.scrollTop !== st) c2.scrollTop = st; };
+  _keepScrollTop = null;
+  /* restore AGAIN after layout/image-decode settles, so a page with base64 images
+     (e.g. pallet photos) or late reflow doesn't drift from the offset (BUILD 12.63/14.40) */
+  const restore = () => { const c2 = document.getElementById('content'); if(c2 && Math.abs(c2.scrollTop - st) > 1) c2.scrollTop = st; };
   restore();
   try{ requestAnimationFrame(restore); }catch(_){}
   setTimeout(restore, 60);
+  setTimeout(restore, 180);
 }
 function libAllItems(){
   return LIB_GROUPS.flatMap(g => ((db.library&&db.library[g.key])||[]).filter(it=>(it.name||'').trim()));
@@ -1328,6 +1425,31 @@ function extendCats(base){
 }
 function srvCats(){ return extendCats(groupCats('server')); }
 function camCats(){ return extendCats(groupCats('cameras')); }
+function spkCats(){ return groupCats('speakers'); }   /* BUILD 14.21: speakers show ONLY speaker categories (own base + custom), NOT the cross-group extended list */
+function fanCats(){ return groupCats('fan'); }   /* BUILD 14.27: Screen Fan categories — own only */
+function cabCats(){ return groupCats('cables'); }   /* BUILD 14.31: Cables categories — own only */
+/* BUILD 14.39: which catKey stores a bucket's categories, and which bucket an item/row belongs to */
+function toolCatKey(grp){ const b = TOOL_BUCKETS.find(x=>x.key===grp); return b ? b.catKey : 'tools'; }
+function toolBucketCats(grp){ return groupCats(toolCatKey(grp)); }
+/* a library item's bucket = its `grp` tag if valid, else inferred from its category, else the first bucket */
+function toolItemGrp(it){
+  const g = (it&&it.grp)||''; if(TOOL_BUCKETS.some(b=>b.key===g)) return g;
+  const c = (it&&it.cat||'').trim().toLowerCase();
+  if(c){ const b = TOOL_BUCKETS.find(bk=>groupCats(bk.catKey).some(x=>String(x).toLowerCase()===c)); if(b) return b.key; }
+  return TOOL_BUCKETS[0].key;
+}
+/* union of all four buckets' categories — drives the project-page name datalists */
+function toolCats(){ const u=[], seen={}; TOOL_BUCKETS.forEach(b=>groupCats(b.catKey).forEach(c=>{ const k=String(c).toLowerCase(); if(k && !seen[k]){ seen[k]=1; u.push(c); } })); return u; }
+/* BUILD 14.38: if db.cats.tools was already seeded (in 14.37) with the OLD generic defaults
+   (Rigging & Straps / Hand Tools / Power Tools / Fasteners & Hardware), replace it with the new
+   category set. Skipped once the user has any custom category, so real edits are never clobbered. */
+function migrateToolCats(){
+  if(!db.cats || !Array.isArray(db.cats.tools)) return;   /* not seeded yet → catsOf seeds fresh from new TOOL_CATS */
+  const oldSet = TOOL_CATS_OLD.map(s=>s.toLowerCase());
+  const cur = db.cats.tools.map(c=>String(c||'').trim());
+  const allOld = cur.length>0 && cur.every(c=>oldSet.indexOf(c.toLowerCase())>=0);
+  if(allOld) db.cats.tools = TOOL_CATS.slice();
+}
 /* Native datalists filter by the current text — a filled field shows only
    itself. On focus, if the value is a library item, clear it temporarily so
    the WHOLE category list opens; restore on blur if nothing new was picked.
@@ -1375,13 +1497,13 @@ function updLib(group, i, k, v){
   arr[i][k] = v;
   if(k === 'link') schedAutoLibPrice(group, i);
   if(k === 'cat'){
-    sortByCat(arr, groupCats(group));
+    if(group !== 'tools') sortByCat(arr, groupCats(group));   /* tools items are bucketed by grp, not cat — keep their position */
     saveState(); rerenderKeepScroll(); return;
   }
   saveState();
 }
-function addLib(group){ ensureLibGroup(group).push(blankLibItem()); saveState(); route(); }
-function rmLib(group, i){ ensureLibGroup(group).splice(i,1); saveState(); route(); }
+function addLib(group){ ensureLibGroup(group).push(blankLibItem()); saveState(); rerenderKeepScroll(); }
+function rmLib(group, i){ ensureLibGroup(group).splice(i,1); saveState(); rerenderKeepScroll(); }
 
 /* ---------- server component categories ---------- */
 const CATS = SRV_CATS;
@@ -1423,7 +1545,7 @@ function restoreHandles(){ if(idbOk){ idbGet2('handles').then(v=>{ if(v && typeo
 function projPayload(e){
   return JSON.stringify({app:'Fulldome Projection SP', version:4, saved:new Date().toISOString(),
     done:!!e.done, doneAt:e.doneAt||0,                          /* completion status travels with the project */
-    state:e.data, library:db.library, customCats:db.customCats,
+    state:e.data, library:db.library, customCats:db.customCats, cats:db.cats||{},
     projLib:db.projLib||[], projIpStart:db.projIpStart||null}, null, 2);
 }
 function downloadPayload(e, data){
@@ -1587,7 +1709,7 @@ async function openProjectFile(){
   try{
     const file = await handle.getFile();
     const text = await file.text();
-    const e = applyProjectText(text);
+    const e = applyProjectText(text, 'import');
     if(e){ _fh[e.id] = handle; persistHandles(); }
   }catch(err){ flashStat('Could not read the file'); }
 }
@@ -1595,11 +1717,28 @@ function loadFromFile(ev){
   const f = ev.target.files && ev.target.files[0];
   if(!f) return;
   const rd = new FileReader();
-  rd.onload = () => { applyProjectText(rd.result); };
+  rd.onload = () => { applyProjectText(rd.result, 'import'); };
   rd.readAsText(f);
   ev.target.value = '';
 }
-function applyProjectText(text){
+/* BUILD 14.35: Project Files are INTERNAL backups (created by this PSP, used only for backup/restore).
+   So Load Project File auto-restores MISSING library items (never replaces existing ones) — no prompt.
+   merge ONLY missing items + categories from the file into the local library. */
+function importFileLibrary(obj){
+  if(obj && obj.library && typeof obj.library==='object'){
+    LIB_GROUPS.forEach(g=>{
+      const inc = obj.library[g.key]; if(!Array.isArray(inc)) return;
+      const have = new Set(ensureLibGroup(g.key).map(it=>(it.name||'').trim().toLowerCase()).filter(Boolean));
+      inc.forEach(it=>{ const nm=(it&&it.name||'').trim(); if(nm && !have.has(nm.toLowerCase())){ db.library[g.key].push({cat:it.cat||'', name:nm, price:it.price||'', link:it.link||'', grp:it.grp||''}); have.add(nm.toLowerCase()); } });
+    });
+  }
+  const _mergeCats = src => { if(!src || typeof src!=='object') return; Object.keys(src).forEach(k=>{ (src[k]||[]).forEach(c=>{ if(c && !catsOf(k).some(x=>x.toLowerCase()===String(c).toLowerCase())) catsOf(k).push(c); }); }); };
+  _mergeCats(obj.cats); _mergeCats(obj.customCats);
+}
+/* libMode: 'skip' (default — cloud/TT never touch the library), 'import' (Load Project File:
+   auto-restore missing library items from the backup, existing ones untouched). */
+function applyProjectText(text, libMode){
+    libMode = libMode || 'skip';
     try{
       const obj = JSON.parse(text);
       const s = obj.state || obj;
@@ -1624,20 +1763,9 @@ function applyProjectText(text){
       }
       if(e){ e.data = data; }
       else { e = {id:newId(), frozen:false, data}; db.projects.push(e); }
+      e._localNew = 1;   /* BUILD 14.13: explicit user load → eligible to push to Firestore (cleared once pushed) */
       /* completion status rides with the project (BUILD 12.5) */
       if('done' in obj){ if(obj.done){ e.done = true; e.doneAt = obj.doneAt || Date.now(); } else { delete e.done; delete e.doneAt; } }
-      /* project files (v4+) carry a library backup — merge missing items back */
-      if(obj.library && typeof obj.library==='object'){
-        LIB_GROUPS.forEach(g=>{
-          const inc = obj.library[g.key];
-          if(!Array.isArray(inc)) return;
-          const have = new Set(ensureLibGroup(g.key).map(it=>(it.name||'').trim().toLowerCase()).filter(Boolean));
-          inc.forEach(it=>{
-            const nm = (it && it.name || '').trim();
-            if(nm && !have.has(nm.toLowerCase())){ db.library[g.key].push({cat:it.cat||'', name:nm, price:it.price||'', link:it.link||''}); have.add(nm.toLowerCase()); }
-          });
-        });
-      }
       /* project files (BUILD 6.8+) also carry the projector model DB — merge by brand+model */
       if(Array.isArray(obj.projLib)){
         obj.projLib.forEach(inc=>{
@@ -1655,13 +1783,9 @@ function applyProjectText(text){
         });
       }
       if(obj.projIpStart && !db.projIpStart) db.projIpStart = obj.projIpStart;
-      if(obj.customCats && typeof obj.customCats==='object'){
-        Object.keys(obj.customCats).forEach(k=>{
-          (obj.customCats[k]||[]).forEach(c=>{
-            if(c && !groupCats(k).some(x=>x.toLowerCase()===String(c).toLowerCase())) customCats(k).push(c);
-          });
-        });
-      }
+      /* BUILD 14.35: Load Project File auto-restores missing library items from the backup (project
+         files are internal backups); cloud/TT ('skip') never touch the library — it syncs via Firestore. */
+      if(libMode === 'import'){ importFileLibrary(obj); }
       if(!e.frozen) db.activeId = e.id;
       syncActive();
       normalizeSort();
@@ -1680,27 +1804,36 @@ const DELETE_PIN = '1008';
 function openDelete(){
   const e = activeEntry();
   if(!e || !e.data.project){ flashStat('No active project'); return; }
-  /* BUILD 12.84: only the team-folder OWNER (admin, A) may delete for everyone. A shared
-     (Editor) account can only create projects — "Delete everywhere" is hidden for them, and
-     a local-only removal just comes back on sync, so it's hidden too. */
-  const owner = _isRootOwner || !_cloudOn;   /* offline/local-only mode: allow (single-user) */
+  /* BUILD 14.19: under Firestore the DB record is the source of truth, so ANYONE on the team may
+     delete — deleting removes the record → the card disappears on every machine; the Drive folder
+     is trashed if this account owns it, otherwise renamed "🗑 DELETED — …" (14.18). The old
+     owner-only gate (12.84) is gone. "This computer only" is meaningless under the shared DB, so
+     under Firestore we show a single Delete button; legacy Drive/offline mode keeps both scopes. */
+  const fsMode = (_FS || _FBP);
   const everyBtn = document.getElementById('delEverywhereBtn');
   const localBtn = document.getElementById('delLocalBtn');
   const pin = document.getElementById('delPin');
-  if(everyBtn) everyBtn.style.display = owner ? '' : 'none';
-  if(localBtn) localBtn.style.display = owner ? '' : 'none';
-  if(pin) pin.style.display = owner ? '' : 'none';
-  document.getElementById('delMsg').innerHTML = owner
-    ? ('Delete <b>#' + esc(e.data.project.number) + ' — ' + esc(e.data.project.title||'') + '</b>.<br><br>' +
-       '<b>This computer only</b> — removes it here; the team\'s Google Drive copy stays.<br>' +
-       '<b>Delete everywhere</b> — hides the project on every machine (its Drive folder stays, recoverable).<br><br>' +
-       'Enter the code, then choose.')
-    : ('<b>#' + esc(e.data.project.number) + ' — ' + esc(e.data.project.title||'') + '</b><br><br>' +
-       'Only the workspace <b>owner</b> can delete projects for the team. This account can create and edit, but not delete. Ask the owner to remove it.');
+  if(pin) pin.style.display = '';
+  if(fsMode){
+    if(everyBtn){ everyBtn.style.display = ''; everyBtn.textContent = 'Delete project'; }
+    if(localBtn) localBtn.style.display = 'none';
+    document.getElementById('delMsg').innerHTML =
+      'Delete <b>#' + esc(e.data.project.number) + ' — ' + esc(e.data.project.title||'') + '</b>.<br><br>' +
+      'This removes the project for the whole team — it disappears on every machine. Its Google Drive folder is moved to Trash if this account owns it, otherwise renamed &ldquo;🗑 DELETED&rdquo; so the dead folder is easy to spot.<br><br>' +
+      'Enter the code, then Delete.';
+  } else {
+    if(everyBtn){ everyBtn.style.display = ''; everyBtn.textContent = 'Delete everywhere'; }
+    if(localBtn) localBtn.style.display = '';
+    document.getElementById('delMsg').innerHTML =
+      'Delete <b>#' + esc(e.data.project.number) + ' — ' + esc(e.data.project.title||'') + '</b>.<br><br>' +
+      '<b>This computer only</b> — removes it here; the team\'s Google Drive copy stays.<br>' +
+      '<b>Delete everywhere</b> — deletes the project for the whole team.<br><br>' +
+      'Enter the code, then choose.';
+  }
   const m = document.getElementById('deleteModal');
   document.getElementById('delPin').value=''; document.getElementById('delErr').textContent='';
   m.classList.add('open');
-  if(owner) setTimeout(()=>document.getElementById('delPin').focus(), 50);
+  setTimeout(()=>document.getElementById('delPin').focus(), 50);
 }
 function closeDelete(){ document.getElementById('deleteModal').classList.remove('open'); }
 function doDelete(scope){
@@ -1906,12 +2039,16 @@ function docPhotoCount(){
 function docContentListCount(){ return docScope().filter(e=>e.data.contentList).length; }
 
 /* ---------- photos (server: max 6, rack: max 4) ---------- */
-const PHOTO_MAX = { server: 10, vj: 10, rack: 10, front: 1, rear: 1, site: 20, camera: 10 };
-var photoEdit = { server: false, vj: false, rack: false, views: false, site: false, projviews: false, camera: false };   /* Edit mode: shows delete crosses */
+const PHOTO_MAX = { server: 10, vj: 10, rack: 10, front: 1, rear: 1, site: 20, camera: 10, speakers: 10, fan: 10, cables: 10, tools: 10 };
+var photoEdit = { server: false, vj: false, rack: false, views: false, site: false, projviews: false, camera: false, speakers: false, fan: false, cables: false, tools: false };   /* Edit mode: shows delete crosses */
 function togglePhotoEdit(kind){ photoEdit[kind] = !photoEdit[kind]; rerenderKeepScroll(); }
 function photosOf(kind){
   if(kind==='site'){ return ensureDocs(state).sitePh; }
   if(kind==='camera'){ if(!state.camera) state.camera={rows:[],ready:false,photos:[]}; if(!Array.isArray(state.camera.photos)) state.camera.photos=[]; return state.camera.photos; }
+  if(kind==='speakers'){ if(!state.speakers) state.speakers={rows:[],ready:false,photos:[]}; if(!Array.isArray(state.speakers.photos)) state.speakers.photos=[]; return state.speakers.photos; }
+  if(kind==='fan'){ if(!state.fan) state.fan={rows:[],ready:false,photos:[]}; if(!Array.isArray(state.fan.photos)) state.fan.photos=[]; return state.fan.photos; }
+  if(kind==='cables'){ if(!state.cables) state.cables={rows:[],ready:false,photos:[]}; if(!Array.isArray(state.cables.photos)) state.cables.photos=[]; return state.cables.photos; }
+  if(kind==='tools'){ if(!state.tools) state.tools={rows:[],ready:false,photos:[]}; if(!Array.isArray(state.tools.photos)) state.tools.photos=[]; return state.tools.photos; }
   if(kind==='vj'){ if(!state.vj) state.vj={rows:[],ready:false,photos:[]}; if(!Array.isArray(state.vj.photos)) state.vj.photos=[]; return state.vj.photos; }
   if(kind==='front'){ if(!Array.isArray(state.rack.frontPh)) state.rack.frontPh=[]; return state.rack.frontPh; }
   if(kind==='rear'){ if(!Array.isArray(state.rack.rearPh)) state.rack.rearPh=[]; return state.rack.rearPh; }
@@ -1928,6 +2065,10 @@ function entryPhotos(e, kind){
   if(kind==='rear')   return (d.rack && d.rack.rearPh) || [];
   if(kind==='site')   return (d.docs && d.docs.sitePh) || [];
   if(kind==='camera') return (d.camera && d.camera.photos) || [];
+  if(kind==='speakers') return (d.speakers && d.speakers.photos) || [];
+  if(kind==='fan') return (d.fan && d.fan.photos) || [];
+  if(kind==='cables') return (d.cables && d.cables.photos) || [];
+  if(kind==='tools') return (d.tools && d.tools.photos) || [];
   return [];
 }
 function pickPhotos(kind){
@@ -2031,7 +2172,7 @@ function openLightboxProj(id, kind, i){
   const p = entryPhotos(e, kind)[i];
   if(p){
     const P = e.data.project || {};
-    const lbl = kind==='server' ? 'Dome Server' : kind==='vj' ? 'VJ Server' : kind==='front' ? 'Rack — Front' : kind==='rear' ? 'Rack — Rear' : kind==='site' ? 'Site' : kind==='camera' ? 'Camera' : 'Rack';
+    const lbl = kind==='server' ? 'Dome Server' : kind==='vj' ? 'VJ Server' : kind==='front' ? 'Rack — Front' : kind==='rear' ? 'Rack — Rear' : kind==='site' ? 'Site' : kind==='camera' ? 'Camera' : kind==='speakers' ? 'Speakers' : kind==='fan' ? 'Screen Fan' : kind==='cables' ? 'Cables' : kind==='tools' ? 'Tools' : 'Rack';
     openLightbox(p.src, lbl + ' — #' + (P.number||'') + ' · ' + (p.caption||p.name||''));
   }
 }
@@ -2284,6 +2425,193 @@ function projectForm(P){
       </div>`;
 }
 
+/* ============ PROJECTS PAGE (BUILD 14.41) ============
+   The main Project Information sheet — edit the SELECTED project, or start a brand-new one.
+   Fields are split into 4 blocks and stored on state.project (synced via the Firestore `project`
+   section). "+ New Project" opens a blank form independent of the selected project; Create Project
+   adds a separate project with a fresh pid; Cancel returns to the selected project untouched. */
+var _projMode = 'edit';            /* 'edit' = bound to the active project · 'new' = blank draft */
+var _projTitleManual = false;      /* user typed a custom Deal Title → stop auto-composing it */
+function projNewMode(){ _projMode = 'new'; _projTitleManual = false; goTo('#/projects'); }
+function projCancelNew(){ _projMode = 'edit'; goTo('#/projects'); }
+/* Deal Title auto-format: "R/S – <Dome Size> + <Server> (<Resolution>) for <Client>" */
+function projAutoTitle(){
+  if(_projTitleManual) return;
+  const g = id => { const e = document.getElementById(id); return e ? e.value.trim() : ''; };
+  const dt = g('pj_dealType'), rs = dt==='Sale' ? 'S' : (dt==='Rental' ? 'R' : '');
+  let s = rs ? (rs + ' – ') : '';
+  s += [g('pj_domeSize'), g('pj_server')].filter(Boolean).join(' + ');
+  const res = g('pj_resolution'); if(res) s += ' (' + res + ')';
+  const cl = g('pj_client'); if(cl) s += ' for ' + cl;
+  const e = document.getElementById('pj_dealTitle'); if(e) e.value = s.trim();
+}
+function _pjSel(id, cur, values, ph, chg){
+  cur = cur || ''; const known = values.some(v => v === cur);
+  return `<select id="${id}"${chg?` onchange="${chg}"`:''}>`
+    + `<option value=""${!cur?' selected':''}>${esc(ph||'— Select —')}</option>`
+    + values.map(v=>`<option value="${esc(v)}"${cur===v?' selected':''}>${esc(v)}</option>`).join('')
+    + (cur && !known ? `<option value="${esc(cur)}" selected>${esc(cur)}</option>` : '')
+    + `</select>`;
+}
+function readProjForm(){
+  const t = id => { const e = document.getElementById(id); return e ? String(e.value).trim() : ''; };
+  return {
+    dealType:t('pj_dealType'), dealTitle:t('pj_dealTitle'), client:t('pj_client'),
+    contactName:t('pj_contactName'), phone:t('pj_phone'), email:t('pj_email'),
+    totalAmount:t('pj_totalAmount'), currency:t('pj_currency'), closeDate:t('pj_closeDate'),
+    salesOffice:t('pj_salesOffice'), termsOfPayment:t('pj_terms'), projectManager:t('pj_pm'),
+    countryInstall:t('pj_country'), installAddress:t('pj_address'), installDateTime:t('pj_install'),
+    breakdownDateTime:t('pj_breakdown'), shippingBudget:t('pj_shipBudget'), travelBudget:t('pj_travelBudget'),
+    localLabourQty:t('pj_labourQty'), localLabourBy:t('pj_labourBy'),
+    domeSize:t('pj_domeSize'), indoorOutdoor:t('pj_indoorOutdoor'), domeStructure:t('pj_domeStructure'),
+    outerCover:t('pj_outerCover'), coverColorNote:t('pj_coverNote'), screenType:t('pj_screenType'),
+    inflatableCover:t('pj_inflatable'),
+    server:t('pj_server'), projectionSystem:t('pj_projSystem'), resolution:t('pj_resolution'),
+    projectorModel:t('pj_projModel'), projectorQty:t('pj_projQty'),
+    soundSystem:t('pj_sound'), hvac:t('pj_hvac'), safetySigns:t('pj_safety'),
+    contentType:t('pj_contentType'), contentNotes:t('pj_contentNotes'), eventNotes:t('pj_eventNotes')
+  };
+}
+/* mirror the two Project-Information fields that also drive existing UI */
+function _projMirror(P, f){
+  if(f.dealTitle) P.title = f.dealTitle;                 /* sidebar card title */
+  if(f.countryInstall) P.location = f.countryInstall;    /* sidebar card location */
+  /* projectorModel is already an existing key — Object.assign wrote it directly */
+}
+function saveProjChanges(){
+  try{
+    const e = activeEntry(); if(!e || !e.data.project){ flashStat('No project selected'); return; }
+    const f = readProjForm();
+    Object.assign(e.data.project, f);
+    _projMirror(e.data.project, f);
+    saveState(); renderHeader(); renderSideProject();
+    setTimeout(()=>{ try{ if(_FS || _FBP) syncPushNow(); else cloudPushNow(); }catch(_){ } }, 200);
+    flashStat('Changes saved ✓');
+  }catch(err){ alert('Could not save: ' + (err && err.message || err)); }
+}
+function createProjFromForm(){
+  try{
+    const f = readProjForm();
+    const data = emptyState();
+    const P = Object.assign({}, PROJ_FIELDS, f, {
+      status:'Engineering', created:new Date().toISOString().slice(0,10), pid:newId(), _rev:Date.now()
+    });
+    /* keep the existing-form keys present with sane empties so modules/sidebar behave */
+    ['number','sysNumber','ttNumber','domeCode','ttDate','audioSystem','speakersModel','subwooferModel','screenFan','type','domeDiameter']
+      .forEach(k=>{ if(P[k]===undefined) P[k]=''; });
+    if(P.domeType===undefined) P.domeType = 'Standard';
+    P.captureRequired = false; P.vjRequired = false;
+    P.title = f.dealTitle || '';
+    P.location = f.countryInstall || '—';
+    data.project = P;
+    data.server.rows = [blankRow(), blankRow(), blankRow()];
+    data.rack.rows = [blankRackRow(), blankRackRow()];
+    const entry = { id:newId(), frozen:false, data, _localNew:1 };
+    db.projects.push(entry);
+    db.activeId = entry.id; syncActive();
+    saveState(); renderHeader(); renderSideProject();
+    setTimeout(()=>{ try{ if(_FS || _FBP) syncPushNow(); else cloudPushNow(); }catch(_){ } }, 200);
+    backupSoon(entry);
+    _projMode = 'edit'; goTo('#/projects');
+    flashStat('Project created ✓');
+  }catch(err){ alert('Could not create the project: ' + (err && err.message || err)); }
+}
+function pageProjects(){
+  const editing = _projMode !== 'new';
+  const e = editing ? activeEntry() : null;
+  if(editing && !e){
+    return `
+    <div class="page">
+      <div class="crumbs"><a href="#/dashboard">Dashboard</a> › <span class="cur">Projects</span></div>
+      <div class="pagehead"><div class="eyebrow">Fulldome Projection SP</div><h1 style="margin:0">Projects</h1>
+        <div class="sub">Pick a project in the sidebar to edit it, or start a new one.</div></div>
+      <div class="card" style="text-align:center;padding:38px 24px">
+        <p style="color:var(--ink2);margin:0 0 14px">No project selected.</p>
+        <button class="create-btn" style="max-width:240px;margin:0 auto" onclick="projNewMode()">${IC.check} New Project</button>
+      </div>
+    </div>`;
+  }
+  const P = editing ? e.data.project : {};
+  const dealTitle = P.dealTitle || (editing ? (P.title||'') : '');
+  _projTitleManual = editing ? !!(dealTitle && dealTitle.trim()) : false;   /* don't auto-overwrite an existing title */
+  const country   = P.countryInstall || (editing && P.location && P.location!=='—' ? P.location : '');
+  const projModel = P.projectorModel || '';
+  const I  = (id, val, type, extra) => `<input id="${id}" autocomplete="off"${type?` type="${type}"`:''} value="${esc(val||'')}"${extra?(' '+extra):''}>`;
+  const TA = (id, val) => `<textarea id="${id}" rows="3">${esc(val||'')}</textarea>`;
+  const F  = (label, inner, full) => `<div class="fld${full?' full':''}"><label>${label}</label>${inner}</div>`;
+  const YN = ['Yes','No'];
+  const form = `
+    <div class="fgrid">
+      <div class="fsec">Commercial / Deal Basics</div>
+      ${F('Deal Type', _pjSel('pj_dealType', P.dealType, ['Rental','Sale'], '— Select —', 'projAutoTitle()'))}
+      ${F('Currency', _pjSel('pj_currency', P.currency, ['USD','EUR','THB','INR','CNY','RUB','AUD']))}
+      ${F('Deal Title <span style="color:#9aa2ad;text-transform:none;font-weight:400">(auto, editable)</span>', I('pj_dealTitle', dealTitle, '', 'oninput="_projTitleManual=true"'), true)}
+      ${F('Company / Client', I('pj_client', P.client, '', 'oninput="projAutoTitle()"'))}
+      ${F('Contact Name', I('pj_contactName', P.contactName))}
+      ${F('Phone', I('pj_phone', P.phone))}
+      ${F('Email', I('pj_email', P.email, 'email'))}
+      ${F('Total Amount', I('pj_totalAmount', P.totalAmount))}
+      ${F('Close Date', I('pj_closeDate', P.closeDate, 'date'))}
+      ${F('Sales Office', _pjSel('pj_salesOffice', P.salesOffice, ['Thailand','India','USA','China','Russia','Australia']))}
+      ${F('Project Manager', I('pj_pm', P.projectManager))}
+      ${F('Terms of Payment', I('pj_terms', P.termsOfPayment), true)}
+
+      <div class="fsec">Site &amp; Logistics</div>
+      ${F('Country of Installation', I('pj_country', country))}
+      ${F('Full Installation Address', I('pj_address', P.installAddress), true)}
+      ${F('Installation Date &amp; Time', I('pj_install', P.installDateTime, 'datetime-local'))}
+      ${F('Breakdown Date &amp; Time', I('pj_breakdown', P.breakdownDateTime, 'datetime-local'))}
+      ${F('Shipping Budget', I('pj_shipBudget', P.shippingBudget))}
+      ${F('Travel Expenses Budget', I('pj_travelBudget', P.travelBudget))}
+      ${F('Local Labour / Union — Qty', I('pj_labourQty', P.localLabourQty))}
+      ${F('Hired by whom', I('pj_labourBy', P.localLabourBy))}
+
+      <div class="fsec">Dome Specification</div>
+      ${F('Dome Size', I('pj_domeSize', P.domeSize, '', 'oninput="projAutoTitle()"'))}
+      ${F('Location', _pjSel('pj_indoorOutdoor', P.indoorOutdoor, ['Indoor','Outdoor']))}
+      ${F('Dome Type', _pjSel('pj_domeStructure', P.domeStructure, ['Enclosed','Open']))}
+      ${F('Outer Cover Material', _pjSel('pj_outerCover', P.outerCover, ['Grey','PVC']))}
+      ${F('Cover Colour Note', I('pj_coverNote', P.coverColorNote))}
+      ${F('Screen Type', _pjSel('pj_screenType', P.screenType, ['Tilted','Horizontal','SRD']))}
+      ${F('Inflatable Cover', _pjSel('pj_inflatable', P.inflatableCover, YN))}
+
+      <div class="fsec">Technical / AV</div>
+      ${F('Server', _pjSel('pj_server', P.server, ['DX4','DX8','DX12','SRD','Other','No'], '— Select —', 'projAutoTitle()'))}
+      ${F('Projection System', _pjSel('pj_projSystem', P.projectionSystem, YN))}
+      ${F('Resolution', I('pj_resolution', P.resolution, '', 'oninput="projAutoTitle()"'))}
+      ${F('Projector Model', I('pj_projModel', projModel))}
+      ${F('Projector Quantity', I('pj_projQty', P.projectorQty, 'number'))}
+      ${F('Sound System', _pjSel('pj_sound', P.soundSystem, YN))}
+      ${F('HVAC', _pjSel('pj_hvac', P.hvac, YN))}
+      ${F('Safety Signs', _pjSel('pj_safety', P.safetySigns, YN))}
+      ${F('Content', _pjSel('pj_contentType', P.contentType, ['Standard Free Pack','Specific']))}
+      ${F('Content Notes', I('pj_contentNotes', P.contentNotes), true)}
+      ${F('Event / Rental Specifics', TA('pj_eventNotes', P.eventNotes), true)}
+    </div>`;
+  const headTitle = editing ? 'Project Information' : 'New Project';
+  const headSub = editing
+    ? ('Editing ' + (P.title ? esc(P.title) : ('#' + esc(P.number||'—'))) + ' — changes save only to this project.')
+    : 'A fresh, empty project sheet. Nothing is copied from the currently selected project.';
+  const actions = editing
+    ? `<button class="create-btn" style="margin:0;max-width:260px" onclick="saveProjChanges()">${IC.check} Save Changes</button>`
+    : `<button class="create-btn" style="margin:0;max-width:260px" onclick="createProjFromForm()">${IC.check} Create Project</button>
+       <button class="mod-btn" style="flex:none;padding:0 22px;font-size:13.5px" onclick="projCancelNew()">Cancel</button>`;
+  return `
+  <div class="page" style="max-width:900px">
+    <div class="crumbs"><a href="#/dashboard">Dashboard</a> › <span class="cur">Projects</span></div>
+    <div class="pagehead" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
+      <div><div class="eyebrow">Fulldome Projection SP</div>
+        <h1 style="margin:0">${headTitle}</h1>
+        <div class="sub">${headSub}</div></div>
+      ${editing ? `<button class="mod-btn primary" style="flex:none" onclick="projNewMode()">+ New Project</button>` : ''}
+    </div>
+    <div class="card">
+      ${form}
+      <div style="display:flex;gap:12px;margin-top:18px;align-items:center">${actions}</div>
+    </div>
+  </div>`;
+}
+
 function pageCreate(){
   _capChoice = false; _vjChoice = false;
   return `
@@ -2372,7 +2700,7 @@ function createProjectInner(){
   if(f.captureRequired) data.server.rows.push({cat:'Capture Card', name:'', qty:1, price:'', link:''});
   if(f.vjRequired) data.vj.rows = [blankRow(), blankRow(), blankRow()];
   data.rack.rows = [blankRackRow(), blankRackRow()];
-  const entry = {id:newId(), frozen:false, data};
+  const entry = {id:newId(), frozen:false, data, _localNew:1};   /* BUILD 14.13: explicit user creation → eligible to push to Firestore (cleared once pushed) */
   db.projects.push(entry);
   db.activeId = entry.id; syncActive();
   saveState(); renderHeader(); renderSideProject();
@@ -2381,14 +2709,28 @@ function createProjectInner(){
   goTo('#/dashboard');
 }
 /* back a single project up right now, with visible status + logging (BUILD 14.11) */
+/* BUILD 14.17: immediate backup that RETRIES until sign-in is up (was one-shot at 3s → if the
+   silent Google sign-in hadn't finished yet, the fresh project waited for the 15-min loop). Now
+   it re-tries every 5s for up to ~60s both when not-yet-signed-in and on a transient error. */
 function backupSoon(entry){
-  setTimeout(function(){
-    if(!(_cloudOn && _gTok)){ try{ fsDiag('backupSoon skipped: not signed in'); }catch(_){} return; }
+  var attempts = 0, MAXA = 12;   /* 3s + 12×5s ≈ up to ~63s */
+  function tryOnce(){
+    attempts++;
+    if(!(_cloudOn && _gTok)){
+      if(attempts < MAXA){ try{ fsDiag('backupSoon waiting for sign-in (' + attempts + ')'); }catch(_){} setTimeout(tryOnce, 5000); }
+      else { try{ fsDiag('backupSoon gave up: not signed in'); }catch(_){} }
+      return;
+    }
     setCloudStat('Backing up project…');
     Promise.resolve().then(function(){ return backupMirrorProject(entry, true); })
       .then(function(ok){ try{ fsDiag('immediate backup ' + (ok?'written':'skipped')); }catch(_){} if(ok) setCloudStat('Backup saved ✓ · ' + hhmm()); })
-      .catch(function(err){ try{ fsDiag('immediate backup FAILED: ' + (err&&err.message||err), true); }catch(_){} setCloudStat('⚠ Backup failed: ' + (err&&err.message||'error') + ' — retries in 15 min'); });
-  }, 3000);
+      .catch(function(err){
+        try{ fsDiag('immediate backup FAILED: ' + (err&&err.message||err), true); }catch(_){}
+        if(attempts < MAXA){ setCloudStat('Backup retry…'); setTimeout(tryOnce, 5000); }
+        else setCloudStat('⚠ Backup failed: ' + (err&&err.message||'error') + ' — retries in 15 min');
+      });
+  }
+  setTimeout(tryOnce, 3000);
 }
 function saveProjectEdit(){
   try{ saveProjectEditInner(); }
@@ -2398,6 +2740,7 @@ function saveProjectEditInner(){
   const f = readForm();
   validateForm(f);
   const hadCapture = state.project.captureRequired;
+  const _oldName = projDriveFolderName(state.project);   /* BUILD 14.14: to detect a rename → update Drive folder names */
   Object.assign(state.project, f);
   /* Capture switched to Yes and no capture row yet → auto-add it */
   if(f.captureRequired && !state.server.rows.some(r => ((r.cat||'')+' '+(r.name||'')).toLowerCase().includes('capture'))){
@@ -2408,8 +2751,35 @@ function saveProjectEditInner(){
   }
   revalidateReady();
   saveState(); renderHeader(); renderSideProject();
+  const _e = activeEntry();
   setTimeout(()=>{ try{ if(_FS || _FBP) syncPushNow(); else cloudPushNow(); }catch(e){} }, 200);   /* BUILD 14.0 */
+  /* BUILD 14.14/14.15: project renamed → rename its Drive folders (browse + backup) right away */
+  if(_e && projDriveFolderName(_e.data.project) !== _oldName){ setTimeout(()=>{ try{ if(_cloudOn && _gTok) driveRenameProjectFolders(_e, _oldName).catch(function(){}); }catch(_){} }, 800); }
   goTo('#/dashboard');
+}
+/* rename a project's Drive folders (browsable + backup) to the current project name (BUILD 14.14).
+   Cheap: PATCHes just the folder name using cached ids. Cross-account caveat: renaming a folder owned
+   by the OTHER account 403s (same as delete) — works from the folder-owner account. */
+async function driveRenameProjectFolders(e, oldName){
+  if(!_cloudOn || !_gTok || !e || !e.data || !e.data.project) return;
+  const P = e.data.project, pid = P.pid; if(!pid) return;
+  const wantName = projDriveFolderName(P) || 'project';
+  if(wantName === oldName) return;
+  setCloudStat('Renaming Drive folder…');
+  /* BROWSE folder = the ONE shared project folder — resolve by browseFid (local → Firestore),
+     NEVER by name, NEVER create. Rename the existing folder. (BUILD 14.16) */
+  const mm = mediaMap()[pid] || (mediaMap()[pid] = {});
+  let bfid = e._browseFid || mm.browseFid;
+  if(!bfid){ bfid = await syncGetBrowseFid(pid); }
+  if(bfid && !(await driveAlive(bfid))) bfid = null;
+  if(bfid){ await driveRenameFolder(bfid, wantName); mm.browseFid = bfid; mm.browseName = wantName; e._browseFid = bfid; await syncSetBrowseFid(pid, bfid); }
+  /* backup folder + json (per-account, by cached id — never by name) */
+  const bm = (db.backupMap && db.backupMap[pid]) || {};
+  if(bm.fid && bm.name !== wantName){ await driveRenameFolder(bm.fid, wantName); bm.name = wantName; }
+  if(bm.jsonId && bm.jsonName !== wantName + '.json'){ await driveRenameFolder(bm.jsonId, wantName + '.json'); bm.jsonName = wantName + '.json'; }
+  if(db.backupMap) db.backupMap[pid] = bm;
+  saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
+  setCloudStat(bfid ? ('Drive folder renamed ✓ · ' + hhmm()) : ('Renamed (folder will follow) · ' + hhmm()));
 }
 const blankRow = () => ({cat:'', name:'', qty:1, price:'', link:''});
 const blankRackRow = () => ({cat:'', name:'', u:'', qty:1, price:'', link:''});
@@ -2455,7 +2825,7 @@ function loadDemo(){
     3:'Tripp Lite PDU 12-Outlet',2:'Blank Panel',1:'Blank Panel'};
   /* register demo rack categories as user categories */
   const demoCats = [...new Set(data.rack.rows.map(r=>r.cat).filter(Boolean))];
-  demoCats.forEach(c => { if(!groupCats('rack').includes(c)) customCats('rack').push(c); });
+  demoCats.forEach(c => { if(!groupCats('rack').includes(c)) catsOf('rack').push(c); });
   const entry = {id:newId(), frozen:false, data};
   db.projects.push(entry);
   db.activeId = entry.id; syncActive();
@@ -2487,7 +2857,7 @@ function pageDashboard(){
         <div class="mod-top">
           <div class="mod-ic">${IC.server}</div>
           <div><div class="mod-name">Server &amp; Rack</div>
-            <span class="mod-badge b-active"><span class="bd"></span>Active</span></div>
+            ${modActiveBadge(_named(state.server.rows) || _named(state.rack.rows))}</div>
         </div>
         <div class="mod-desc">Server hardware configuration, compatibility, assembly, rack layout, power distribution and documentation.</div>
         <div class="mod-stats">
@@ -2501,7 +2871,7 @@ function pageDashboard(){
 
       <div class="mod active${_lastMod==='#/projectors'?' lastmod':''}">
         <div class="mod-top"><div class="mod-ic">${IC.beam}</div>
-          <div><div class="mod-name">Projectors</div><span class="mod-badge b-active"><span class="bd"></span>Active</span></div></div>
+          <div><div class="mod-name">Projectors</div>${modActiveBadge(projList().length>0)}</div></div>
         <div class="mod-desc">Projector inventory, installation and configuration status, live web interfaces and saved web settings per projector.</div>
         <div class="mod-stats">
           <div class="ms"><span class="k">Brand &amp; Model</span><span class="v ${projList().length?'ok':''}">${projList().length ? esc([...new Set(projList().map(p=>((p.mfr||'')+' '+(p.model||'')).trim()).filter(Boolean))].join(', ') || '—') + (projList().length>1 ? ' × '+projList().length : '') : 'None'}</span></div>
@@ -2512,20 +2882,22 @@ function pageDashboard(){
         <a class="mod-btn primary" href="#/projectors">Open Module ${IC.open}</a>
       </div>
 
-      <div class="mod${_lastMod==='#/speakers'?' lastmod':''}">
+      <div class="mod active${_lastMod==='#/speakers'?' lastmod':''}">
         <div class="mod-top"><div class="mod-ic">${IC.spk}</div>
-          <div><div class="mod-name">Speakers</div><span class="mod-badge b-plan"><span class="bd"></span>Planned</span></div></div>
-        <div class="mod-desc">Main speakers and subwoofer selection, amplification and audio system layout.</div>
+          <div><div class="mod-name">Speakers</div>${modActiveBadge(_named(state.speakers.rows))}</div></div>
+        <div class="mod-desc">Audio system — main speakers, subwoofer, amplification and audio interface, picked from the Equipment Library, with photos and Ready check.</div>
         <div class="mod-stats">
-          <div class="ms"><span class="k">Speaker Model</span><span class="v ${(P.speakersModel||'').trim()?'ok':''}">${(P.speakersModel||'').trim() ? esc(P.speakersModel) : '—'}</span></div>
-          <div class="ms"><span class="k">Subwoofer</span><span class="v ${(P.subwooferModel||'').trim()?'ok':''}">${(P.subwooferModel||'').trim() ? esc(P.subwooferModel) : '—'}</span></div>
+          <div class="ms"><span class="k">Components</span><span class="v ${state.speakers.rows.filter(r=>(r.name||'').trim()).length?'ok':''}">${state.speakers.rows.filter(r=>(r.name||'').trim()).length || 'None'}</span></div>
+          <div class="ms"><span class="k">Components Cost</span><span class="v">${fmt(spkTotal())}</span></div>
+          <div class="ms"><span class="k">Photos</span><span class="v">${photosOf('speakers').length} / ${PHOTO_MAX.speakers}</span></div>
+          <div class="ms"><span class="k">Audio Build</span><span class="v" style="display:inline-flex;align-items:center;gap:6px"><span class="led sm ${state.speakers.ready?'on':''}"></span>${state.speakers.ready?'Ready':'Not Ready'}</span></div>
         </div>
-        <a class="mod-btn disabled" href="#/speakers">Coming Soon</a>
+        <a class="mod-btn primary" href="#/speakers">Open Module ${IC.open}</a>
       </div>
 
       <div class="mod active${_lastMod==='#/camera'?' lastmod':''}">
         <div class="mod-top"><div class="mod-ic">${IC.cam}</div>
-          <div><div class="mod-name">Calibration Camera</div><span class="mod-badge b-active"><span class="bd"></span>Active</span></div></div>
+          <div><div class="mod-name">Calibration Camera</div>${modActiveBadge(_named(state.camera.rows))}</div></div>
         <div class="mod-desc">Calibration camera kit — camera, lens, mount and accessories, picked from the Equipment Library, with photos and Ready check.</div>
         <div class="mod-stats">
           <div class="ms"><span class="k">Components</span><span class="v ${state.camera.rows.filter(r=>(r.name||'').trim()).length?'ok':''}">${state.camera.rows.filter(r=>(r.name||'').trim()).length || 'None'}</span></div>
@@ -2543,31 +2915,48 @@ function pageDashboard(){
         <a class="mod-btn disabled" href="#/network">Coming Soon</a>
       </div>
 
-      <div class="mod${_lastMod==='#/fan'?' lastmod':''}">
+      <div class="mod active${_lastMod==='#/fan'?' lastmod':''}">
         <div class="mod-top"><div class="mod-ic">${IC.fan}</div>
-          <div><div class="mod-name">Screen Fan</div><span class="mod-badge b-plan"><span class="bd"></span>Planned</span></div></div>
-        <div class="mod-desc">Screen ventilation / fan system for the dome surface.</div>
-        <div class="mod-stats"><div class="ms"><span class="k">Fan System</span><span class="v ${(P.screenFan||'').trim()?'ok':''}">${(P.screenFan||'').trim() ? esc(P.screenFan) : '—'}</span></div></div>
-        <a class="mod-btn disabled" href="#/fan">Coming Soon</a>
+          <div><div class="mod-name">Screen Fan</div>${modActiveBadge(_named(state.fan.rows))}</div></div>
+        <div class="mod-desc">Dome screen ventilation — fan units, controllers, ducting, mounts and power, picked from the Equipment Library, with photos and Ready check.</div>
+        <div class="mod-stats">
+          <div class="ms"><span class="k">Components</span><span class="v ${state.fan.rows.filter(r=>(r.name||'').trim()).length?'ok':''}">${state.fan.rows.filter(r=>(r.name||'').trim()).length || 'None'}</span></div>
+          <div class="ms"><span class="k">Components Cost</span><span class="v">${fmt(fanTotal())}</span></div>
+          <div class="ms"><span class="k">Photos</span><span class="v">${photosOf('fan').length} / ${PHOTO_MAX.fan}</span></div>
+          <div class="ms"><span class="k">Fan Build</span><span class="v" style="display:inline-flex;align-items:center;gap:6px"><span class="led sm ${state.fan.ready?'on':''}"></span>${state.fan.ready?'Ready':'Not Ready'}</span></div>
+        </div>
+        <a class="mod-btn primary" href="#/fan">Open Module ${IC.open}</a>
       </div>
 
-      <div class="mod${_lastMod==='#/cables'?' lastmod':''}">
+      <div class="mod active${_lastMod==='#/cables'?' lastmod':''}">
         <div class="mod-top"><div class="mod-ic">${IC.cable}</div>
-          <div><div class="mod-name">Cables</div><span class="mod-badge b-plan"><span class="bd"></span>Planned</span></div></div>
-        <div class="mod-desc">Power, network, HDBaseT, HDMI, DisplayPort, USB, fiber and audio cable management.</div>
-        <a class="mod-btn disabled" href="#/cables">Coming Soon</a>
+          <div><div class="mod-name">Cables</div>${modActiveBadge(_named(state.cables.rows))}</div></div>
+        <div class="mod-desc">Power, network, HDBaseT, HDMI, DisplayPort, USB, fiber and audio cables & adapters, picked from the Equipment Library, with photos and Ready check.</div>
+        <div class="mod-stats">
+          <div class="ms"><span class="k">Components</span><span class="v ${state.cables.rows.filter(r=>(r.name||'').trim()).length?'ok':''}">${state.cables.rows.filter(r=>(r.name||'').trim()).length || 'None'}</span></div>
+          <div class="ms"><span class="k">Components Cost</span><span class="v">${fmt(cabTotal())}</span></div>
+          <div class="ms"><span class="k">Photos</span><span class="v">${photosOf('cables').length} / ${PHOTO_MAX.cables}</span></div>
+          <div class="ms"><span class="k">Cables Build</span><span class="v" style="display:inline-flex;align-items:center;gap:6px"><span class="led sm ${state.cables.ready?'on':''}"></span>${state.cables.ready?'Ready':'Not Ready'}</span></div>
+        </div>
+        <a class="mod-btn primary" href="#/cables">Open Module ${IC.open}</a>
       </div>
 
-      <div class="mod${_lastMod==='#/tools'?' lastmod':''}">
+      <div class="mod active${_lastMod==='#/tools'?' lastmod':''}">
         <div class="mod-top"><div class="mod-ic">${IC.tool}</div>
-          <div><div class="mod-name">Tools</div><span class="mod-badge b-plan"><span class="bd"></span>Planned</span></div></div>
-        <div class="mod-desc">Installation tools, rigging and calibration equipment checklist for the project.</div>
-        <a class="mod-btn disabled" href="#/tools">Coming Soon</a>
+          <div><div class="mod-name">Tools &amp; Installation Hardware</div>${modActiveBadge(_named(state.tools.rows))}</div></div>
+        <div class="mod-desc">Rigging &amp; straps, hand tools, power tools and fasteners & hardware, picked from the Equipment Library, with photos and Ready check.</div>
+        <div class="mod-stats">
+          <div class="ms"><span class="k">Components</span><span class="v ${state.tools.rows.filter(r=>(r.name||'').trim()).length?'ok':''}">${state.tools.rows.filter(r=>(r.name||'').trim()).length || 'None'}</span></div>
+          <div class="ms"><span class="k">Components Cost</span><span class="v">${fmt(toolTotal())}</span></div>
+          <div class="ms"><span class="k">Photos</span><span class="v">${photosOf('tools').length} / ${PHOTO_MAX.tools}</span></div>
+          <div class="ms"><span class="k">Tools Build</span><span class="v" style="display:inline-flex;align-items:center;gap:6px"><span class="led sm ${state.tools.ready?'on':''}"></span>${state.tools.ready?'Ready':'Not Ready'}</span></div>
+        </div>
+        <a class="mod-btn primary" href="#/tools">Open Module ${IC.open}</a>
       </div>
 
       <div class="mod active${_lastMod==='#/shipping'?' lastmod':''}">
         <div class="mod-top"><div class="mod-ic">${IC.ship}</div>
-          <div><div class="mod-name">Equipment &amp; Shipping</div><span class="mod-badge b-active"><span class="bd"></span>Active</span></div></div>
+          <div><div class="mod-name">Equipment &amp; Shipping</div>${modActiveBadge(shipItems().length>0)}</div></div>
         <div class="mod-desc">Full equipment inventory, pallet packing, shipping date and shipping documents.</div>
         <div class="mod-stats">
           <div class="ms"><span class="k">Total Equipment</span><span class="v ${shipItems().length?'ok':''}">${shipItems().length || '—'} items</span></div>
@@ -2944,8 +3333,8 @@ function setVjCat(i, v){
   sortByCat(state.vj.rows, srvCats());
   saveState(); rerenderKeepScroll();
 }
-function addVj(){ state.vj.rows.push(blankRow()); saveState(); route(); }
-function rmVj(i){ state.vj.rows.splice(i,1); revalidateVjReady(); saveState(); route(); }
+function addVj(){ state.vj.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
+function rmVj(i){ state.vj.rows.splice(i,1); revalidateVjReady(); saveState(); rerenderKeepScroll(); }
 function toggleVjReady(){
   if(state.vj.ready){ state.vj.ready=false; saveState(); refreshVjReadyUI(); renderSideProject(); const b=document.getElementById('vjProbBox'); if(b) b.classList.remove('show'); return; }
   const problems = vjProblems();
@@ -3056,10 +3445,10 @@ function refreshReadyUI(){
   set('kLedTxt', e=>e.textContent = ready?'Ready':'Not Ready');
   renderHeader();
 }
-function addSrv(){ state.server.rows.push(blankRow()); saveState(); route(); }
-function rmSrv(i){ state.server.rows.splice(i,1); revalidateReady(); saveState(); route(); }
-function addRack(){ state.rack.rows.push(blankRackRow()); saveState(); route(); }
-function rmRack(i){ state.rack.rows.splice(i,1); saveState(); route(); }
+function addSrv(){ state.server.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
+function rmSrv(i){ state.server.rows.splice(i,1); revalidateReady(); saveState(); rerenderKeepScroll(); }
+function addRack(){ state.rack.rows.push(blankRackRow()); saveState(); rerenderKeepScroll(); }
+function rmRack(i){ state.rack.rows.splice(i,1); saveState(); rerenderKeepScroll(); }
 
 function toggleReady(){
   if(state.server.ready){ state.server.ready = false; state._showProblems = false; saveState(); refreshReadyUI(); renderSideProject(); hideProblems(); return; }
@@ -3082,7 +3471,7 @@ function setRackU(d){
   state.rack.heightU = nu;
   /* drop slot contents above the new height */
   Object.keys(state.rack.slots).forEach(u=>{ if(+u > nu) delete state.rack.slots[u]; });
-  saveState(); route();
+  saveState(); rerenderKeepScroll();
 }
 /* Rack Size dropdown (BUILD 12.39) — sets the height directly (8U–20U); feeds the dashboard card */
 function setRackSize(v){
@@ -3090,12 +3479,12 @@ function setRackSize(v){
   if(nu === state.rack.heightU) return;
   state.rack.heightU = nu;
   Object.keys(state.rack.slots||{}).forEach(u=>{ if(+u > nu) delete state.rack.slots[u]; });
-  saveState(); route();
+  saveState(); rerenderKeepScroll();
 }
 /* Server Case Size dropdown (BUILD 12.39) — chassis height of the Dome Server, e.g. "2U" */
 function setServerCase(v){
   state.server.caseSize = v || '';
-  saveState(); route();
+  saveState(); rerenderKeepScroll();
 }
 
 /* ============ EQUIPMENT & SHIPPING MODULE (BUILD 12.53) ============
@@ -3119,6 +3508,26 @@ function shipPlaces(){
   srSeparate.forEach((it,i)=> places.push({key:'pl|sr-sep|'+i, name:it.name, module:'Server & Rack', items:[it]}));
   /* ---- Projectors — each unit its own place ---- */
   ((state.projectors&&state.projectors.list)||[]).forEach((p,i)=>{ const nm=((p.mfr||'')+' '+(p.model||'')).trim(); if(!nm) return; places.push({key:'pl|proj|'+(p.id||i), name: nm + (p.serial?(' · SN '+p.serial):(p.num?(' #'+p.num):'')), module:'Projectors', items:[{key:'i|proj|'+(p.id||i), name:nm, qty:1, link:''}]}); });
+  /* ---- Speakers / Audio (BUILD 14.20) ---- */
+  const spkCombined = [], spkSeparate = [];
+  ((state.speakers&&state.speakers.rows)||[]).forEach((r,idx)=>{ if(!(r.name||'').trim()) return; (isCombined(r)?spkCombined:spkSeparate).push(mkItem(r,'i|spk|'+idx)); });
+  if(spkCombined.length) places.push({key:'pl|spk', name:'Speakers', module:'Speakers', items:spkCombined});
+  spkSeparate.forEach((it,i)=> places.push({key:'pl|spk-sep|'+i, name:it.name, module:'Speakers', items:[it]}));
+  /* ---- Screen Fan / Ventilation (BUILD 14.27) ---- */
+  const fanCombined = [], fanSeparate = [];
+  ((state.fan&&state.fan.rows)||[]).forEach((r,idx)=>{ if(!(r.name||'').trim()) return; (isCombined(r)?fanCombined:fanSeparate).push(mkItem(r,'i|fan|'+idx)); });
+  if(fanCombined.length) places.push({key:'pl|fan', name:'Screen Fan', module:'Screen Fan', items:fanCombined});
+  fanSeparate.forEach((it,i)=> places.push({key:'pl|fan-sep|'+i, name:it.name, module:'Screen Fan', items:[it]}));
+  /* ---- Cables & Adapters (BUILD 14.31) ---- */
+  const cabCombined = [], cabSeparate = [];
+  ((state.cables&&state.cables.rows)||[]).forEach((r,idx)=>{ if(!(r.name||'').trim()) return; (isCombined(r)?cabCombined:cabSeparate).push(mkItem(r,'i|cab|'+idx)); });
+  if(cabCombined.length) places.push({key:'pl|cab', name:'Cables', module:'Cables', items:cabCombined});
+  cabSeparate.forEach((it,i)=> places.push({key:'pl|cab-sep|'+i, name:it.name, module:'Cables', items:[it]}));
+  /* ---- Tools & Installation Hardware (BUILD 14.37) — ships as one "Tools" place ---- */
+  const toolCombined = [], toolSeparate = [];
+  ((state.tools&&state.tools.rows)||[]).forEach((r,idx)=>{ if(!(r.name||'').trim()) return; (isCombined(r)?toolCombined:toolSeparate).push(mkItem(r,'i|tool|'+idx)); });
+  if(toolCombined.length) places.push({key:'pl|tool', name:'Tools', module:'Tools', items:toolCombined});
+  toolSeparate.forEach((it,i)=> places.push({key:'pl|tool-sep|'+i, name:it.name, module:'Tools', items:[it]}));
   /* ---- Camera ---- */
   const camCombined = [], camSeparate = [];
   ((state.camera&&state.camera.rows)||[]).forEach((r,idx)=>{ if(!(r.name||'').trim()) return; (isCombined(r)?camCombined:camSeparate).push(mkItem(r,'i|cam|'+idx)); });
@@ -3147,7 +3556,7 @@ function addPallet(){
   const nums = state.shipping.pallets.map(p=>parseInt(p.num,10)).filter(n=>!isNaN(n));
   const next = (nums.length?Math.max.apply(null,nums):0)+1;
   state.shipping.pallets.push({ id:newId(), num:String(next) });
-  saveState(); route();
+  saveState(); rerenderKeepScroll();
 }
 function setPalletNum(id, v){ const p = state.shipping.pallets.find(x=>x.id===id); if(p){ p.num = v; saveState(); } }
 function setPalletField(id, field, v){ const p = state.shipping.pallets.find(x=>x.id===id); if(p){ p[field] = v; saveState(); } }
@@ -3226,7 +3635,7 @@ function rmPallet(id){
   state.shipping.pallets = state.shipping.pallets.filter(p=>p.id!==id);
   Object.keys(state.shipping.assign).forEach(k=>{ if(state.shipping.assign[k]===id) delete state.shipping.assign[k]; });
   if(state.shipping.palletPhotos) delete state.shipping.palletPhotos[id];   /* drop its photos too */
-  saveState(); route();
+  saveState(); rerenderKeepScroll();
 }
 /* one-click: put EVERY place onto this pallet (autofill — handy when there is just one pallet) */
 function assignAllToPallet(pid, checked){
@@ -3675,6 +4084,10 @@ function liveSlice(d){
     vj:      { rows: (d.vj && d.vj.rows) || [], ready: !!(d.vj && d.vj.ready) },
     rack:    { rows: d.rack.rows || [], heightU: d.rack.heightU || 12, slots: d.rack.slots || {} },
     camera:  { rows: (d.camera && d.camera.rows) || [], ready: !!(d.camera && d.camera.ready) },
+    speakers:{ rows: (d.speakers && d.speakers.rows) || [], ready: !!(d.speakers && d.speakers.ready) },
+    fan:     { rows: (d.fan && d.fan.rows) || [], ready: !!(d.fan && d.fan.ready) },
+    cables:  { rows: (d.cables && d.cables.rows) || [], ready: !!(d.cables && d.cables.ready) },
+    tools:   { rows: (d.tools && d.tools.rows) || [], ready: !!(d.tools && d.tools.ready) },
     projectors: { list: (d.projectors && d.projectors.list) || [], selId: (d.projectors && d.projectors.selId) || null },
     validation:   d.validation || {},                 /* dashboard test chips — live now (BUILD 12.7) */
     vjValidation: d.vjValidation || {},
@@ -3711,6 +4124,10 @@ function liveApply(d, live){
   if(live.vj){ d.vj = d.vj || {rows:[],ready:false,photos:[]}; setIf(d.vj, 'rows', live.vj.rows || []); setIf(d.vj, 'ready', !!live.vj.ready); }
   if(live.rack){ setIf(d.rack, 'rows', live.rack.rows || []); setIf(d.rack, 'heightU', live.rack.heightU || 12); setIf(d.rack, 'slots', live.rack.slots || {}); }
   if(live.camera){ d.camera = d.camera || {rows:[],ready:false,photos:[]}; setIf(d.camera, 'rows', live.camera.rows || []); setIf(d.camera, 'ready', !!live.camera.ready); }
+  if(live.speakers){ d.speakers = d.speakers || {rows:[],ready:false,photos:[]}; setIf(d.speakers, 'rows', live.speakers.rows || []); setIf(d.speakers, 'ready', !!live.speakers.ready); }
+  if(live.fan){ d.fan = d.fan || {rows:[],ready:false,photos:[]}; setIf(d.fan, 'rows', live.fan.rows || []); setIf(d.fan, 'ready', !!live.fan.ready); }
+  if(live.cables){ d.cables = d.cables || {rows:[],ready:false,photos:[]}; setIf(d.cables, 'rows', live.cables.rows || []); setIf(d.cables, 'ready', !!live.cables.ready); }
+  if(live.tools){ d.tools = d.tools || {rows:[],ready:false,photos:[]}; setIf(d.tools, 'rows', live.tools.rows || []); setIf(d.tools, 'ready', !!live.tools.ready); }
   if(live.projectors){ d.projectors = d.projectors || {list:[],selId:null,models:{}}; setIf(d.projectors, 'list', live.projectors.list || []); setIf(d.projectors, 'selId', live.projectors.selId || null); }
   if(live.validation)   setIf(d, 'validation',   live.validation);      /* dashboard test chips (BUILD 12.7) */
   if(live.vjValidation) setIf(d, 'vjValidation', live.vjValidation);
@@ -4185,8 +4602,14 @@ async function fbpMediaDelete(e){
      (that 403s if the folder is owned by the OTHER account — only Shared Drive removes it fully). BUILD 14.10 */
   try{
     let bfid = e._browseFid || rec.browseFid;
+    if(!bfid){ try{ bfid = await syncGetBrowseFid(pid); }catch(_){} }   /* BUILD 14.18: resolve the ONE shared folder by browseFid, not by name */
     if(!bfid && wantName){ try{ const tr = await driveRootId(); bfid = await driveFindFolder(wantName, tr); }catch(_){} }
-    if(bfid){ await driveTrashTree(bfid); }
+    if(bfid){
+      await driveTrashTree(bfid);                                       /* trash the files inside (works cross-account) + best-effort the folder */
+      /* BUILD 14.18: if the folder is STILL there (owned by the other account → trash 403'd),
+         rename it "🗑 DELETED — <name>" so it's clearly a dead folder among the live ones. */
+      if(await driveAlive(bfid)){ try{ await driveMarkDeletedFolder(bfid, wantName); }catch(_){} }
+    }
   }catch(_){}
   /* BUILD 14.9: the BACKUP folder is deliberately LEFT ALONE — it is the safety copy. Delete cleans
      only the working traces (media file + browse folder); the backup json stays for recovery. */
@@ -4217,19 +4640,54 @@ async function fbpMediaSync(){
    resolved by pid: its id (browseFid) is stored in the Firebase record so EVERY machine
    writes into the SAME folder (no per-machine duplicate). Reuses the proven upload/diff/
    trash helpers. Only new/changed files upload; files removed in the app are trashed. */
+/* read/write the shared browseFid from whichever DB is active (Firestore-primary, or RTDB fallback).
+   browseFid is the SINGLE identity of a project's Drive folder — anchored to pid, same for all users. */
+async function syncGetBrowseFid(pid){
+  try{
+    if(_FS && _fsCol){ const s = await _fsCol.doc(pid).get(); const d = s && s.exists ? s.data() : null; return (d && d.browseFid) || null; }
+    if(_FBP){ return await fbGet2(FBP_ROOT + '/' + pid + '/browseFid'); }
+  }catch(_){}
+  return null;
+}
+async function syncSetBrowseFid(pid, fid){
+  try{
+    if(_FS && _fsCol){ await _fsCol.doc(pid).set({ browseFid: fid }, { merge: true }); return; }
+    if(_FBP){ await fbPatch2(FBP_ROOT + '/' + pid, { browseFid: fid }); }
+  }catch(_){}
+}
+async function driveRenameFolder(fid, name){ if(!fid) return; try{ await gFetch('https://www.googleapis.com/drive/v3/files/' + fid + '?fields=id', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: name }) }); }catch(_){} }
+/* BUILD 14.18: mark a project's Drive folder as DELETED when we can't fully trash it (it's owned
+   by the OTHER Google account → 403 on trash, but an Editor CAN rename it). Prefix the folder name
+   with a loud marker so dead folders stand out among the live ones. Idempotent (won't double-prefix). */
+var DRIVE_DEL_PREFIX = '🗑 DELETED — ';   /* "🗑 DELETED — " */
+async function driveMarkDeletedFolder(fid, name){
+  if(!fid) return;
+  var cur = name || '';
+  /* read the REAL current Drive name (the app-side name never carries the prefix) so a repeat
+     delete can't double-prefix "🗑 DELETED — 🗑 DELETED — …" */
+  try{ const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + fid + '?fields=name'); const j = await r.json(); if(j && j.name) cur = j.name; }catch(_){}
+  if(cur.indexOf(DRIVE_DEL_PREFIX) === 0) return;      /* already marked */
+  await driveRenameFolder(fid, DRIVE_DEL_PREFIX + cur);
+}
+/* Resolve a project's browse folder STRICTLY by browseFid (pid-anchored), NEVER by name — so a rename
+   on another machine renames the ONE shared folder instead of creating a duplicate (BUILD 14.16).
+   Order: local cache → the browseFid published in the DB (same for all users) → create ONCE + publish. */
 async function fbpBrowseFolder(e){
   const pid = fbpPid(e); if(!pid) return null;
   const rec = mediaMap()[pid] || (mediaMap()[pid] = {});
   const wantName = projDriveFolderName(e.data.project) || ('project ' + pid);
   let fid = e._browseFid || rec.browseFid;
   if(fid && !(await driveAlive(fid))) fid = null;
-  if(!fid){
+  if(!fid){                                                  /* no local id → ask the DB (another user may have created + published it) */
+    const shared = await syncGetBrowseFid(pid);
+    if(shared && await driveAlive(shared)) fid = shared;
+  }
+  if(!fid){                                                  /* truly none anywhere → create ONCE and publish so everyone shares it */
     const teamRoot = await driveRootId();
-    fid = await driveFindFolder(wantName, teamRoot) || await driveCreateFolder(wantName, teamRoot);
-    /* publish the folder id to the shared record so other machines reuse it */
-    try{ await fbPatch2(FBP_ROOT + '/' + pid, { browseFid: fid }); }catch(_){}
-  } else if(rec.browseName && rec.browseName !== wantName){
-    try{ await gFetch('https://www.googleapis.com/drive/v3/files/' + fid + '?fields=id', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: wantName }) }); }catch(_){}
+    fid = await driveCreateFolder(wantName, teamRoot);
+    await syncSetBrowseFid(pid, fid);
+  } else if(rec.browseName && rec.browseName !== wantName){  /* name changed → rename the EXISTING folder by id (best-effort; 403 only if owned by another account) */
+    await driveRenameFolder(fid, wantName);
   }
   e._browseFid = fid; rec.browseFid = fid; rec.browseName = wantName;
   return fid;
@@ -4301,7 +4759,7 @@ async function fbpBrowseMirror(e){
    Google Drive (the 13.x media layer, untouched). A full project JSON is still assembled
    locally for export/backup at any time. Master switch: `var _FS = true` (RTDB `_FBP` off). */
 const FS_PROJECT_ID = 'fulldome-psp';
-const FS_SECTIONS = ['project','server','vj','rack','camera','projectors','validation','vjValidation','shipping'];
+const FS_SECTIONS = ['project','server','vj','rack','camera','speakers','fan','cables','tools','projectors','validation','vjValidation','shipping'];
 var _fsApp = null, _fsDb = null, _fsAuthObj = null, _fsCol = null, _fsUnsub = null, _fsSdkP = null;
 var _fsReady = false, _fsStarted = false, _fsApplying = false, _fsPushT = null, _fsSeededPush = false;
 var _fsLocal = {};   /* pid -> {section: sig, _seen, _done, _msig} — skip no-op section writes */
@@ -4401,7 +4859,7 @@ async function fsPushNow(entry){
       try{ await ref.update(upd); }
       catch(err){ await ref.set(fsFullDoc(e)); }             /* doc vanished → recreate */
     }
-    fsRememberPushed(e); e._fbSeen = true;
+    fsRememberPushed(e); e._fbSeen = true; delete e._localNew;   /* BUILD 14.13: it's in Firestore now — no longer a pending local addition */
     setCloudStat('Synced ✓ ' + (_gUser || '') + ' · ' + hhmm());
     if(msigChanged){ try{ if(await fbpMediaUpload(e)) await fbpBrowseMirror(e); }catch(_){} }
   }catch(err){ setCloudStat('⚠ Sync error: ' + (err.message || '') + ' — click to retry'); }
@@ -4456,8 +4914,15 @@ function fsApplyDoc(data){
   if(e === activeEntry() && isTypingInInput()) return false;   /* don't disturb active typing; next snapshot re-applies */
   let ch = false;
   FS_SECTIONS.forEach(s => {
-    const rrev = revs[s] || 0, lrev = e._fsRev[s] || 0;
-    if(data[s] !== undefined && rrev > lrev){ if(fsApplySection(e.data, s, data[s])) ch = true; e._fsRev[s] = rrev; }
+    /* BUILD 14.32: apply a section whenever its remote revision DIFFERS from what we last applied —
+       NOT strictly-greater. The Firestore snapshot is the authoritative latest state, so "differs"
+       means someone changed it → adopt it. The old `rrev > lrev` gate broke sync between two users
+       whose machine CLOCKS were skewed: once the faster clock's timestamp was stored, every later
+       edit from the slower machine (smaller timestamp) was permanently ignored ("synced 1-2 times
+       then stopped"). Comparing by inequality is clock-independent. Applying our own echo is a no-op
+       (identical data → liveApply reports no change) and never loops (applies use _skipCloud). */
+    const rrev = revs[s] || 0, lrev = e._fsRev[s];
+    if(data[s] !== undefined && rrev !== lrev){ if(fsApplySection(e.data, s, data[s])) ch = true; e._fsRev[s] = rrev; }
   });
   if(!!data.done !== !!e.done){ if(data.done){ e.done = true; e.doneAt = data.doneAt || Date.now(); } else { delete e.done; delete e.doneAt; } ch = true; }
   return ch;
@@ -4470,20 +4935,187 @@ function fsRemoveLocal(pid){
   if(wasActive){ const alt = db.projects.find(p => !p.frozen); db.activeId = alt ? alt.id : null; syncActive(); }
   return true;
 }
+/* ---------- SHARED EQUIPMENT LIBRARY SYNC (BUILD 14.21) ----------
+   The library (db.library + db.customCats) is NOT project data — it used to live ONLY in the
+   local browser (and inside project files), so a second machine that had the projects still
+   showed an EMPTY library. Now it syncs through Firestore as ONE reserved doc
+   `projects/__shared_library__` (no `pid`, `kind:'library'` → the project code skips it, and the
+   existing email-allowlist rule on projects/{pid} already permits it — no rules change needed).
+   MERGE-BY-NAME (union), never overwrite/delete: an empty machine GAINS the full library and can
+   never wipe a filled one. New items propagate both ways; the price/link/category of an item that
+   already exists by name is not force-changed across machines (safe, additive). */
+/* BUILD 14.23: Firestore RESERVES document IDs matching /__.*__/ — the old '__shared_library__'
+   was rejected on write (silently, in the .catch), so the shared library never actually reached
+   the DB. Use a plain id (no double-underscore wrapper); it never collides with a real pid. */
+var LIB_DOC_ID = 'shared_library';
+var _fsLibT = null, _libSigLast = '', _libDirty = false, _libPushing = false;
+function libSig(){ try{ const o = {}; LIB_GROUPS.forEach(g => { o[g.key] = ((db.library&&db.library[g.key])||[]).map(it => [it.cat||'', it.name||'', it.price||'', it.link||'', it.grp||'']); }); return JSON.stringify([o, db.cats||{}]); }catch(_){ return ''; } }
+function libNonEmpty(){ return LIB_GROUPS.some(g => ((db.library&&db.library[g.key])||[]).some(it => (it.name||'').trim())); }
+/* BUILD 14.34: CLOCK-INDEPENDENT shared library revision. `db.libRev` is no longer a wall-clock
+   timestamp — it's a monotonic COUNTER incremented SERVER-SIDE inside a Firestore transaction
+   (read current rev → write rev+1). A local edit sets `_libDirty`; while dirty, incoming snapshots
+   do NOT overwrite the library (protects the unconfirmed local edit). On a successful transaction we
+   clear `_libDirty` and adopt the server rev; on error we KEEP dirty, show "Library sync failed" and
+   retry. This removes the clock dependency that stalled sync when two machines' clocks were skewed. */
+function libTouch(){
+  if(!fsReady()) return;
+  const s = libSig();
+  if(s === _libSigLast) return;                 /* library genuinely unchanged → nothing to publish */
+  _libSigLast = s;
+  _libDirty = true;                             /* unconfirmed local edit — protects against being overwritten */
+  clearTimeout(_fsLibT); _fsLibT = setTimeout(fsPushLibrary, 1200);
+}
+/* BUILD 14.35: instead of overwriting the shared library with our whole local copy, we 3-WAY MERGE
+   our local changes onto the CURRENT server library inside the transaction. Effect = "apply only the
+   local operations (adds/edits/deletes) to the server copy", so two users' concurrent adds BOTH
+   survive (no last-writer-wins loss). `db.libBase` = the library state we last synced (the merge base);
+   items are identified by name (no equipmentId yet). */
+function _libIdx(arr){ const m={}; (arr||[]).forEach(it=>{ const k=((it&&it.name)||'').trim().toLowerCase(); if(k) m[k]=it; }); return m; }
+function _libItemEq(a,b){ a=a||{}; b=b||{}; return (a.cat||'')===(b.cat||'') && (a.name||'')===(b.name||'') && (a.price||'')===(b.price||'') && (a.link||'')===(b.link||'') && (a.grp||'')===(b.grp||''); }
+function _libSnapshot(src){ const o={library:{},cats:{}}; LIB_GROUPS.forEach(g=>{ o.library[g.key]=(((src&&src.library)||{})[g.key]||[]).map(it=>({cat:it.cat||'',name:it.name||'',price:it.price||'',link:it.link||'',grp:it.grp||''})); }); libCatKeys().forEach(k=>{ o.cats[k]=(((src&&src.cats)||{})[k]||[]).map(String); }); return o; }
+/* order-independent signature of the NAMED library content (+cats) — blank/in-progress rows (no name)
+   are ignored, so adding an empty "+ Add item" row is NOT a publishable change (BUILD 14.36). */
+function _libNamedSig(src){ const x={},c={}; LIB_GROUPS.forEach(g=>{ x[g.key]=(((src&&src.library)||{})[g.key]||[]).filter(it=>(it.name||'').trim()).map(it=>[(it.cat||''),(it.name||''),(it.price||''),(it.link||''),(it.grp||'')]).sort(); }); libCatKeys().forEach(k=>{ c[k]=(((src&&src.cats)||{})[k]||[]).map(String).sort(); }); return JSON.stringify([x,c]); }
+/* merge base+local vs server per group; delete = in base & not in local; add/edit = local wins; server-only add = kept */
+function libMerge3(base, local, server){
+  const out={library:{},cats:{}};
+  LIB_GROUPS.forEach(g=>{
+    const bA=(base.library&&base.library[g.key])||[], lA=(local.library&&local.library[g.key])||[], sA=(server.library&&server.library[g.key])||[];
+    const bI=_libIdx(bA), lI=_libIdx(lA), sI=_libIdx(sA);
+    const res=[], seen={};
+    const order=[]; lA.forEach(it=>{const k=(it.name||'').trim().toLowerCase(); if(k&&order.indexOf(k)<0)order.push(k);}); sA.forEach(it=>{const k=(it.name||'').trim().toLowerCase(); if(k&&order.indexOf(k)<0)order.push(k);});
+    order.forEach(nm=>{ if(seen[nm])return; const b=bI[nm],l=lI[nm],s=sI[nm],inB=!!b,inL=!!l,inS=!!s;
+      if(inB && !inL) return;                         /* we deleted it locally → drop */
+      if(inL){ seen[nm]=1; res.push((inB && _libItemEq(l,b) && inS) ? s : l); return; }  /* unchanged locally → take server's (maybe edited elsewhere); else our add/edit */
+      if(inS && !inB){ seen[nm]=1; res.push(s); }     /* server-added by another machine → keep */
+    });
+    out.library[g.key]=res;
+  });
+  /* categories, same 3-way logic by name — over EVERY cat key (incl. the tool bucket keys) */
+  libCatKeys().forEach(k=>{
+    const bC=((base.cats&&base.cats[k])||[]).map(String), lC=((local.cats&&local.cats[k])||[]).map(String), sC=((server.cats&&server.cats[k])||[]).map(String);
+    const low=x=>String(x).toLowerCase(), has=(arr,kk)=>arr.some(x=>low(x)===kk);
+    const cres=[], cseen={}, corder=[]; lC.forEach(c=>{const kk=low(c); if(corder.indexOf(kk)<0)corder.push(kk);}); sC.forEach(c=>{const kk=low(c); if(corder.indexOf(kk)<0)corder.push(kk);});
+    corder.forEach(kk=>{ if(cseen[kk])return; const inB=has(bC,kk),inL=has(lC,kk),inS=has(sC,kk);
+      if(inB && !inL) return;
+      if(inL){ cseen[kk]=1; cres.push(lC.find(c=>low(c)===kk)); return; }
+      if(inS && !inB){ cseen[kk]=1; cres.push(sC.find(c=>low(c)===kk)); }
+    });
+    out.cats[k]=cres;
+  });
+  return out;
+}
+async function fsPushLibrary(){
+  if(!fsReady() || _libPushing) return;
+  const local = { library:{}, cats:{} };
+  LIB_GROUPS.forEach(g => { local.library[g.key] = ((db.library&&db.library[g.key])||[]).map(it => ({cat:it.cat||'', name:it.name||'', price:it.price||'', link:it.link||'', grp:it.grp||''})); });
+  libCatKeys().forEach(k => { local.cats[k] = (catsOf(k)||[]).slice(); });
+  const base = db.libBase || {library:{},cats:{}};
+  /* BUILD 14.36: only NAMED content is publishable. If our named library+cats equal the base's, there
+     is nothing to sync (e.g. the user just clicked "+ Add item" → a blank in-progress row) — do NOT
+     run the transaction and do NOT touch db.library, so the blank row survives while it's being filled. */
+  if(_libNamedSig(local) === _libNamedSig(base)){ _libDirty = false; return; }
+  _libPushing = true;
+  const ref = _fsCol.doc(LIB_DOC_ID);
+  try{
+    const result = await _fsDb.runTransaction(async function(t){
+      const snap = await t.get(ref);
+      const cur = (snap && snap.exists ? snap.data() : {}) || {};
+      const server = { library: cur.library || {}, cats: cur.cats || {} };
+      const merged = libMerge3(base, local, server);            /* apply ONLY our local ops onto the current server copy */
+      const rev = ((typeof cur.rev === 'number' && isFinite(cur.rev)) ? cur.rev : 0) + 1;
+      t.set(ref, { kind:'library', library:merged.library, cats:merged.cats, rev:rev, customCats:db.customCats||{}, updatedBy:_gUser||'', at:Date.now() });
+      return { rev:rev, merged:merged };
+    });
+    db.libRev = result.rev; db.libBase = _libSnapshot(result.merged); _libDirty = false;
+    /* adopt the merged result locally ONLY when the server actually contributed something new — never
+       reshuffle/replace the user's in-progress rows. Local blank/in-progress rows are always preserved. */
+    if(_libNamedSig(result.merged) !== _libNamedSig(local)){
+      const curUnnamed = {}; LIB_GROUPS.forEach(g=>{ curUnnamed[g.key] = ((db.library&&db.library[g.key])||[]).filter(it=>!(it.name||'').trim()).map(it=>({cat:it.cat||'',name:it.name||'',price:it.price||'',link:it.link||'',grp:it.grp||''})); });
+      const nl = emptyLibrary(); LIB_GROUPS.forEach(g=>{ nl[g.key] = (result.merged.library[g.key]||[]).map(it=>({cat:it.cat||'',name:it.name||'',price:it.price||'',link:it.link||'',grp:it.grp||''})).concat(curUnnamed[g.key]); });
+      db.library = nl;
+      db.cats = {}; libCatKeys().forEach(k=>{ db.cats[k] = (result.merged.cats[k]||[]).map(String); });
+      try{ normalizeSort(); }catch(_){}
+      if(!isTypingInInput() && (location.hash==='#/library')){ try{ rerenderKeepScroll(); }catch(_){} }
+    }
+    _libSigLast = libSig();
+    try{ fsDiag('shared library merged+published (rev ' + result.rev + ')'); }catch(_){}
+    saveState._skipCloud = true; saveState(); saveState._skipCloud = false;   /* persist libRev/base + cleared dirty */
+  }catch(err){
+    try{ fsDiag('shared library PUBLISH FAILED: ' + (err&&err.message||err), true); }catch(_){}
+    setCloudStat('⚠ Library sync failed: ' + (err&&err.message||'error') + ' — retrying');
+    clearTimeout(_fsLibT); _fsLibT = setTimeout(fsPushLibrary, 4000);
+  } finally { _libPushing = false; }
+}
+/* adopt an incoming shared library — only when the SERVER rev (a monotonic counter) is strictly newer
+   and we hold NO unconfirmed local edit (`_libDirty`, whose pending transaction will merge instead). */
+function fsApplyLibrary(data){
+  if(!data || data.kind !== 'library') return false;
+  if(_libDirty) return false;                    /* unconfirmed local edit pending → our transaction merges it */
+  const rrev = data.rev || 0, lrev = db.libRev || 0;
+  if(rrev <= lrev) return false;                 /* server counter not newer → keep ours */
+  const inLib = data.library || {};
+  const nextLib = emptyLibrary();
+  LIB_GROUPS.forEach(g => { const inc = inLib[g.key]; nextLib[g.key] = Array.isArray(inc) ? inc.map(it => ({cat:(it&&it.cat)||'', name:(it&&it.name)||'', price:(it&&it.price)||'', link:(it&&it.link)||'', grp:(it&&it.grp)||''})) : []; });
+  const before = libSig();
+  db.library = nextLib;
+  if(data.cats && typeof data.cats === 'object'){
+    db.cats = {};
+    Object.keys(data.cats).forEach(k => { if(Array.isArray(data.cats[k])) db.cats[k] = data.cats[k].map(c => String(c)); });
+  }
+  db.libRev = rrev;
+  db.libBase = _libSnapshot({library:db.library, cats:db.cats});   /* this adopted state is our new merge base */
+  _libSigLast = libSig();
+  try{ normalizeSort(); }catch(_){}
+  return before !== _libSigLast;
+}
+/* run once shortly after connect: publish our library ONLY if the server has none yet (seed) or we
+   hold genuine local changes not on the server — never force-bumps the rev on a plain reconnect. */
+function fsLibSyncOnConnect(){
+  if(!fsReady()) return;
+  if(libNonEmpty() && (!(db.libRev>0) || libSig() !== _libSigLast)){ _libDirty = true; fsPushLibrary(); }
+}
 function fsOnSnapshot(snap){
   _fsApplying = true;
   let touched = false;
   try{
+    /* the FULL current set of pids in Firestore (snap always reflects the whole query result,
+       not just the delta) — this is the authority for reconciling what should exist locally */
+    const present = {}; snap.forEach(doc => { const d = doc.data(); if(d && d.pid) present[d.pid] = 1; });
     snap.docChanges().forEach(ch => {
-      const data = ch.doc.data(); if(!data || !data.pid) return;
+      const data = ch.doc.data();
+      /* BUILD 14.21: the reserved shared-library doc (no pid, kind:'library') — merge it, never as a project */
+      if(ch.doc.id === LIB_DOC_ID || (data && data.kind === 'library')){
+        if(ch.type !== 'removed' && fsApplyLibrary(data)) touched = true;   /* newest-wins: adopt the remote library (adds/edits/deletes), no republish */
+        return;
+      }
+      if(!data || !data.pid) return;
       if(ch.type === 'removed'){ if(fsRemoveLocal(data.pid)) touched = true; return; }
       if(fsApplyDoc(data)) touched = true;
     });
-    if(!_fsSeededPush){                                       /* first snapshot: push local projects Firestore has never seen (migration) */
-      _fsSeededPush = true;
-      const present = {}; snap.forEach(doc => { const d = doc.data(); if(d && d.pid) present[d.pid] = 1; });
-      db.projects.forEach(e => { const pid = fbpPid(e); if(pid && e.data.project && !present[pid]){ fsPushNow(e).catch(function(){}); } });
+    /* DEDUPE (BUILD 14.12): drop any duplicate local entries that share a pid (keep the first) */
+    { const seen = {}; for(let i = db.projects.length - 1; i >= 0; i--){ const pid = fbpPid(db.projects[i]); if(!pid) continue; if(seen[pid]){ db.projects.splice(i,1); touched = true; } else seen[pid] = 1; } }
+    /* FULL RECONCILE (BUILD 14.13) — Firestore is the SINGLE SOURCE OF TRUTH. The local list is made
+       to match it: any project ABSENT from Firestore is removed UNLESS it is a pending local addition
+       the user just created/loaded in-app (`_localNew`, cleared once pushed). This is the root fix, not
+       a dedup patch: old cache / RTDB / Drive entries have NO `_localNew`, so they can never appear or
+       be pushed — only what's in Firestore (plus the user's explicit new additions) survives.
+       Empty-snapshot never mass-deletes (guards a transient read glitch). */
+    if(Object.keys(present).length){
+      let activeGone = false;
+      for(let i = db.projects.length - 1; i >= 0; i--){
+        const e = db.projects[i], pid = fbpPid(e);
+        if(!pid){ if(!e._localNew){ if(e.id===db.activeId) activeGone=true; db.projects.splice(i,1); touched=true; } continue; }
+        if(!e._localNew && !present[pid]){                    /* absent from Firestore AND not a fresh user addition → drop */
+          if(e.id === db.activeId) activeGone = true;
+          db.projects.splice(i, 1); touched = true;
+        }
+      }
+      if(activeGone){ const alt = db.projects.find(p => !p.frozen); db.activeId = alt ? alt.id : null; syncActive(); }
     }
+    /* push ONLY the user's explicit in-app additions that aren't in Firestore yet — never old cache */
+    if(!_fsSeededPush) _fsSeededPush = true;
+    db.projects.forEach(e => { const pid = fbpPid(e); if(pid && e.data.project && e._localNew && !present[pid]){ fsPushNow(e).catch(function(){}); } });
   }catch(err){ /* keep going */ }
   if(touched){
     saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
@@ -4515,6 +5147,9 @@ async function fsStart(){
   fsDiag('attaching onSnapshot to projects…');
   _fsUnsub = _fsCol.onSnapshot(function(snap){ fsDiag('snapshot: ' + snap.size + ' docs, ' + snap.docChanges().length + ' changes'); fsOnSnapshot(snap); }, function(err){ _fsFatal = 'Firestore stream error: ' + (err.message||''); fsDiag('SNAPSHOT ERROR: ' + (err.code||'') + ' ' + (err.message||''), true); setCloudStat('⚠ ' + _fsFatal + ' — click to retry'); });
   fsDiag('start ok — listening');
+  /* BUILD 14.34: shortly after connect, seed/publish our library only if the server has none yet or
+     we hold genuine local changes — a plain reconnect never force-bumps the transaction counter. */
+  setTimeout(function(){ try{ fsLibSyncOnConnect(); }catch(_){} }, 3500);
   /* BUILD 14.7: photos/docs live on Drive, pulled by fbpMediaSync. onSnapshot only fires it on a
      DB change — if the media file lagged behind the doc's msig (upload race), the pull got the old
      file and never retried until a reload (the "sync only after Ctrl+Shift+R" bug). A steady 12s
@@ -4546,7 +5181,11 @@ async function fsWipeAll(){
     setCloudStat('Wiping all projects…');
     const snap = await _fsCol.get();
     let n = 0;
-    for(const doc of snap.docs){ try{ await doc.ref.delete(); n++; }catch(_){} }
+    for(const doc of snap.docs){
+      const d = doc.data();
+      if(doc.id === LIB_DOC_ID || (d && d.kind === 'library')) continue;   /* BUILD 14.34: NEVER wipe the shared Equipment Library */
+      try{ await doc.ref.delete(); n++; }catch(_){}
+    }
     db.projects = []; db.activeId = null;
     db.mediaMap = {}; db.backupMap = {}; db.driveMap = {};
     _fsLocal = {}; try{ _fbpLocal = {}; }catch(_){}
@@ -4557,6 +5196,29 @@ async function fsWipeAll(){
   }catch(err){ alert('Wipe error: ' + (err.message || err)); setCloudStat('Wipe error: ' + (err.message||'')); }
 }
 try{ window.fsWipeAll = fsWipeAll; }catch(_){}
+/* RESYNC THIS MACHINE to match the database (BUILD 14.12) — drops the local list and reloads the
+   current projects from Firestore. Fixes a machine that came online with stale/duplicate/deleted
+   projects. Nothing on the server or other machines changes. Console: fsResyncLocal() */
+async function fsResyncLocal(){
+  if(!fsReady()){ alert('Firestore not connected yet — wait for "Synced ✓ <email>", then run fsResyncLocal() again.'); return; }
+  if(!confirm('Reset THIS computer to match the database?\n\nDrops every local project on THIS machine and reloads the current set from Firestore.\nThe server and other machines are NOT affected. Continue?')) return;
+  try{
+    setCloudStat('Re-syncing this computer…');
+    _fsSeededPush = true;                                   /* receive only — never re-push the dropped locals */
+    db.projects = []; db.activeId = null; _fsLocal = {}; db.mediaMap = {}; db.driveMap = {};
+    const snap = await _fsCol.get();
+    _fsApplying = true;
+    snap.forEach(doc => { const d = doc.data(); if(d && d.pid) fsApplyDoc(d); });
+    _fsApplying = false;
+    const alt = db.projects.find(p => !p.frozen); db.activeId = alt ? alt.id : null;
+    syncActive(); saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
+    renderHeader(); renderSideProject(); goTo(state.project ? '#/dashboard' : '#/create');
+    fbpMediaSync().catch(function(){});
+    setCloudStat('This computer now matches the database ✓ · ' + hhmm());
+    alert('Done — this computer now shows exactly the ' + db.projects.length + ' project(s) from the database.');
+  }catch(e){ alert('Resync error: ' + (e.message || e)); setCloudStat('Resync error: ' + (e.message||'')); }
+}
+try{ window.fsResyncLocal = fsResyncLocal; }catch(_){}
 
 /* ---------- TRANSPARENT CLOUD (BUILD 10.2) ----------
    The user signs in once at start and just works. The sidebar shows every
@@ -5176,7 +5838,11 @@ const PHOTO_DIRS = [
   ['server', 'Dome Server'],
   ['vj',     'VJ Server'],
   ['rack',   'Rack'],
-  ['camera', 'Camera']
+  ['camera', 'Camera'],
+  ['speakers', 'Speakers'],
+  ['fan', 'Screen Fan'],
+  ['cables', 'Cables'],
+  ['tools', 'Tools']
 ];
 function cloudPhotoJobs(e){
   /* every photo of the project as {dir, name, data} — projector model shots
@@ -5752,7 +6418,7 @@ var _pfBusy = false;
 async function refreshPrices(kind){
   if(_pfBusy){ flashStat('Price update already running…'); return; }
   const rows = ordRowsOf(kind);
-  const pid = kind==='rack' ? 'rackP' : kind==='vj' ? 'vjP' : kind==='camera' ? 'camP' : 'srvP';
+  const pid = kind==='rack' ? 'rackP' : kind==='vj' ? 'vjP' : kind==='camera' ? 'camP' : kind==='speakers' ? 'spkP' : kind==='fan' ? 'fanP' : kind==='cables' ? 'cabP' : kind==='tools' ? 'toolP' : 'srvP';
   const targets = rows.map((r,i)=>({r,i})).filter(t => lpUrlOf({value:t.r.link||''}));
   if(!targets.length){ flashStat('No links in this table'); return; }
   _pfBusy = true;
@@ -5804,7 +6470,7 @@ function schedAutoPrice(kind, i){
     const r2 = ordRowsOf(kind)[i];
     if(p && r2 && !String(r2.price||'').trim()){
       r2.price = p; saveState();
-      const pid = kind==='rack' ? 'rackP' : kind==='vj' ? 'vjP' : kind==='camera' ? 'camP' : 'srvP';
+      const pid = kind==='rack' ? 'rackP' : kind==='vj' ? 'vjP' : kind==='camera' ? 'camP' : kind==='speakers' ? 'spkP' : kind==='fan' ? 'fanP' : kind==='cables' ? 'cabP' : kind==='tools' ? 'toolP' : 'srvP';
       const el = document.getElementById(pid + i); if(el) el.value = p;
       if(typeof refreshTotals==='function') refreshTotals();
       flashStat('Price fetched from the link: ' + fmt(parseFloat(p)) + ' ✓');
@@ -5902,7 +6568,7 @@ function lpHide(){
    place, no rerender. */
 const ORD_TITLES = ['Not ordered', 'Ordered', 'Received'];
 function ordRowsOf(kind){
-  return kind==='rack' ? state.rack.rows : kind==='vj' ? state.vj.rows : kind==='camera' ? state.camera.rows : state.server.rows;
+  return kind==='rack' ? state.rack.rows : kind==='vj' ? state.vj.rows : kind==='camera' ? state.camera.rows : kind==='speakers' ? state.speakers.rows : kind==='fan' ? state.fan.rows : kind==='cables' ? state.cables.rows : kind==='tools' ? state.tools.rows : state.server.rows;
 }
 function ordDot(kind, i, r){
   const s = parseInt(r.ord)||0;
@@ -5912,7 +6578,7 @@ function ordDot(kind, i, r){
    checked = this item ships in its module's combined place; unchecked = its own place.
    Default: checked, EXCEPT tripods (they ship separately). */
 function isCombined(r){ if(!r) return false; return (r.ship===undefined) ? !/tripod/i.test(r.name||'') : !!r.ship; }
-function shipRowsOf(kind){ return kind==='server'?state.server.rows : kind==='vj'?(state.vj&&state.vj.rows||[]) : kind==='rack'?state.rack.rows : kind==='camera'?(state.camera&&state.camera.rows||[]) : []; }
+function shipRowsOf(kind){ return kind==='server'?state.server.rows : kind==='vj'?(state.vj&&state.vj.rows||[]) : kind==='rack'?state.rack.rows : kind==='camera'?(state.camera&&state.camera.rows||[]) : kind==='speakers'?(state.speakers&&state.speakers.rows||[]) : kind==='fan'?(state.fan&&state.fan.rows||[]) : kind==='cables'?(state.cables&&state.cables.rows||[]) : kind==='tools'?(state.tools&&state.tools.rows||[]) : []; }
 function toggleShip(kind, i, checked){ const rows=shipRowsOf(kind); if(!rows[i]) return; rows[i].ship = !!checked; saveState(); }
 function shipChk(kind, i, r){ return `<td style="width:4%;text-align:center" title="Shipping — combine into one place (uncheck = ships as its own place)"><input type="checkbox" style="width:15px;height:15px;cursor:pointer;accent-color:var(--fdp-red)" ${isCombined(r)?'checked':''} onchange="toggleShip('${kind}',${i},this.checked)"></td>`; }
 function cycOrd(kind, i, el){
@@ -5928,6 +6594,11 @@ function cycOrd(kind, i, el){
   ['kVj','stVj','vjFoot'].forEach(id=>{const e2=document.getElementById(id); if(e2) e2.textContent=t;});
   t = fmt(camTotal());
   ['kCam','stCam','camFoot'].forEach(id=>{const e2=document.getElementById(id); if(e2) e2.textContent=t;});
+  t = fmt(spkTotal());
+  ['kSpk','stSpk','spkFoot'].forEach(id=>{const e2=document.getElementById(id); if(e2) e2.textContent=t;});
+  t = fmt(fanTotal());
+  ['kFan','stFan','fanFoot'].forEach(id=>{const e2=document.getElementById(id); if(e2) e2.textContent=t;});
+  if(typeof refreshCabTotals==='function') refreshCabTotals();
   renderHeader();
 }
 
@@ -5938,8 +6609,8 @@ function cycOrd(kind, i, el){
 const camListId = cat => 'dlCamCat' + Math.max(0, ciIndexOf(camCats(), cat));
 const libCamByCat = cat => libByGroupCat('cameras', cat);
 function camTotal(){ return state.camera.rows.reduce((s,r)=> s + rowSum(r), 0); }
-function addCam(){ state.camera.rows.push(blankRow()); saveState(); route(); }
-function rmCam(i){ state.camera.rows.splice(i,1); saveState(); route(); }
+function addCam(){ state.camera.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
+function rmCam(i){ state.camera.rows.splice(i,1); saveState(); rerenderKeepScroll(); }
 function setCamCat(i, v){
   state.camera.rows[i].cat = v;
   if(autoFillFromCat(state.camera.rows[i], libCamByCat(v))) flashStat('Filled from Library ✓');
@@ -5994,6 +6665,573 @@ function refreshCamReadyUI(){
   set('camReadyBtn', e=>e.classList.toggle('on',ready));
   set('camBtnLbl', e=>e.textContent = ready?'Camera Ready':'Mark as Ready');
   set('kCamLedTxt', e=>e.textContent = ready?'Ready':'Not Ready');
+}
+
+/* ---------- SPEAKER / AUDIO SYSTEM MODULE (BUILD 14.20) ----------
+   Mirrors the Calibration Camera module: hardware rows picked from the Equipment
+   Library "Speaker / Audio System" group (SPK_CATS), qty/price/link, per-row totals
+   without full rerender, Mark as Ready toggle, photos card (kind 'speakers').
+   The rows flow into Equipment & Shipping (a "Speakers" module group). */
+const spkListId = cat => 'dlSpkCat' + Math.max(0, ciIndexOf(spkCats(), cat));
+const libSpkByCat = cat => libByGroupCat('speakers', cat);
+function spkTotal(){ return state.speakers.rows.reduce((s,r)=> s + rowSum(r), 0); }
+function addSpk(){ state.speakers.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
+function rmSpk(i){ state.speakers.rows.splice(i,1); saveState(); rerenderKeepScroll(); }
+function setSpkCat(i, v){
+  state.speakers.rows[i].cat = v;
+  if(autoFillFromCat(state.speakers.rows[i], libSpkByCat(v))) flashStat('Filled from Library ✓');
+  saveState(); rerenderKeepScroll();
+}
+function updSpk(i, k, v){
+  state.speakers.rows[i][k] = v;
+  if(k === 'link') schedAutoPrice('speakers', i);
+  if(k === 'name'){
+    const it = libFind(v);
+    if(it){
+      if(!(String(state.speakers.rows[i].price||'').trim()) && String(it.price||'').trim()){
+        state.speakers.rows[i].price = it.price;
+        const pe = document.getElementById('spkP'+i); if(pe) pe.value = it.price;
+      }
+      if(!(String(state.speakers.rows[i].link||'').trim()) && (it.link||'').trim()){
+        state.speakers.rows[i].link = it.link;
+        const le = document.getElementById('spkL'+i); if(le) le.value = it.link;
+      }
+    }
+  }
+  saveState();
+  const r = state.speakers.rows[i];
+  const t = priceNum(r.price)*(parseFloat(r.qty)||1);
+  const cell = document.getElementById('spkRowT'+i); if(cell) cell.textContent = t ? fmt(t) : '—';
+  const s = fmt(spkTotal());
+  ['kSpk','stSpk','spkFoot'].forEach(id=>{const e=document.getElementById(id); if(e) e.textContent=s;});
+}
+function addSpkRowToLib(i){
+  const row = state.speakers.rows[i]; if(!row) return;
+  const name = (row.name||'').trim();
+  if(!name || libFind(name)) return;
+  let cat = (row.cat||'').trim();
+  if(cat && !groupCats('speakers').includes(cat)) cat = '';
+  ensureLibGroup('speakers').push({cat, name, price: row.price||'', link: row.link||''});
+  sortByCat(db.library.speakers, groupCats('speakers'));
+  saveState(); rerenderKeepScroll();
+  flashStat('Added to Library ✓');
+}
+function toggleSpkReady(){
+  if(state.speakers.ready){ state.speakers.ready = false; saveState(); refreshSpkReadyUI(); renderSideProject(); return; }
+  if(!state.speakers.rows.some(r=>(r.name||'').trim())){
+    alert('Add at least one speaker component before marking Ready.'); return;
+  }
+  state.speakers.ready = true; saveState(); refreshSpkReadyUI(); renderSideProject();
+}
+function refreshSpkReadyUI(){
+  const ready = state.speakers.ready;
+  const set = (id,fn)=>{const e=document.getElementById(id); if(e) fn(e);};
+  set('spkBtnLed', e=>e.classList.toggle('on',ready));
+  set('kSpkLed', e=>e.classList.toggle('on',ready));
+  set('spkReadyBtn', e=>e.classList.toggle('on',ready));
+  set('spkBtnLbl', e=>e.textContent = ready?'Speakers Ready':'Mark as Ready');
+  set('kSpkLedTxt', e=>e.textContent = ready?'Ready':'Not Ready');
+}
+function pageSpeakers(){
+  const ready = state.speakers.ready;
+  const P = state.project;
+  const spkRows = state.speakers.rows.map((r,i)=>`
+    <tr>
+      <td class="tight" style="width:17%"><select class="cell ${!(r.cat||'').trim()?'empty':''}" onchange="setSpkCat(${i},this.value);this.classList.toggle('empty',!this.value)">
+        <option value="" ${!(r.cat||'').trim()?'selected':''}>— Category —</option>
+        ${spkCats().map(c=>`<option value="${c}" ${r.cat===c?'selected':''}>${c}</option>`).join('')}
+        ${(r.cat||'').trim() && ciIndexOf(spkCats(), r.cat)===-1 ? `<option value="${esc(r.cat)}" selected>${esc(r.cat)}</option>` : ''}
+      </select></td>
+      <td class="tight"><input class="cell b" id="spkN${i}" onfocus="dlFocus(this)" onblur="dlBlur(this)" list="${(r.cat||'').trim()?spkListId(r.cat):'dlLibAll'}" value="${esc(r.name)}" placeholder="Pick from Library or type" oninput="updSpk(${i},'name',this.value)"></td>
+      <td style="width:6%;text-align:center">${ordDot('speakers', i, r)}</td>
+      ${shipChk('speakers', i, r)}
+      <td class="tight" style="width:7%"><input class="cell num" value="${esc(r.qty)}" oninput="updSpk(${i},'qty',this.value)"></td>
+      <td class="tight" style="width:11%"><input class="cell num" id="spkP${i}" value="${esc(r.price)}" placeholder="—" oninput="updSpk(${i},'price',this.value)"></td>
+      <td class="num" style="width:11%"><span id="spkRowT${i}">${fmt(priceNum(r.price)*(parseFloat(r.qty)||1) || null)}</span></td>
+      <td class="tight" style="width:15%"><div style="display:flex;align-items:center;gap:4px"><input class="cell" id="spkL${i}" onmouseenter="lpShow(this)" onmouseleave="lpHide()" value="${esc(r.link)}" placeholder="https://" oninput="updSpk(${i},'link',this.value)"><button class="mod-btn" style="padding:4px 7px;flex:none" title="Copy link" onclick="copyRowLink('spkL${i}', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button><button class="mod-btn" style="padding:4px 7px;flex:none" title="Open link" onclick="openRowLink('spkL${i}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><path d="M15 3h6v6M10 14L21 3"/></svg></button></div></td>
+      <td class="tolib">${(r.name||'').trim() && !libFind(r.name) ? `<button title="Add to Library" onclick="addSpkRowToLib(${i})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M9 9.5h6M12 6.5v6"/></svg></button>` : ''}</td>
+      <td class="rm"><button title="Remove" onclick="rmSpk(${i})">×</button></td>
+    </tr>`).join('');
+
+  return `
+  <div class="page">
+    <div class="crumbs"><a href="#/dashboard">Dashboard</a> › <span class="cur">Speakers</span></div>
+    <datalist id="dlLibAll">${libAllItems().map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>
+    ${spkCats().map((c,ci)=>`<datalist id="dlSpkCat${ci}">${libSpkByCat(c).map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>`).join('')}
+    <div class="pagehead">
+      <div class="eyebrow">#${esc(P.number)} · ${esc(P.title)}${P.type?' · System: '+esc(P.type):''}${P.domeDiameter?' · '+esc(P.domeDiameter)+' m '+esc(P.domeType||''):''}</div>
+      <h1>Speakers</h1>
+      <div class="sub">Assemble and document the audio system — main speakers, subwoofer, amplification and audio interface — picked from the Equipment Library.</div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi red"><div class="kl">Audio components cost</div><div class="kvv" id="kSpk">${fmt(spkTotal())}</div></div>
+      <div class="kpi"><div class="kl">Components</div><div class="kvv">${state.speakers.rows.filter(r=>(r.name||'').trim()).length}</div></div>
+      <div class="kpi"><div class="kl">Photos</div><div class="kvv">${photosOf('speakers').length} <small>/ ${PHOTO_MAX.speakers}</small></div></div>
+      <div class="kpi"><div class="kl">Audio build</div>
+        <div class="kvv" style="font-size:15px;display:flex;align-items:center;gap:8px"><span class="led ${ready?'on':''}" id="kSpkLed"></span><span id="kSpkLedTxt">${ready?'Ready':'Not Ready'}</span></div></div>
+    </div>
+
+    <!-- ================= SPEAKER BUILDER ================= -->
+    <div class="sec-title" id="speakers">
+      <div class="stic">${IC.spk}</div>
+      <div><h2>Speaker Builder</h2><div class="st-sub">Hardware is picked from the Equipment Library — Speaker / Audio System group.</div></div>
+      <div class="st-total"><div class="l">Components total</div><div class="v" id="stSpk">${fmt(spkTotal())}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Hardware configuration</h3><button class="mod-btn" style="padding:5px 11px;font-size:11.5px;margin-right:8px" title="Fetch fresh prices from the links" onclick="refreshPrices('speakers')">↻ Prices</button>
+        <button class="ready-btn ${ready?'on':''}" id="spkReadyBtn" onclick="toggleSpkReady()">
+          <span class="led ${ready?'on':''}" id="spkBtnLed"></span><span id="spkBtnLbl">${ready ? 'Speakers Ready' : 'Mark as Ready'}</span></button>
+      </div>
+      <table class="eq">
+        <thead><tr><th>Category</th><th>Hardware</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:center" title="Combine into one shipping place">Ship</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th><th>Link</th><th></th><th></th></tr></thead>
+        <tbody>${spkRows}</tbody>
+        <tfoot><tr><td colspan="6">Audio total</td><td class="num" id="spkFoot">${fmt(spkTotal())}</td><td colspan="3"></td></tr></tfoot>
+      </table>
+      <button class="add-line" onclick="addSpk()">+ Add component</button>
+    </div>
+
+    ${photoCard('speakers','Speaker Photos','Speakers, subwoofer and installation photos — up to '+PHOTO_MAX.speakers+'. Shown in Documentation as "Speakers — #'+esc(P.number)+'".')}
+
+    <a class="backlink" href="#/dashboard">${IC.back} Back to Dashboard</a>
+  </div>`;
+}
+
+/* ---------- SCREEN FAN / VENTILATION MODULE (BUILD 14.27) ----------
+   Mirrors the Speaker module: hardware rows picked from the Equipment Library "Screen Fan /
+   Ventilation" group (FAN_CATS), qty/price/link, per-row totals, Mark as Ready toggle,
+   photos card (kind 'fan'). Rows flow into Equipment & Shipping (a "Screen Fan" group). */
+const fanListId = cat => 'dlFanCat' + Math.max(0, ciIndexOf(fanCats(), cat));
+const libFanByCat = cat => libByGroupCat('fan', cat);
+function fanTotal(){ return state.fan.rows.reduce((s,r)=> s + rowSum(r), 0); }
+function addFan(){ state.fan.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
+function rmFan(i){ state.fan.rows.splice(i,1); saveState(); rerenderKeepScroll(); }
+function setFanCat(i, v){
+  state.fan.rows[i].cat = v;
+  if(autoFillFromCat(state.fan.rows[i], libFanByCat(v))) flashStat('Filled from Library ✓');
+  saveState(); rerenderKeepScroll();
+}
+function updFan(i, k, v){
+  state.fan.rows[i][k] = v;
+  if(k === 'link') schedAutoPrice('fan', i);
+  if(k === 'name'){
+    const it = libFind(v);
+    if(it){
+      if(!(String(state.fan.rows[i].price||'').trim()) && String(it.price||'').trim()){
+        state.fan.rows[i].price = it.price;
+        const pe = document.getElementById('fanP'+i); if(pe) pe.value = it.price;
+      }
+      if(!(String(state.fan.rows[i].link||'').trim()) && (it.link||'').trim()){
+        state.fan.rows[i].link = it.link;
+        const le = document.getElementById('fanL'+i); if(le) le.value = it.link;
+      }
+    }
+  }
+  saveState();
+  const r = state.fan.rows[i];
+  const t = priceNum(r.price)*(parseFloat(r.qty)||1);
+  const cell = document.getElementById('fanRowT'+i); if(cell) cell.textContent = t ? fmt(t) : '—';
+  const s = fmt(fanTotal());
+  ['kFan','stFan','fanFoot'].forEach(id=>{const e=document.getElementById(id); if(e) e.textContent=s;});
+}
+function addFanRowToLib(i){
+  const row = state.fan.rows[i]; if(!row) return;
+  const name = (row.name||'').trim();
+  if(!name || libFind(name)) return;
+  let cat = (row.cat||'').trim();
+  if(cat && !groupCats('fan').includes(cat)) cat = '';
+  ensureLibGroup('fan').push({cat, name, price: row.price||'', link: row.link||''});
+  sortByCat(db.library.fan, groupCats('fan'));
+  saveState(); rerenderKeepScroll();
+  flashStat('Added to Library ✓');
+}
+function toggleFanReady(){
+  if(state.fan.ready){ state.fan.ready = false; saveState(); refreshFanReadyUI(); renderSideProject(); return; }
+  if(!state.fan.rows.some(r=>(r.name||'').trim())){
+    alert('Add at least one fan component before marking Ready.'); return;
+  }
+  state.fan.ready = true; saveState(); refreshFanReadyUI(); renderSideProject();
+}
+function refreshFanReadyUI(){
+  const ready = state.fan.ready;
+  const set = (id,fn)=>{const e=document.getElementById(id); if(e) fn(e);};
+  set('fanBtnLed', e=>e.classList.toggle('on',ready));
+  set('kFanLed', e=>e.classList.toggle('on',ready));
+  set('fanReadyBtn', e=>e.classList.toggle('on',ready));
+  set('fanBtnLbl', e=>e.textContent = ready?'Fan Ready':'Mark as Ready');
+  set('kFanLedTxt', e=>e.textContent = ready?'Ready':'Not Ready');
+}
+function pageFan(){
+  const ready = state.fan.ready;
+  const P = state.project;
+  const fanRows = state.fan.rows.map((r,i)=>`
+    <tr>
+      <td class="tight" style="width:17%"><select class="cell ${!(r.cat||'').trim()?'empty':''}" onchange="setFanCat(${i},this.value);this.classList.toggle('empty',!this.value)">
+        <option value="" ${!(r.cat||'').trim()?'selected':''}>— Category —</option>
+        ${fanCats().map(c=>`<option value="${c}" ${r.cat===c?'selected':''}>${c}</option>`).join('')}
+        ${(r.cat||'').trim() && ciIndexOf(fanCats(), r.cat)===-1 ? `<option value="${esc(r.cat)}" selected>${esc(r.cat)}</option>` : ''}
+      </select></td>
+      <td class="tight"><input class="cell b" id="fanN${i}" onfocus="dlFocus(this)" onblur="dlBlur(this)" list="${(r.cat||'').trim()?fanListId(r.cat):'dlLibAll'}" value="${esc(r.name)}" placeholder="Pick from Library or type" oninput="updFan(${i},'name',this.value)"></td>
+      <td style="width:6%;text-align:center">${ordDot('fan', i, r)}</td>
+      ${shipChk('fan', i, r)}
+      <td class="tight" style="width:7%"><input class="cell num" value="${esc(r.qty)}" oninput="updFan(${i},'qty',this.value)"></td>
+      <td class="tight" style="width:11%"><input class="cell num" id="fanP${i}" value="${esc(r.price)}" placeholder="—" oninput="updFan(${i},'price',this.value)"></td>
+      <td class="num" style="width:11%"><span id="fanRowT${i}">${fmt(priceNum(r.price)*(parseFloat(r.qty)||1) || null)}</span></td>
+      <td class="tight" style="width:15%"><div style="display:flex;align-items:center;gap:4px"><input class="cell" id="fanL${i}" onmouseenter="lpShow(this)" onmouseleave="lpHide()" value="${esc(r.link)}" placeholder="https://" oninput="updFan(${i},'link',this.value)"><button class="mod-btn" style="padding:4px 7px;flex:none" title="Copy link" onclick="copyRowLink('fanL${i}', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button><button class="mod-btn" style="padding:4px 7px;flex:none" title="Open link" onclick="openRowLink('fanL${i}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><path d="M15 3h6v6M10 14L21 3"/></svg></button></div></td>
+      <td class="tolib">${(r.name||'').trim() && !libFind(r.name) ? `<button title="Add to Library" onclick="addFanRowToLib(${i})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M9 9.5h6M12 6.5v6"/></svg></button>` : ''}</td>
+      <td class="rm"><button title="Remove" onclick="rmFan(${i})">×</button></td>
+    </tr>`).join('');
+
+  return `
+  <div class="page">
+    <div class="crumbs"><a href="#/dashboard">Dashboard</a> › <span class="cur">Screen Fan</span></div>
+    <datalist id="dlLibAll">${libAllItems().map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>
+    ${fanCats().map((c,ci)=>`<datalist id="dlFanCat${ci}">${libFanByCat(c).map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>`).join('')}
+    <div class="pagehead">
+      <div class="eyebrow">#${esc(P.number)} · ${esc(P.title)}${P.type?' · System: '+esc(P.type):''}${P.domeDiameter?' · '+esc(P.domeDiameter)+' m '+esc(P.domeType||''):''}</div>
+      <h1>Screen Fan</h1>
+      <div class="sub">Assemble and document the dome screen ventilation — fan units, controllers, ducting, mounts and power — picked from the Equipment Library.</div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi red"><div class="kl">Fan components cost</div><div class="kvv" id="kFan">${fmt(fanTotal())}</div></div>
+      <div class="kpi"><div class="kl">Components</div><div class="kvv">${state.fan.rows.filter(r=>(r.name||'').trim()).length}</div></div>
+      <div class="kpi"><div class="kl">Photos</div><div class="kvv">${photosOf('fan').length} <small>/ ${PHOTO_MAX.fan}</small></div></div>
+      <div class="kpi"><div class="kl">Fan build</div>
+        <div class="kvv" style="font-size:15px;display:flex;align-items:center;gap:8px"><span class="led ${ready?'on':''}" id="kFanLed"></span><span id="kFanLedTxt">${ready?'Ready':'Not Ready'}</span></div></div>
+    </div>
+
+    <!-- ================= FAN BUILDER ================= -->
+    <div class="sec-title" id="fan">
+      <div class="stic">${IC.fan}</div>
+      <div><h2>Screen Fan Builder</h2><div class="st-sub">Hardware is picked from the Equipment Library — Screen Fan / Ventilation group.</div></div>
+      <div class="st-total"><div class="l">Components total</div><div class="v" id="stFan">${fmt(fanTotal())}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Hardware configuration</h3><button class="mod-btn" style="padding:5px 11px;font-size:11.5px;margin-right:8px" title="Fetch fresh prices from the links" onclick="refreshPrices('fan')">↻ Prices</button>
+        <button class="ready-btn ${ready?'on':''}" id="fanReadyBtn" onclick="toggleFanReady()">
+          <span class="led ${ready?'on':''}" id="fanBtnLed"></span><span id="fanBtnLbl">${ready ? 'Fan Ready' : 'Mark as Ready'}</span></button>
+      </div>
+      <table class="eq">
+        <thead><tr><th>Category</th><th>Hardware</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:center" title="Combine into one shipping place">Ship</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th><th>Link</th><th></th><th></th></tr></thead>
+        <tbody>${fanRows}</tbody>
+        <tfoot><tr><td colspan="6">Fan total</td><td class="num" id="fanFoot">${fmt(fanTotal())}</td><td colspan="3"></td></tr></tfoot>
+      </table>
+      <button class="add-line" onclick="addFan()">+ Add component</button>
+    </div>
+
+    ${photoCard('fan','Screen Fan Photos','Fan units, ducting and installation photos — up to '+PHOTO_MAX.fan+'. Shown in Documentation as "Screen Fan — #'+esc(P.number)+'".')}
+
+    <a class="backlink" href="#/dashboard">${IC.back} Back to Dashboard</a>
+  </div>`;
+}
+
+/* ---------- CABLES & ADAPTERS MODULE (BUILD 14.31) ----------
+   Mirrors the Screen Fan module: hardware rows picked from the Equipment Library "Cables & Adapters"
+   group (CAB_CATS), qty/price/link, per-row totals, Mark as Ready toggle, photos card (kind 'cables').
+   Rows flow into Equipment & Shipping (a "Cables" module group). */
+const cabListId = cat => 'dlCabCat' + Math.max(0, ciIndexOf(cabCats(), cat));
+const libCabByCat = cat => libByGroupCat('cables', cat);
+function cabTotal(){ return state.cables.rows.reduce((s,r)=> s + rowSum(r), 0); }
+/* BUILD 14.33: the Cables module is split into THREE sub-tables (Power / Video / Audio) — a purely
+   visual grouping via a per-row `grp` tag. It is still ONE module (one total, one Ready, one photos
+   card) and ships as a single "Cables" group. Rows with no grp default to 'power'. */
+const CAB_GROUPS = [ {key:'power', label:'Power Cables'}, {key:'video', label:'Video Cables'}, {key:'audio', label:'Audio Cables'} ];
+const cabGrpOf = r => { const g=(r&&r.grp)||'power'; return CAB_GROUPS.some(b=>b.key===g)?g:'power'; };
+function cabSubTotal(grp){ return state.cables.rows.reduce((s,r)=> s + (cabGrpOf(r)===grp ? rowSum(r) : 0), 0); }
+function refreshCabTotals(){
+  const g = fmt(cabTotal());
+  ['kCab','stCab'].forEach(id=>{const e=document.getElementById(id); if(e) e.textContent=g;});
+  CAB_GROUPS.forEach(b=>{ const e=document.getElementById('cabFoot_'+b.key); if(e) e.textContent=fmt(cabSubTotal(b.key)); });
+}
+function addCab(grp){ const r=blankRow(); r.grp = (grp&&CAB_GROUPS.some(b=>b.key===grp))?grp:'power'; state.cables.rows.push(r); saveState(); rerenderKeepScroll(); }
+function rmCab(i){ state.cables.rows.splice(i,1); saveState(); rerenderKeepScroll(); }
+function setCabCat(i, v){
+  state.cables.rows[i].cat = v;
+  if(autoFillFromCat(state.cables.rows[i], libCabByCat(v))) flashStat('Filled from Library ✓');
+  saveState(); rerenderKeepScroll();
+}
+function updCab(i, k, v){
+  state.cables.rows[i][k] = v;
+  if(k === 'link') schedAutoPrice('cables', i);
+  if(k === 'name'){
+    const it = libFind(v);
+    if(it){
+      if(!(String(state.cables.rows[i].price||'').trim()) && String(it.price||'').trim()){
+        state.cables.rows[i].price = it.price;
+        const pe = document.getElementById('cabP'+i); if(pe) pe.value = it.price;
+      }
+      if(!(String(state.cables.rows[i].link||'').trim()) && (it.link||'').trim()){
+        state.cables.rows[i].link = it.link;
+        const le = document.getElementById('cabL'+i); if(le) le.value = it.link;
+      }
+    }
+  }
+  saveState();
+  const r = state.cables.rows[i];
+  const t = priceNum(r.price)*(parseFloat(r.qty)||1);
+  const cell = document.getElementById('cabRowT'+i); if(cell) cell.textContent = t ? fmt(t) : '—';
+  refreshCabTotals();
+}
+function addCabRowToLib(i){
+  const row = state.cables.rows[i]; if(!row) return;
+  const name = (row.name||'').trim();
+  if(!name || libFind(name)) return;
+  let cat = (row.cat||'').trim();
+  if(cat && !groupCats('cables').includes(cat)) cat = '';
+  ensureLibGroup('cables').push({cat, name, price: row.price||'', link: row.link||''});
+  sortByCat(db.library.cables, groupCats('cables'));
+  saveState(); rerenderKeepScroll();
+  flashStat('Added to Library ✓');
+}
+function toggleCabReady(){
+  if(state.cables.ready){ state.cables.ready = false; saveState(); refreshCabReadyUI(); renderSideProject(); return; }
+  if(!state.cables.rows.some(r=>(r.name||'').trim())){
+    alert('Add at least one cable before marking Ready.'); return;
+  }
+  state.cables.ready = true; saveState(); refreshCabReadyUI(); renderSideProject();
+}
+function refreshCabReadyUI(){
+  const ready = state.cables.ready;
+  const set = (id,fn)=>{const e=document.getElementById(id); if(e) fn(e);};
+  set('cabBtnLed', e=>e.classList.toggle('on',ready));
+  set('kCabLed', e=>e.classList.toggle('on',ready));
+  set('cabReadyBtn', e=>e.classList.toggle('on',ready));
+  set('cabBtnLbl', e=>e.textContent = ready?'Cables Ready':'Mark as Ready');
+  set('kCabLedTxt', e=>e.textContent = ready?'Ready':'Not Ready');
+}
+function cabRowHtml(r, i){
+  return `
+    <tr>
+      <td class="tight" style="width:17%"><select class="cell ${!(r.cat||'').trim()?'empty':''}" onchange="setCabCat(${i},this.value);this.classList.toggle('empty',!this.value)">
+        <option value="" ${!(r.cat||'').trim()?'selected':''}>— Category —</option>
+        ${cabCats().map(c=>`<option value="${c}" ${r.cat===c?'selected':''}>${c}</option>`).join('')}
+        ${(r.cat||'').trim() && ciIndexOf(cabCats(), r.cat)===-1 ? `<option value="${esc(r.cat)}" selected>${esc(r.cat)}</option>` : ''}
+      </select></td>
+      <td class="tight"><input class="cell b" id="cabN${i}" onfocus="dlFocus(this)" onblur="dlBlur(this)" list="${(r.cat||'').trim()?cabListId(r.cat):'dlLibAll'}" value="${esc(r.name)}" placeholder="Pick from Library or type" oninput="updCab(${i},'name',this.value)"></td>
+      <td style="width:6%;text-align:center">${ordDot('cables', i, r)}</td>
+      ${shipChk('cables', i, r)}
+      <td class="tight" style="width:7%"><input class="cell num" value="${esc(r.qty)}" oninput="updCab(${i},'qty',this.value)"></td>
+      <td class="tight" style="width:11%"><input class="cell num" id="cabP${i}" value="${esc(r.price)}" placeholder="—" oninput="updCab(${i},'price',this.value)"></td>
+      <td class="num" style="width:11%"><span id="cabRowT${i}">${fmt(priceNum(r.price)*(parseFloat(r.qty)||1) || null)}</span></td>
+      <td class="tight" style="width:15%"><div style="display:flex;align-items:center;gap:4px"><input class="cell" id="cabL${i}" onmouseenter="lpShow(this)" onmouseleave="lpHide()" value="${esc(r.link)}" placeholder="https://" oninput="updCab(${i},'link',this.value)"><button class="mod-btn" style="padding:4px 7px;flex:none" title="Copy link" onclick="copyRowLink('cabL${i}', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button><button class="mod-btn" style="padding:4px 7px;flex:none" title="Open link" onclick="openRowLink('cabL${i}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><path d="M15 3h6v6M10 14L21 3"/></svg></button></div></td>
+      <td class="tolib">${(r.name||'').trim() && !libFind(r.name) ? `<button title="Add to Library" onclick="addCabRowToLib(${i})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M9 9.5h6M12 6.5v6"/></svg></button>` : ''}</td>
+      <td class="rm"><button title="Remove" onclick="rmCab(${i})">×</button></td>
+    </tr>`;
+}
+function pageCables(){
+  const ready = state.cables.ready;
+  const P = state.project;
+  const cabTable = (bucket) => {
+    const rowsHtml = state.cables.rows.map((r,i)=>({r,i})).filter(x=>cabGrpOf(x.r)===bucket.key).map(x=>cabRowHtml(x.r, x.i)).join('');
+    return `
+    <div class="card" style="margin-top:14px">
+      <div class="card-head"><h3>${bucket.label}</h3><span class="chip c-mut" style="margin-left:8px"><span class="cd"></span>${state.cables.rows.filter(r=>cabGrpOf(r)===bucket.key && (r.name||'').trim()).length}</span></div>
+      <table class="eq">
+        <thead><tr><th>Category</th><th>Hardware</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:center" title="Combine into one shipping place">Ship</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th><th>Link</th><th></th><th></th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+        <tfoot><tr><td colspan="6">${esc(bucket.label)} total</td><td class="num" id="cabFoot_${bucket.key}">${fmt(cabSubTotal(bucket.key))}</td><td colspan="3"></td></tr></tfoot>
+      </table>
+      <button class="add-line" onclick="addCab('${bucket.key}')">+ Add ${esc(bucket.label.replace(/ Cables$/,''))} cable</button>
+    </div>`;
+  };
+
+  return `
+  <div class="page">
+    <div class="crumbs"><a href="#/dashboard">Dashboard</a> › <span class="cur">Cables</span></div>
+    <datalist id="dlLibAll">${libAllItems().map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>
+    ${cabCats().map((c,ci)=>`<datalist id="dlCabCat${ci}">${libCabByCat(c).map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>`).join('')}
+    <div class="pagehead">
+      <div class="eyebrow">#${esc(P.number)} · ${esc(P.title)}${P.type?' · System: '+esc(P.type):''}${P.domeDiameter?' · '+esc(P.domeDiameter)+' m '+esc(P.domeType||''):''}</div>
+      <h1>Cables</h1>
+      <div class="sub">Assemble and document the cabling — power, network, HDBaseT, HDMI, DisplayPort, USB, fiber and audio cables & adapters — picked from the Equipment Library.</div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi red"><div class="kl">Cable components cost</div><div class="kvv" id="kCab">${fmt(cabTotal())}</div></div>
+      <div class="kpi"><div class="kl">Components</div><div class="kvv">${state.cables.rows.filter(r=>(r.name||'').trim()).length}</div></div>
+      <div class="kpi"><div class="kl">Photos</div><div class="kvv">${photosOf('cables').length} <small>/ ${PHOTO_MAX.cables}</small></div></div>
+      <div class="kpi"><div class="kl">Cables build</div>
+        <div class="kvv" style="font-size:15px;display:flex;align-items:center;gap:8px"><span class="led ${ready?'on':''}" id="kCabLed"></span><span id="kCabLedTxt">${ready?'Ready':'Not Ready'}</span></div></div>
+    </div>
+
+    <!-- ================= CABLES BUILDER (Power / Video / Audio) ================= -->
+    <div class="sec-title" id="cables">
+      <div class="stic">${IC.cable}</div>
+      <div><h2>Cables Builder</h2><div class="st-sub">Three sub-lists — Power, Video, Audio — all one Cables module (ships as one "Cables"). Picked from the Equipment Library — Cables & Adapters group.</div></div>
+      <div class="st-total"><div class="l">Components total</div><div class="v" id="stCab">${fmt(cabTotal())}</div></div>
+    </div>
+    <div class="card" style="padding-bottom:6px">
+      <div class="card-head"><h3>Hardware configuration</h3><button class="mod-btn" style="padding:5px 11px;font-size:11.5px;margin-right:8px" title="Fetch fresh prices from the links" onclick="refreshPrices('cables')">↻ Prices</button>
+        <button class="ready-btn ${ready?'on':''}" id="cabReadyBtn" onclick="toggleCabReady()">
+          <span class="led ${ready?'on':''}" id="cabBtnLed"></span><span id="cabBtnLbl">${ready ? 'Cables Ready' : 'Mark as Ready'}</span></button>
+      </div>
+      <div style="font-size:12px;color:var(--ink2);margin:-4px 0 2px">All three lists below are part of one Cables module — combined into a single "Cables" place in Equipment &amp; Shipping.</div>
+    </div>
+    ${CAB_GROUPS.map(cabTable).join('')}
+
+    ${photoCard('cables','Cable Photos','Cabling and connector photos — up to '+PHOTO_MAX.cables+'. Shown in Documentation as "Cables — #'+esc(P.number)+'".')}
+
+    <a class="backlink" href="#/dashboard">${IC.back} Back to Dashboard</a>
+  </div>`;
+}
+
+/* ---------- TOOLS & INSTALLATION HARDWARE MODULE (BUILD 14.37) ----------
+   Mirrors the Cables module: hardware rows picked from the Equipment Library "Tools & Installation
+   Hardware" group (TOOL_CATS), qty/price/link, per-row totals, Mark as Ready, photos card (kind 'tools').
+   Split into FOUR visual sub-tables (Rigging & Straps / Hand Tools / Power Tools / Fasteners & Hardware)
+   via a per-row `grp` tag — still ONE module (one total, one Ready, one photos card) that ships as a
+   single "Tools" place in Equipment & Shipping. Rows with no grp default to 'rigging'. */
+const toolListId = cat => 'dlToolCat' + Math.max(0, ciIndexOf(toolCats(), cat));
+const libToolByCat = cat => libByGroupCat('tools', cat);
+function toolTotal(){ return state.tools.rows.reduce((s,r)=> s + rowSum(r), 0); }
+const TOOL_GROUPS = TOOL_BUCKETS;   /* BUILD 14.39: the four sub-tables (key/catKey/label/hint) */
+const toolGrpOf = r => { const g=(r&&r.grp)||'rigging'; return TOOL_GROUPS.some(b=>b.key===g)?g:'rigging'; };
+/* categories offered in a row's Category dropdown = that sub-table's OWN categories (+ Other) */
+function toolGrpCats(grp){
+  const base = toolBucketCats(grp);
+  return base.concat(base.some(c=>String(c).toLowerCase()==='other')?[]:['Other']);
+}
+function toolSubTotal(grp){ return state.tools.rows.reduce((s,r)=> s + (toolGrpOf(r)===grp ? rowSum(r) : 0), 0); }
+function refreshToolTotals(){
+  const g = fmt(toolTotal());
+  ['kTool','stTool'].forEach(id=>{const e=document.getElementById(id); if(e) e.textContent=g;});
+  TOOL_GROUPS.forEach(b=>{ const e=document.getElementById('toolFoot_'+b.key); if(e) e.textContent=fmt(toolSubTotal(b.key)); });
+}
+function addTool(grp){ const r=blankRow(); r.grp = (grp&&TOOL_GROUPS.some(b=>b.key===grp))?grp:'rigging'; state.tools.rows.push(r); saveState(); rerenderKeepScroll(); }
+function rmTool(i){ state.tools.rows.splice(i,1); saveState(); rerenderKeepScroll(); }
+function setToolCat(i, v){
+  state.tools.rows[i].cat = v;
+  if(autoFillFromCat(state.tools.rows[i], libToolByCat(v))) flashStat('Filled from Library ✓');
+  saveState(); rerenderKeepScroll();
+}
+function updTool(i, k, v){
+  state.tools.rows[i][k] = v;
+  if(k === 'link') schedAutoPrice('tools', i);
+  if(k === 'name'){
+    const it = libFind(v);
+    if(it){
+      if(!(String(state.tools.rows[i].price||'').trim()) && String(it.price||'').trim()){
+        state.tools.rows[i].price = it.price;
+        const pe = document.getElementById('toolP'+i); if(pe) pe.value = it.price;
+      }
+      if(!(String(state.tools.rows[i].link||'').trim()) && (it.link||'').trim()){
+        state.tools.rows[i].link = it.link;
+        const le = document.getElementById('toolL'+i); if(le) le.value = it.link;
+      }
+    }
+  }
+  saveState();
+  const r = state.tools.rows[i];
+  const t = priceNum(r.price)*(parseFloat(r.qty)||1);
+  const cell = document.getElementById('toolRowT'+i); if(cell) cell.textContent = t ? fmt(t) : '—';
+  refreshToolTotals();
+}
+function addToolRowToLib(i){
+  const row = state.tools.rows[i]; if(!row) return;
+  const name = (row.name||'').trim();
+  if(!name || libFind(name)) return;
+  const grp = toolGrpOf(row);                      /* add it to the same sub-table the row lives in */
+  let cat = (row.cat||'').trim();
+  if(cat && !toolBucketCats(grp).some(x=>String(x).toLowerCase()===cat.toLowerCase())) cat = '';
+  ensureLibGroup('tools').push({cat, name, price: row.price||'', link: row.link||'', grp});
+  saveState(); rerenderKeepScroll();
+  flashStat('Added to Library ✓');
+}
+/* add a blank library item into a specific Tools sub-table (Equipment Library page) */
+function addLibTool(bucketKey){ ensureLibGroup('tools').push({cat:'', name:'', price:'', link:'', grp: (TOOL_BUCKETS.some(b=>b.key===bucketKey)?bucketKey:'rigging')}); saveState(); rerenderKeepScroll(); }
+function toggleToolReady(){
+  if(state.tools.ready){ state.tools.ready = false; saveState(); refreshToolReadyUI(); renderSideProject(); return; }
+  if(!state.tools.rows.some(r=>(r.name||'').trim())){
+    alert('Add at least one tool before marking Ready.'); return;
+  }
+  state.tools.ready = true; saveState(); refreshToolReadyUI(); renderSideProject();
+}
+function refreshToolReadyUI(){
+  const ready = state.tools.ready;
+  const set = (id,fn)=>{const e=document.getElementById(id); if(e) fn(e);};
+  set('toolBtnLed', e=>e.classList.toggle('on',ready));
+  set('kToolLed', e=>e.classList.toggle('on',ready));
+  set('toolReadyBtn', e=>e.classList.toggle('on',ready));
+  set('toolBtnLbl', e=>e.textContent = ready?'Tools Ready':'Mark as Ready');
+  set('kToolLedTxt', e=>e.textContent = ready?'Ready':'Not Ready');
+}
+function toolRowHtml(r, i){
+  const gcats = toolGrpCats(toolGrpOf(r));
+  return `
+    <tr>
+      <td class="tight" style="width:17%"><select class="cell ${!(r.cat||'').trim()?'empty':''}" onchange="setToolCat(${i},this.value);this.classList.toggle('empty',!this.value)">
+        <option value="" ${!(r.cat||'').trim()?'selected':''}>— Category —</option>
+        ${gcats.map(c=>`<option value="${c}" ${r.cat===c?'selected':''}>${c}</option>`).join('')}
+        ${(r.cat||'').trim() && ciIndexOf(gcats, r.cat)===-1 ? `<option value="${esc(r.cat)}" selected>${esc(r.cat)}</option>` : ''}
+      </select></td>
+      <td class="tight"><input class="cell b" id="toolN${i}" onfocus="dlFocus(this)" onblur="dlBlur(this)" list="${(r.cat||'').trim()?toolListId(r.cat):'dlLibAll'}" value="${esc(r.name)}" placeholder="Pick from Library or type" oninput="updTool(${i},'name',this.value)"></td>
+      <td style="width:6%;text-align:center">${ordDot('tools', i, r)}</td>
+      ${shipChk('tools', i, r)}
+      <td class="tight" style="width:7%"><input class="cell num" value="${esc(r.qty)}" oninput="updTool(${i},'qty',this.value)"></td>
+      <td class="tight" style="width:11%"><input class="cell num" id="toolP${i}" value="${esc(r.price)}" placeholder="—" oninput="updTool(${i},'price',this.value)"></td>
+      <td class="num" style="width:11%"><span id="toolRowT${i}">${fmt(priceNum(r.price)*(parseFloat(r.qty)||1) || null)}</span></td>
+      <td class="tight" style="width:15%"><div style="display:flex;align-items:center;gap:4px"><input class="cell" id="toolL${i}" onmouseenter="lpShow(this)" onmouseleave="lpHide()" value="${esc(r.link)}" placeholder="https://" oninput="updTool(${i},'link',this.value)"><button class="mod-btn" style="padding:4px 7px;flex:none" title="Copy link" onclick="copyRowLink('toolL${i}', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button><button class="mod-btn" style="padding:4px 7px;flex:none" title="Open link" onclick="openRowLink('toolL${i}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><path d="M15 3h6v6M10 14L21 3"/></svg></button></div></td>
+      <td class="tolib">${(r.name||'').trim() && !libFind(r.name) ? `<button title="Add to Library" onclick="addToolRowToLib(${i})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M9 9.5h6M12 6.5v6"/></svg></button>` : ''}</td>
+      <td class="rm"><button title="Remove" onclick="rmTool(${i})">×</button></td>
+    </tr>`;
+}
+function pageTools(){
+  const ready = state.tools.ready;
+  const P = state.project;
+  const toolTable = (bucket) => {
+    const rowsHtml = state.tools.rows.map((r,i)=>({r,i})).filter(x=>toolGrpOf(x.r)===bucket.key).map(x=>toolRowHtml(x.r, x.i)).join('');
+    return `
+    <div class="card" style="margin-top:14px">
+      <div class="card-head"><h3>${bucket.label}</h3><span class="chip c-mut" style="margin-left:8px"><span class="cd"></span>${state.tools.rows.filter(r=>toolGrpOf(r)===bucket.key && (r.name||'').trim()).length}</span></div>
+      <div style="font-size:12px;color:var(--ink2);margin:-2px 0 8px">${esc(bucket.hint)}</div>
+      <table class="eq">
+        <thead><tr><th>Category</th><th>Hardware</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:center" title="Combine into one shipping place">Ship</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th><th>Link</th><th></th><th></th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+        <tfoot><tr><td colspan="6">${esc(bucket.label)} total</td><td class="num" id="toolFoot_${bucket.key}">${fmt(toolSubTotal(bucket.key))}</td><td colspan="3"></td></tr></tfoot>
+      </table>
+      <button class="add-line" onclick="addTool('${bucket.key}')">+ Add ${esc(bucket.label)} item</button>
+    </div>`;
+  };
+
+  return `
+  <div class="page">
+    <div class="crumbs"><a href="#/dashboard">Dashboard</a> › <span class="cur">Tools &amp; Installation Hardware</span></div>
+    <datalist id="dlLibAll">${libAllItems().map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>
+    ${toolCats().map((c,ci)=>`<datalist id="dlToolCat${ci}">${libToolByCat(c).map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>`).join('')}
+    <div class="pagehead">
+      <div class="eyebrow">#${esc(P.number)} · ${esc(P.title)}${P.type?' · System: '+esc(P.type):''}${P.domeDiameter?' · '+esc(P.domeDiameter)+' m '+esc(P.domeType||''):''}</div>
+      <h1>Tools &amp; Installation Hardware</h1>
+      <div class="sub">Assemble and document the installation kit — rigging &amp; straps, hand tools, power tools and fasteners &amp; hardware — picked from the Equipment Library.</div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi red"><div class="kl">Tools cost</div><div class="kvv" id="kTool">${fmt(toolTotal())}</div></div>
+      <div class="kpi"><div class="kl">Components</div><div class="kvv">${state.tools.rows.filter(r=>(r.name||'').trim()).length}</div></div>
+      <div class="kpi"><div class="kl">Photos</div><div class="kvv">${photosOf('tools').length} <small>/ ${PHOTO_MAX.tools}</small></div></div>
+      <div class="kpi"><div class="kl">Tools build</div>
+        <div class="kvv" style="font-size:15px;display:flex;align-items:center;gap:8px"><span class="led ${ready?'on':''}" id="kToolLed"></span><span id="kToolLedTxt">${ready?'Ready':'Not Ready'}</span></div></div>
+    </div>
+
+    <!-- ================= TOOLS BUILDER (Rigging / Hand / Power / Fasteners) ================= -->
+    <div class="sec-title" id="tools">
+      <div class="stic">${IC.tool}</div>
+      <div><h2>Tools Builder</h2><div class="st-sub">Four sub-lists — Rigging &amp; Straps, Hand Tools, Power Tools, Fasteners &amp; Hardware — all one Tools module (ships as one "Tools"). Picked from the Equipment Library — Tools &amp; Installation Hardware group.</div></div>
+      <div class="st-total"><div class="l">Components total</div><div class="v" id="stTool">${fmt(toolTotal())}</div></div>
+    </div>
+    <div class="card" style="padding-bottom:6px">
+      <div class="card-head"><h3>Hardware configuration</h3><button class="mod-btn" style="padding:5px 11px;font-size:11.5px;margin-right:8px" title="Fetch fresh prices from the links" onclick="refreshPrices('tools')">↻ Prices</button>
+        <button class="ready-btn ${ready?'on':''}" id="toolReadyBtn" onclick="toggleToolReady()">
+          <span class="led ${ready?'on':''}" id="toolBtnLed"></span><span id="toolBtnLbl">${ready ? 'Tools Ready' : 'Mark as Ready'}</span></button>
+      </div>
+      <div style="font-size:12px;color:var(--ink2);margin:-4px 0 2px">All four lists below are part of one Tools module — combined into a single "Tools" place in Equipment &amp; Shipping.</div>
+    </div>
+    ${TOOL_GROUPS.map(toolTable).join('')}
+
+    ${photoCard('tools','Tool Photos','Tools and installation hardware photos — up to '+PHOTO_MAX.tools+'. Shown in Documentation as "Tools — #'+esc(P.number)+'".')}
+
+    <a class="backlink" href="#/dashboard">${IC.back} Back to Dashboard</a>
+  </div>`;
 }
 
 function pageCamera(){
@@ -6614,6 +7852,10 @@ function pageDocumentation(){
     const rr  = mk(entryPhotos(e,'rear'), 'rear', 'rk', 'Rack · Rear');
     const rck = mk(entryPhotos(e,'rack'), 'rack', 'rk', 'Rack');
     const cam = mk(entryPhotos(e,'camera'), 'camera', '', 'Camera');
+    const spk = mk(entryPhotos(e,'speakers'), 'speakers', '', 'Speakers');
+    const fan = mk(entryPhotos(e,'fan'), 'fan', '', 'Screen Fan');
+    const cab = mk(entryPhotos(e,'cables'), 'cables', '', 'Cables');
+    const tls = mk(entryPhotos(e,'tools'), 'tools', '', 'Tools');
     /* Shipping — pallet photos, one label per pallet */
     const pp = (e.data.shipping && e.data.shipping.palletPhotos) || {};
     const pals = (e.data.shipping && e.data.shipping.pallets) || [];
@@ -6632,15 +7874,15 @@ function pageDocumentation(){
           </div>
         </div>`; });
     });
-    if(!srv && !vjp && !rck && !fr && !rr && !cam && !ship) return '';
-    const modCount = entryPhotos(e,'server').length + entryPhotos(e,'vj').length + entryPhotos(e,'rack').length + entryPhotos(e,'front').length + entryPhotos(e,'rear').length + entryPhotos(e,'camera').length + shipN;
+    if(!srv && !vjp && !rck && !fr && !rr && !cam && !spk && !fan && !cab && !tls && !ship) return '';
+    const modCount = entryPhotos(e,'server').length + entryPhotos(e,'vj').length + entryPhotos(e,'rack').length + entryPhotos(e,'front').length + entryPhotos(e,'rear').length + entryPhotos(e,'camera').length + entryPhotos(e,'speakers').length + entryPhotos(e,'fan').length + entryPhotos(e,'cables').length + entryPhotos(e,'tools').length + shipN;
     return `
     <div class="card docsec">
       <div class="card-head"><h3>#${esc(P.number)} — ${esc(P.title||'')}</h3>
         <span class="chip c-mut"><span class="cd"></span>${modCount} photos</span>
         <span style="flex:1"></span>
         <button class="mod-btn ${_docGalEdit?'primary':''}" style="padding:4px 12px;font-size:12px" onclick="toggleDocGalEdit()">${_docGalEdit?'Done':'Edit'}</button></div>
-      <div class="phgrid">${fr}${rr}${srv}${vjp}${rck}${cam}${ship}</div>
+      <div class="phgrid">${fr}${rr}${srv}${vjp}${rck}${cam}${spk}${fan}${cab}${tls}${ship}</div>
     </div>`;
   }).filter(Boolean).join('');
 
@@ -6748,48 +7990,146 @@ function pageDocumentation(){
 }
 
 /* ---------- EQUIPMENT LIBRARY ---------- */
+/* BUILD 14.20: collapsible library groups. Every group starts COLLAPSED each time the
+   Equipment Library tab is entered (reset in route()); the user expands what they need.
+   Toggling a single group does NOT reset the others (rerenderKeepScroll keeps the state). */
+var _libCollapsed = {};
+var _libGroupsEdit = false;   /* BUILD 14.26: section-level Edit mode (reorder + freeze whole groups) */
+/* local order of the library SECTIONS (group keys) — user preference, NOT synced */
+function libGroupOrder(){
+  const valid = LIB_GROUPS.map(g=>g.key);
+  if(!Array.isArray(db.libGroupOrder)) db.libGroupOrder = valid.slice();
+  db.libGroupOrder = db.libGroupOrder.filter(k=>valid.indexOf(k)>=0);
+  valid.forEach(k=>{ if(db.libGroupOrder.indexOf(k)<0) db.libGroupOrder.push(k); });   /* new groups appended */
+  return db.libGroupOrder;
+}
+function libGroupsOrdered(){ const by={}; LIB_GROUPS.forEach(g=>by[g.key]=g); return libGroupOrder().map(k=>by[k]).filter(Boolean); }
+function libGroupFrozen(key){ return !!(db.libGroupFrozen && db.libGroupFrozen[key]); }
+function toggleLibGroup(key){
+  if(_libGroupsEdit) return;                          /* in Edit mode the head is for reorder/freeze, not expand */
+  if(libGroupFrozen(key)) return;                     /* a frozen section can't be expanded */
+  _libCollapsed[key] = !_libCollapsed[key]; rerenderKeepScroll();
+}
+function toggleLibGroupsEdit(){
+  _libGroupsEdit = !_libGroupsEdit;
+  if(_libGroupsEdit){ LIB_GROUPS.forEach(g=>{ _libCollapsed[g.key] = true; }); }   /* entering Edit collapses every section */
+  rerenderKeepScroll();
+}
+function moveLibGroup(key, dir){
+  const arr = libGroupOrder(); const i = arr.indexOf(key), j = i + dir;
+  if(i<0 || j<0 || j>=arr.length) return;
+  const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+  saveState(); rerenderKeepScroll();                 /* local-only order (not in the sync payload) */
+}
+function toggleLibGroupFreeze(key){
+  if(!db.libGroupFrozen || typeof db.libGroupFrozen!=='object') db.libGroupFrozen = {};
+  if(db.libGroupFrozen[key]){ delete db.libGroupFrozen[key]; } else { db.libGroupFrozen[key] = true; _libCollapsed[key] = true; }
+  saveState(); rerenderKeepScroll();
+}
 function pageLibrary(){
   normalizeSort();
-  const groups = LIB_GROUPS.map(g=>{
-    const items = db.library[g.key] || [];
-    const rows = items.map((it,i)=>`
+  const editing = _libGroupsEdit;
+  const SNOW = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;vertical-align:-2px"><path d="M12 2v20M4.2 6.5l15.6 9M19.8 6.5l-15.6 9"/></svg>';
+  const secBtn = 'border:none;background:#eef0f3;cursor:pointer;color:var(--ink);border-radius:6px;width:30px;height:26px;line-height:1;font-size:13px;padding:0;margin:0 2px;flex:none';
+  const ordered = libGroupsOrdered();
+  /* one library item row — the Category dropdown is fed the supplied category list (per-group,
+     or per-sub-table for Tools). gkey is the db.library group the item is stored in. */
+  const libItemRow = (gkey, it, idx, catList)=>`
       <tr>
         <td class="tight" style="width:17%"><select class="cell ${!(it.cat||'').trim()?'empty':''}"
-            onchange="updLib('${g.key}',${i},'cat',this.value);this.classList.toggle('empty',!this.value)">
+            onchange="updLib('${gkey}',${idx},'cat',this.value);this.classList.toggle('empty',!this.value)">
             <option value="" ${!(it.cat||'').trim()?'selected':''}>— Category —</option>
-            ${groupCats(g.key).map(c=>`<option value="${c}" ${it.cat===c?'selected':''}>${c}</option>`).join('')}
-            ${(it.cat||'').trim() && !groupCats(g.key).includes(it.cat) ? `<option value="${esc(it.cat)}" selected>${esc(it.cat)}</option>` : ''}
+            ${catList.map(c=>`<option value="${esc(c)}" ${it.cat===c?'selected':''}>${esc(c)}</option>`).join('')}
+            ${(it.cat||'').trim() && !catList.some(x=>String(x)===it.cat) ? `<option value="${esc(it.cat)}" selected>${esc(it.cat)}</option>` : ''}
           </select></td>
-        <td class="tight"><input class="cell b" value="${esc(it.name)}" placeholder="Item name" oninput="updLib('${g.key}',${i},'name',this.value)"></td>
-        <td class="tight" style="width:13%"><input class="cell num" value="${esc(it.price)}" placeholder="—" oninput="updLib('${g.key}',${i},'price',this.value)"></td>
-        <td class="tight" style="width:24%"><input class="cell" value="${esc(it.link)}" placeholder="https://" oninput="updLib('${g.key}',${i},'link',this.value)"></td>
-        <td class="rm"><button title="Remove" onclick="rmLib('${g.key}',${i})">×</button></td>
-      </tr>`).join('');
+        <td class="tight"><input class="cell b" value="${esc(it.name)}" placeholder="Item name" oninput="updLib('${gkey}',${idx},'name',this.value)"></td>
+        <td class="tight" style="width:13%"><input class="cell num" value="${esc(it.price)}" placeholder="—" oninput="updLib('${gkey}',${idx},'price',this.value)"></td>
+        <td class="tight" style="width:24%"><input class="cell" value="${esc(it.link)}" placeholder="https://" oninput="updLib('${gkey}',${idx},'link',this.value)"></td>
+        <td class="rm"><button title="Remove" onclick="rmLib('${gkey}',${idx})">×</button></td>
+      </tr>`;
+  const libCatBar = (ck)=>`
+        <div class="catbar">
+          <input class="catinput" id="catNew_${ck}" placeholder="New category" onkeydown="if(event.key==='Enter')addCategory('${ck}')">
+          <button class="catadd" title="Add category" onclick="addCategory('${ck}')">+</button>
+        </div>`;
+  const libCatChips = (ck)=>`
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 12px">
+          ${groupCats(ck).map((c,ci)=>`
+            <span style="display:inline-flex;align-items:center;gap:5px;background:#eef0f3;border:1px solid var(--line);border-radius:14px;padding:3px 4px 3px 10px;font-size:12px">
+              <span>${esc(c)}</span>
+              <button title="Rename category" onclick="renameCategory('${ck}',${ci})" style="border:none;background:none;cursor:pointer;color:var(--ink2);padding:2px;display:inline-flex"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
+              <button title="Delete category" onclick="removeCategory('${ck}',${ci})" style="border:none;background:none;cursor:pointer;color:var(--fdp-red);font-size:15px;line-height:1;padding:0 4px 0 0;font-weight:700">×</button>
+            </span>`).join('') || `<span style="font-size:11.5px;color:#9aa2ad">No categories yet — add one above.</span>`}
+        </div>`;
+  const libTableHead = `<thead><tr><th>Category</th><th>Name</th><th style="text-align:right">Price</th><th>Link</th><th></th></tr></thead>`;
+  const groups = ordered.map((g, gi)=>{
+    const items = db.library[g.key] || [];
+    const frozen = libGroupFrozen(g.key);
+    const collapsed = editing ? true : (frozen ? true : !!_libCollapsed[g.key]);
+    /* frozen section: dark shade + thin blue border, cannot expand (BUILD 14.26) */
+    const cardStyle = frozen ? 'background:#d9dee7;border:1px solid #2f6fed' : '';
+    const headCtrls = editing
+      ? `<span style="flex:1"></span>
+         <button title="Move section up" style="${secBtn}" ${gi===0?'disabled':''} onclick="event.stopPropagation();moveLibGroup('${g.key}',-1)">▲</button>
+         <button title="Move section down" style="${secBtn}" ${gi===ordered.length-1?'disabled':''} onclick="event.stopPropagation();moveLibGroup('${g.key}',1)">▼</button>
+         <button title="${frozen?'Frozen — click to unfreeze':'Freeze this section (locked shut)'}" style="${secBtn};background:${frozen?'#2f6fed':'#eef0f3'};color:${frozen?'#fff':'var(--ink2)'};width:34px" onclick="event.stopPropagation();toggleLibGroupFreeze('${g.key}')">${SNOW}</button>`
+      : `${frozen ? `<span title="Frozen section" style="color:#2f6fed;display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;flex:none">${SNOW} FROZEN</span>` : ''}`;
+    /* body: Tools & Installation Hardware is ONE section that expands into FOUR sub-tables
+       (Ropes/Slings/Rigging · Hand Tools · Power Tools · Fasteners), each with its OWN
+       categories + items (BUILD 14.39). Every other group is one table as before. */
+    let body;
+    if(g.key === 'tools'){
+      body = `
+        <div style="font-size:12px;color:var(--ink2);margin:4px 0 12px">${g.hint}</div>
+        ${TOOL_BUCKETS.map(b=>{
+          const list = items.map((it,i)=>({it,idx:i})).filter(x=>toolItemGrp(x.it)===b.key);
+          const bcats = groupCats(b.catKey);
+          return `
+          <div style="border:1px solid var(--line);border-radius:10px;padding:12px 12px 8px;margin:0 0 14px;background:#fafbfc">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              <h4 style="margin:0;font-size:12.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--ink)">${esc(b.label)}</h4>
+              <span class="chip c-mut"><span class="cd"></span>${list.filter(x=>(x.it.name||'').trim()).length} items</span>
+            </div>
+            <div style="font-size:11.5px;color:var(--ink2);margin:0 0 8px">${esc(b.hint)}</div>
+            ${libCatBar(b.catKey)}
+            ${libCatChips(b.catKey)}
+            <table class="eq">${libTableHead}<tbody>${list.map(x=>libItemRow('tools', x.it, x.idx, bcats)).join('')}</tbody></table>
+            <button class="add-line" onclick="addLibTool('${b.key}')">+ Add ${esc(b.label)} item</button>
+          </div>`;
+        }).join('')}`;
+    } else {
+      body = `
+        <div style="font-size:12px;color:var(--ink2);margin:4px 0 10px">${g.hint}</div>
+        ${libCatBar(g.key)}
+        ${libCatChips(g.key)}
+        <table class="eq">${libTableHead}<tbody>${items.map((it,i)=>libItemRow(g.key, it, i, groupCats(g.key))).join('') || ''}</tbody></table>
+        <button class="add-line" onclick="addLib('${g.key}')">+ Add item</button>`;
+    }
     return `
-    <div class="card">
-      <div class="card-head"><h3>${g.label}</h3>
-        <span class="chip c-mut"><span class="cd"></span>${items.filter(x=>(x.name||'').trim()).length} items</span></div>
-      <div style="font-size:12px;color:var(--ink2);margin:-6px 0 10px">${g.hint}</div>
-      <div class="catbar">
-        <input class="catinput" id="catNew_${g.key}" placeholder="New category"
-          onkeydown="if(event.key==='Enter')addCategory('${g.key}')">
-        <button class="catadd" title="Add category" onclick="addCategory('${g.key}')">+</button>
+    <div class="card" style="${cardStyle}">
+      <div class="card-head" style="cursor:${(editing||frozen)?'default':'pointer'};user-select:none" ${(editing||frozen)?'':`onclick="toggleLibGroup('${g.key}')"`} title="${editing?'':(frozen?'Frozen — unfreeze in Edit to open':(collapsed?'Expand':'Collapse'))}">
+        ${editing||frozen ? '' : `<span style="display:inline-flex;width:16px;flex:none;color:var(--ink2);transition:transform .15s;transform:rotate(${collapsed?'-90deg':'0deg'})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="width:14px;height:14px"><path d="M6 9l6 6 6-6"/></svg></span>`}
+        <h3 style="margin:0;${frozen?'color:#3a4658':''}">${g.label}</h3>
+        <span class="chip c-mut"><span class="cd"></span>${items.filter(x=>(x.name||'').trim()).length} items</span>
+        ${headCtrls}</div>
+      <div style="display:${collapsed?'none':'block'}">${body}
       </div>
-      <table class="eq">
-        <thead><tr><th>Category</th><th>Name</th><th style="text-align:right">Price</th><th>Link</th><th></th></tr></thead>
-        <tbody>${rows || ''}</tbody>
-      </table>
-      <button class="add-line" onclick="addLib('${g.key}')">+ Add item</button>
     </div>`;
   }).join('');
 
+  const editIcon = editing
+    ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="width:17px;height:17px"><path d="M20 6L9 17l-5-5"/></svg>'
+    : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>';
   return `
   <div class="page">
     <div class="pagehead">
-      <div class="eyebrow">Fulldome Projection SP</div>
-      <h1>Equipment Library</h1>
-      <div style="display:flex;gap:8px;margin-top:8px;justify-content:center"><button class="mod-btn" style="padding:6px 14px;font-size:12px" onclick="refreshLibPrices()">↻ Update all prices from links</button><button class="mod-btn" style="padding:6px 14px;font-size:12px" onclick="setPriceApiKey()">${(db.priceApiKey||'').trim() ? '⚙ Price API: connected ✓' : '⚙ Connect price API'}</button></div>
-      <div class="sub">Fill the library first — server and rack hardware in every project is then picked from these lists. The library is shared across all projects.</div>
+      <div style="position:relative;display:flex;flex-direction:column;align-items:center">
+        <div class="eyebrow">Fulldome Projection SP</div>
+        <h1 style="margin:0">Equipment Library</h1>
+        <button onclick="toggleLibGroupsEdit()" title="${editing?'Done — exit section edit':'Edit sections — reorder (▲▼) or freeze (❄) whole sections'}"
+          style="position:absolute;right:0;top:50%;transform:translateY(-50%);width:36px;height:36px;border:none;border-radius:9px;background:var(--fdp-red);color:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1px 5px rgba(211,47,47,.35)">${editIcon}</button>
+      </div>
+      <div class="sub">${editing ? 'Edit mode — use ▲▼ to reorder sections and the snowflake to freeze one (a frozen section is locked shut). Press the red button again when finished.' : 'Fill the library first — server and rack hardware in every project is then picked from these lists. The library is shared across all projects.'}</div>
     </div>
     ${groups}
   </div>`;
@@ -6801,19 +8141,19 @@ const ROUTES = {
   '#/edit':          {nav:'projects', render:pageEdit},
   '#/dashboard':     {nav:'dashboard', render:pageDashboard},
   '#/server-rack':   {nav:'dashboard', render:pageServerRack},
-  '#/projects':      {nav:'projects', render:()=>pagePlaceholder('Projects', IC.proj, 'Project list and switching will be added here.', 'Coming Soon')},
+  '#/projects':      {nav:'projects', render:pageProjects, noProject:true},
   '#/library':       {nav:'library', render:pageLibrary, noProject:true},
   '#/documentation': {nav:'documentation', render:pageDocumentation, noProject:true},
   '#/logs':          {nav:'logs', render:()=>pagePlaceholder('System Logs', IC.logs, 'Platform and agent activity logs will appear here.', 'Coming Soon')},
   '#/settings':      {nav:'settings', render:()=>pagePlaceholder('Settings', IC.set, 'Platform, storage and agent settings.', 'Coming Soon')},
   '#/projectors':    {nav:'dashboard', render:pageProjectors},
   '#/camera':        {nav:'dashboard', render:pageCamera},
-  '#/cables':        {nav:'dashboard', render:()=>pagePlaceholder('Cables', IC.cable, 'Cable ID, type, from/to, length, connectors, statuses — planned module.', 'Coming Soon')},
+  '#/cables':        {nav:'dashboard', render:pageCables},
   '#/equipment':     {nav:'dashboard', render:pageShipping},   /* merged into Equipment & Shipping (BUILD 12.46) — alias kept for old links */
-  '#/speakers':      {nav:'dashboard', render:()=>pagePlaceholder('Speakers', IC.spk, 'Main speakers and subwoofer selection, amplification and audio layout — planned module.', 'Coming Soon')},
+  '#/speakers':      {nav:'dashboard', render:pageSpeakers},
   '#/network':       {nav:'dashboard', render:()=>pagePlaceholder('Network', IC.net, 'Switches, VLANs, IP plan and connectivity for the dome system — planned module.', 'Coming Soon')},
-  '#/fan':           {nav:'dashboard', render:()=>pagePlaceholder('Screen Fan', IC.fan, 'Screen ventilation / fan system for the dome surface — planned module.', 'Coming Soon')},
-  '#/tools':         {nav:'dashboard', render:()=>pagePlaceholder('Tools', IC.tool, 'Installation tools, rigging and calibration equipment checklist — planned module.', 'Coming Soon')},
+  '#/fan':           {nav:'dashboard', render:pageFan},
+  '#/tools':         {nav:'dashboard', render:pageTools},
   '#/shipping':      {nav:'dashboard', render:pageShipping}
 };
 
@@ -6830,10 +8170,30 @@ function route(){
   if(!state.project && !r.noProject) h = '#/create';
   const rr = ROUTES[h];
   if(MODULE_ROUTES.indexOf(h) >= 0) _lastMod = h;   /* remember which module we entered */
+  /* BUILD 14.20: entering the Equipment Library tab collapses every group (in-page
+     rerenders keep the state — route._prevHash stays '#/library'). */
+  if(h === '#/library' && route._prevHash !== '#/library'){ _libCollapsed = {}; LIB_GROUPS.forEach(g=>{ _libCollapsed[g.key] = true; }); _libGroupsEdit = false; }
+  if(h === '#/projects' && route._prevHash !== '#/projects'){ _projMode = 'edit'; _projTitleManual = false; }   /* BUILD 14.41: enter Projects showing the selected project */
+  route._prevHash = h;
   renderNav(rr.nav);
   document.getElementById('content').innerHTML = rr.render();
-  document.getElementById('content').scrollTop = 0;
+  /* normal navigation resets to top; an in-place rerender (rerenderKeepScroll) preserves the offset */
+  document.getElementById('content').scrollTop = (_keepScrollTop != null ? _keepScrollTop : 0);
+  if(h === '#/create' || h === '#/edit' || h === '#/projects') noAutofill();   /* BUILD 14.15/14.41: stop browser autofill in the project forms */
   renderHeader(); renderSideProject();
+}
+/* Chrome/Firefox ignore autocomplete="off" on single fields and drop remembered values into the
+   Create/Edit form (e.g. a past project number into "Screen Fan System"). Give every field a UNIQUE
+   random name so the browser's form-history has nothing to match, and re-assert autocomplete=off.
+   Reading is by id (readForm/g('fFan')), so random names don't affect saving. BUILD 14.15 */
+function noAutofill(){
+  try{
+    const c = document.getElementById('content'); if(!c) return;
+    c.querySelectorAll('input, textarea, select').forEach(function(el){
+      el.setAttribute('autocomplete', 'off');
+      el.setAttribute('name', 'nf_' + Math.random().toString(36).slice(2, 10));
+    });
+  }catch(_){}
 }
 window.addEventListener('error', function(e){
   try{ flashStat('⚠ Error: ' + (e.message||'unknown')); }catch(_){}
