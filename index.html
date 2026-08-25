@@ -629,11 +629,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-<<<<<<< HEAD
     <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.41 · PROJECTS PAGE (PROJECT INFO FORM)</div>
-=======
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.40 · NO SCROLL JUMP ON ADD</div>
->>>>>>> b9b81df94a66366a6324d1a20dba2b7b36793448
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -8177,20 +8173,13 @@ function route(){
   /* BUILD 14.20: entering the Equipment Library tab collapses every group (in-page
      rerenders keep the state — route._prevHash stays '#/library'). */
   if(h === '#/library' && route._prevHash !== '#/library'){ _libCollapsed = {}; LIB_GROUPS.forEach(g=>{ _libCollapsed[g.key] = true; }); _libGroupsEdit = false; }
-<<<<<<< HEAD
   if(h === '#/projects' && route._prevHash !== '#/projects'){ _projMode = 'edit'; _projTitleManual = false; }   /* BUILD 14.41: enter Projects showing the selected project */
-=======
->>>>>>> b9b81df94a66366a6324d1a20dba2b7b36793448
   route._prevHash = h;
   renderNav(rr.nav);
   document.getElementById('content').innerHTML = rr.render();
   /* normal navigation resets to top; an in-place rerender (rerenderKeepScroll) preserves the offset */
   document.getElementById('content').scrollTop = (_keepScrollTop != null ? _keepScrollTop : 0);
-<<<<<<< HEAD
   if(h === '#/create' || h === '#/edit' || h === '#/projects') noAutofill();   /* BUILD 14.15/14.41: stop browser autofill in the project forms */
-=======
-  if(h === '#/create' || h === '#/edit') noAutofill();   /* BUILD 14.15: stop the browser from auto-filling form fields (e.g. a stray project number into Screen Fan) */
->>>>>>> b9b81df94a66366a6324d1a20dba2b7b36793448
   renderHeader(); renderSideProject();
 }
 /* Chrome/Firefox ignore autocomplete="off" on single fields and drop remembered values into the
