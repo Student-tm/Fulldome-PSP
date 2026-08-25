@@ -628,7 +628,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.36 · LIBRARY ADD-ROW FIX (keep in-progress)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.38 · TOOLS RIGGING CATEGORIES</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -738,14 +738,15 @@ const emptyState = () => ({
   camera: { rows: [], ready: false, photos: [] },   /* Calibration Camera module (mirrors server builder) */
   speakers: { rows: [], ready: false, photos: [] },   /* Speaker / Audio System module (mirrors camera builder) — BUILD 14.20 */
   fan: { rows: [], ready: false, photos: [] },   /* Screen Fan / Ventilation module (mirrors speakers) — BUILD 14.27 */
-  cables: { rows: [], ready: false, photos: [] }   /* Cables & Adapters module (mirrors fan) — BUILD 14.31 */
+  cables: { rows: [], ready: false, photos: [] },   /* Cables & Adapters module (mirrors fan) — BUILD 14.31 */
+  tools: { rows: [], ready: false, photos: [] }   /* Tools & Installation Hardware module (mirrors cables) — BUILD 14.37 */
 });
 
 /* Multi-project database: creating a new project ADDS an entry,
    it never overwrites existing ones. A project can be frozen —
    a frozen project cannot be selected or edited (mistake guard
    when several projects are in work at the same time). */
-const emptyLibrary = () => ({ server: [], rack: [], cameras: [], speakers: [], fan: [], video: [], cables: [] });
+const emptyLibrary = () => ({ server: [], rack: [], cameras: [], speakers: [], fan: [], video: [], cables: [], tools: [] });
 var db = { projects: [], activeId: null, library: emptyLibrary(), customCats: {} };   // projects: [{id, frozen, data}]
 var state = emptyState();                    // always points to the ACTIVE project data
 
@@ -788,6 +789,10 @@ function syncActive(){
   if(!state.cables || typeof state.cables!=='object') state.cables = { rows:[], ready:false, photos:[] };   /* BUILD 14.31 */
   if(!Array.isArray(state.cables.rows)) state.cables.rows = [];
   if(!Array.isArray(state.cables.photos)) state.cables.photos = [];
+  if(!state.tools || typeof state.tools!=='object') state.tools = { rows:[], ready:false, photos:[] };   /* BUILD 14.37 */
+  if(!Array.isArray(state.tools.rows)) state.tools.rows = [];
+  if(!Array.isArray(state.tools.photos)) state.tools.photos = [];
+  if(typeof migrateToolCats==='function') migrateToolCats();   /* BUILD 14.38 */
   if(!state.ready || typeof state.ready!=='object') state.ready = {};   /* readiness lights per module (BUILD 12.15) */
 }
 /* ---------- MODULE READINESS (BUILD 12.29) — DATA-DRIVEN, read-only in the bar.
@@ -815,7 +820,8 @@ function readyModuleHasData(key, d){
     case 'speakers': return rows('speakers').some(r=>(r.name||'').trim());   /* BUILD 14.29: module rows only, not the legacy project fields */
     case 'fan':      return rows('fan').some(r=>(r.name||'').trim());
     case 'cables':   return rows('cables').some(r=>(r.name||'').trim());   /* BUILD 14.31 */
-    default:         return false;   /* net / tools have no section yet */
+    case 'tools':    return rows('tools').some(r=>(r.name||'').trim());   /* BUILD 14.37 */
+    default:         return false;   /* net has no section yet */
   }
 }
 /* GREEN is allowed ONLY for modules that own a real "Mark as Ready" button */
@@ -826,6 +832,7 @@ function readyModuleGreen(key, d){
   if(key==='speakers') return !!(d.speakers && d.speakers.ready);   /* BUILD 14.20 */
   if(key==='fan')      return !!(d.fan && d.fan.ready);   /* BUILD 14.27 */
   if(key==='cables')   return !!(d.cables && d.cables.ready);   /* BUILD 14.31 */
+  if(key==='tools')    return !!(d.tools && d.tools.ready);   /* BUILD 14.37 */
   if(key==='vj')     return !!(d.vj && d.vj.ready);
   return false;
 }
@@ -1217,6 +1224,9 @@ const VID_CATS  = ['HDBT Module','Splitter','Extender','Switcher','Converter','S
 const CAB_CATS  = ['Power','Network','HDBT','HDMI','DisplayPort','USB','Fiber','Audio','Adapter','Other'];
 const SPK_CATS  = ['Main Speaker','Subwoofer','Amplifier','Audio Processor','Audio Interface','Speaker Mount','Audio Cable','Other'];
 const FAN_CATS  = ['Fan Unit','Fan Controller','Ducting','Fan Mount','Power Supply','Filter','Cable','Other'];
+const TOOL_CAT_RIGGING = ['Ropes','Crane Slings','Ratchet Straps','Shackles','Carabiners','Zip Ties'];   /* BUILD 14.38: Ropes, Slings & Rigging sub-table categories */
+const TOOL_CATS = TOOL_CAT_RIGGING.concat(['Other']);   /* BUILD 14.37/14.38: Tools & Installation Hardware — library categories (union of the sub-tables' own categories) */
+const TOOL_CATS_OLD = ['Rigging & Straps','Hand Tools','Power Tools','Fasteners & Hardware','Other'];   /* 14.37 generic defaults — migrated away in 14.38 */
 
 /* Each library group has its OWN category list — server categories for
    server hardware, rack categories for rack equipment, and so on.
@@ -1228,7 +1238,8 @@ const LIB_GROUPS = [
   {key:'speakers',label:'Speaker / Audio System',     cats:SPK_CATS,  hint:'Main speakers, subwoofers, amplifiers, audio processors/interfaces, mounts and audio cabling'},
   {key:'fan',     label:'Screen Fan / Ventilation',   cats:FAN_CATS,  hint:'Fan units, controllers, ducting, mounts, power supplies and filters for the dome screen'},
   {key:'video',   label:'Video Equipment & Splitters',cats:VID_CATS,  hint:'HDBT modules, splitters, extenders, switchers, converters'},
-  {key:'cables',  label:'Cables & Adapters',          cats:CAB_CATS,  hint:'Power, network, HDMI, DP, USB, fiber, audio cables and adapters'}
+  {key:'cables',  label:'Cables & Adapters',          cats:CAB_CATS,  hint:'Power, network, HDMI, DP, USB, fiber, audio cables and adapters'},
+  {key:'tools',   label:'Tools & Installation Hardware',cats:TOOL_CATS,hint:'Rigging & straps, hand tools, power tools, fasteners & hardware for installation'}
 ];
 const blankLibItem = () => ({cat:'', name:'', price:'', link:''});
 
@@ -1385,6 +1396,17 @@ function camCats(){ return extendCats(groupCats('cameras')); }
 function spkCats(){ return groupCats('speakers'); }   /* BUILD 14.21: speakers show ONLY speaker categories (own base + custom), NOT the cross-group extended list */
 function fanCats(){ return groupCats('fan'); }   /* BUILD 14.27: Screen Fan categories — own only */
 function cabCats(){ return groupCats('cables'); }   /* BUILD 14.31: Cables categories — own only */
+function toolCats(){ return groupCats('tools'); }   /* BUILD 14.37: Tools categories — own only */
+/* BUILD 14.38: if db.cats.tools was already seeded (in 14.37) with the OLD generic defaults
+   (Rigging & Straps / Hand Tools / Power Tools / Fasteners & Hardware), replace it with the new
+   category set. Skipped once the user has any custom category, so real edits are never clobbered. */
+function migrateToolCats(){
+  if(!db.cats || !Array.isArray(db.cats.tools)) return;   /* not seeded yet → catsOf seeds fresh from new TOOL_CATS */
+  const oldSet = TOOL_CATS_OLD.map(s=>s.toLowerCase());
+  const cur = db.cats.tools.map(c=>String(c||'').trim());
+  const allOld = cur.length>0 && cur.every(c=>oldSet.indexOf(c.toLowerCase())>=0);
+  if(allOld) db.cats.tools = TOOL_CATS.slice();
+}
 /* Native datalists filter by the current text — a filled field shows only
    itself. On focus, if the value is a library item, clear it temporarily so
    the WHOLE category list opens; restore on blur if nothing new was picked.
@@ -1974,8 +1996,8 @@ function docPhotoCount(){
 function docContentListCount(){ return docScope().filter(e=>e.data.contentList).length; }
 
 /* ---------- photos (server: max 6, rack: max 4) ---------- */
-const PHOTO_MAX = { server: 10, vj: 10, rack: 10, front: 1, rear: 1, site: 20, camera: 10, speakers: 10, fan: 10, cables: 10 };
-var photoEdit = { server: false, vj: false, rack: false, views: false, site: false, projviews: false, camera: false, speakers: false, fan: false, cables: false };   /* Edit mode: shows delete crosses */
+const PHOTO_MAX = { server: 10, vj: 10, rack: 10, front: 1, rear: 1, site: 20, camera: 10, speakers: 10, fan: 10, cables: 10, tools: 10 };
+var photoEdit = { server: false, vj: false, rack: false, views: false, site: false, projviews: false, camera: false, speakers: false, fan: false, cables: false, tools: false };   /* Edit mode: shows delete crosses */
 function togglePhotoEdit(kind){ photoEdit[kind] = !photoEdit[kind]; rerenderKeepScroll(); }
 function photosOf(kind){
   if(kind==='site'){ return ensureDocs(state).sitePh; }
@@ -1983,6 +2005,7 @@ function photosOf(kind){
   if(kind==='speakers'){ if(!state.speakers) state.speakers={rows:[],ready:false,photos:[]}; if(!Array.isArray(state.speakers.photos)) state.speakers.photos=[]; return state.speakers.photos; }
   if(kind==='fan'){ if(!state.fan) state.fan={rows:[],ready:false,photos:[]}; if(!Array.isArray(state.fan.photos)) state.fan.photos=[]; return state.fan.photos; }
   if(kind==='cables'){ if(!state.cables) state.cables={rows:[],ready:false,photos:[]}; if(!Array.isArray(state.cables.photos)) state.cables.photos=[]; return state.cables.photos; }
+  if(kind==='tools'){ if(!state.tools) state.tools={rows:[],ready:false,photos:[]}; if(!Array.isArray(state.tools.photos)) state.tools.photos=[]; return state.tools.photos; }
   if(kind==='vj'){ if(!state.vj) state.vj={rows:[],ready:false,photos:[]}; if(!Array.isArray(state.vj.photos)) state.vj.photos=[]; return state.vj.photos; }
   if(kind==='front'){ if(!Array.isArray(state.rack.frontPh)) state.rack.frontPh=[]; return state.rack.frontPh; }
   if(kind==='rear'){ if(!Array.isArray(state.rack.rearPh)) state.rack.rearPh=[]; return state.rack.rearPh; }
@@ -2002,6 +2025,7 @@ function entryPhotos(e, kind){
   if(kind==='speakers') return (d.speakers && d.speakers.photos) || [];
   if(kind==='fan') return (d.fan && d.fan.photos) || [];
   if(kind==='cables') return (d.cables && d.cables.photos) || [];
+  if(kind==='tools') return (d.tools && d.tools.photos) || [];
   return [];
 }
 function pickPhotos(kind){
@@ -2105,7 +2129,7 @@ function openLightboxProj(id, kind, i){
   const p = entryPhotos(e, kind)[i];
   if(p){
     const P = e.data.project || {};
-    const lbl = kind==='server' ? 'Dome Server' : kind==='vj' ? 'VJ Server' : kind==='front' ? 'Rack — Front' : kind==='rear' ? 'Rack — Rear' : kind==='site' ? 'Site' : kind==='camera' ? 'Camera' : kind==='speakers' ? 'Speakers' : kind==='fan' ? 'Screen Fan' : kind==='cables' ? 'Cables' : 'Rack';
+    const lbl = kind==='server' ? 'Dome Server' : kind==='vj' ? 'VJ Server' : kind==='front' ? 'Rack — Front' : kind==='rear' ? 'Rack — Rear' : kind==='site' ? 'Site' : kind==='camera' ? 'Camera' : kind==='speakers' ? 'Speakers' : kind==='fan' ? 'Screen Fan' : kind==='cables' ? 'Cables' : kind==='tools' ? 'Tools' : 'Rack';
     openLightbox(p.src, lbl + ' — #' + (P.number||'') + ' · ' + (p.caption||p.name||''));
   }
 }
@@ -2687,11 +2711,17 @@ function pageDashboard(){
         <a class="mod-btn primary" href="#/cables">Open Module ${IC.open}</a>
       </div>
 
-      <div class="mod${_lastMod==='#/tools'?' lastmod':''}">
+      <div class="mod active${_lastMod==='#/tools'?' lastmod':''}">
         <div class="mod-top"><div class="mod-ic">${IC.tool}</div>
-          <div><div class="mod-name">Tools</div><span class="mod-badge b-plan"><span class="bd"></span>Planned</span></div></div>
-        <div class="mod-desc">Installation tools, rigging and calibration equipment checklist for the project.</div>
-        <a class="mod-btn disabled" href="#/tools">Coming Soon</a>
+          <div><div class="mod-name">Tools &amp; Installation Hardware</div>${modActiveBadge(_named(state.tools.rows))}</div></div>
+        <div class="mod-desc">Rigging &amp; straps, hand tools, power tools and fasteners & hardware, picked from the Equipment Library, with photos and Ready check.</div>
+        <div class="mod-stats">
+          <div class="ms"><span class="k">Components</span><span class="v ${state.tools.rows.filter(r=>(r.name||'').trim()).length?'ok':''}">${state.tools.rows.filter(r=>(r.name||'').trim()).length || 'None'}</span></div>
+          <div class="ms"><span class="k">Components Cost</span><span class="v">${fmt(toolTotal())}</span></div>
+          <div class="ms"><span class="k">Photos</span><span class="v">${photosOf('tools').length} / ${PHOTO_MAX.tools}</span></div>
+          <div class="ms"><span class="k">Tools Build</span><span class="v" style="display:inline-flex;align-items:center;gap:6px"><span class="led sm ${state.tools.ready?'on':''}"></span>${state.tools.ready?'Ready':'Not Ready'}</span></div>
+        </div>
+        <a class="mod-btn primary" href="#/tools">Open Module ${IC.open}</a>
       </div>
 
       <div class="mod active${_lastMod==='#/shipping'?' lastmod':''}">
@@ -3263,6 +3293,11 @@ function shipPlaces(){
   ((state.cables&&state.cables.rows)||[]).forEach((r,idx)=>{ if(!(r.name||'').trim()) return; (isCombined(r)?cabCombined:cabSeparate).push(mkItem(r,'i|cab|'+idx)); });
   if(cabCombined.length) places.push({key:'pl|cab', name:'Cables', module:'Cables', items:cabCombined});
   cabSeparate.forEach((it,i)=> places.push({key:'pl|cab-sep|'+i, name:it.name, module:'Cables', items:[it]}));
+  /* ---- Tools & Installation Hardware (BUILD 14.37) — ships as one "Tools" place ---- */
+  const toolCombined = [], toolSeparate = [];
+  ((state.tools&&state.tools.rows)||[]).forEach((r,idx)=>{ if(!(r.name||'').trim()) return; (isCombined(r)?toolCombined:toolSeparate).push(mkItem(r,'i|tool|'+idx)); });
+  if(toolCombined.length) places.push({key:'pl|tool', name:'Tools', module:'Tools', items:toolCombined});
+  toolSeparate.forEach((it,i)=> places.push({key:'pl|tool-sep|'+i, name:it.name, module:'Tools', items:[it]}));
   /* ---- Camera ---- */
   const camCombined = [], camSeparate = [];
   ((state.camera&&state.camera.rows)||[]).forEach((r,idx)=>{ if(!(r.name||'').trim()) return; (isCombined(r)?camCombined:camSeparate).push(mkItem(r,'i|cam|'+idx)); });
@@ -3822,6 +3857,7 @@ function liveSlice(d){
     speakers:{ rows: (d.speakers && d.speakers.rows) || [], ready: !!(d.speakers && d.speakers.ready) },
     fan:     { rows: (d.fan && d.fan.rows) || [], ready: !!(d.fan && d.fan.ready) },
     cables:  { rows: (d.cables && d.cables.rows) || [], ready: !!(d.cables && d.cables.ready) },
+    tools:   { rows: (d.tools && d.tools.rows) || [], ready: !!(d.tools && d.tools.ready) },
     projectors: { list: (d.projectors && d.projectors.list) || [], selId: (d.projectors && d.projectors.selId) || null },
     validation:   d.validation || {},                 /* dashboard test chips — live now (BUILD 12.7) */
     vjValidation: d.vjValidation || {},
@@ -3861,6 +3897,7 @@ function liveApply(d, live){
   if(live.speakers){ d.speakers = d.speakers || {rows:[],ready:false,photos:[]}; setIf(d.speakers, 'rows', live.speakers.rows || []); setIf(d.speakers, 'ready', !!live.speakers.ready); }
   if(live.fan){ d.fan = d.fan || {rows:[],ready:false,photos:[]}; setIf(d.fan, 'rows', live.fan.rows || []); setIf(d.fan, 'ready', !!live.fan.ready); }
   if(live.cables){ d.cables = d.cables || {rows:[],ready:false,photos:[]}; setIf(d.cables, 'rows', live.cables.rows || []); setIf(d.cables, 'ready', !!live.cables.ready); }
+  if(live.tools){ d.tools = d.tools || {rows:[],ready:false,photos:[]}; setIf(d.tools, 'rows', live.tools.rows || []); setIf(d.tools, 'ready', !!live.tools.ready); }
   if(live.projectors){ d.projectors = d.projectors || {list:[],selId:null,models:{}}; setIf(d.projectors, 'list', live.projectors.list || []); setIf(d.projectors, 'selId', live.projectors.selId || null); }
   if(live.validation)   setIf(d, 'validation',   live.validation);      /* dashboard test chips (BUILD 12.7) */
   if(live.vjValidation) setIf(d, 'vjValidation', live.vjValidation);
@@ -4492,7 +4529,7 @@ async function fbpBrowseMirror(e){
    Google Drive (the 13.x media layer, untouched). A full project JSON is still assembled
    locally for export/backup at any time. Master switch: `var _FS = true` (RTDB `_FBP` off). */
 const FS_PROJECT_ID = 'fulldome-psp';
-const FS_SECTIONS = ['project','server','vj','rack','camera','speakers','fan','cables','projectors','validation','vjValidation','shipping'];
+const FS_SECTIONS = ['project','server','vj','rack','camera','speakers','fan','cables','tools','projectors','validation','vjValidation','shipping'];
 var _fsApp = null, _fsDb = null, _fsAuthObj = null, _fsCol = null, _fsUnsub = null, _fsSdkP = null;
 var _fsReady = false, _fsStarted = false, _fsApplying = false, _fsPushT = null, _fsSeededPush = false;
 var _fsLocal = {};   /* pid -> {section: sig, _seen, _done, _msig} — skip no-op section writes */
@@ -5571,7 +5608,8 @@ const PHOTO_DIRS = [
   ['camera', 'Camera'],
   ['speakers', 'Speakers'],
   ['fan', 'Screen Fan'],
-  ['cables', 'Cables']
+  ['cables', 'Cables'],
+  ['tools', 'Tools']
 ];
 function cloudPhotoJobs(e){
   /* every photo of the project as {dir, name, data} — projector model shots
@@ -6147,7 +6185,7 @@ var _pfBusy = false;
 async function refreshPrices(kind){
   if(_pfBusy){ flashStat('Price update already running…'); return; }
   const rows = ordRowsOf(kind);
-  const pid = kind==='rack' ? 'rackP' : kind==='vj' ? 'vjP' : kind==='camera' ? 'camP' : kind==='speakers' ? 'spkP' : kind==='fan' ? 'fanP' : kind==='cables' ? 'cabP' : 'srvP';
+  const pid = kind==='rack' ? 'rackP' : kind==='vj' ? 'vjP' : kind==='camera' ? 'camP' : kind==='speakers' ? 'spkP' : kind==='fan' ? 'fanP' : kind==='cables' ? 'cabP' : kind==='tools' ? 'toolP' : 'srvP';
   const targets = rows.map((r,i)=>({r,i})).filter(t => lpUrlOf({value:t.r.link||''}));
   if(!targets.length){ flashStat('No links in this table'); return; }
   _pfBusy = true;
@@ -6199,7 +6237,7 @@ function schedAutoPrice(kind, i){
     const r2 = ordRowsOf(kind)[i];
     if(p && r2 && !String(r2.price||'').trim()){
       r2.price = p; saveState();
-      const pid = kind==='rack' ? 'rackP' : kind==='vj' ? 'vjP' : kind==='camera' ? 'camP' : kind==='speakers' ? 'spkP' : kind==='fan' ? 'fanP' : kind==='cables' ? 'cabP' : 'srvP';
+      const pid = kind==='rack' ? 'rackP' : kind==='vj' ? 'vjP' : kind==='camera' ? 'camP' : kind==='speakers' ? 'spkP' : kind==='fan' ? 'fanP' : kind==='cables' ? 'cabP' : kind==='tools' ? 'toolP' : 'srvP';
       const el = document.getElementById(pid + i); if(el) el.value = p;
       if(typeof refreshTotals==='function') refreshTotals();
       flashStat('Price fetched from the link: ' + fmt(parseFloat(p)) + ' ✓');
@@ -6297,7 +6335,7 @@ function lpHide(){
    place, no rerender. */
 const ORD_TITLES = ['Not ordered', 'Ordered', 'Received'];
 function ordRowsOf(kind){
-  return kind==='rack' ? state.rack.rows : kind==='vj' ? state.vj.rows : kind==='camera' ? state.camera.rows : kind==='speakers' ? state.speakers.rows : kind==='fan' ? state.fan.rows : kind==='cables' ? state.cables.rows : state.server.rows;
+  return kind==='rack' ? state.rack.rows : kind==='vj' ? state.vj.rows : kind==='camera' ? state.camera.rows : kind==='speakers' ? state.speakers.rows : kind==='fan' ? state.fan.rows : kind==='cables' ? state.cables.rows : kind==='tools' ? state.tools.rows : state.server.rows;
 }
 function ordDot(kind, i, r){
   const s = parseInt(r.ord)||0;
@@ -6307,7 +6345,7 @@ function ordDot(kind, i, r){
    checked = this item ships in its module's combined place; unchecked = its own place.
    Default: checked, EXCEPT tripods (they ship separately). */
 function isCombined(r){ if(!r) return false; return (r.ship===undefined) ? !/tripod/i.test(r.name||'') : !!r.ship; }
-function shipRowsOf(kind){ return kind==='server'?state.server.rows : kind==='vj'?(state.vj&&state.vj.rows||[]) : kind==='rack'?state.rack.rows : kind==='camera'?(state.camera&&state.camera.rows||[]) : kind==='speakers'?(state.speakers&&state.speakers.rows||[]) : kind==='fan'?(state.fan&&state.fan.rows||[]) : kind==='cables'?(state.cables&&state.cables.rows||[]) : []; }
+function shipRowsOf(kind){ return kind==='server'?state.server.rows : kind==='vj'?(state.vj&&state.vj.rows||[]) : kind==='rack'?state.rack.rows : kind==='camera'?(state.camera&&state.camera.rows||[]) : kind==='speakers'?(state.speakers&&state.speakers.rows||[]) : kind==='fan'?(state.fan&&state.fan.rows||[]) : kind==='cables'?(state.cables&&state.cables.rows||[]) : kind==='tools'?(state.tools&&state.tools.rows||[]) : []; }
 function toggleShip(kind, i, checked){ const rows=shipRowsOf(kind); if(!rows[i]) return; rows[i].ship = !!checked; saveState(); }
 function shipChk(kind, i, r){ return `<td style="width:4%;text-align:center" title="Shipping — combine into one place (uncheck = ships as its own place)"><input type="checkbox" style="width:15px;height:15px;cursor:pointer;accent-color:var(--fdp-red)" ${isCombined(r)?'checked':''} onchange="toggleShip('${kind}',${i},this.checked)"></td>`; }
 function cycOrd(kind, i, el){
@@ -6800,6 +6838,167 @@ function pageCables(){
     ${CAB_GROUPS.map(cabTable).join('')}
 
     ${photoCard('cables','Cable Photos','Cabling and connector photos — up to '+PHOTO_MAX.cables+'. Shown in Documentation as "Cables — #'+esc(P.number)+'".')}
+
+    <a class="backlink" href="#/dashboard">${IC.back} Back to Dashboard</a>
+  </div>`;
+}
+
+/* ---------- TOOLS & INSTALLATION HARDWARE MODULE (BUILD 14.37) ----------
+   Mirrors the Cables module: hardware rows picked from the Equipment Library "Tools & Installation
+   Hardware" group (TOOL_CATS), qty/price/link, per-row totals, Mark as Ready, photos card (kind 'tools').
+   Split into FOUR visual sub-tables (Rigging & Straps / Hand Tools / Power Tools / Fasteners & Hardware)
+   via a per-row `grp` tag — still ONE module (one total, one Ready, one photos card) that ships as a
+   single "Tools" place in Equipment & Shipping. Rows with no grp default to 'rigging'. */
+const toolListId = cat => 'dlToolCat' + Math.max(0, ciIndexOf(toolCats(), cat));
+const libToolByCat = cat => libByGroupCat('tools', cat);
+function toolTotal(){ return state.tools.rows.reduce((s,r)=> s + rowSum(r), 0); }
+const TOOL_GROUPS = [
+  {key:'rigging',   label:'Ropes, Slings & Rigging', hint:'Ropes, crane slings, ratchet straps, shackles, carabiners, zip ties.', cats:TOOL_CAT_RIGGING},
+  {key:'hand',      label:'Hand Tools',           hint:'Wrenches, screwdrivers, pliers, hammers, measuring tools.', cats:[]},
+  {key:'power',     label:'Power Tools',          hint:'Drills, impact drivers, grinder.', cats:[]},
+  {key:'fasteners', label:'Fasteners & Hardware', hint:'Screws, bolts, nuts, washers, anchors and clamps.', cats:[]}
+];
+const toolGrpOf = r => { const g=(r&&r.grp)||'rigging'; return TOOL_GROUPS.some(b=>b.key===g)?g:'rigging'; };
+/* categories offered in a row's Category dropdown = that sub-table's OWN categories (+ Other) */
+function toolGrpCats(grp){
+  const g = TOOL_GROUPS.find(b=>b.key===grp), base = (g&&g.cats)||[];
+  return base.concat(base.some(c=>String(c).toLowerCase()==='other')?[]:['Other']);
+}
+function toolSubTotal(grp){ return state.tools.rows.reduce((s,r)=> s + (toolGrpOf(r)===grp ? rowSum(r) : 0), 0); }
+function refreshToolTotals(){
+  const g = fmt(toolTotal());
+  ['kTool','stTool'].forEach(id=>{const e=document.getElementById(id); if(e) e.textContent=g;});
+  TOOL_GROUPS.forEach(b=>{ const e=document.getElementById('toolFoot_'+b.key); if(e) e.textContent=fmt(toolSubTotal(b.key)); });
+}
+function addTool(grp){ const r=blankRow(); r.grp = (grp&&TOOL_GROUPS.some(b=>b.key===grp))?grp:'rigging'; state.tools.rows.push(r); saveState(); route(); }
+function rmTool(i){ state.tools.rows.splice(i,1); saveState(); route(); }
+function setToolCat(i, v){
+  state.tools.rows[i].cat = v;
+  if(autoFillFromCat(state.tools.rows[i], libToolByCat(v))) flashStat('Filled from Library ✓');
+  saveState(); rerenderKeepScroll();
+}
+function updTool(i, k, v){
+  state.tools.rows[i][k] = v;
+  if(k === 'link') schedAutoPrice('tools', i);
+  if(k === 'name'){
+    const it = libFind(v);
+    if(it){
+      if(!(String(state.tools.rows[i].price||'').trim()) && String(it.price||'').trim()){
+        state.tools.rows[i].price = it.price;
+        const pe = document.getElementById('toolP'+i); if(pe) pe.value = it.price;
+      }
+      if(!(String(state.tools.rows[i].link||'').trim()) && (it.link||'').trim()){
+        state.tools.rows[i].link = it.link;
+        const le = document.getElementById('toolL'+i); if(le) le.value = it.link;
+      }
+    }
+  }
+  saveState();
+  const r = state.tools.rows[i];
+  const t = priceNum(r.price)*(parseFloat(r.qty)||1);
+  const cell = document.getElementById('toolRowT'+i); if(cell) cell.textContent = t ? fmt(t) : '—';
+  refreshToolTotals();
+}
+function addToolRowToLib(i){
+  const row = state.tools.rows[i]; if(!row) return;
+  const name = (row.name||'').trim();
+  if(!name || libFind(name)) return;
+  let cat = (row.cat||'').trim();
+  if(cat && !groupCats('tools').includes(cat)) cat = '';
+  ensureLibGroup('tools').push({cat, name, price: row.price||'', link: row.link||''});
+  sortByCat(db.library.tools, groupCats('tools'));
+  saveState(); rerenderKeepScroll();
+  flashStat('Added to Library ✓');
+}
+function toggleToolReady(){
+  if(state.tools.ready){ state.tools.ready = false; saveState(); refreshToolReadyUI(); renderSideProject(); return; }
+  if(!state.tools.rows.some(r=>(r.name||'').trim())){
+    alert('Add at least one tool before marking Ready.'); return;
+  }
+  state.tools.ready = true; saveState(); refreshToolReadyUI(); renderSideProject();
+}
+function refreshToolReadyUI(){
+  const ready = state.tools.ready;
+  const set = (id,fn)=>{const e=document.getElementById(id); if(e) fn(e);};
+  set('toolBtnLed', e=>e.classList.toggle('on',ready));
+  set('kToolLed', e=>e.classList.toggle('on',ready));
+  set('toolReadyBtn', e=>e.classList.toggle('on',ready));
+  set('toolBtnLbl', e=>e.textContent = ready?'Tools Ready':'Mark as Ready');
+  set('kToolLedTxt', e=>e.textContent = ready?'Ready':'Not Ready');
+}
+function toolRowHtml(r, i){
+  const gcats = toolGrpCats(toolGrpOf(r));
+  return `
+    <tr>
+      <td class="tight" style="width:17%"><select class="cell ${!(r.cat||'').trim()?'empty':''}" onchange="setToolCat(${i},this.value);this.classList.toggle('empty',!this.value)">
+        <option value="" ${!(r.cat||'').trim()?'selected':''}>— Category —</option>
+        ${gcats.map(c=>`<option value="${c}" ${r.cat===c?'selected':''}>${c}</option>`).join('')}
+        ${(r.cat||'').trim() && ciIndexOf(gcats, r.cat)===-1 ? `<option value="${esc(r.cat)}" selected>${esc(r.cat)}</option>` : ''}
+      </select></td>
+      <td class="tight"><input class="cell b" id="toolN${i}" onfocus="dlFocus(this)" onblur="dlBlur(this)" list="${(r.cat||'').trim()?toolListId(r.cat):'dlLibAll'}" value="${esc(r.name)}" placeholder="Pick from Library or type" oninput="updTool(${i},'name',this.value)"></td>
+      <td style="width:6%;text-align:center">${ordDot('tools', i, r)}</td>
+      ${shipChk('tools', i, r)}
+      <td class="tight" style="width:7%"><input class="cell num" value="${esc(r.qty)}" oninput="updTool(${i},'qty',this.value)"></td>
+      <td class="tight" style="width:11%"><input class="cell num" id="toolP${i}" value="${esc(r.price)}" placeholder="—" oninput="updTool(${i},'price',this.value)"></td>
+      <td class="num" style="width:11%"><span id="toolRowT${i}">${fmt(priceNum(r.price)*(parseFloat(r.qty)||1) || null)}</span></td>
+      <td class="tight" style="width:15%"><div style="display:flex;align-items:center;gap:4px"><input class="cell" id="toolL${i}" onmouseenter="lpShow(this)" onmouseleave="lpHide()" value="${esc(r.link)}" placeholder="https://" oninput="updTool(${i},'link',this.value)"><button class="mod-btn" style="padding:4px 7px;flex:none" title="Copy link" onclick="copyRowLink('toolL${i}', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button><button class="mod-btn" style="padding:4px 7px;flex:none" title="Open link" onclick="openRowLink('toolL${i}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><path d="M15 3h6v6M10 14L21 3"/></svg></button></div></td>
+      <td class="tolib">${(r.name||'').trim() && !libFind(r.name) ? `<button title="Add to Library" onclick="addToolRowToLib(${i})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M9 9.5h6M12 6.5v6"/></svg></button>` : ''}</td>
+      <td class="rm"><button title="Remove" onclick="rmTool(${i})">×</button></td>
+    </tr>`;
+}
+function pageTools(){
+  const ready = state.tools.ready;
+  const P = state.project;
+  const toolTable = (bucket) => {
+    const rowsHtml = state.tools.rows.map((r,i)=>({r,i})).filter(x=>toolGrpOf(x.r)===bucket.key).map(x=>toolRowHtml(x.r, x.i)).join('');
+    return `
+    <div class="card" style="margin-top:14px">
+      <div class="card-head"><h3>${bucket.label}</h3><span class="chip c-mut" style="margin-left:8px"><span class="cd"></span>${state.tools.rows.filter(r=>toolGrpOf(r)===bucket.key && (r.name||'').trim()).length}</span></div>
+      <div style="font-size:12px;color:var(--ink2);margin:-2px 0 8px">${esc(bucket.hint)}</div>
+      <table class="eq">
+        <thead><tr><th>Category</th><th>Hardware</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:center" title="Combine into one shipping place">Ship</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th><th>Link</th><th></th><th></th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+        <tfoot><tr><td colspan="6">${esc(bucket.label)} total</td><td class="num" id="toolFoot_${bucket.key}">${fmt(toolSubTotal(bucket.key))}</td><td colspan="3"></td></tr></tfoot>
+      </table>
+      <button class="add-line" onclick="addTool('${bucket.key}')">+ Add ${esc(bucket.label)} item</button>
+    </div>`;
+  };
+
+  return `
+  <div class="page">
+    <div class="crumbs"><a href="#/dashboard">Dashboard</a> › <span class="cur">Tools &amp; Installation Hardware</span></div>
+    <datalist id="dlLibAll">${libAllItems().map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>
+    ${toolCats().map((c,ci)=>`<datalist id="dlToolCat${ci}">${libToolByCat(c).map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>`).join('')}
+    <div class="pagehead">
+      <div class="eyebrow">#${esc(P.number)} · ${esc(P.title)}${P.type?' · System: '+esc(P.type):''}${P.domeDiameter?' · '+esc(P.domeDiameter)+' m '+esc(P.domeType||''):''}</div>
+      <h1>Tools &amp; Installation Hardware</h1>
+      <div class="sub">Assemble and document the installation kit — rigging &amp; straps, hand tools, power tools and fasteners &amp; hardware — picked from the Equipment Library.</div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi red"><div class="kl">Tools cost</div><div class="kvv" id="kTool">${fmt(toolTotal())}</div></div>
+      <div class="kpi"><div class="kl">Components</div><div class="kvv">${state.tools.rows.filter(r=>(r.name||'').trim()).length}</div></div>
+      <div class="kpi"><div class="kl">Photos</div><div class="kvv">${photosOf('tools').length} <small>/ ${PHOTO_MAX.tools}</small></div></div>
+      <div class="kpi"><div class="kl">Tools build</div>
+        <div class="kvv" style="font-size:15px;display:flex;align-items:center;gap:8px"><span class="led ${ready?'on':''}" id="kToolLed"></span><span id="kToolLedTxt">${ready?'Ready':'Not Ready'}</span></div></div>
+    </div>
+
+    <!-- ================= TOOLS BUILDER (Rigging / Hand / Power / Fasteners) ================= -->
+    <div class="sec-title" id="tools">
+      <div class="stic">${IC.tool}</div>
+      <div><h2>Tools Builder</h2><div class="st-sub">Four sub-lists — Rigging &amp; Straps, Hand Tools, Power Tools, Fasteners &amp; Hardware — all one Tools module (ships as one "Tools"). Picked from the Equipment Library — Tools &amp; Installation Hardware group.</div></div>
+      <div class="st-total"><div class="l">Components total</div><div class="v" id="stTool">${fmt(toolTotal())}</div></div>
+    </div>
+    <div class="card" style="padding-bottom:6px">
+      <div class="card-head"><h3>Hardware configuration</h3><button class="mod-btn" style="padding:5px 11px;font-size:11.5px;margin-right:8px" title="Fetch fresh prices from the links" onclick="refreshPrices('tools')">↻ Prices</button>
+        <button class="ready-btn ${ready?'on':''}" id="toolReadyBtn" onclick="toggleToolReady()">
+          <span class="led ${ready?'on':''}" id="toolBtnLed"></span><span id="toolBtnLbl">${ready ? 'Tools Ready' : 'Mark as Ready'}</span></button>
+      </div>
+      <div style="font-size:12px;color:var(--ink2);margin:-4px 0 2px">All four lists below are part of one Tools module — combined into a single "Tools" place in Equipment &amp; Shipping.</div>
+    </div>
+    ${TOOL_GROUPS.map(toolTable).join('')}
+
+    ${photoCard('tools','Tool Photos','Tools and installation hardware photos — up to '+PHOTO_MAX.tools+'. Shown in Documentation as "Tools — #'+esc(P.number)+'".')}
 
     <a class="backlink" href="#/dashboard">${IC.back} Back to Dashboard</a>
   </div>`;
@@ -7426,6 +7625,7 @@ function pageDocumentation(){
     const spk = mk(entryPhotos(e,'speakers'), 'speakers', '', 'Speakers');
     const fan = mk(entryPhotos(e,'fan'), 'fan', '', 'Screen Fan');
     const cab = mk(entryPhotos(e,'cables'), 'cables', '', 'Cables');
+    const tls = mk(entryPhotos(e,'tools'), 'tools', '', 'Tools');
     /* Shipping — pallet photos, one label per pallet */
     const pp = (e.data.shipping && e.data.shipping.palletPhotos) || {};
     const pals = (e.data.shipping && e.data.shipping.pallets) || [];
@@ -7444,15 +7644,15 @@ function pageDocumentation(){
           </div>
         </div>`; });
     });
-    if(!srv && !vjp && !rck && !fr && !rr && !cam && !spk && !fan && !cab && !ship) return '';
-    const modCount = entryPhotos(e,'server').length + entryPhotos(e,'vj').length + entryPhotos(e,'rack').length + entryPhotos(e,'front').length + entryPhotos(e,'rear').length + entryPhotos(e,'camera').length + entryPhotos(e,'speakers').length + entryPhotos(e,'fan').length + entryPhotos(e,'cables').length + shipN;
+    if(!srv && !vjp && !rck && !fr && !rr && !cam && !spk && !fan && !cab && !tls && !ship) return '';
+    const modCount = entryPhotos(e,'server').length + entryPhotos(e,'vj').length + entryPhotos(e,'rack').length + entryPhotos(e,'front').length + entryPhotos(e,'rear').length + entryPhotos(e,'camera').length + entryPhotos(e,'speakers').length + entryPhotos(e,'fan').length + entryPhotos(e,'cables').length + entryPhotos(e,'tools').length + shipN;
     return `
     <div class="card docsec">
       <div class="card-head"><h3>#${esc(P.number)} — ${esc(P.title||'')}</h3>
         <span class="chip c-mut"><span class="cd"></span>${modCount} photos</span>
         <span style="flex:1"></span>
         <button class="mod-btn ${_docGalEdit?'primary':''}" style="padding:4px 12px;font-size:12px" onclick="toggleDocGalEdit()">${_docGalEdit?'Done':'Edit'}</button></div>
-      <div class="phgrid">${fr}${rr}${srv}${vjp}${rck}${cam}${spk}${fan}${cab}${ship}</div>
+      <div class="phgrid">${fr}${rr}${srv}${vjp}${rck}${cam}${spk}${fan}${cab}${tls}${ship}</div>
     </div>`;
   }).filter(Boolean).join('');
 
@@ -7694,7 +7894,7 @@ const ROUTES = {
   '#/speakers':      {nav:'dashboard', render:pageSpeakers},
   '#/network':       {nav:'dashboard', render:()=>pagePlaceholder('Network', IC.net, 'Switches, VLANs, IP plan and connectivity for the dome system — planned module.', 'Coming Soon')},
   '#/fan':           {nav:'dashboard', render:pageFan},
-  '#/tools':         {nav:'dashboard', render:()=>pagePlaceholder('Tools', IC.tool, 'Installation tools, rigging and calibration equipment checklist — planned module.', 'Coming Soon')},
+  '#/tools':         {nav:'dashboard', render:pageTools},
   '#/shipping':      {nav:'dashboard', render:pageShipping}
 };
 
