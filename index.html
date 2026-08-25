@@ -311,6 +311,8 @@
   .fld textarea{resize:vertical;min-height:70px;line-height:1.5}
   .fld input:focus,.fld select:focus,.fld textarea:focus{outline:none;border-color:var(--fdp-red)}
   .fld .hint{font-size:11px;color:#9aa2ad;margin-top:4px}
+  .libic{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;flex:none;margin-right:2px;transition:background .15s,color .15s}
+  .libic svg{width:17px;height:17px}
   .create-btn{width:100%;margin-top:18px;background:var(--fdp-red);color:#fff;border:none;border-radius:9px;padding:13px;
     font-family:inherit;font-size:14.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
   .create-btn:hover{background:#b71c1c}
@@ -629,7 +631,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.42 · PROJECTS FORM ↔ CREATE PARITY</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.48 · LIBRARY GROUP ICONS (RED/GREEN)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -766,7 +768,7 @@ const PROJ_FIELDS = {
   installAddress:'', installDateTime:'', breakdownDateTime:'',
   shippingBudget:'', travelBudget:'', localLabourQty:'', localLabourBy:'',
   indoorOutdoor:'', outerCover:'', coverColorNote:'', screenType:'', inflatableCover:'',
-  server:'', resolution:'', projectorQty:'',
+  resolution:'', projectorQty:'',
   soundSystem:'', hvac:'', safetySigns:'', contentType:'', contentNotes:'', eventNotes:''
 };
 /* BUILD 14.42: the overlapping fields (title, location, domeDiameter, domeType, type, projectorModel,
@@ -1119,6 +1121,16 @@ const IC = {
   tool:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a4 4 0 00-5.2 5.2l-6 6a1.5 1.5 0 002.1 2.1l6-6a4 4 0 005.2-5.2l-2.4 2.4-2.2-.6-.6-2.2z"/></svg>',
   ship:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 3h13v13H1z"/><path d="M14 8h5l3 3v5h-8"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></svg>'
 };
+
+/* BUILD 14.48: Equipment Library group icons — a square badge per group (server/rack/camera/…),
+   RED while the group is collapsed, GREEN while expanded. */
+const LIB_ICONS = { server:IC.server, rack:IC.rack, cameras:IC.cam, speakers:IC.spk, fan:IC.fan, video:IC.beam, cables:IC.cable, tools:IC.tool };
+function libGroupIcon(key, collapsed){
+  const ic = LIB_ICONS[key] || IC.lib;
+  const bg = collapsed ? '#fdeeee' : '#e7f7ee';
+  const col = collapsed ? 'var(--fdp-red)' : '#2fa35a';
+  return `<span class="libic" style="background:${bg};color:${col}" title="${collapsed?'Collapsed':'Expanded'}">${ic}</span>`;
+}
 
 /* ---------- navigation ---------- */
 const NAV = [
@@ -2437,15 +2449,16 @@ var _projMode = 'edit';            /* 'edit' = bound to the active project · 'n
 var _projTitleManual = false;      /* user typed a custom Deal Title → stop auto-composing it */
 function projNewMode(){ _projMode = 'new'; _projTitleManual = false; goTo('#/projects'); }
 function projCancelNew(){ _projMode = 'edit'; goTo('#/projects'); }
-/* Deal Title auto-format: "R/S – <Dome Size> + <Server> (<Resolution>) for <Client>" */
+/* Project Name auto-format (BUILD 14.43): "<R/S> <Dome Size>m + <Server> <Client> <Location>"
+   e.g. "R 10m + DX8 L.L.Bean Maine". The field is READ-ONLY — always composed, never typed. */
 function projAutoTitle(){
-  if(_projTitleManual) return;
   const g = id => { const e = document.getElementById(id); return e ? e.value.trim() : ''; };
   const dt = g('pj_dealType'), rs = dt==='Sale' ? 'S' : (dt==='Rental' ? 'R' : '');
-  let s = rs ? (rs + ' – ') : '';
-  s += [g('pj_domeSize'), g('pj_server')].filter(Boolean).join(' + ');
-  const res = g('pj_resolution'); if(res) s += ' (' + res + ')';
-  const cl = g('pj_client'); if(cl) s += ' for ' + cl;
+  const size = g('pj_domeSize'), srv = g('pj_type'), cl = g('pj_client'), loc = g('pj_location');   /* BUILD 14.44: Projection System Type IS the server */
+  let s = [rs, size ? (size + 'm') : ''].filter(Boolean).join(' ');
+  if(srv) s += (s ? ' ' : '') + '+ ' + srv;
+  if(cl)  s += (s ? ' ' : '') + cl;
+  if(loc) s += (s ? ' ' : '') + loc;
   const e = document.getElementById('pj_projName'); if(e) e.value = s.trim();
 }
 function _pjSel(id, cur, values, ph, chg){
@@ -2476,7 +2489,7 @@ function readProjForm(){
     screenType:t('pj_screenType'), inflatableCover:t('pj_inflatable'),
     /* Technical / AV — type/projectorModel/audioSystem/speakersModel/subwooferModel/screenFan/
        captureRequired/vjRequired are EXISTING keys shared with the old Create/Edit form */
-    type:t('pj_type'), server:t('pj_server'), resolution:t('pj_resolution'),
+    type:t('pj_type'), resolution:t('pj_resolution'),
     projectorModel:t('pj_projModel'), projectorQty:t('pj_projQty'),
     audioSystem:t('pj_audio'), speakersModel:t('pj_speakers'), subwooferModel:t('pj_sub'),
     screenFan:t('pj_fan'), captureRequired:yn('pj_capture'), vjRequired:yn('pj_vj'),
@@ -2495,12 +2508,14 @@ function _applyCapVj(data, f){
 function saveProjChanges(){
   try{
     const e = activeEntry(); if(!e || !e.data.project){ flashStat('No project selected'); return; }
+    const _oldName = projDriveFolderName(e.data.project);   /* BUILD 14.46: detect a name change → rename Drive folder */
     const f = readProjForm();
     Object.assign(e.data.project, f);      /* existing keys (title/location/type/dome…) written directly */
     _applyCapVj(e.data, f);
     if(typeof revalidateReady === 'function') revalidateReady();
     saveState(); renderHeader(); renderSideProject();
     setTimeout(()=>{ try{ if(_FS || _FBP) syncPushNow(); else cloudPushNow(); }catch(_){ } }, 200);
+    if(projDriveFolderName(e.data.project) !== _oldName){ setTimeout(()=>{ try{ if(_cloudOn && _gTok) driveRenameProjectFolders(e, _oldName).catch(function(){}); }catch(_){ } }, 800); }
     flashStat('Changes saved ✓');
   }catch(err){ alert('Could not save: ' + (err && err.message || err)); }
 }
@@ -2545,7 +2560,6 @@ function pageProjects(){
   }
   const P = editing ? e.data.project : {};
   const projName = editing ? (P.title||'') : '';
-  _projTitleManual = editing ? !!(projName && projName.trim()) : false;   /* don't auto-overwrite an existing name */
   const loc       = (editing && P.location && P.location!=='—') ? P.location : '';
   const projModel = P.projectorModel || '';
   const TYPES = ['HDx4','HDx6','HDx8','HDx12','UHDx4','UHDx6','UHDx8','UHDx12'];
@@ -2556,10 +2570,11 @@ function pageProjects(){
   const YNb = (id, val) => `<select id="${id}"><option value="No"${!val?' selected':''}>No</option><option value="Yes"${val?' selected':''}>Yes</option></select>`;
   const form = `
     <div class="fgrid">
+      ${F('Project Name <span style="color:#9aa2ad;text-transform:none;font-weight:400">(auto — Deal Type · Dome Size · System Type · Client · Location)</span>', `<input id="pj_projName" readonly value="${esc(projName)}" style="background:#f1f2f4;font-weight:700;cursor:default" title="Built automatically — edit the fields below">`, true)}
+
       <div class="fsec">Commercial / Deal Basics</div>
       ${F('Deal Type', _pjSel('pj_dealType', P.dealType, ['Rental','Sale'], '— Select —', 'projAutoTitle()'))}
       ${F('Currency', _pjSel('pj_currency', P.currency, ['USD','EUR','THB','INR','CNY','RUB','AUD']))}
-      ${F('Project Name <span style="color:#9aa2ad;text-transform:none;font-weight:400">(auto, editable)</span>', I('pj_projName', projName, '', 'oninput="_projTitleManual=true"'), true)}
       ${F('Company / Client', I('pj_client', P.client, '', 'oninput="projAutoTitle()"'))}
       ${F('Contact Name', I('pj_contactName', P.contactName))}
       ${F('Phone', I('pj_phone', P.phone))}
@@ -2571,7 +2586,7 @@ function pageProjects(){
       ${F('Terms of Payment', I('pj_terms', P.termsOfPayment), true)}
 
       <div class="fsec">Site &amp; Logistics</div>
-      ${F('Location <span style="color:#9aa2ad;text-transform:none;font-weight:400">(City / State / Country)</span>', I('pj_location', loc), true)}
+      ${F('Location <span style="color:#9aa2ad;text-transform:none;font-weight:400">(City / State / Country)</span>', I('pj_location', loc, '', 'oninput="projAutoTitle()"'), true)}
       ${F('Full Installation Address', I('pj_address', P.installAddress), true)}
       ${F('Installation Date &amp; Time', I('pj_install', P.installDateTime, 'datetime-local'))}
       ${F('Breakdown Date &amp; Time', I('pj_breakdown', P.breakdownDateTime, 'datetime-local'))}
@@ -2590,9 +2605,8 @@ function pageProjects(){
       ${F('Inflatable Cover', _pjSel('pj_inflatable', P.inflatableCover, YN))}
 
       <div class="fsec">Technical / AV</div>
-      ${F('Projection System Type', _pjSel('pj_type', P.type, TYPES, '— Select type —'))}
-      ${F('Server', _pjSel('pj_server', P.server, ['DX4','DX8','DX12','SRD','Other','No'], '— Select —', 'projAutoTitle()'))}
-      ${F('Resolution', I('pj_resolution', P.resolution, '', 'oninput="projAutoTitle()"'))}
+      ${F('Projection System Type', _pjSel('pj_type', P.type, TYPES, '— Select type —', 'projAutoTitle()'))}
+      ${F('Resolution', I('pj_resolution', P.resolution))}
       ${F('Projector Model', I('pj_projModel', projModel))}
       ${F('Projector Quantity', I('pj_projQty', P.projectorQty, 'number'))}
       ${F('Audio System', I('pj_audio', P.audioSystem))}
@@ -4316,6 +4330,10 @@ function isTypingInInput(){
   const a = document.activeElement;
   return !!(a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT'));
 }
+/* BUILD 14.46: while the user is filling a project FORM, a background re-render (route()) would wipe
+   what they typed (the form reads from the DOM, not a live model). Never auto-route on these pages —
+   the sidebar/header still refresh; the form is left intact until the user submits or navigates. */
+function onProjectFormPage(){ const h = location.hash; return h === '#/create' || h === '#/edit' || h === '#/projects'; }
 /* ---- send: publish my edits ---- */
 function liveTouch(){
   if(!fbReady() || !_fbPath || _fbApplying) return;
@@ -4651,8 +4669,27 @@ async function fbpMediaSync(){
       try{ if(await fbpMediaDownloadApply(e, want)) any = true; }catch(_){}
     }
   } finally { _fbpMediaBusy = false; }
-  if(any){ if(!isTypingInInput()) route(); renderHeader(); renderSideProject(); setCloudStat('Photos/docs updated from team ✓ · ' + hhmm()); }
+  if(any){ if(!isTypingInInput() && !onProjectFormPage()) rerenderKeepScroll(); renderHeader(); renderSideProject(); setCloudStat('Photos/docs updated from team ✓ · ' + hhmm()); }
 }
+/* BUILD 14.45: console helper — map each `_media/<pid>.media.json` file to its project (number + name),
+   so the opaque pid filenames in Drive are easy to identify. Run `mediaMapList()` in the browser console. */
+function mediaMapList(){
+  const mm = (typeof mediaMap === 'function') ? (mediaMap() || {}) : (db.mediaMap || {});
+  const rows = db.projects.map(function(e){
+    const P = (e.data && e.data.project) || {};
+    const pid = (typeof fbpPid === 'function' ? fbpPid(e) : '') || P.pid || '';
+    return {
+      file: pid ? (pid + '.media.json') : '(no pid yet)',
+      number: P.number || '—',
+      name: P.title || '(untitled)',
+      done: !!e.done,
+      mediaFileId: (mm[pid] && mm[pid].fileId) || '—'
+    };
+  });
+  try{ console.table(rows); }catch(_){ rows.forEach(function(r){ console.log(r.file + '  →  #' + r.number + '  ' + r.name); }); }
+  return rows;
+}
+try{ window.mediaMapList = mediaMapList; }catch(_){}
 /* ---- BROWSABLE MIRROR (BUILD 13.3, Phase 2b) — write each photo/document as a REAL
    FILE into a per-project folder in the shared team root, so they can be viewed and
    downloaded on Google Drive by hand (Photos/<Category>/… + Documentation/…). This is a
@@ -5139,7 +5176,7 @@ function fsOnSnapshot(snap){
   }catch(err){ /* keep going */ }
   if(touched){
     saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
-    if(!isTypingInInput()) route();
+    if(!isTypingInInput() && !onProjectFormPage()) rerenderKeepScroll();   /* BUILD 14.46/14.47: refresh but keep scroll (no jump-to-top on Library etc.); never wipe a form */
     renderHeader(); renderSideProject();
   }
   _fsApplying = false;
@@ -8130,6 +8167,7 @@ function pageLibrary(){
       <div class="card-head" style="cursor:${(editing||frozen)?'default':'pointer'};user-select:none" ${(editing||frozen)?'':`onclick="toggleLibGroup('${g.key}')"`} title="${editing?'':(frozen?'Frozen — unfreeze in Edit to open':(collapsed?'Expand':'Collapse'))}">
         ${editing||frozen ? '' : `<span style="display:inline-flex;width:16px;flex:none;color:var(--ink2);transition:transform .15s;transform:rotate(${collapsed?'-90deg':'0deg'})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="width:14px;height:14px"><path d="M6 9l6 6 6-6"/></svg></span>`}
         <h3 style="margin:0;${frozen?'color:#3a4658':''}">${g.label}</h3>
+        ${libGroupIcon(g.key, collapsed)}
         <span class="chip c-mut"><span class="cd"></span>${items.filter(x=>(x.name||'').trim()).length} items</span>
         ${headCtrls}</div>
       <div style="display:${collapsed?'none':'block'}">${body}
