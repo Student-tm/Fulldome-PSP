@@ -628,7 +628,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.39 · LIBRARY TOOLS · 4 SUB-TABLES</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.40 · NO SCROLL JUMP ON ADD</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1284,7 +1284,7 @@ function addCategory(key){
   if(catsOf(key).some(c=>c.toLowerCase()===v.toLowerCase())){ el.value=''; return; }
   catsOf(key).push(v);
   saveState(); rerenderKeepScroll();
-  const el2 = document.getElementById('catNew_'+key); if(el2) el2.focus();
+  const el2 = document.getElementById('catNew_'+key); if(el2){ try{ el2.focus({preventScroll:true}); }catch(_){ el2.focus(); } }
 }
 function removeCategory(key, idx){
   const arr = catsOf(key); if(idx<0 || idx>=arr.length) return;
@@ -1318,16 +1318,20 @@ function normalizeSort(){
     });
   }catch(err){}
 }
+var _keepScrollTop = null;   /* while set, route() restores THIS scroll offset instead of resetting to 0 */
 function rerenderKeepScroll(){
   const c = document.getElementById('content');
   const st = c ? c.scrollTop : 0;
+  _keepScrollTop = st;                 /* route() applies it synchronously after innerHTML (no jump-then-restore flicker) */
   route();
-  /* restore immediately AND again after layout/image-decode settles, so re-rendering
-     a page with base64 images (e.g. pallet photos) no longer jumps to the top (BUILD 12.63) */
-  const restore = () => { const c2 = document.getElementById('content'); if(c2 && c2.scrollTop !== st) c2.scrollTop = st; };
+  _keepScrollTop = null;
+  /* restore AGAIN after layout/image-decode settles, so a page with base64 images
+     (e.g. pallet photos) or late reflow doesn't drift from the offset (BUILD 12.63/14.40) */
+  const restore = () => { const c2 = document.getElementById('content'); if(c2 && Math.abs(c2.scrollTop - st) > 1) c2.scrollTop = st; };
   restore();
   try{ requestAnimationFrame(restore); }catch(_){}
   setTimeout(restore, 60);
+  setTimeout(restore, 180);
 }
 function libAllItems(){
   return LIB_GROUPS.flatMap(g => ((db.library&&db.library[g.key])||[]).filter(it=>(it.name||'').trim()));
@@ -1481,8 +1485,8 @@ function updLib(group, i, k, v){
   }
   saveState();
 }
-function addLib(group){ ensureLibGroup(group).push(blankLibItem()); saveState(); route(); }
-function rmLib(group, i){ ensureLibGroup(group).splice(i,1); saveState(); route(); }
+function addLib(group){ ensureLibGroup(group).push(blankLibItem()); saveState(); rerenderKeepScroll(); }
+function rmLib(group, i){ ensureLibGroup(group).splice(i,1); saveState(); rerenderKeepScroll(); }
 
 /* ---------- server component categories ---------- */
 const CATS = SRV_CATS;
@@ -3125,8 +3129,8 @@ function setVjCat(i, v){
   sortByCat(state.vj.rows, srvCats());
   saveState(); rerenderKeepScroll();
 }
-function addVj(){ state.vj.rows.push(blankRow()); saveState(); route(); }
-function rmVj(i){ state.vj.rows.splice(i,1); revalidateVjReady(); saveState(); route(); }
+function addVj(){ state.vj.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
+function rmVj(i){ state.vj.rows.splice(i,1); revalidateVjReady(); saveState(); rerenderKeepScroll(); }
 function toggleVjReady(){
   if(state.vj.ready){ state.vj.ready=false; saveState(); refreshVjReadyUI(); renderSideProject(); const b=document.getElementById('vjProbBox'); if(b) b.classList.remove('show'); return; }
   const problems = vjProblems();
@@ -3237,10 +3241,10 @@ function refreshReadyUI(){
   set('kLedTxt', e=>e.textContent = ready?'Ready':'Not Ready');
   renderHeader();
 }
-function addSrv(){ state.server.rows.push(blankRow()); saveState(); route(); }
-function rmSrv(i){ state.server.rows.splice(i,1); revalidateReady(); saveState(); route(); }
-function addRack(){ state.rack.rows.push(blankRackRow()); saveState(); route(); }
-function rmRack(i){ state.rack.rows.splice(i,1); saveState(); route(); }
+function addSrv(){ state.server.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
+function rmSrv(i){ state.server.rows.splice(i,1); revalidateReady(); saveState(); rerenderKeepScroll(); }
+function addRack(){ state.rack.rows.push(blankRackRow()); saveState(); rerenderKeepScroll(); }
+function rmRack(i){ state.rack.rows.splice(i,1); saveState(); rerenderKeepScroll(); }
 
 function toggleReady(){
   if(state.server.ready){ state.server.ready = false; state._showProblems = false; saveState(); refreshReadyUI(); renderSideProject(); hideProblems(); return; }
@@ -3263,7 +3267,7 @@ function setRackU(d){
   state.rack.heightU = nu;
   /* drop slot contents above the new height */
   Object.keys(state.rack.slots).forEach(u=>{ if(+u > nu) delete state.rack.slots[u]; });
-  saveState(); route();
+  saveState(); rerenderKeepScroll();
 }
 /* Rack Size dropdown (BUILD 12.39) — sets the height directly (8U–20U); feeds the dashboard card */
 function setRackSize(v){
@@ -3271,12 +3275,12 @@ function setRackSize(v){
   if(nu === state.rack.heightU) return;
   state.rack.heightU = nu;
   Object.keys(state.rack.slots||{}).forEach(u=>{ if(+u > nu) delete state.rack.slots[u]; });
-  saveState(); route();
+  saveState(); rerenderKeepScroll();
 }
 /* Server Case Size dropdown (BUILD 12.39) — chassis height of the Dome Server, e.g. "2U" */
 function setServerCase(v){
   state.server.caseSize = v || '';
-  saveState(); route();
+  saveState(); rerenderKeepScroll();
 }
 
 /* ============ EQUIPMENT & SHIPPING MODULE (BUILD 12.53) ============
@@ -3348,7 +3352,7 @@ function addPallet(){
   const nums = state.shipping.pallets.map(p=>parseInt(p.num,10)).filter(n=>!isNaN(n));
   const next = (nums.length?Math.max.apply(null,nums):0)+1;
   state.shipping.pallets.push({ id:newId(), num:String(next) });
-  saveState(); route();
+  saveState(); rerenderKeepScroll();
 }
 function setPalletNum(id, v){ const p = state.shipping.pallets.find(x=>x.id===id); if(p){ p.num = v; saveState(); } }
 function setPalletField(id, field, v){ const p = state.shipping.pallets.find(x=>x.id===id); if(p){ p[field] = v; saveState(); } }
@@ -3427,7 +3431,7 @@ function rmPallet(id){
   state.shipping.pallets = state.shipping.pallets.filter(p=>p.id!==id);
   Object.keys(state.shipping.assign).forEach(k=>{ if(state.shipping.assign[k]===id) delete state.shipping.assign[k]; });
   if(state.shipping.palletPhotos) delete state.shipping.palletPhotos[id];   /* drop its photos too */
-  saveState(); route();
+  saveState(); rerenderKeepScroll();
 }
 /* one-click: put EVERY place onto this pallet (autofill — handy when there is just one pallet) */
 function assignAllToPallet(pid, checked){
@@ -6401,8 +6405,8 @@ function cycOrd(kind, i, el){
 const camListId = cat => 'dlCamCat' + Math.max(0, ciIndexOf(camCats(), cat));
 const libCamByCat = cat => libByGroupCat('cameras', cat);
 function camTotal(){ return state.camera.rows.reduce((s,r)=> s + rowSum(r), 0); }
-function addCam(){ state.camera.rows.push(blankRow()); saveState(); route(); }
-function rmCam(i){ state.camera.rows.splice(i,1); saveState(); route(); }
+function addCam(){ state.camera.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
+function rmCam(i){ state.camera.rows.splice(i,1); saveState(); rerenderKeepScroll(); }
 function setCamCat(i, v){
   state.camera.rows[i].cat = v;
   if(autoFillFromCat(state.camera.rows[i], libCamByCat(v))) flashStat('Filled from Library ✓');
@@ -6467,8 +6471,8 @@ function refreshCamReadyUI(){
 const spkListId = cat => 'dlSpkCat' + Math.max(0, ciIndexOf(spkCats(), cat));
 const libSpkByCat = cat => libByGroupCat('speakers', cat);
 function spkTotal(){ return state.speakers.rows.reduce((s,r)=> s + rowSum(r), 0); }
-function addSpk(){ state.speakers.rows.push(blankRow()); saveState(); route(); }
-function rmSpk(i){ state.speakers.rows.splice(i,1); saveState(); route(); }
+function addSpk(){ state.speakers.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
+function rmSpk(i){ state.speakers.rows.splice(i,1); saveState(); rerenderKeepScroll(); }
 function setSpkCat(i, v){
   state.speakers.rows[i].cat = v;
   if(autoFillFromCat(state.speakers.rows[i], libSpkByCat(v))) flashStat('Filled from Library ✓');
@@ -6596,8 +6600,8 @@ function pageSpeakers(){
 const fanListId = cat => 'dlFanCat' + Math.max(0, ciIndexOf(fanCats(), cat));
 const libFanByCat = cat => libByGroupCat('fan', cat);
 function fanTotal(){ return state.fan.rows.reduce((s,r)=> s + rowSum(r), 0); }
-function addFan(){ state.fan.rows.push(blankRow()); saveState(); route(); }
-function rmFan(i){ state.fan.rows.splice(i,1); saveState(); route(); }
+function addFan(){ state.fan.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
+function rmFan(i){ state.fan.rows.splice(i,1); saveState(); rerenderKeepScroll(); }
 function setFanCat(i, v){
   state.fan.rows[i].cat = v;
   if(autoFillFromCat(state.fan.rows[i], libFanByCat(v))) flashStat('Filled from Library ✓');
@@ -6736,8 +6740,8 @@ function refreshCabTotals(){
   ['kCab','stCab'].forEach(id=>{const e=document.getElementById(id); if(e) e.textContent=g;});
   CAB_GROUPS.forEach(b=>{ const e=document.getElementById('cabFoot_'+b.key); if(e) e.textContent=fmt(cabSubTotal(b.key)); });
 }
-function addCab(grp){ const r=blankRow(); r.grp = (grp&&CAB_GROUPS.some(b=>b.key===grp))?grp:'power'; state.cables.rows.push(r); saveState(); route(); }
-function rmCab(i){ state.cables.rows.splice(i,1); saveState(); route(); }
+function addCab(grp){ const r=blankRow(); r.grp = (grp&&CAB_GROUPS.some(b=>b.key===grp))?grp:'power'; state.cables.rows.push(r); saveState(); rerenderKeepScroll(); }
+function rmCab(i){ state.cables.rows.splice(i,1); saveState(); rerenderKeepScroll(); }
 function setCabCat(i, v){
   state.cables.rows[i].cat = v;
   if(autoFillFromCat(state.cables.rows[i], libCabByCat(v))) flashStat('Filled from Library ✓');
@@ -6890,8 +6894,8 @@ function refreshToolTotals(){
   ['kTool','stTool'].forEach(id=>{const e=document.getElementById(id); if(e) e.textContent=g;});
   TOOL_GROUPS.forEach(b=>{ const e=document.getElementById('toolFoot_'+b.key); if(e) e.textContent=fmt(toolSubTotal(b.key)); });
 }
-function addTool(grp){ const r=blankRow(); r.grp = (grp&&TOOL_GROUPS.some(b=>b.key===grp))?grp:'rigging'; state.tools.rows.push(r); saveState(); route(); }
-function rmTool(i){ state.tools.rows.splice(i,1); saveState(); route(); }
+function addTool(grp){ const r=blankRow(); r.grp = (grp&&TOOL_GROUPS.some(b=>b.key===grp))?grp:'rigging'; state.tools.rows.push(r); saveState(); rerenderKeepScroll(); }
+function rmTool(i){ state.tools.rows.splice(i,1); saveState(); rerenderKeepScroll(); }
 function setToolCat(i, v){
   state.tools.rows[i].cat = v;
   if(autoFillFromCat(state.tools.rows[i], libToolByCat(v))) flashStat('Filled from Library ✓');
@@ -6931,7 +6935,7 @@ function addToolRowToLib(i){
   flashStat('Added to Library ✓');
 }
 /* add a blank library item into a specific Tools sub-table (Equipment Library page) */
-function addLibTool(bucketKey){ ensureLibGroup('tools').push({cat:'', name:'', price:'', link:'', grp: (TOOL_BUCKETS.some(b=>b.key===bucketKey)?bucketKey:'rigging')}); saveState(); route(); }
+function addLibTool(bucketKey){ ensureLibGroup('tools').push({cat:'', name:'', price:'', link:'', grp: (TOOL_BUCKETS.some(b=>b.key===bucketKey)?bucketKey:'rigging')}); saveState(); rerenderKeepScroll(); }
 function toggleToolReady(){
   if(state.tools.ready){ state.tools.ready = false; saveState(); refreshToolReadyUI(); renderSideProject(); return; }
   if(!state.tools.rows.some(r=>(r.name||'').trim())){
@@ -7968,7 +7972,8 @@ function route(){
   route._prevHash = h;
   renderNav(rr.nav);
   document.getElementById('content').innerHTML = rr.render();
-  document.getElementById('content').scrollTop = 0;
+  /* normal navigation resets to top; an in-place rerender (rerenderKeepScroll) preserves the offset */
+  document.getElementById('content').scrollTop = (_keepScrollTop != null ? _keepScrollTop : 0);
   if(h === '#/create' || h === '#/edit') noAutofill();   /* BUILD 14.15: stop the browser from auto-filling form fields (e.g. a stray project number into Screen Fan) */
   renderHeader(); renderSideProject();
 }
