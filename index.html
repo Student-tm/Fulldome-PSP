@@ -639,7 +639,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.52 · REVIVE DELETED FOLDER + rePushDrive()</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.57 · RACK ID + PROJECT EQUIPMENT ORDER</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -740,7 +740,8 @@ const emptyState = () => ({
   project: null,
   server: { rows: [], ready: false, photos: [] },
   vj:     { rows: [], ready: false, photos: [] },
-  rack:   { heightU: 12, slots: {}, rows: [], photos: [] },
+  backup: { rows: [], ready: false, photos: [], caseSize: '', name: '', enabled: false },   /* optional Backup Server (BUILD 14.56) */
+  rack:   { heightU: 12, slots: {}, rows: [], photos: [], rackId: '' },
   contentList: null,
   validation: { cpu:false, gpu:false, capture:false, video:false, burnin:false },
   vjValidation: { cpu:false, mem:false, gpu:false },
@@ -799,7 +800,13 @@ function syncActive(){
   if(!state.shipping.packed || typeof state.shipping.packed!=='object') state.shipping.packed = {};  /* per-place "loaded on pallet" flag */
   if(!state.shipping.palletPhotos || typeof state.shipping.palletPhotos!=='object') state.shipping.palletPhotos = {};  /* {palletId:[{name,caption,src}]} up to 10 each (BUILD 12.58) */
   if(!Array.isArray(state.rack.photos)) state.rack.photos = [];
+  if(typeof state.rack.rackId !== 'string') state.rack.rackId = '';   /* BUILD 14.57 manual Rack ID */
   if(!state.vj || typeof state.vj!=='object') state.vj = { rows: [], ready: false, photos: [] };
+  if(!state.backup || typeof state.backup!=='object') state.backup = { rows:[], ready:false, photos:[], caseSize:'', name:'', enabled:false };   /* BUILD 14.56 */
+  if(!Array.isArray(state.backup.rows)) state.backup.rows = [];
+  if(!Array.isArray(state.backup.photos)) state.backup.photos = [];
+  if(typeof state.backup.name!=='string') state.backup.name = '';
+  if(typeof state.backup.caseSize!=='string') state.backup.caseSize = '';
   if(!state.validation || typeof state.validation!=='object') state.validation = { cpu:false, gpu:false, capture:false, video:false, burnin:false };
   if(!state.vjValidation || typeof state.vjValidation!=='object') state.vjValidation = { cpu:false, mem:false, gpu:false };
   if(!Array.isArray(state.vj.rows)) state.vj.rows = [];
@@ -1500,7 +1507,7 @@ function ensureLibGroup(group){
 }
 function addRowToLib(kind, i){
   /* small arrow next to a row: if the item is not in the Library — add it */
-  const row = kind==='rack' ? state.rack.rows[i] : (kind==='vj' ? state.vj.rows[i] : state.server.rows[i]);
+  const row = kind==='rack' ? state.rack.rows[i] : (kind==='vj' ? state.vj.rows[i] : (kind==='backup' ? state.backup.rows[i] : state.server.rows[i]));
   if(!row) return;
   const name = (row.name||'').trim();
   if(!name || libFind(name)) return;
@@ -2062,8 +2069,8 @@ function docPhotoCount(){
 function docContentListCount(){ return docScope().filter(e=>e.data.contentList).length; }
 
 /* ---------- photos (server: max 6, rack: max 4) ---------- */
-const PHOTO_MAX = { server: 10, vj: 10, rack: 10, front: 1, rear: 1, site: 20, camera: 10, speakers: 10, fan: 10, cables: 10, tools: 10 };
-var photoEdit = { server: false, vj: false, rack: false, views: false, site: false, projviews: false, camera: false, speakers: false, fan: false, cables: false, tools: false };   /* Edit mode: shows delete crosses */
+const PHOTO_MAX = { server: 10, vj: 10, backup: 10, rack: 10, front: 1, rear: 1, site: 20, camera: 10, speakers: 10, fan: 10, cables: 10, tools: 10 };
+var photoEdit = { server: false, vj: false, backup: false, rack: false, views: false, site: false, projviews: false, camera: false, speakers: false, fan: false, cables: false, tools: false };   /* Edit mode: shows delete crosses */
 function togglePhotoEdit(kind){ photoEdit[kind] = !photoEdit[kind]; rerenderKeepScroll(); }
 function photosOf(kind){
   if(kind==='site'){ return ensureDocs(state).sitePh; }
@@ -2073,6 +2080,7 @@ function photosOf(kind){
   if(kind==='cables'){ if(!state.cables) state.cables={rows:[],ready:false,photos:[]}; if(!Array.isArray(state.cables.photos)) state.cables.photos=[]; return state.cables.photos; }
   if(kind==='tools'){ if(!state.tools) state.tools={rows:[],ready:false,photos:[]}; if(!Array.isArray(state.tools.photos)) state.tools.photos=[]; return state.tools.photos; }
   if(kind==='vj'){ if(!state.vj) state.vj={rows:[],ready:false,photos:[]}; if(!Array.isArray(state.vj.photos)) state.vj.photos=[]; return state.vj.photos; }
+  if(kind==='backup'){ if(!state.backup) state.backup={rows:[],ready:false,photos:[],caseSize:'',name:'',enabled:false}; if(!Array.isArray(state.backup.photos)) state.backup.photos=[]; return state.backup.photos; }
   if(kind==='front'){ if(!Array.isArray(state.rack.frontPh)) state.rack.frontPh=[]; return state.rack.frontPh; }
   if(kind==='rear'){ if(!Array.isArray(state.rack.rearPh)) state.rack.rearPh=[]; return state.rack.rearPh; }
   const box = kind==='server' ? state.server : state.rack;
@@ -2083,6 +2091,7 @@ function entryPhotos(e, kind){
   const d = e && e.data; if(!d) return [];
   if(kind==='server') return (d.server && d.server.photos) || [];
   if(kind==='vj')     return (d.vj && d.vj.photos) || [];
+  if(kind==='backup') return (d.backup && d.backup.photos) || [];
   if(kind==='rack')   return (d.rack && d.rack.photos) || [];
   if(kind==='front')  return (d.rack && d.rack.frontPh) || [];
   if(kind==='rear')   return (d.rack && d.rack.rearPh) || [];
@@ -2195,7 +2204,7 @@ function openLightboxProj(id, kind, i){
   const p = entryPhotos(e, kind)[i];
   if(p){
     const P = e.data.project || {};
-    const lbl = kind==='server' ? 'Dome Server' : kind==='vj' ? 'VJ Server' : kind==='front' ? 'Rack — Front' : kind==='rear' ? 'Rack — Rear' : kind==='site' ? 'Site' : kind==='camera' ? 'Camera' : kind==='speakers' ? 'Speakers' : kind==='fan' ? 'Screen Fan' : kind==='cables' ? 'Cables' : kind==='tools' ? 'Tools' : 'Rack';
+    const lbl = kind==='server' ? 'Dome Server' : kind==='vj' ? 'VJ Server' : kind==='backup' ? 'Backup Server' : kind==='front' ? 'Rack — Front' : kind==='rear' ? 'Rack — Rear' : kind==='site' ? 'Site' : kind==='camera' ? 'Camera' : kind==='speakers' ? 'Speakers' : kind==='fan' ? 'Screen Fan' : kind==='cables' ? 'Cables' : kind==='tools' ? 'Tools' : 'Rack';
     openLightbox(p.src, lbl + ' — #' + (P.number||'') + ' · ' + (p.caption||p.name||''));
   }
 }
@@ -3135,9 +3144,10 @@ function pageDashboard(){
       </div>
 
       <div class="card sum"><h3>Project Equipment</h3>
+        <div class="srow"><span class="k">Rack ID</span><span class="v">${(state.rack.rackId && String(state.rack.rackId).trim()) ? esc(state.rack.rackId) : '—'}</span></div>
         <div class="srow"><span class="k">Rack Size</span><span class="v">${state.rack.heightU}U</span></div>
-        <div class="srow"><span class="k">Dome Server Name</span><span class="v">${P.sysNumber ? 'FDPSN#'+esc(P.sysNumber) : 'FDPSN# ****'}${P.type?' '+esc(P.type):''}</span></div>
-        <div class="srow"><span class="k">Server Case Size</span><span class="v">${(state.server.caseSize && String(state.server.caseSize).trim()) ? esc(state.server.caseSize) : '—'}</span></div>
+        <div class="srow"><span class="k">Main Server ID</span><span class="v">${P.sysNumber ? 'FDPSN#'+esc(P.sysNumber) : 'FDPSN# ****'}</span></div>
+        <div class="srow"><span class="k">Backup Server ID</span><span class="v">${(state.backup && state.backup.enabled && (state.backup.name||'').trim()) ? esc(state.backup.name) : '—'}</span></div>
         <div class="srow"><span class="k">Projector Model</span><span class="v">${(function(){ const ms=[...new Set(projList().map(p=>((p.mfr||'')+' '+(p.model||'')).trim()).filter(Boolean))]; return ms.length ? esc(ms.join(', ')) : (P.projectorModel ? esc(P.projectorModel) : '—'); })()}</span></div>
         <div class="srow"><span class="k">Speaker Model</span><span class="v">${(P.speakersModel && String(P.speakersModel).trim()) ? esc(P.speakersModel) : '—'}</span></div>
         <div class="srow"><span class="k">Subwoofer Model</span><span class="v">${(P.subwooferModel && String(P.subwooferModel).trim()) ? esc(P.subwooferModel) : '—'}</span></div>
@@ -3291,8 +3301,10 @@ function pageServerRack(){
         <button class="ready-btn ${ready?'on':''}" id="readyBtn" onclick="toggleReady()">
           <span class="led ${ready?'on':''}" id="btnLed"></span><span id="btnLbl">${ready ? 'Server Ready' : 'Mark as Ready'}</span></button>
       </div>
-      <div style="display:flex;align-items:center;gap:9px;padding:0 2px 12px;border-bottom:1px solid var(--line);margin-bottom:12px">
-        <span style="font-size:12.5px;font-weight:600;color:var(--ink2)">Server Case Size</span>
+      <div style="display:flex;align-items:center;gap:9px;padding:0 2px 12px;border-bottom:1px solid var(--line);margin-bottom:12px;flex-wrap:wrap">
+        <span style="font-size:12.5px;font-weight:600;color:var(--ink2)">Server Name</span>
+        <input class="cell" style="width:auto;min-width:150px;padding:6px 9px;background:#f0f1f4;font-weight:600" value="${state.project.sysNumber ? 'FDPSN#'+esc(state.project.sysNumber) : 'FDPSN# ****'}" readonly title="Main server name comes from the System Number (Project Setup)">
+        <span style="font-size:12.5px;font-weight:600;color:var(--ink2);margin-left:8px">Server Case Size</span>
         <select class="cell" style="width:auto;min-width:90px;padding:6px 9px" onchange="setServerCase(this.value)">
           <option value="" ${!state.server.caseSize?'selected':''}>—</option>
           ${['2U','3U','4U'].map(u=>`<option value="${u}" ${state.server.caseSize===u?'selected':''}>${u}</option>`).join('')}
@@ -3311,6 +3323,8 @@ function pageServerRack(){
 
     ${photoCard('server','Dome Server Photos','Component and assembly photos of this server — up to 10. Shown in Documentation as "Server — FDPSN#'+esc(state.project.number)+'".')}
 
+    ${backupServerSection()}
+
     ${state.project.vjRequired ? vjSection() : ''}
 
     <!-- ================= RACK ================= -->
@@ -3323,7 +3337,11 @@ function pageServerRack(){
     <div class="racklay" style="grid-template-columns:380px 1fr">
       <div class="card" style="margin-bottom:0">
         <div class="card-head"><h3>Rack Views</h3>
-          <div style="display:flex;gap:8px;align-items:center">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <span style="display:inline-flex;align-items:center;gap:6px">
+              <span style="font-size:12px;color:var(--dim)">Rack ID</span>
+              <input class="cell" style="width:auto;min-width:90px;padding:5px 8px;font-weight:700" value="${esc(state.rack.rackId||'')}" placeholder="Rack ID" oninput="setRackId(this.value)" title="Rack identifier (manual)">
+            </span>
             <span style="display:inline-flex;align-items:center;gap:6px">
               <span style="font-size:12px;color:var(--dim)">Rack Size</span>
               <select class="cell" style="width:auto;min-width:74px;padding:5px 8px;font-weight:700" onchange="setRackSize(this.value)">
@@ -3627,6 +3645,8 @@ function setRackU(d){
   Object.keys(state.rack.slots).forEach(u=>{ if(+u > nu) delete state.rack.slots[u]; });
   saveState(); rerenderKeepScroll();
 }
+/* Rack ID — manual rack identifier (BUILD 14.57), shown in the Project Equipment card */
+function setRackId(v){ state.rack.rackId = v; saveState(); }
 /* Rack Size dropdown (BUILD 12.39) — sets the height directly (8U–20U); feeds the dashboard card */
 function setRackSize(v){
   const nu = Math.min(20, Math.max(8, parseInt(v,10)||12));
@@ -3639,6 +3659,117 @@ function setRackSize(v){
 function setServerCase(v){
   state.server.caseSize = v || '';
   saveState(); rerenderKeepScroll();
+}
+
+/* ============ BACKUP SERVER (BUILD 14.56) — an optional second server builder, mirror of the Dome
+   Server. Uses the same Server Hardware library group; its own name (manual), case size, rows,
+   ready flag and photos. Toggled on with "+ Add backup server". ============ */
+function backupTotal(){ return state.backup.rows.reduce((s,r)=> s + rowSum(r), 0); }
+function addBackupServer(){ state.backup.enabled = true; if(!state.backup.rows.length) state.backup.rows = [blankRow(), blankRow(), blankRow()]; saveState(); rerenderKeepScroll(); }
+function removeBackupServer(){ if(!confirm('Remove the backup server and its hardware list from this project?')) return; state.backup = { rows:[], ready:false, photos:[], caseSize:'', name:'', enabled:false }; saveState(); renderSideProject(); rerenderKeepScroll(); }
+function setBkName(v){ state.backup.name = v; saveState(); }
+function setBkCase(v){ state.backup.caseSize = v || ''; saveState(); rerenderKeepScroll(); }
+function refreshBkTotals(){ const t = fmt(backupTotal()); ['kBk','stBk','bkFoot'].forEach(id=>{const e=document.getElementById(id); if(e) e.textContent=t;}); }
+function addBk(){ state.backup.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
+function rmBk(i){ state.backup.rows.splice(i,1); saveState(); rerenderKeepScroll(); }
+function setBkCat(i, v){
+  updBk(i, 'cat', v);
+  if(autoFillFromCat(state.backup.rows[i], libServerByCat(v))) flashStat('Filled from Library ✓');
+  sortByCat(state.backup.rows, srvCats());
+  saveState(); rerenderKeepScroll();
+}
+function updBk(i, k, v){
+  state.backup.rows[i][k] = v;
+  if(k === 'link') schedAutoPrice('backup', i);
+  if(k === 'name'){
+    const it = libFind(v);
+    if(it){
+      if(!(String(state.backup.rows[i].price||'').trim()) && String(it.price||'').trim()){
+        state.backup.rows[i].price = it.price;
+        const pe = document.getElementById('bkP'+i); if(pe) pe.value = it.price;
+      }
+      if(!(String(state.backup.rows[i].link||'').trim()) && (it.link||'').trim()){
+        state.backup.rows[i].link = it.link;
+        const le = document.getElementById('bkL'+i); if(le) le.value = it.link;
+      }
+    }
+  }
+  saveState();
+  const r = state.backup.rows[i];
+  const t = priceNum(r.price)*(parseFloat(r.qty)||1);
+  const cell = document.getElementById('bkRowT'+i); if(cell) cell.textContent = t ? fmt(t) : '—';
+  refreshBkTotals();
+}
+function addBkRowToLib(i){ addRowToLib('backup', i); }
+function toggleBkReady(){
+  if(state.backup.ready){ state.backup.ready = false; saveState(); refreshBkReadyUI(); renderSideProject(); return; }
+  if(!state.backup.rows.some(r=>(r.name||'').trim())){ alert('Add at least one component before marking the backup server Ready.'); return; }
+  state.backup.ready = true; saveState(); refreshBkReadyUI(); renderSideProject();
+}
+function refreshBkReadyUI(){
+  const ready = state.backup.ready;
+  const set = (id,fn)=>{const e=document.getElementById(id); if(e) fn(e);};
+  set('bkBtnLed', e=>e.classList.toggle('on',ready));
+  set('kBkLed', e=>e.classList.toggle('on',ready));
+  set('bkReadyBtn', e=>e.classList.toggle('on',ready));
+  set('bkBtnLbl', e=>e.textContent = ready?'Backup Server Ready':'Mark as Ready');
+  set('kBkLedTxt', e=>e.textContent = ready?'Ready':'Not Ready');
+}
+function backupServerSection(){
+  const B = state.backup;
+  if(!B.enabled){
+    return `
+    <div style="margin:6px 0 4px">
+      <button class="add-line" style="border-style:solid;border-color:var(--fdp-red);color:var(--fdp-red);font-weight:700" onclick="addBackupServer()">+ Add backup server</button>
+    </div>`;
+  }
+  const ready = B.ready;
+  const bkRows = B.rows.map((r,i)=>`
+    <tr>
+      <td class="tight" style="width:17%"><select class="cell ${!(r.cat||'').trim()?'empty':''}" onchange="setBkCat(${i},this.value);this.classList.toggle('empty',!this.value)">
+        <option value="" ${!(r.cat||'').trim()?'selected':''}>— Category —</option>
+        ${srvCats().map(c=>`<option value="${c}" ${r.cat===c?'selected':''}>${c}</option>`).join('')}
+        ${(r.cat||'').trim() && ciIndexOf(srvCats(), r.cat)===-1 ? `<option value="${esc(r.cat)}" selected>${esc(r.cat)}</option>` : ''}
+      </select></td>
+      <td class="tight"><input class="cell b" id="bkN${i}" onfocus="dlFocus(this)" onblur="dlBlur(this)" list="${(r.cat||'').trim()?catListId(r.cat):'dlLibAll'}" value="${esc(r.name)}" placeholder="Pick from Library or type" oninput="updBk(${i},'name',this.value)"></td>
+      <td style="width:6%;text-align:center">${ordDot('backup', i, r)}</td>
+      ${shipChk('backup', i, r)}
+      <td class="tight" style="width:7%"><input class="cell num" value="${esc(r.qty)}" oninput="updBk(${i},'qty',this.value)"></td>
+      <td class="tight" style="width:11%"><input class="cell num" id="bkP${i}" value="${esc(r.price)}" placeholder="—" oninput="updBk(${i},'price',this.value)"></td>
+      <td class="num" style="width:11%"><span id="bkRowT${i}">${fmt(priceNum(r.price)*(parseFloat(r.qty)||1) || null)}</span></td>
+      <td class="tight" style="width:15%"><div style="display:flex;align-items:center;gap:4px"><input class="cell" id="bkL${i}" onmouseenter="lpShow(this)" onmouseleave="lpHide()" value="${esc(r.link)}" placeholder="https://" oninput="updBk(${i},'link',this.value)"><button class="mod-btn" style="padding:4px 7px;flex:none" title="Copy link" onclick="copyRowLink('bkL${i}', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button><button class="mod-btn" style="padding:4px 7px;flex:none" title="Open link" onclick="openRowLink('bkL${i}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><path d="M15 3h6v6M10 14L21 3"/></svg></button></div></td>
+      <td class="tolib">${(r.name||'').trim() && !libFind(r.name) ? `<button title="Add to Library" onclick="addBkRowToLib(${i})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M9 9.5h6M12 6.5v6"/></svg></button>` : ''}</td>
+      <td class="rm"><button title="Remove" onclick="rmBk(${i})">×</button></td>
+    </tr>`).join('');
+  return `
+    <div class="sec-title" id="backup" style="margin-top:26px">
+      <div class="stic">${IC.server}</div>
+      <div><h2>Backup Server Builder</h2><div class="st-sub">Optional second server — same hardware library as the Dome Server. Its name is entered manually below.</div></div>
+      <div class="st-total"><div class="l">Components total</div><div class="v" id="stBk">${fmt(backupTotal())}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Hardware configuration</h3><button class="mod-btn" style="padding:5px 11px;font-size:11.5px;margin-right:8px" title="Fetch fresh prices from the links" onclick="refreshPrices('backup')">↻ Prices</button>
+        <button class="ready-btn ${ready?'on':''}" id="bkReadyBtn" onclick="toggleBkReady()">
+          <span class="led ${ready?'on':''}" id="bkBtnLed"></span><span id="bkBtnLbl">${ready ? 'Backup Server Ready' : 'Mark as Ready'}</span></button>
+        <button class="mod-btn" style="padding:5px 11px;font-size:11.5px;margin-left:8px;color:var(--fdp-red)" title="Remove the backup server" onclick="removeBackupServer()">Remove</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:0 2px 12px;border-bottom:1px solid var(--line);margin-bottom:12px">
+        <span style="display:inline-flex;align-items:center;gap:9px"><span style="font-size:12.5px;font-weight:600;color:var(--ink2)">Server Name</span>
+          <input class="cell" style="width:auto;min-width:200px;padding:6px 9px;font-weight:700" value="${esc(B.name)}" placeholder="Backup server name" oninput="setBkName(this.value)"></span>
+        <span style="display:inline-flex;align-items:center;gap:9px"><span style="font-size:12.5px;font-weight:600;color:var(--ink2)">Server Case Size</span>
+          <select class="cell" style="width:auto;min-width:90px;padding:6px 9px" onchange="setBkCase(this.value)">
+            <option value="" ${!B.caseSize?'selected':''}>—</option>
+            ${['2U','3U','4U'].map(u=>`<option value="${u}" ${B.caseSize===u?'selected':''}>${u}</option>`).join('')}
+          </select></span>
+      </div>
+      <table class="eq">
+        <thead><tr><th>Category</th><th>Hardware</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:center" title="Combine into one shipping place">Ship</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th><th>Link</th><th></th><th></th></tr></thead>
+        <tbody>${bkRows}</tbody>
+        <tfoot><tr><td colspan="6">Backup server total</td><td class="num" id="bkFoot">${fmt(backupTotal())}</td><td colspan="3"></td></tr></tfoot>
+      </table>
+      <button class="add-line" onclick="addBk()">+ Add component</button>
+    </div>
+    ${photoCard('backup','Backup Server Photos','Component and assembly photos of the backup server — up to 10. Shown in Documentation as "Backup Server".')}`;
 }
 
 /* ============ EQUIPMENT & SHIPPING MODULE (BUILD 12.53) ============
@@ -3660,6 +3791,11 @@ function shipPlaces(){
   (state.rack.rows||[]).forEach((r,idx)=>{ if(!(r.name||'').trim()) return; (isCombined(r)?srCombined:srSeparate).push(mkItem(r,'i|rack|'+idx)); });
   if(srCombined.length) places.push({key:'pl|sr', name:'Server & Rack', module:'Server & Rack', items:srCombined});
   srSeparate.forEach((it,i)=> places.push({key:'pl|sr-sep|'+i, name:it.name, module:'Server & Rack', items:[it]}));
+  /* ---- Backup Server — its own place (BUILD 14.56) ---- */
+  if(state.backup && state.backup.enabled && (state.backup.rows||[]).some(r=>(r.name||'').trim())){
+    const bkName = (state.backup.name||'').trim() || 'Backup Server';
+    places.push({key:'pl|bk', name:bkName, module:'Backup Server', items:[{key:'i|bk', name:bkName, qty:1, link:''}]});
+  }
   /* ---- Projectors — each unit its own place ---- */
   ((state.projectors&&state.projectors.list)||[]).forEach((p,i)=>{ const nm=((p.mfr||'')+' '+(p.model||'')).trim(); if(!nm) return; places.push({key:'pl|proj|'+(p.id||i), name: nm + (p.serial?(' · SN '+p.serial):(p.num?(' #'+p.num):'')), module:'Projectors', items:[{key:'i|proj|'+(p.id||i), name:nm, qty:1, link:''}]}); });
   /* ---- Speakers / Audio (BUILD 14.20) ---- */
@@ -4235,8 +4371,9 @@ function liveSlice(d){
   return {
     project: d.project || {},
     server:  { rows: d.server.rows || [], ready: !!d.server.ready, caseSize: d.server.caseSize || '' },
+    backup:  { rows: (d.backup && d.backup.rows) || [], ready: !!(d.backup && d.backup.ready), caseSize: (d.backup && d.backup.caseSize) || '', name: (d.backup && d.backup.name) || '', enabled: !!(d.backup && d.backup.enabled) },
     vj:      { rows: (d.vj && d.vj.rows) || [], ready: !!(d.vj && d.vj.ready) },
-    rack:    { rows: d.rack.rows || [], heightU: d.rack.heightU || 12, slots: d.rack.slots || {} },
+    rack:    { rows: d.rack.rows || [], heightU: d.rack.heightU || 12, slots: d.rack.slots || {}, rackId: d.rack.rackId || '' },
     camera:  { rows: (d.camera && d.camera.rows) || [], ready: !!(d.camera && d.camera.ready) },
     speakers:{ rows: (d.speakers && d.speakers.rows) || [], ready: !!(d.speakers && d.speakers.ready) },
     fan:     { rows: (d.fan && d.fan.rows) || [], ready: !!(d.fan && d.fan.ready) },
@@ -4275,8 +4412,9 @@ function liveApply(d, live){
   };
   if(live.project) setIf(d, 'project', Object.assign({}, d.project, live.project));
   if(live.server){ setIf(d.server, 'rows', live.server.rows || []); setIf(d.server, 'ready', !!live.server.ready); if('caseSize' in live.server) setIf(d.server, 'caseSize', live.server.caseSize || ''); }
+  if(live.backup){ d.backup = d.backup || {rows:[],ready:false,photos:[],caseSize:'',name:'',enabled:false}; setIf(d.backup, 'rows', live.backup.rows || []); setIf(d.backup, 'ready', !!live.backup.ready); if('caseSize' in live.backup) setIf(d.backup, 'caseSize', live.backup.caseSize || ''); if('name' in live.backup) setIf(d.backup, 'name', live.backup.name || ''); if('enabled' in live.backup) setIf(d.backup, 'enabled', !!live.backup.enabled); }
   if(live.vj){ d.vj = d.vj || {rows:[],ready:false,photos:[]}; setIf(d.vj, 'rows', live.vj.rows || []); setIf(d.vj, 'ready', !!live.vj.ready); }
-  if(live.rack){ setIf(d.rack, 'rows', live.rack.rows || []); setIf(d.rack, 'heightU', live.rack.heightU || 12); setIf(d.rack, 'slots', live.rack.slots || {}); }
+  if(live.rack){ setIf(d.rack, 'rows', live.rack.rows || []); setIf(d.rack, 'heightU', live.rack.heightU || 12); setIf(d.rack, 'slots', live.rack.slots || {}); if('rackId' in live.rack) setIf(d.rack, 'rackId', live.rack.rackId || ''); }
   if(live.camera){ d.camera = d.camera || {rows:[],ready:false,photos:[]}; setIf(d.camera, 'rows', live.camera.rows || []); setIf(d.camera, 'ready', !!live.camera.ready); }
   if(live.speakers){ d.speakers = d.speakers || {rows:[],ready:false,photos:[]}; setIf(d.speakers, 'rows', live.speakers.rows || []); setIf(d.speakers, 'ready', !!live.speakers.ready); }
   if(live.fan){ d.fan = d.fan || {rows:[],ready:false,photos:[]}; setIf(d.fan, 'rows', live.fan.rows || []); setIf(d.fan, 'ready', !!live.fan.ready); }
@@ -4681,6 +4819,7 @@ function fbpMediaPayload(e){
   const d = e.data || {};
   return {
     server:{ photos:(d.server&&d.server.photos)||[] },
+    backup:{ photos:(d.backup&&d.backup.photos)||[] },
     vj:{ photos:(d.vj&&d.vj.photos)||[] },
     rack:{ photos:(d.rack&&d.rack.photos)||[], frontPh:(d.rack&&d.rack.frontPh)||[], rearPh:(d.rack&&d.rack.rearPh)||[] },
     camera:{ photos:(d.camera&&d.camera.photos)||[] },
@@ -4942,10 +5081,11 @@ async function fbpBrowseMirror(e){
    Google Drive (the 13.x media layer, untouched). A full project JSON is still assembled
    locally for export/backup at any time. Master switch: `var _FS = true` (RTDB `_FBP` off). */
 const FS_PROJECT_ID = 'fulldome-psp';
-const FS_SECTIONS = ['project','server','vj','rack','camera','speakers','fan','cables','tools','projectors','validation','vjValidation','shipping'];
+const FS_SECTIONS = ['project','server','backup','vj','rack','camera','speakers','fan','cables','tools','projectors','validation','vjValidation','shipping'];
 var _fsApp = null, _fsDb = null, _fsAuthObj = null, _fsCol = null, _fsUnsub = null, _fsSdkP = null;
 var _fsReady = false, _fsStarted = false, _fsApplying = false, _fsPushT = null, _fsSeededPush = false;
 var _fsLocal = {};   /* pid -> {section: sig, _seen, _done, _msig} — skip no-op section writes */
+var _mediaPushLock = {};   /* pid -> true while a media/browse-folder push is in flight (no duplicate folders) — BUILD 14.53 */
 function fsReady(){ return _FS && _fsReady && !!_fsCol; }
 /* strip `undefined` (Firestore rejects it) */
 function fsClean(v){
@@ -5047,14 +5187,15 @@ async function fsPushNow(entry){
     }
     fsRememberPushed(e); e._fbSeen = true; delete e._localNew;   /* BUILD 14.13: it's in Firestore now — no longer a pending local addition */
     setCloudStat('Synced ✓ ' + (_gUser || '') + ' · ' + hhmm());
-    if(msigChanged){
+    if(msigChanged && !_mediaPushLock[pid]){                    /* BUILD 14.53: serialize per-project so a retry can't create a DUPLICATE Drive folder */
+      _mediaPushLock[pid] = true;
       try{
         if(await fbpMediaUpload(e)) await fbpBrowseMirror(e);   /* photos/docs → _media/<pid>.media.json + browsable folder */
         (_fsLocal[pid] = _fsLocal[pid] || {})._msig = msig;     /* BUILD 14.51: mark pushed ONLY on success */
       }catch(_){
         setCloudStat('⚠ Photos/docs upload failed (Drive) — will retry');
         setTimeout(function(){ try{ fsPushNow(e); }catch(_){ } }, 8000);   /* retry (rate limit / transient) — _msig stays unset so it re-fires */
-      }
+      } finally { _mediaPushLock[pid] = false; }
     }
   }catch(err){ setCloudStat('⚠ Sync error: ' + (err.message || '') + ' — click to retry'); }
 }
@@ -5663,6 +5804,37 @@ async function rePushDrive(){
   }
 }
 try{ window.rePushDrive = rePushDrive; }catch(_){}
+/* BUILD 14.54: clean up DUPLICATE Drive folders for the ACTIVE project (same name in the team root) —
+   keeps the one the app points at (browseFid) or, if unknown, the one with the most files; trashes the
+   rest and re-points browseFid to the kept folder. Console: dedupeDriveFolder(). */
+async function dedupeDriveFolder(){
+  const e = activeEntry();
+  if(!e || !e.data || !e.data.project){ alert('No active project selected'); return; }
+  if(!(_cloudOn && _gTok)){ alert('Sign in to Google first.'); return; }
+  const pid = fbpPid(e);
+  const wantName = projDriveFolderName(e.data.project) || '';
+  try{
+    setCloudStat('Scanning Drive for duplicate folders…');
+    const root = await driveRootId();
+    const items = await backupList(root);
+    const dups = items.filter(it => it.mimeType === 'application/vnd.google-apps.folder' && (it.name||'') === wantName);
+    if(dups.length <= 1){ setCloudStat('No duplicates ✓ · ' + hhmm()); alert('No duplicate folders found for "' + wantName + '".'); return; }
+    let keepId = e._browseFid || (mediaMap()[pid]||{}).browseFid || await syncGetBrowseFid(pid);
+    if(!keepId || !dups.some(d => d.id === keepId)){          /* unknown → keep the folder with the most files inside */
+      let best = null, bestN = -1;
+      for(const d of dups){ let n = 0; try{ n = (await backupList(d.id)).length; }catch(_){ } if(n > bestN){ bestN = n; best = d.id; } }
+      keepId = best || dups[0].id;
+    }
+    let trashed = 0;
+    for(const d of dups){ if(d.id === keepId) continue; try{ await driveTrashTree(d.id); trashed++; }catch(_){ } }
+    (mediaMap()[pid] = mediaMap()[pid] || {}).browseFid = keepId; e._browseFid = keepId;
+    try{ await syncSetBrowseFid(pid, keepId); }catch(_){ }
+    saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
+    setCloudStat('Removed ' + trashed + ' duplicate folder(s) ✓ · ' + hhmm());
+    alert('Kept one folder, moved ' + trashed + ' duplicate(s) to Trash.\nThe app now points at the kept folder.');
+  }catch(err){ setCloudStat('⚠ Dedupe failed: ' + (err && err.message || err)); alert('Dedupe failed: ' + (err && err.message || err) + '\n\nIf the status shows a Drive rate limit, wait ~1 min and run dedupeDriveFolder() again.'); }
+}
+try{ window.dedupeDriveFolder = dedupeDriveFolder; }catch(_){}
 /* ============================================================================
    ONLINE PRESENCE (BUILD 12.76) — over Google Drive (reliable; Firebase live is flaky).
    Each machine writes a tiny heartbeat file "presence/<email>.json" {email,name,picture,at}
@@ -6055,6 +6227,7 @@ const PHOTO_DIRS = [
   ['site',   'Site'],
   ['server', 'Dome Server'],
   ['vj',     'VJ Server'],
+  ['backup', 'Backup Server'],
   ['rack',   'Rack'],
   ['camera', 'Camera'],
   ['speakers', 'Speakers'],
@@ -6123,6 +6296,7 @@ function applyPhotosFrom(d, s){
   let ch = false;
   const setA = (obj, key, val) => { if(!obj) return; if(JSON.stringify(obj[key]||[]) !== JSON.stringify(val||[])){ obj[key] = val||[]; ch = true; } };
   if(s.server) setA(d.server, 'photos', s.server.photos);
+  if(s.backup){ d.backup = d.backup || {rows:[],ready:false,photos:[],caseSize:'',name:'',enabled:false}; setA(d.backup, 'photos', s.backup.photos); }
   if(s.vj){ d.vj = d.vj || {rows:[],ready:false,photos:[]}; setA(d.vj, 'photos', s.vj.photos); }
   if(s.rack){ setA(d.rack, 'photos', s.rack.photos); setA(d.rack, 'frontPh', s.rack.frontPh); setA(d.rack, 'rearPh', s.rack.rearPh); }
   if(s.camera){ d.camera = d.camera || {rows:[],ready:false,photos:[]}; setA(d.camera, 'photos', s.camera.photos); }
@@ -6636,7 +6810,7 @@ var _pfBusy = false;
 async function refreshPrices(kind){
   if(_pfBusy){ flashStat('Price update already running…'); return; }
   const rows = ordRowsOf(kind);
-  const pid = kind==='rack' ? 'rackP' : kind==='vj' ? 'vjP' : kind==='camera' ? 'camP' : kind==='speakers' ? 'spkP' : kind==='fan' ? 'fanP' : kind==='cables' ? 'cabP' : kind==='tools' ? 'toolP' : 'srvP';
+  const pid = kind==='rack' ? 'rackP' : kind==='vj' ? 'vjP' : kind==='backup' ? 'bkP' : kind==='camera' ? 'camP' : kind==='speakers' ? 'spkP' : kind==='fan' ? 'fanP' : kind==='cables' ? 'cabP' : kind==='tools' ? 'toolP' : 'srvP';
   const targets = rows.map((r,i)=>({r,i})).filter(t => lpUrlOf({value:t.r.link||''}));
   if(!targets.length){ flashStat('No links in this table'); return; }
   _pfBusy = true;
@@ -6688,7 +6862,7 @@ function schedAutoPrice(kind, i){
     const r2 = ordRowsOf(kind)[i];
     if(p && r2 && !String(r2.price||'').trim()){
       r2.price = p; saveState();
-      const pid = kind==='rack' ? 'rackP' : kind==='vj' ? 'vjP' : kind==='camera' ? 'camP' : kind==='speakers' ? 'spkP' : kind==='fan' ? 'fanP' : kind==='cables' ? 'cabP' : kind==='tools' ? 'toolP' : 'srvP';
+      const pid = kind==='rack' ? 'rackP' : kind==='vj' ? 'vjP' : kind==='backup' ? 'bkP' : kind==='camera' ? 'camP' : kind==='speakers' ? 'spkP' : kind==='fan' ? 'fanP' : kind==='cables' ? 'cabP' : kind==='tools' ? 'toolP' : 'srvP';
       const el = document.getElementById(pid + i); if(el) el.value = p;
       if(typeof refreshTotals==='function') refreshTotals();
       flashStat('Price fetched from the link: ' + fmt(parseFloat(p)) + ' ✓');
@@ -6786,7 +6960,7 @@ function lpHide(){
    place, no rerender. */
 const ORD_TITLES = ['Not ordered', 'Ordered', 'Received'];
 function ordRowsOf(kind){
-  return kind==='rack' ? state.rack.rows : kind==='vj' ? state.vj.rows : kind==='camera' ? state.camera.rows : kind==='speakers' ? state.speakers.rows : kind==='fan' ? state.fan.rows : kind==='cables' ? state.cables.rows : kind==='tools' ? state.tools.rows : state.server.rows;
+  return kind==='rack' ? state.rack.rows : kind==='vj' ? state.vj.rows : kind==='backup' ? state.backup.rows : kind==='camera' ? state.camera.rows : kind==='speakers' ? state.speakers.rows : kind==='fan' ? state.fan.rows : kind==='cables' ? state.cables.rows : kind==='tools' ? state.tools.rows : state.server.rows;
 }
 function ordDot(kind, i, r){
   const s = parseInt(r.ord)||0;
@@ -6796,7 +6970,7 @@ function ordDot(kind, i, r){
    checked = this item ships in its module's combined place; unchecked = its own place.
    Default: checked, EXCEPT tripods (they ship separately). */
 function isCombined(r){ if(!r) return false; return (r.ship===undefined) ? !/tripod/i.test(r.name||'') : !!r.ship; }
-function shipRowsOf(kind){ return kind==='server'?state.server.rows : kind==='vj'?(state.vj&&state.vj.rows||[]) : kind==='rack'?state.rack.rows : kind==='camera'?(state.camera&&state.camera.rows||[]) : kind==='speakers'?(state.speakers&&state.speakers.rows||[]) : kind==='fan'?(state.fan&&state.fan.rows||[]) : kind==='cables'?(state.cables&&state.cables.rows||[]) : kind==='tools'?(state.tools&&state.tools.rows||[]) : []; }
+function shipRowsOf(kind){ return kind==='server'?state.server.rows : kind==='vj'?(state.vj&&state.vj.rows||[]) : kind==='backup'?(state.backup&&state.backup.rows||[]) : kind==='rack'?state.rack.rows : kind==='camera'?(state.camera&&state.camera.rows||[]) : kind==='speakers'?(state.speakers&&state.speakers.rows||[]) : kind==='fan'?(state.fan&&state.fan.rows||[]) : kind==='cables'?(state.cables&&state.cables.rows||[]) : kind==='tools'?(state.tools&&state.tools.rows||[]) : []; }
 function toggleShip(kind, i, checked){ const rows=shipRowsOf(kind); if(!rows[i]) return; rows[i].ship = !!checked; saveState(); }
 function shipChk(kind, i, r){ return `<td style="width:4%;text-align:center" title="Shipping — combine into one place (uncheck = ships as its own place)"><input type="checkbox" style="width:15px;height:15px;cursor:pointer;accent-color:var(--fdp-red)" ${isCombined(r)?'checked':''} onchange="toggleShip('${kind}',${i},this.checked)"></td>`; }
 function cycOrd(kind, i, el){
