@@ -639,7 +639,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.51 · MEDIA UPLOAD RETRIES ON FAIL</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.52 · REVIVE DELETED FOLDER + rePushDrive()</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -4863,8 +4863,14 @@ async function fbpBrowseFolder(e){
     const teamRoot = await driveRootId();
     fid = await driveCreateFolder(wantName, teamRoot);
     await syncSetBrowseFid(pid, fid);
-  } else if(rec.browseName && rec.browseName !== wantName){  /* name changed → rename the EXISTING folder by id (best-effort; 403 only if owned by another account) */
-    await driveRenameFolder(fid, wantName);
+  } else {                                                   /* reusing an existing folder → make sure its name is the CLEAN wantName */
+    let realName = rec.browseName || '';
+    try{ const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + fid + '?fields=name'); const j = await r.json(); if(j && j.name) realName = j.name; }catch(_){}
+    /* BUILD 14.52: rename if the name drifted OR the folder is a "🗑 DELETED — …" tombstone being
+       revived by a Load Project File — so a re-loaded deleted project reuses its ONE folder with a
+       clean name instead of leaving the DELETED shell + creating nothing. Best-effort (403 only if
+       the folder is owned by another account). */
+    if(realName !== wantName){ try{ await driveRenameFolder(fid, wantName); }catch(_){} }
   }
   e._browseFid = fid; rec.browseFid = fid; rec.browseName = wantName;
   return fid;
@@ -5633,6 +5639,30 @@ function backupStopLoop(){ if(_backupTimer){ clearInterval(_backupTimer); _backu
 /* force a backup of ALL projects now (console: backupNow()) — BUILD 14.6 */
 async function backupNow(){ if(!_cloudOn || !_gTok){ alert('Sign in first'); return; } setCloudStat('Backing up all projects…'); await backupAllChanged(true); setCloudStat('Backup done ✓ · ' + hhmm()); }
 try{ window.backupNow = backupNow; }catch(_){}
+/* BUILD 14.52: force-recreate the ACTIVE project's Drive folder (media + browsable files) AND its
+   backup right now — recovery for a project that got stuck (e.g. reloaded after delete during a Drive
+   rate limit). Console: rePushDrive(). */
+async function rePushDrive(){
+  const e = activeEntry();
+  if(!e || !e.data || !e.data.project){ alert('No active project selected'); return; }
+  if(!(_cloudOn && _gTok)){ alert('Sign in to Google first (click the status line at the bottom of the sidebar).'); return; }
+  const pid = fbpPid(e);
+  try{
+    setCloudStat('Re-pushing project to Drive…');
+    if(mediaMap()[pid]) mediaMap()[pid].msig = null;          /* force media.json re-upload */
+    if(_FS && _fsLocal[pid]) _fsLocal[pid]._msig = null;      /* let fsPushNow re-fire the media step */
+    await fbpMediaUpload(e);
+    await fbpBrowseMirror(e);                                 /* (re)creates / revives the browsable folder */
+    (_fsLocal[pid] = _fsLocal[pid] || {})._msig = fbpMediaSig(e);
+    await backupMirrorProject(e, true);                       /* force-refresh the backup json */
+    setCloudStat('Project re-pushed to Drive ✓ · ' + hhmm());
+    alert('Done — the project folder and its backup were re-created / refreshed on Drive.');
+  }catch(err){
+    setCloudStat('⚠ Re-push failed: ' + (err && err.message || err));
+    alert('Re-push failed: ' + (err && err.message || err) + '\n\nIf the status shows a Google Drive rate limit, wait ~1 minute and run rePushDrive() again.');
+  }
+}
+try{ window.rePushDrive = rePushDrive; }catch(_){}
 /* ============================================================================
    ONLINE PRESENCE (BUILD 12.76) — over Google Drive (reliable; Firebase live is flaky).
    Each machine writes a tiny heartbeat file "presence/<email>.json" {email,name,picture,at}
