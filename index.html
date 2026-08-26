@@ -653,7 +653,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.62 · DRIVE-FIX BUTTONS · ERROR SURFACING · FILE CHECK · BUILD BADGE · COLOR LEGEND</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.63 · DELETE MARKS DRIVE FOLDER RELIABLY (ANY EDITOR)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -4992,6 +4992,7 @@ async function fbpMediaDelete(e){
   try{
     let bfid = e._browseFid || rec.browseFid;
     if(!bfid){ try{ bfid = await syncGetBrowseFid(pid); }catch(_){} }   /* BUILD 14.18: resolve the ONE shared folder by browseFid, not by name */
+    if(!bfid){ try{ const tr = await driveRootId(); bfid = await driveFindFolderByPid(pid, tr); }catch(_){} }   /* BUILD 14.63: find by pid stamp (14.58+) even if the name drifted */
     if(!bfid && wantName){ try{ const tr = await driveRootId(); bfid = await driveFindFolder(wantName, tr); }catch(_){} }
     if(bfid){
       await driveTrashTree(bfid);                                       /* trash the files inside (works cross-account) + best-effort the folder */
@@ -5328,8 +5329,12 @@ async function fsPushNow(entry){
 }
 async function fsDelete(e){
   const pid = fbpPid(e); if(!pid || !fsReady()) return;
-  try{ await _fsCol.doc(pid).delete(); delete _fsLocal[pid]; }catch(_){}
+  /* BUILD 14.63: mark/clean the Drive folder FIRST — while the doc still exists, so the browse folder
+     id can be resolved from it (syncGetBrowseFid) as a fallback — THEN delete the Firestore record.
+     Any team member (Editor) can rename the folder to "🗑 DELETED — …" even if another account owns it
+     (renaming, unlike trashing, is not owner-only). */
   try{ await fbpMediaDelete(e); }catch(_){}
+  try{ await _fsCol.doc(pid).delete(); delete _fsLocal[pid]; }catch(_){}
 }
 function fsTouch(){
   if(!fsReady() || _fsApplying) return;
@@ -6021,6 +6026,26 @@ async function fixProjectDrive(){
   }
 }
 try{ window.fixProjectDrive = fixProjectDrive; }catch(_){}
+/* BUILD 14.63: mark an ALREADY-orphaned Drive folder as deleted by NAME (for folders left behind by a
+   pre-14.63 delete). Renames every matching folder in the shared team root to "🗑 DELETED — <name>"
+   (works for any Editor; skips ones already marked). Console: markDeletedFolder('exact folder name'). */
+async function markDeletedFolder(name){
+  name = (name || '').trim();
+  if(!name){ alert('Usage: markDeletedFolder("exact folder name as shown in Drive")'); return; }
+  if(!(_cloudOn && _gTok)){ alert('Sign in to Google first (click the status line at the bottom of the sidebar).'); return; }
+  try{
+    setCloudStat('Marking deleted folder…');
+    const root = await driveRootId();
+    const items = await backupList(root);
+    const hits = items.filter(it => it.mimeType === 'application/vnd.google-apps.folder' && (it.name||'') === name);
+    if(!hits.length){ setCloudStat('No folder named "' + name + '" · ' + hhmm()); alert('No folder named "' + name + '" found in the shared root.'); return; }
+    let done = 0;
+    for(const f of hits){ try{ await driveMarkDeletedFolder(f.id, name); done++; }catch(_){} }
+    setCloudStat('Marked ' + done + ' folder(s) as deleted ✓ · ' + hhmm());
+    alert('Renamed ' + done + ' folder(s) to "🗑 DELETED — ' + name + '".\n(If nothing changed, you may only have Viewer access to that folder — ask its owner to rename or trash it.)');
+  }catch(err){ setCloudStat('⚠ Mark-deleted failed: ' + (err && err.message || err)); alert('Failed: ' + (err && err.message || err)); }
+}
+try{ window.markDeletedFolder = markDeletedFolder; }catch(_){}
 /* ============================================================================
    ONLINE PRESENCE (BUILD 12.76) — over Google Drive (reliable; Firebase live is flaky).
    Each machine writes a tiny heartbeat file "presence/<email>.json" {email,name,picture,at}
