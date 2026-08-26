@@ -639,7 +639,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.58 · NO DUP FOLDER + RELIABLE PHOTO MIRROR</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.59 · SHIPPING: SERVER · BACKUP · RACK SPLIT</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -3783,19 +3783,27 @@ function backupServerSection(){
 function shipPlaces(){
   const P = state.project; const places = [];
   const mkItem = (r, key) => ({ key, name:(r.name||'').trim(), qty:parseFloat(r.qty)||1, link:r.link||'' });
-  /* ---- Server & Rack ---- */
-  const srCombined = [], srSeparate = [];
+  /* ---- Server (main) → its OWN place — BUILD 14.59: split out of the old "Server & Rack" so
+         the shipping order reads Server → Backup Server → Rack ---- */
   const serverName = (P.sysNumber ? ('FDPSN#'+P.sysNumber) : 'Dome Server') + (P.type ? (' '+P.type) : '');
-  if((state.server.rows||[]).some(r=>(r.name||'').trim())) srCombined.push({key:'i|srv', name:serverName||'Dome Server', qty:1, link:''});
-  if(P.vjRequired && ((state.vj&&state.vj.rows)||[]).some(r=>(r.name||'').trim())) srCombined.push({key:'i|vj', name:'VJ Server', qty:1, link:''});
-  (state.rack.rows||[]).forEach((r,idx)=>{ if(!(r.name||'').trim()) return; (isCombined(r)?srCombined:srSeparate).push(mkItem(r,'i|rack|'+idx)); });
-  if(srCombined.length) places.push({key:'pl|sr', name:'Server & Rack', module:'Server & Rack', items:srCombined});
-  srSeparate.forEach((it,i)=> places.push({key:'pl|sr-sep|'+i, name:it.name, module:'Server & Rack', items:[it]}));
-  /* ---- Backup Server — its own place (BUILD 14.56) ---- */
+  const srvItems = [];
+  if((state.server.rows||[]).some(r=>(r.name||'').trim())) srvItems.push({key:'i|srv', name:serverName||'Dome Server', qty:1, link:''});
+  if(P.vjRequired && ((state.vj&&state.vj.rows)||[]).some(r=>(r.name||'').trim())) srvItems.push({key:'i|vj', name:'VJ Server', qty:1, link:''});
+  if(srvItems.length) places.push({key:'pl|srv', name:'Server', module:'Server', items:srvItems});
+  /* ---- Backup Server — its own place, right after the main server (BUILD 14.56/14.59) ---- */
   if(state.backup && state.backup.enabled && (state.backup.rows||[]).some(r=>(r.name||'').trim())){
     const bkName = (state.backup.name||'').trim() || 'Backup Server';
     places.push({key:'pl|bk', name:bkName, module:'Backup Server', items:[{key:'i|bk', name:bkName, qty:1, link:''}]});
   }
+  /* ---- Rack → its OWN place, labelled by the Rack ID (BUILD 14.59). Checked rows combine into one
+         "Rack" place; unchecked rows ship separately. ---- */
+  const rackId = (state.rack.rackId||'').trim();
+  const rackLabel = rackId ? ('Rack ' + rackId) : 'Rack';
+  const rackMod = rackId ? ('Rack · ' + rackId) : 'Rack';     /* module header shows the Rack ID, e.g. "RACK · R01" */
+  const rkCombined = [], rkSeparate = [];
+  (state.rack.rows||[]).forEach((r,idx)=>{ if(!(r.name||'').trim()) return; (isCombined(r)?rkCombined:rkSeparate).push(mkItem(r,'i|rack|'+idx)); });
+  if(rkCombined.length) places.push({key:'pl|rack', name:rackLabel, module:rackMod, items:rkCombined});
+  rkSeparate.forEach((it,i)=> places.push({key:'pl|rack-sep|'+i, name:it.name, module:rackMod, items:[it]}));
   /* ---- Projectors — each unit its own place ---- */
   ((state.projectors&&state.projectors.list)||[]).forEach((p,i)=>{ const nm=((p.mfr||'')+' '+(p.model||'')).trim(); if(!nm) return; places.push({key:'pl|proj|'+(p.id||i), name: nm + (p.serial?(' · SN '+p.serial):(p.num?(' #'+p.num):'')), module:'Projectors', items:[{key:'i|proj|'+(p.id||i), name:nm, qty:1, link:''}]}); });
   /* ---- Speakers / Audio (BUILD 14.20) ---- */
@@ -3855,7 +3863,7 @@ function setPalletField(id, field, v){ const p = state.shipping.pallets.find(x=>
 function autoPlaces(){
   const places = shipPlaces();
   if(!places.length){ alert('No equipment yet — add components first.'); return; }
-  if(state.shipping.pallets.length && !confirm('Replace the current pallets with auto-created ones?\n\n• Server & Rack → 1 pallet\n• Each projector → its own pallet\n• Camera kit (body + case + lens + adapter) → 1 pallet\n• Tripod → its own pallet')) return;
+  if(state.shipping.pallets.length && !confirm('Replace the current pallets with auto-created ones?\n\n• Server → 1 pallet\n• Backup Server → 1 pallet (if present)\n• Rack → 1 pallet\n• Each projector → its own pallet\n• Camera kit (body + case + lens + adapter) → 1 pallet\n• Tripod → its own pallet')) return;
   const pals = [], assign = {}; let n = 0;
   places.forEach(pl => {
     n++;
