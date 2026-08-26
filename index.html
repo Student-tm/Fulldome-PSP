@@ -17,6 +17,11 @@
   }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
+  /* BUILD 14.60 — accessibility floor: one consistent keyboard focus ring (brand red) + reduced-motion respect */
+  :focus-visible{outline:2px solid var(--fdp-red);outline-offset:2px;border-radius:3px}
+  @media (prefers-reduced-motion: reduce){ *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important} }
+  /* link row buttons dimmed + inert when the link field is empty (nothing to copy/open) */
+  .lnkbtns.empty button{opacity:.32;pointer-events:none}
   body{font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink);
     display:flex;flex-direction:column;height:100vh;overflow:hidden}
   .app-row{display:flex;flex:1 1 auto;min-height:0;overflow:hidden}
@@ -61,6 +66,7 @@
   .topbrand .tb-ic svg{width:17px;height:17px}
   .topbrand .tb-tt{color:#fff;font-size:14px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;line-height:1.1}
   .topbrand .tb-tt small{display:block;font-size:10px;color:#8b93a0;font-weight:400;letter-spacing:.3px;text-transform:none;margin-top:2px}
+  .build-chip{font-size:11px;font-weight:700;letter-spacing:.4px;color:#c8ccd3;background:#2c313a;border:1px solid #3a4048;border-radius:6px;padding:3px 8px;white-space:nowrap;cursor:default}
   .proj-chip{display:flex;align-items:center;gap:14px;background:var(--side2);border:1px solid var(--line-d);
     border-radius:9px;padding:7px 14px;min-width:0}
   .pc-item{min-width:0}
@@ -181,6 +187,13 @@
   /* horizontal module-readiness strip on the Dashboard (BUILD 12.28) */
   .readybar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 15px;margin:0 0 18px}
   .readybar .rb-cap{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#8b93a0;margin-right:4px}
+  /* BUILD 14.62: one documented colour language, shown as a legend on the readiness strip */
+  .rb-legend{display:inline-flex;gap:13px;margin-left:auto;flex-wrap:wrap;padding-left:12px;border-left:1px solid var(--line)}
+  .rb-legend .lg{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#8b93a0;white-space:nowrap}
+  .rb-legend .cd{width:8px;height:8px;border-radius:50%;background:#9aa2ad}
+  .rb-legend .cd.c-off{background:#e5534b}
+  .rb-legend .cd.c-warn{background:#e0a13d}
+  .rb-legend .cd.c-ok{background:#3fb950}
 
   /* section switcher on Server & Rack page */
   .secnav{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
@@ -607,6 +620,7 @@
   <div class="top-actions">
     <button class="top-btn" onclick="openTT()" title="Create a Technical Task"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M9.5 13h5M9.5 17h5"/></svg>Technical Task</button>
     <button class="top-btn" onclick="location.hash='#/create'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New Project</button>
+    <span class="build-chip" id="topBuild" title="App build — every machine must be on the SAME build (mixed builds can corrupt sync)">b—</span>
     <div class="online-users" id="onlineUsers" title="Online now"></div>
     <button class="icon-btn" title="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/></svg></button>
     <div class="avatar" title="User">FD</div>
@@ -639,7 +653,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.59 · SHIPPING: SERVER · BACKUP · RACK SPLIT</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.62 · DRIVE-FIX BUTTONS · ERROR SURFACING · FILE CHECK · BUILD BADGE · COLOR LEGEND</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1747,9 +1761,28 @@ function loadFromFile(ev){
   const f = ev.target.files && ev.target.files[0];
   if(!f) return;
   const rd = new FileReader();
-  rd.onload = () => { applyProjectText(rd.result, 'import'); };
+  rd.onload = () => {
+    /* BUILD 14.62: friendly detection of an empty / corrupted project file (e.g. a 0-byte or
+       all-NUL file from an interrupted save/sync — the old error was a cryptic JSON message). */
+    const txt = rd.result;
+    const bad = checkProjectFileText(txt);
+    if(bad){ alert('This project file can’t be loaded: ' + bad + '\n\nTry re-exporting it, or restore an earlier version from the Drive backup.'); return; }
+    applyProjectText(txt, 'import');
+  };
+  rd.onerror = () => alert('Could not read the file. Please try again.');
   rd.readAsText(f);
   ev.target.value = '';
+}
+/* returns a human reason if the text is NOT a usable project file, else '' (ok). BUILD 14.62 */
+function checkProjectFileText(txt){
+  if(txt == null) return 'the file is empty';
+  const s = String(txt);
+  if(!s.trim()) return 'the file is empty';
+  if(/\u0000/.test(s)) return 'the file is corrupted (contains null bytes \u2014 likely an interrupted save)';
+  let obj; try{ obj = JSON.parse(s); }catch(e){ return 'it is not valid JSON (' + (e.message||'parse error') + ')'; }
+  const st = obj && (obj.state || obj);
+  if(!st || typeof st !== 'object' || !('server' in st) || !st.project) return 'it is valid JSON but not a Fulldome PSP project (missing project/server data)';
+  return '';
 }
 /* BUILD 14.35: Project Files are INTERNAL backups (created by this PSP, used only for backup/restore).
    So Load Project File auto-restores MISSING library items (never replaces existing ones) — no prompt.
@@ -2772,7 +2805,31 @@ function pageSettings(){
       <div class="sub">Assemble the selected project from ready-made modules of your other projects. Expand a project on the left, then "Copy →" a module into the matching section of the current project on the right. Existing sections ask before they're replaced.</div>
     </div>
     ${body}
+    ${settingsDriveCard(active)}
   </div>`;
+}
+/* BUILD 14.62: Drive maintenance card — the repair helpers as buttons (were console-only). */
+function settingsDriveCard(active){
+  if(!active) return '';
+  return `
+    <div class="csec-title" style="margin-top:26px">Drive maintenance — current project</div>
+    <div class="card" style="padding:18px 20px">
+      <div style="color:var(--ink2);font-size:13px;margin:0 0 14px;line-height:1.5">
+        Repairs the current project's folder in the shared Drive. Safe to run — nothing is deleted except
+        confirmed duplicate folders (moved to Trash, recoverable ~30 days). Requires being signed in to Google.
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px">
+        <button class="mod-btn primary" style="padding:8px 14px" onclick="fixProjectDrive()"
+          title="Consolidate duplicate folders, keep one, and re-upload all photos/documents into it">Fix Drive folder + re-upload photos</button>
+        <button class="mod-btn" style="padding:8px 14px" onclick="dedupeDriveFolder()"
+          title="Remove duplicate folders of this project (keep the one in use)">Remove duplicate folders</button>
+        <button class="mod-btn" style="padding:8px 14px" onclick="rePushDrive()"
+          title="Force re-upload of this project's folder and its backup">Re-push project + backup</button>
+      </div>
+      <div style="color:var(--dim);font-size:11.5px;margin-top:12px">
+        Tip: use “Fix Drive folder” if a project has photos in the app but its Drive folder looks empty, or if the folder was created twice.
+      </div>
+    </div>`;
 }
 
 function pageCreate(){
@@ -3013,6 +3070,7 @@ function pageDashboard(){
     <div class="readybar">
       <span class="rb-cap">Module readiness</span>
       ${READY_MODULES.map(([k,label])=>{ const c=readyColor(k); return `<span class="chip ${READY_CHIP[c]}" style="border-width:1px" title="${label}: ${READY_LABEL[c]} — set in the ${label} section"><span class="cd"></span>${esc(label)}</span>`; }).join('')}
+      <span class="rb-legend" title="The same colour language is used across the app: order dots, module readiness and validation."><span class="lg"><span class="cd c-off"></span>problem / not started</span><span class="lg"><span class="cd c-warn"></span>in progress</span><span class="lg"><span class="cd c-ok"></span>ready / done</span></span>
     </div>
 
     <div class="modgrid">
@@ -4029,7 +4087,7 @@ function pageShipping(){
           : '';
         return `<tr class="${ii===pl.items.length-1?'pl-last':''}">
           <td class="tight" style="width:4%;text-align:right;color:var(--dim)">${n}</td>
-          <td>${esc(it.name)}</td>
+          <td title="${esc(it.name)}">${esc(it.name)}</td>
           <td class="tight" style="width:16%"><input class="cell" value="${esc(cmt)}" placeholder="—" oninput="setShipCmt('${it.key}',this.value)"></td>
           <td style="text-align:right;width:6%">${it.qty}</td>
           <td class="tight" style="width:5%;text-align:center">${link}</td>
@@ -5064,6 +5122,7 @@ async function fbpBrowseMirror(e){
   const pid = fbpPid(e); if(!pid) return;
   const d = e.data, rec = mediaMap()[pid] || (mediaMap()[pid] = {});
   const fid = await fbpBrowseFolder(e); if(!fid) return;
+  let _mirrorFail = false;   /* BUILD 14.62: surface silent Drive upload failures in the status line */
   const _upFile = async (name, folderId, dataUrl) => {
     try{ const ex = await driveFindFile(name, folderId); const mime = (dataUrl.match(/^data:([^;]+)/)||[])[1] || 'application/octet-stream'; await driveUpload(name, folderId, dataUrlToBytes(dataUrl), mime, ex); return true; }catch(_){ return false; }
   };
@@ -5085,8 +5144,9 @@ async function fbpBrowseMirror(e){
         if(tdFiles.length){ const tdId = await driveEnsureFolder(TOOL_DB_SUBFOLDER, docId); for(const f of tdFiles){ if(!(await _upFile(f.name, tdId, f.data))) docFail = true; } await _reconcile(tdId, new Set(tdFiles.map(f=>f.name))); }
       }
       if(!docFail) rec.browseDsig = curDsig;                    /* BUILD 14.58: retry next push if a doc failed to upload */
+      if(docFail) _mirrorFail = true;
     }
-  }catch(_){}
+  }catch(_){ _mirrorFail = true; }
   /* ---- Photos/<Category>/… ---- */
   try{
     const jobs = cloudPhotoJobs(e);
@@ -5110,9 +5170,13 @@ async function fbpBrowseMirror(e){
       rec.browsePhotoSig = psig;
       rec.browsePhotoList = jobs.map(j => ({ dir:j.dir, name:j.name }));
     }
-  }catch(_){}
+    if(photoFail) _mirrorFail = true;
+  }catch(_){ _mirrorFail = true; }
   saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
-  setCloudStat('Photos/docs on Drive ✓ · ' + hhmm());
+  /* BUILD 14.62: don't claim success when some files silently failed — show a visible warning
+     (the mirror auto-retries on the next push because the sig wasn't advanced). */
+  if(_mirrorFail) setCloudStat('⚠ Some photos/documents did not upload to Drive — will retry · ' + hhmm());
+  else setCloudStat('Photos/docs on Drive ✓ · ' + hhmm());
 }
 
 /* ============================================================================
@@ -5201,6 +5265,19 @@ function fsFullDoc(e){
 function fsChangedSections(e){
   const pid = fbpPid(e), sl = fsSlice(e.data), last = _fsLocal[pid] || {};
   return FS_SECTIONS.filter(s => last[s] !== JSON.stringify(sl[s] || {}));
+}
+/* BUILD 14.61 (F7): sections of the ACTIVE project that have local edits NOT yet pushed to Firestore —
+   we have a last-pushed baseline for the section (_fsLocal[pid][s] defined) AND the current local slice
+   differs from it. Used by fsApplyDoc to avoid clobbering an in-progress edit. NOTE: this protects the
+   local UNPUSHED edit only; two already-pushed concurrent edits to one section are still last-writer-wins
+   (F6 — needs section merge). Distinct from fsChangedSections: that treats a missing baseline as "changed"
+   (over-includes) — here a missing baseline means "never pushed by us → nothing unpushed to protect". */
+var _F7_GUARD = true;   /* runtime kill-switch — set false (code or console) to revert to pre-14.61 behavior */
+function fsPendingSections(e){
+  const pid = fbpPid(e); const last = pid && _fsLocal[pid];
+  if(!last) return [];
+  const sl = fsSlice(e.data);
+  return FS_SECTIONS.filter(s => last[s] !== undefined && last[s] !== JSON.stringify(sl[s] || {}));
 }
 function fsRememberPushed(e){
   const pid = fbpPid(e), sl = fsSlice(e.data), rec = _fsLocal[pid] || {};
@@ -5297,6 +5374,9 @@ function fsApplyDoc(data){
   e._fbSeen = true; e._remoteMsig = data.msig || ''; if(data.browseFid) e._browseFid = data.browseFid;
   e._fsRev = e._fsRev || {};
   if(e === activeEntry() && isTypingInInput()) return false;   /* don't disturb active typing; next snapshot re-applies */
+  /* BUILD 14.61 (F7): for the ACTIVE project, never overwrite a section that has UNPUSHED local edits.
+     Skip it this round and leave _fsRev[s] stale so the snapshot AFTER our own push re-syncs it. */
+  const pending = (_F7_GUARD && e === activeEntry()) ? fsPendingSections(e) : [];
   let ch = false;
   FS_SECTIONS.forEach(s => {
     /* BUILD 14.32: apply a section whenever its remote revision DIFFERS from what we last applied —
@@ -5307,7 +5387,9 @@ function fsApplyDoc(data){
        then stopped"). Comparing by inequality is clock-independent. Applying our own echo is a no-op
        (identical data → liveApply reports no change) and never loops (applies use _skipCloud). */
     const rrev = revs[s] || 0, lrev = e._fsRev[s];
-    if(data[s] !== undefined && rrev !== lrev){ if(fsApplySection(e.data, s, data[s])) ch = true; e._fsRev[s] = rrev; }
+    if(data[s] === undefined || rrev === lrev) return;
+    if(pending.indexOf(s) >= 0) return;   /* BUILD 14.61: unpushed local edit → don't clobber; re-applies after our push */
+    if(fsApplySection(e.data, s, data[s])) ch = true; e._fsRev[s] = rrev;
   });
   if(!!data.done !== !!e.done){ if(data.done){ e.done = true; e.doneAt = data.doneAt || Date.now(); } else { delete e.done; delete e.doneAt; } ch = true; }
   return ch;
@@ -7076,7 +7158,7 @@ function ordDot(kind, i, r){
 function isCombined(r){ if(!r) return false; return (r.ship===undefined) ? !/tripod/i.test(r.name||'') : !!r.ship; }
 function shipRowsOf(kind){ return kind==='server'?state.server.rows : kind==='vj'?(state.vj&&state.vj.rows||[]) : kind==='backup'?(state.backup&&state.backup.rows||[]) : kind==='rack'?state.rack.rows : kind==='camera'?(state.camera&&state.camera.rows||[]) : kind==='speakers'?(state.speakers&&state.speakers.rows||[]) : kind==='fan'?(state.fan&&state.fan.rows||[]) : kind==='cables'?(state.cables&&state.cables.rows||[]) : kind==='tools'?(state.tools&&state.tools.rows||[]) : []; }
 function toggleShip(kind, i, checked){ const rows=shipRowsOf(kind); if(!rows[i]) return; rows[i].ship = !!checked; saveState(); }
-function shipChk(kind, i, r){ return `<td style="width:4%;text-align:center" title="Shipping — combine into one place (uncheck = ships as its own place)"><input type="checkbox" style="width:15px;height:15px;cursor:pointer;accent-color:var(--fdp-red)" ${isCombined(r)?'checked':''} onchange="toggleShip('${kind}',${i},this.checked)"></td>`; }
+function shipChk(kind, i, r){ return `<td style="width:4%;text-align:center" title="Shipping — combine into one place (uncheck = ships as its own place)"><input type="checkbox" style="width:15px;height:15px;cursor:pointer;accent-color:#2e9e5b" ${isCombined(r)?'checked':''} onchange="toggleShip('${kind}',${i},this.checked)"></td>`; }
 function cycOrd(kind, i, el){
   const rows = ordRowsOf(kind); if(!rows[i]) return;
   const s = ((parseInt(rows[i].ord)||0) + 1) % 3;
@@ -8677,7 +8759,26 @@ function route(){
   document.getElementById('content').scrollTop = (_keepScrollTop != null ? _keepScrollTop : 0);
   if(h === '#/create' || h === '#/edit' || h === '#/projects') noAutofill();   /* BUILD 14.15/14.41: stop browser autofill in the project forms */
   renderHeader(); renderSideProject();
+  polishPass();   /* BUILD 14.60: tooltips on truncated names + dim empty-link buttons */
 }
+/* BUILD 14.60 — after every render: show the full text of a truncated name on hover (title),
+   and grey-out / disable the copy+open buttons of a link field that is empty. */
+function polishPass(){
+  try{
+    document.querySelectorAll('input.cell.b').forEach(el=>{ if(el.value) el.title = el.value; else el.removeAttribute('title'); });
+    document.querySelectorAll('input[onmouseenter^="lpShow"]').forEach(inp=>{
+      const w = inp.parentElement; if(!w) return; w.classList.add('lnkbtns'); w.classList.toggle('empty', !(inp.value||'').trim());
+    });
+  }catch(_){}
+}
+/* keep the tooltip + link-button state live while typing (renders don't fire on every keystroke) */
+try{
+  document.addEventListener('input', function(e){
+    const t = e.target; if(!t || !t.matches) return;
+    if(t.matches('input.cell.b')){ if(t.value) t.title = t.value; else t.removeAttribute('title'); }
+    if(t.matches('input[onmouseenter^="lpShow"]')){ const w = t.parentElement; if(w){ w.classList.add('lnkbtns'); w.classList.toggle('empty', !(t.value||'').trim()); } }
+  }, true);
+}catch(_){}
 /* Chrome/Firefox ignore autocomplete="off" on single fields and drop remembered values into the
    Create/Edit form (e.g. a past project number into "Screen Fan System"). Give every field a UNIQUE
    random name so the browser's form-history has nothing to match, and re-assert autocomplete=off.
@@ -8703,6 +8804,8 @@ window.addEventListener('hashchange', route);
   const num = (tag.match(/BUILD\s+([\d.]+)/) || [,''])[1];
   const sb = document.getElementById('sideBuild');
   if(sb && num) sb.textContent = 'build ' + num;           /* sidebar subtitle build, sourced from the one footer tag */
+  const tb = document.getElementById('topBuild');          /* BUILD 14.62: build number visible in the top bar (catch mixed-build machines) */
+  if(tb && num) tb.textContent = 'b' + num;
   if(tag) document.title = 'Fulldome Projection SP — ' + tag.replace('BUILD ','b').split(' · ')[0];
 })();
 loadState(()=>{ restoreHandles(); renderHeader(); renderSideProject();
