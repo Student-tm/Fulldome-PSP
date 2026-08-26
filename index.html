@@ -639,7 +639,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.57 · RACK ID + PROJECT EQUIPMENT ORDER</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.58 · NO DUP FOLDER + RELIABLE PHOTO MIRROR</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -4233,12 +4233,38 @@ async function driveEnsureFolder(name, parentId){
 /* ALWAYS create a fresh folder — never reuse one that happens to share the name.
    Two projects with the same/blank number+title must NOT land in one folder
    (that cross-linked them and let a new project overwrite an existing one — BUILD 12.69). */
-async function driveCreateFolder(name, parentId){
+async function driveCreateFolder(name, parentId, pid){
   const body = { name: name, mimeType: 'application/vnd.google-apps.folder' };
   if(parentId) body.parents = [parentId];
+  if(pid) body.appProperties = { psp_pid: String(pid) };   /* BUILD 14.58: stamp the folder with the project pid so it can be found again idempotently (no duplicates) */
   const c = await gFetch('https://www.googleapis.com/drive/v3/files?fields=id', {
     method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
   return (await c.json()).id;
+}
+/* BUILD 14.58: find THIS project's browsable folder by its stable pid stamp (appProperties.psp_pid),
+   independent of name — so a create can ADOPT the existing folder instead of making a duplicate.
+   Returns the folder id (or null). If several are tagged (from a past race) returns the one with the
+   MOST children so the repair keeps the populated one. */
+async function driveFindFolderByPid(pid, parentId){
+  if(!pid) return null;
+  try{
+    let q = "mimeType='application/vnd.google-apps.folder' and trashed=false and appProperties has { key='psp_pid' and value='" + String(pid).replace(/'/g,'') + "' }";
+    if(parentId) q += " and '" + parentId + "' in parents";
+    const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id,name)&pageSize=20');
+    const j = await r.json();
+    const files = (j && j.files) || [];
+    if(!files.length) return null;
+    if(files.length === 1) return files[0].id;
+    /* several tagged folders (past race) → keep the one with the most files inside */
+    let best = files[0].id, bestN = -1;
+    for(const f of files){ try{ const ls = await backupList(f.id); const n = (ls||[]).length; if(n > bestN){ bestN = n; best = f.id; } }catch(_){} }
+    return best;
+  }catch(_){ return null; }
+}
+/* stamp an existing (adopted / legacy) folder with our pid so future lookups find it */
+async function driveTagFolderPid(fid, pid){
+  if(!fid || !pid) return;
+  try{ await gFetch('https://www.googleapis.com/drive/v3/files/' + fid + '?fields=id', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ appProperties: { psp_pid: String(pid) } }) }); }catch(_){}
 }
 /* find an already-existing team folder that belongs to THIS project by its stable
    pid (written into meta.json), using the metas we already cached this poll — no
@@ -4988,8 +5014,15 @@ async function driveMarkDeletedFolder(fid, name){
 /* Resolve a project's browse folder STRICTLY by browseFid (pid-anchored), NEVER by name — so a rename
    on another machine renames the ONE shared folder instead of creating a duplicate (BUILD 14.16).
    Order: local cache → the browseFid published in the DB (same for all users) → create ONCE + publish. */
-async function fbpBrowseFolder(e){
-  const pid = fbpPid(e); if(!pid) return null;
+var _browseFolderP = {};   /* pid -> in-flight Promise resolving the ONE browse folder (BUILD 14.58: no duplicate folders — concurrent callers share it) */
+function fbpBrowseFolder(e){
+  const pid = fbpPid(e); if(!pid) return Promise.resolve(null);
+  if(_browseFolderP[pid]) return _browseFolderP[pid];      /* a resolution/creation is already running for this project → share it */
+  const run = _fbpResolveBrowseFolder(e, pid);
+  _browseFolderP[pid] = run;
+  return run.finally(() => { delete _browseFolderP[pid]; });
+}
+async function _fbpResolveBrowseFolder(e, pid){
   const rec = mediaMap()[pid] || (mediaMap()[pid] = {});
   const wantName = projDriveFolderName(e.data.project) || ('project ' + pid);
   let fid = e._browseFid || rec.browseFid;
@@ -4998,17 +5031,21 @@ async function fbpBrowseFolder(e){
     const shared = await syncGetBrowseFid(pid);
     if(shared && await driveAlive(shared)) fid = shared;
   }
-  if(!fid){                                                  /* truly none anywhere → create ONCE and publish so everyone shares it */
-    const teamRoot = await driveRootId();
-    fid = await driveCreateFolder(wantName, teamRoot);
+  const teamRoot = await driveRootId();
+  if(!fid){                                                  /* BUILD 14.58: adopt a folder already STAMPED with our pid — kills the duplicate-create race */
+    const tagged = await driveFindFolderByPid(pid, teamRoot);
+    if(tagged && await driveAlive(tagged)) fid = tagged;
+  }
+  if(!fid){                                                  /* truly none anywhere → create ONCE (pid-stamped) and publish so everyone shares it */
+    fid = await driveCreateFolder(wantName, teamRoot, pid);
     await syncSetBrowseFid(pid, fid);
-  } else {                                                   /* reusing an existing folder → make sure its name is the CLEAN wantName */
+  } else {                                                   /* reusing an existing folder → stamp our pid, publish it, keep a CLEAN name */
+    try{ await driveTagFolderPid(fid, pid); }catch(_){}
+    try{ if((await syncGetBrowseFid(pid)) !== fid) await syncSetBrowseFid(pid, fid); }catch(_){}
     let realName = rec.browseName || '';
     try{ const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + fid + '?fields=name'); const j = await r.json(); if(j && j.name) realName = j.name; }catch(_){}
     /* BUILD 14.52: rename if the name drifted OR the folder is a "🗑 DELETED — …" tombstone being
-       revived by a Load Project File — so a re-loaded deleted project reuses its ONE folder with a
-       clean name instead of leaving the DELETED shell + creating nothing. Best-effort (403 only if
-       the folder is owned by another account). */
+       revived by a Load Project File. Best-effort (403 only if owned by another account). */
     if(realName !== wantName){ try{ await driveRenameFolder(fid, wantName); }catch(_){} }
   }
   e._browseFid = fid; rec.browseFid = fid; rec.browseName = wantName;
@@ -5020,7 +5057,7 @@ async function fbpBrowseMirror(e){
   const d = e.data, rec = mediaMap()[pid] || (mediaMap()[pid] = {});
   const fid = await fbpBrowseFolder(e); if(!fid) return;
   const _upFile = async (name, folderId, dataUrl) => {
-    try{ const ex = await driveFindFile(name, folderId); const mime = (dataUrl.match(/^data:([^;]+)/)||[])[1] || 'application/octet-stream'; await driveUpload(name, folderId, dataUrlToBytes(dataUrl), mime, ex); }catch(_){}
+    try{ const ex = await driveFindFile(name, folderId); const mime = (dataUrl.match(/^data:([^;]+)/)||[])[1] || 'application/octet-stream'; await driveUpload(name, folderId, dataUrlToBytes(dataUrl), mime, ex); return true; }catch(_){ return false; }
   };
   const _reconcile = async (folderId, keepNames) => {
     try{ const ex = await backupList(folderId); for(const x of ex){ if(x.mimeType === 'application/vnd.google-apps.folder') continue; if(!keepNames.has(x.name)){ try{ await driveTrash(x.id); }catch(_){} } } }catch(_){}
@@ -5032,13 +5069,14 @@ async function fbpBrowseMirror(e){
     if(d.contentList && d.contentList.data) rootFiles.push(d.contentList);
     const curDsig = docsSigStr(e);
     if(curDsig !== rec.browseDsig){
+      let docFail = false;
       if(rootFiles.length || tdFiles.length){
         const docId = await driveEnsureFolder('Documentation', fid);
-        for(const f of rootFiles) await _upFile(f.name, docId, f.data);
+        for(const f of rootFiles){ if(!(await _upFile(f.name, docId, f.data))) docFail = true; }
         await _reconcile(docId, new Set(rootFiles.map(f=>f.name)));
-        if(tdFiles.length){ const tdId = await driveEnsureFolder(TOOL_DB_SUBFOLDER, docId); for(const f of tdFiles) await _upFile(f.name, tdId, f.data); await _reconcile(tdId, new Set(tdFiles.map(f=>f.name))); }
+        if(tdFiles.length){ const tdId = await driveEnsureFolder(TOOL_DB_SUBFOLDER, docId); for(const f of tdFiles){ if(!(await _upFile(f.name, tdId, f.data))) docFail = true; } await _reconcile(tdId, new Set(tdFiles.map(f=>f.name))); }
       }
-      rec.browseDsig = curDsig;
+      if(!docFail) rec.browseDsig = curDsig;                    /* BUILD 14.58: retry next push if a doc failed to upload */
     }
   }catch(_){}
   /* ---- Photos/<Category>/… ---- */
@@ -5049,18 +5087,21 @@ async function fbpBrowseMirror(e){
     const todo = jobs.filter(j => psig[j.dir + '/' + j.name] !== prev[j.dir + '/' + j.name]);
     const curSet = new Set(jobs.map(j => j.dir + ' ' + j.name));
     const removed = (rec.browsePhotoList || []).filter(pl => !curSet.has(pl.dir + ' ' + pl.name));
+    let photoFail = false;                                     /* BUILD 14.58: if ANY upload fails, don't mark the set done → it retries next push (was: folder stayed empty) */
     if(todo.length || removed.length){
       const photosRoot = await driveEnsureFolder('Photos', fid);
       const dirIds = {};
       for(let k=0;k<todo.length;k++){
         const j = todo[k];
         setCloudStat('Uploading photo ' + (k+1) + '/' + todo.length + ' — ' + j.dir);
-        try{ if(!dirIds[j.dir]) dirIds[j.dir] = await driveEnsureFolder(j.dir, photosRoot); const ex = await driveFindFile(j.name, dirIds[j.dir]); const mime = (j.data.match(/^data:([^;]+)/)||[,'image/jpeg'])[1]; await driveUpload(j.name, dirIds[j.dir], dataUrlToBytes(j.data), mime, ex); }catch(_){}
+        try{ if(!dirIds[j.dir]) dirIds[j.dir] = await driveEnsureFolder(j.dir, photosRoot); const ex = await driveFindFile(j.name, dirIds[j.dir]); const mime = (j.data.match(/^data:([^;]+)/)||[,'image/jpeg'])[1]; await driveUpload(j.name, dirIds[j.dir], dataUrlToBytes(j.data), mime, ex); }catch(_){ photoFail = true; }
       }
       for(const rp of removed){ try{ const folderId = await driveFindFolder(rp.dir, photosRoot); if(!folderId) continue; const fileId = await driveFindFile(rp.name, folderId); if(fileId) await driveTrash(fileId); }catch(_){} }
     }
-    rec.browsePhotoSig = psig;
-    rec.browsePhotoList = jobs.map(j => ({ dir:j.dir, name:j.name }));
+    if(!photoFail){                                            /* only remember as fully mirrored when every file landed */
+      rec.browsePhotoSig = psig;
+      rec.browsePhotoList = jobs.map(j => ({ dir:j.dir, name:j.name }));
+    }
   }catch(_){}
   saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
   setCloudStat('Photos/docs on Drive ✓ · ' + hhmm());
@@ -5190,7 +5231,8 @@ async function fsPushNow(entry){
     if(msigChanged && !_mediaPushLock[pid]){                    /* BUILD 14.53: serialize per-project so a retry can't create a DUPLICATE Drive folder */
       _mediaPushLock[pid] = true;
       try{
-        if(await fbpMediaUpload(e)) await fbpBrowseMirror(e);   /* photos/docs → _media/<pid>.media.json + browsable folder */
+        await fbpMediaUpload(e);                                /* compact sync file _media/<pid>.media.json (crosses machines) */
+        await fbpBrowseMirror(e);                               /* ALWAYS mirror to the browsable folder — BUILD 14.58: no longer gated behind the media upload's return, so a mirror that failed once RETRIES (was: browse folder stayed empty forever) */
         (_fsLocal[pid] = _fsLocal[pid] || {})._msig = msig;     /* BUILD 14.51: mark pushed ONLY on success */
       }catch(_){
         setCloudStat('⚠ Photos/docs upload failed (Drive) — will retry');
@@ -5835,6 +5877,60 @@ async function dedupeDriveFolder(){
   }catch(err){ setCloudStat('⚠ Dedupe failed: ' + (err && err.message || err)); alert('Dedupe failed: ' + (err && err.message || err) + '\n\nIf the status shows a Drive rate limit, wait ~1 min and run dedupeDriveFolder() again.'); }
 }
 try{ window.dedupeDriveFolder = dedupeDriveFolder; }catch(_){}
+/* BUILD 14.58: ONE-COMMAND repair for the ACTIVE project — consolidate duplicate folders (by name AND
+   by pid stamp), keep the canonical one, stamp it with the pid, re-point browseFid, then FORCE a full
+   re-upload of every photo + document into it. Fixes "project has photos but the Drive folder is empty"
+   and "the folder was created twice". Console: fixProjectDrive(). */
+async function fixProjectDrive(){
+  const e = activeEntry();
+  if(!e || !e.data || !e.data.project){ alert('No active project selected'); return; }
+  if(!(_cloudOn && _gTok)){ alert('Sign in to Google first (click the status line at the bottom of the sidebar).'); return; }
+  const pid = fbpPid(e);
+  const wantName = projDriveFolderName(e.data.project) || ('project ' + pid);
+  try{
+    setCloudStat('Repairing project on Drive…');
+    const root = await driveRootId();
+    const items = await backupList(root);
+    /* every candidate folder for this project: same name OR stamped with our pid */
+    const cand = [];
+    for(const it of items){
+      if(it.mimeType !== 'application/vnd.google-apps.folder') continue;
+      if((it.name||'') === wantName){ cand.push(it.id); continue; }
+    }
+    const tagged = await driveFindFolderByPid(pid, root);
+    if(tagged && cand.indexOf(tagged) === -1) cand.push(tagged);
+    /* choose the canonical folder: the one the app points at, else the tagged one, else the fullest */
+    let keepId = e._browseFid || (mediaMap()[pid]||{}).browseFid || await syncGetBrowseFid(pid);
+    if(!keepId || cand.indexOf(keepId) === -1) keepId = tagged || null;
+    if(!keepId){
+      let best = null, bestN = -1;
+      for(const id of cand){ let n = 0; try{ n = (await backupList(id)).length; }catch(_){} if(n > bestN){ bestN = n; best = id; } }
+      keepId = best || cand[0] || null;
+    }
+    if(!keepId){                                               /* no folder at all → create a fresh, stamped one */
+      keepId = await driveCreateFolder(wantName, root, pid);
+    }
+    /* trash the empty/duplicate others (best-effort — cross-account 403 just leaves them) */
+    let trashed = 0;
+    for(const id of cand){ if(id === keepId) continue; try{ await driveTrashTree(id); trashed++; }catch(_){} }
+    /* make the kept folder the one true browse folder */
+    try{ await driveTagFolderPid(keepId, pid); }catch(_){}
+    try{ await driveRenameFolder(keepId, wantName); }catch(_){}
+    (mediaMap()[pid] = mediaMap()[pid] || {}).browseFid = keepId; e._browseFid = keepId;
+    try{ await syncSetBrowseFid(pid, keepId); }catch(_){}
+    /* FORCE a full re-mirror: clear the "already uploaded" markers so every photo + doc re-uploads */
+    const rec = mediaMap()[pid] = mediaMap()[pid] || {};
+    rec.browseDsig = null; rec.browsePhotoSig = {}; rec.browsePhotoList = [];
+    await fbpBrowseMirror(e);
+    saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
+    setCloudStat('Project Drive folder repaired ✓ · ' + hhmm());
+    alert('Repaired "' + wantName + '":\n• kept one folder, trashed ' + trashed + ' duplicate(s)\n• re-uploaded all photos and documents into it.\n\nOpen the folder in Drive — the photos should now be there.');
+  }catch(err){
+    setCloudStat('⚠ Repair failed: ' + (err && err.message || err));
+    alert('Repair failed: ' + (err && err.message || err) + '\n\nIf the status shows a Google Drive rate limit, wait ~1 minute and run fixProjectDrive() again.');
+  }
+}
+try{ window.fixProjectDrive = fixProjectDrive; }catch(_){}
 /* ============================================================================
    ONLINE PRESENCE (BUILD 12.76) — over Google Drive (reliable; Firebase live is flaky).
    Each machine writes a tiny heartbeat file "presence/<email>.json" {email,name,picture,at}
