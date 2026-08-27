@@ -17,6 +17,11 @@
   }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
+  /* BUILD 14.60 — accessibility floor: one consistent keyboard focus ring (brand red) + reduced-motion respect */
+  :focus-visible{outline:2px solid var(--fdp-red);outline-offset:2px;border-radius:3px}
+  @media (prefers-reduced-motion: reduce){ *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important} }
+  /* link row buttons dimmed + inert when the link field is empty (nothing to copy/open) */
+  .lnkbtns.empty button{opacity:.32;pointer-events:none}
   body{font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink);
     display:flex;flex-direction:column;height:100vh;overflow:hidden}
   .app-row{display:flex;flex:1 1 auto;min-height:0;overflow:hidden}
@@ -61,6 +66,7 @@
   .topbrand .tb-ic svg{width:17px;height:17px}
   .topbrand .tb-tt{color:#fff;font-size:14px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;line-height:1.1}
   .topbrand .tb-tt small{display:block;font-size:10px;color:#8b93a0;font-weight:400;letter-spacing:.3px;text-transform:none;margin-top:2px}
+  .build-chip{font-size:11px;font-weight:700;letter-spacing:.4px;color:#c8ccd3;background:#2c313a;border:1px solid #3a4048;border-radius:6px;padding:3px 8px;white-space:nowrap;cursor:default}
   .proj-chip{display:flex;align-items:center;gap:14px;background:var(--side2);border:1px solid var(--line-d);
     border-radius:9px;padding:7px 14px;min-width:0}
   .pc-item{min-width:0}
@@ -181,6 +187,13 @@
   /* horizontal module-readiness strip on the Dashboard (BUILD 12.28) */
   .readybar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 15px;margin:0 0 18px}
   .readybar .rb-cap{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#8b93a0;margin-right:4px}
+  /* BUILD 14.62: one documented colour language, shown as a legend on the readiness strip */
+  .rb-legend{display:inline-flex;gap:13px;margin-left:auto;flex-wrap:wrap;padding-left:12px;border-left:1px solid var(--line)}
+  .rb-legend .lg{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#8b93a0;white-space:nowrap}
+  .rb-legend .cd{width:8px;height:8px;border-radius:50%;background:#9aa2ad}
+  .rb-legend .cd.c-off{background:#e5534b}
+  .rb-legend .cd.c-warn{background:#e0a13d}
+  .rb-legend .cd.c-ok{background:#3fb950}
 
   /* section switcher on Server & Rack page */
   .secnav{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
@@ -290,6 +303,11 @@
   .create-hero h1{margin:0 0 6px;font-size:24px}
   .create-hero p{margin:0;color:var(--ink2);font-size:13.5px;line-height:1.6}
   .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  /* Dome Library tabs (BUILD 15.0) */
+  .dtabs{display:flex;gap:2px;flex-wrap:wrap;margin:0 0 14px;border-bottom:1px solid var(--line)}
+  .dtab{background:none;border:0;border-bottom:2px solid transparent;padding:9px 14px;font-size:12.5px;font-weight:600;color:var(--ink2);cursor:pointer}
+  .dtab:hover{color:var(--ink)}
+  .dtab.sel{color:var(--fdp-red);border-bottom-color:var(--fdp-red)}
   .fgrid .full{grid-column:1/-1}
   #lnkPrev{position:fixed;z-index:9999;display:none;width:300px;background:#fff;border:1px solid var(--line);border-radius:12px;
     box-shadow:0 10px 32px rgba(15,23,42,.18);padding:10px;pointer-events:none}
@@ -306,10 +324,21 @@
   .fsec{grid-column:1 / -1;font-size:11px;letter-spacing:1.2px;color:var(--fdp-red);font-weight:700;text-transform:uppercase;border-bottom:2px solid var(--fdp-red);padding-bottom:6px;margin:8px 0 2px}
   .fsec:first-child{margin-top:0}
   .fld label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ink2);margin-bottom:5px}
-  .fld input,.fld select{width:100%;font-family:inherit;font-size:14px;color:var(--ink);
+  .fld input,.fld select,.fld textarea{width:100%;font-family:inherit;font-size:14px;color:var(--ink);
     border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#fff}
-  .fld input:focus,.fld select:focus{outline:none;border-color:var(--fdp-red)}
+  .fld textarea{resize:vertical;min-height:70px;line-height:1.5}
+  .fld input:focus,.fld select:focus,.fld textarea:focus{outline:none;border-color:var(--fdp-red)}
   .fld .hint{font-size:11px;color:#9aa2ad;margin-top:4px}
+  .libic{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:11px;flex:none;transition:background .15s,color .15s}
+  .libic svg{width:30px;height:30px}
+  .libcount{display:flex;align-items:center;gap:14px;flex:none}
+  .cgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+  .csec-title{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--fdp-red);margin:0 0 12px;border-bottom:2px solid var(--fdp-red);padding-bottom:6px}
+  .crow{display:flex;align-items:center;gap:10px;padding:8px 2px;border-top:1px solid var(--line)}
+  .crow:first-child{border-top:none}
+  .cmi{display:inline-flex;width:28px;height:28px;border-radius:7px;background:#f1f2f4;color:var(--ink2);align-items:center;justify-content:center;flex:none}
+  .cmi svg{width:16px;height:16px}
+  @media(max-width:820px){ .cgrid{grid-template-columns:1fr} }
   .create-btn{width:100%;margin-top:18px;background:var(--fdp-red);color:#fff;border:none;border-radius:9px;padding:13px;
     font-family:inherit;font-size:14.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
   .create-btn:hover{background:#b71c1c}
@@ -488,6 +517,19 @@
   .pjsec:first-child{border-top:none;margin-top:0}
   .donebadge{font-size:8.5px;letter-spacing:.5px;text-transform:uppercase;color:#43d17c;border:1px solid rgba(67,209,124,.35);border-radius:99px;padding:1px 7px;margin-left:6px;vertical-align:1px;flex:none;white-space:nowrap}
   .pj.sel::before{background:var(--fdp-red)}
+  /* BUILD 14.66: selected card — a bright highlight beam travels around the red border once every 5s */
+  .pj.sel::after{content:'';position:absolute;inset:0;border-radius:inherit;padding:2px;pointer-events:none;z-index:2;
+    background:conic-gradient(from var(--pjbeam,0turn),
+      transparent 0turn, transparent .70turn,
+      #ff8a80 .86turn, #fff .90turn, #ff8a80 .94turn,
+      transparent .98turn, transparent 1turn);
+    -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor;
+    mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite:exclude;
+    animation:pjBeam 5s linear infinite}
+  @property --pjbeam{ syntax:'<angle>'; initial-value:0turn; inherits:false }
+  @keyframes pjBeam{ to{ --pjbeam:1turn } }
   .pj{padding-top:10px;padding-bottom:10px}
   .pj .pjled{position:static;display:inline-block;margin-right:6px;vertical-align:1px;flex:none}
   .pj .pjmeta{flex:1;min-width:0}
@@ -596,6 +638,7 @@
   <div class="top-actions">
     <button class="top-btn" onclick="openTT()" title="Create a Technical Task"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M9.5 13h5M9.5 17h5"/></svg>Technical Task</button>
     <button class="top-btn" onclick="location.hash='#/create'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New Project</button>
+    <span class="build-chip" id="topBuild" title="App build — every machine must be on the SAME build (mixed builds can corrupt sync)">b—</span>
     <div class="online-users" id="onlineUsers" title="Online now"></div>
     <button class="icon-btn" title="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/></svg></button>
     <div class="avatar" title="User">FD</div>
@@ -628,7 +671,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 14.40 · NO SCROLL JUMP ON ADD</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.06 · DOME CARD → GOOGLE DRIVE BACKUP (JSON + 15 MIN)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -729,7 +772,8 @@ const emptyState = () => ({
   project: null,
   server: { rows: [], ready: false, photos: [] },
   vj:     { rows: [], ready: false, photos: [] },
-  rack:   { heightU: 12, slots: {}, rows: [], photos: [] },
+  backup: { rows: [], ready: false, photos: [], caseSize: '', name: '', enabled: false },   /* optional Backup Server (BUILD 14.56) */
+  rack:   { heightU: 12, slots: {}, rows: [], photos: [], rackId: '' },
   contentList: null,
   validation: { cpu:false, gpu:false, capture:false, video:false, burnin:false },
   vjValidation: { cpu:false, mem:false, gpu:false },
@@ -747,7 +791,7 @@ const emptyState = () => ({
    a frozen project cannot be selected or edited (mistake guard
    when several projects are in work at the same time). */
 const emptyLibrary = () => ({ server: [], rack: [], cameras: [], speakers: [], fan: [], video: [], cables: [], tools: [] });
-var db = { projects: [], activeId: null, library: emptyLibrary(), customCats: {} };   // projects: [{id, frozen, data}]
+var db = { projects: [], activeId: null, library: emptyLibrary(), customCats: {}, domeLib: [] };   // projects: [{id, frozen, data}]; domeLib: Dome Library cache (BUILD 15.0)
 var state = emptyState();                    // always points to the ACTIVE project data
 
 const newId = () => 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
@@ -755,6 +799,24 @@ var _booting = true;   /* true until the first boot render finishes — boot/mig
 /* US 12-hour clock for status timestamps, e.g. "2:04 PM" (BUILD 12.69) */
 function hhmm(){ let h=new Date().getHours(); const m=('0'+new Date().getMinutes()).slice(-2); const ap=h<12?'AM':'PM'; h=h%12; if(h===0)h=12; return h+':'+m+' '+ap; }
 function activeEntry(){ return db.projects.find(p => p.id === db.activeId) || null; }
+/* BUILD 14.41: full Project Information form fields (commercial / logistics / dome / AV). They live on
+   state.project and sync through the existing Firestore `project` section. Existing projects get EMPTY
+   defaults added on load — no existing field is touched or lost. projectorModel maps to the existing key;
+   title mirrors Deal Title and location mirrors Country of Installation (both existing keys). */
+const PROJ_FIELDS = {
+  dealType:'', client:'', contactName:'', phone:'', email:'',
+  totalAmount:'', currency:'', closeDate:'', salesOffice:'', termsOfPayment:'', projectManager:'',
+  installAddress:'', installDateTime:'', breakdownDateTime:'',
+  shippingBudget:'', travelBudget:'', localLabourQty:'', localLabourBy:'',
+  indoorOutdoor:'', outerCover:'', coverColorNote:'', screenType:'', inflatableCover:'',
+  resolution:'', projectorQty:'',
+  soundSystem:'', hvac:'', safetySigns:'', contentType:'', contentNotes:'', eventNotes:''
+};
+/* BUILD 14.42: the overlapping fields (title, location, domeDiameter, domeType, type, projectorModel,
+   audioSystem, speakersModel, subwooferModel, screenFan, captureRequired, vjRequired) are the SAME
+   existing project keys the old Create/Edit form + sidebar card use — so a project created from the
+   Projects page yields an identical sidebar card. They are NOT in PROJ_FIELDS (they already exist). */
+function ensureProjectFields(d){ if(!d || !d.project) return; const P=d.project; Object.keys(PROJ_FIELDS).forEach(k=>{ if(P[k]===undefined) P[k]=PROJ_FIELDS[k]; }); }
 function syncActive(){
   const e = activeEntry();
   state = e ? e.data : emptyState();
@@ -770,7 +832,14 @@ function syncActive(){
   if(!state.shipping.packed || typeof state.shipping.packed!=='object') state.shipping.packed = {};  /* per-place "loaded on pallet" flag */
   if(!state.shipping.palletPhotos || typeof state.shipping.palletPhotos!=='object') state.shipping.palletPhotos = {};  /* {palletId:[{name,caption,src}]} up to 10 each (BUILD 12.58) */
   if(!Array.isArray(state.rack.photos)) state.rack.photos = [];
+  if(typeof state.rack.rackId !== 'string') state.rack.rackId = '';   /* BUILD 14.57 manual Rack ID */
+  if(typeof state.rack.ready !== 'boolean') state.rack.ready = false;   /* BUILD 14.65: rack Mark-as-Ready flag */
   if(!state.vj || typeof state.vj!=='object') state.vj = { rows: [], ready: false, photos: [] };
+  if(!state.backup || typeof state.backup!=='object') state.backup = { rows:[], ready:false, photos:[], caseSize:'', name:'', enabled:false };   /* BUILD 14.56 */
+  if(!Array.isArray(state.backup.rows)) state.backup.rows = [];
+  if(!Array.isArray(state.backup.photos)) state.backup.photos = [];
+  if(typeof state.backup.name!=='string') state.backup.name = '';
+  if(typeof state.backup.caseSize!=='string') state.backup.caseSize = '';
   if(!state.validation || typeof state.validation!=='object') state.validation = { cpu:false, gpu:false, capture:false, video:false, burnin:false };
   if(!state.vjValidation || typeof state.vjValidation!=='object') state.vjValidation = { cpu:false, mem:false, gpu:false };
   if(!Array.isArray(state.vj.rows)) state.vj.rows = [];
@@ -794,6 +863,7 @@ function syncActive(){
   if(!Array.isArray(state.tools.photos)) state.tools.photos = [];
   if(typeof migrateToolCats==='function') migrateToolCats();   /* BUILD 14.38 */
   if(!state.ready || typeof state.ready!=='object') state.ready = {};   /* readiness lights per module (BUILD 12.15) */
+  if(state.project) ensureProjectFields(state);   /* BUILD 14.41: backfill Project Information fields */
 }
 /* ---------- MODULE READINESS (BUILD 12.29) — DATA-DRIVEN, read-only in the bar.
    red (empty) → yellow (has data) → green (its own module's "Mark as Ready" pressed).
@@ -833,6 +903,7 @@ function readyModuleGreen(key, d){
   if(key==='fan')      return !!(d.fan && d.fan.ready);   /* BUILD 14.27 */
   if(key==='cables')   return !!(d.cables && d.cables.ready);   /* BUILD 14.31 */
   if(key==='tools')    return !!(d.tools && d.tools.ready);   /* BUILD 14.37 */
+  if(key==='rack')     return !!(d.rack && d.rack.ready);   /* BUILD 14.65 */
   if(key==='vj')     return !!(d.vj && d.vj.ready);
   return false;
 }
@@ -987,6 +1058,8 @@ function adoptDb(s){
     /* order-safe migration: older saves may miss newer library groups */
     db.library = Object.assign(emptyLibrary(), db.library || {});
     if(!db.customCats || typeof db.customCats!=='object') db.customCats = {};
+    if(!Array.isArray(db.domeLib)) db.domeLib = [];   /* BUILD 15.0: Dome Library local cache (additive) */
+    db.domeLib.forEach(function(m){ if(m && typeof m==='object'){ if(!m.domeUid) m.domeUid = m.domeId || newId(); if(m.serial===undefined) m.serial = m.domeId || ''; if(typeof m.hvacOpenings==='undefined') m.hvacOpenings=''; if(typeof m.fanOpenings==='undefined') m.fanOpenings=''; } });   /* BUILD 15.02: normalise older dome cards (domeId→serial + stable domeUid) */
     return true;
   }
   if(s && typeof s === 'object' && 'server' in s && s.project){
@@ -1100,11 +1173,22 @@ const IC = {
   ship:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 3h13v13H1z"/><path d="M14 8h5l3 3v5h-8"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></svg>'
 };
 
+/* BUILD 14.48: Equipment Library group icons — a square badge per group (server/rack/camera/…),
+   RED while the group is collapsed, GREEN while expanded. */
+const LIB_ICONS = { server:IC.server, rack:IC.rack, cameras:IC.cam, speakers:IC.spk, fan:IC.fan, video:IC.beam, cables:IC.cable, tools:IC.tool };
+function libGroupIcon(key, collapsed){
+  const ic = LIB_ICONS[key] || IC.lib;
+  const bg = collapsed ? '#fdeeee' : '#e7f7ee';
+  const col = collapsed ? 'var(--fdp-red)' : '#2fa35a';
+  return `<span class="libic" style="background:${bg};color:${col}" title="${collapsed?'Collapsed':'Expanded'}">${ic}</span>`;
+}
+
 /* ---------- navigation ---------- */
 const NAV = [
   {id:'dashboard', label:'Dashboard', ic:IC.dash, route:'#/dashboard'},
   {id:'projects', label:'Projects', ic:IC.proj, route:'#/projects'},
   {id:'library', label:'Equipment Library', ic:IC.lib, route:'#/library'},
+  {id:'dome-library', label:'Dome Library', ic:IC.dome, route:'#/dome-library'},
   {id:'documentation', label:'Documentation', ic:IC.doc, route:'#/documentation'},
   {id:'logs', label:'System Logs', ic:IC.logs, route:'#/logs'},
   {id:'settings', label:'Settings', ic:IC.set, route:'#/settings'}
@@ -1460,7 +1544,7 @@ function ensureLibGroup(group){
 }
 function addRowToLib(kind, i){
   /* small arrow next to a row: if the item is not in the Library — add it */
-  const row = kind==='rack' ? state.rack.rows[i] : (kind==='vj' ? state.vj.rows[i] : state.server.rows[i]);
+  const row = kind==='rack' ? state.rack.rows[i] : (kind==='vj' ? state.vj.rows[i] : (kind==='backup' ? state.backup.rows[i] : state.server.rows[i]));
   if(!row) return;
   const name = (row.name||'').trim();
   if(!name || libFind(name)) return;
@@ -1700,9 +1784,28 @@ function loadFromFile(ev){
   const f = ev.target.files && ev.target.files[0];
   if(!f) return;
   const rd = new FileReader();
-  rd.onload = () => { applyProjectText(rd.result, 'import'); };
+  rd.onload = () => {
+    /* BUILD 14.62: friendly detection of an empty / corrupted project file (e.g. a 0-byte or
+       all-NUL file from an interrupted save/sync — the old error was a cryptic JSON message). */
+    const txt = rd.result;
+    const bad = checkProjectFileText(txt);
+    if(bad){ alert('This project file can’t be loaded: ' + bad + '\n\nTry re-exporting it, or restore an earlier version from the Drive backup.'); return; }
+    applyProjectText(txt, 'import');
+  };
+  rd.onerror = () => alert('Could not read the file. Please try again.');
   rd.readAsText(f);
   ev.target.value = '';
+}
+/* returns a human reason if the text is NOT a usable project file, else '' (ok). BUILD 14.62 */
+function checkProjectFileText(txt){
+  if(txt == null) return 'the file is empty';
+  const s = String(txt);
+  if(!s.trim()) return 'the file is empty';
+  if(/\u0000/.test(s)) return 'the file is corrupted (contains null bytes \u2014 likely an interrupted save)';
+  let obj; try{ obj = JSON.parse(s); }catch(e){ return 'it is not valid JSON (' + (e.message||'parse error') + ')'; }
+  const st = obj && (obj.state || obj);
+  if(!st || typeof st !== 'object' || !('server' in st) || !st.project) return 'it is valid JSON but not a Fulldome PSP project (missing project/server data)';
+  return '';
 }
 /* BUILD 14.35: Project Files are INTERNAL backups (created by this PSP, used only for backup/restore).
    So Load Project File auto-restores MISSING library items (never replaces existing ones) — no prompt.
@@ -2022,8 +2125,8 @@ function docPhotoCount(){
 function docContentListCount(){ return docScope().filter(e=>e.data.contentList).length; }
 
 /* ---------- photos (server: max 6, rack: max 4) ---------- */
-const PHOTO_MAX = { server: 10, vj: 10, rack: 10, front: 1, rear: 1, site: 20, camera: 10, speakers: 10, fan: 10, cables: 10, tools: 10 };
-var photoEdit = { server: false, vj: false, rack: false, views: false, site: false, projviews: false, camera: false, speakers: false, fan: false, cables: false, tools: false };   /* Edit mode: shows delete crosses */
+const PHOTO_MAX = { server: 10, vj: 10, backup: 10, rack: 10, front: 1, rear: 1, site: 20, camera: 10, speakers: 10, fan: 10, cables: 10, tools: 10 };
+var photoEdit = { server: false, vj: false, backup: false, rack: false, views: false, site: false, projviews: false, camera: false, speakers: false, fan: false, cables: false, tools: false };   /* Edit mode: shows delete crosses */
 function togglePhotoEdit(kind){ photoEdit[kind] = !photoEdit[kind]; rerenderKeepScroll(); }
 function photosOf(kind){
   if(kind==='site'){ return ensureDocs(state).sitePh; }
@@ -2033,6 +2136,7 @@ function photosOf(kind){
   if(kind==='cables'){ if(!state.cables) state.cables={rows:[],ready:false,photos:[]}; if(!Array.isArray(state.cables.photos)) state.cables.photos=[]; return state.cables.photos; }
   if(kind==='tools'){ if(!state.tools) state.tools={rows:[],ready:false,photos:[]}; if(!Array.isArray(state.tools.photos)) state.tools.photos=[]; return state.tools.photos; }
   if(kind==='vj'){ if(!state.vj) state.vj={rows:[],ready:false,photos:[]}; if(!Array.isArray(state.vj.photos)) state.vj.photos=[]; return state.vj.photos; }
+  if(kind==='backup'){ if(!state.backup) state.backup={rows:[],ready:false,photos:[],caseSize:'',name:'',enabled:false}; if(!Array.isArray(state.backup.photos)) state.backup.photos=[]; return state.backup.photos; }
   if(kind==='front'){ if(!Array.isArray(state.rack.frontPh)) state.rack.frontPh=[]; return state.rack.frontPh; }
   if(kind==='rear'){ if(!Array.isArray(state.rack.rearPh)) state.rack.rearPh=[]; return state.rack.rearPh; }
   const box = kind==='server' ? state.server : state.rack;
@@ -2043,6 +2147,7 @@ function entryPhotos(e, kind){
   const d = e && e.data; if(!d) return [];
   if(kind==='server') return (d.server && d.server.photos) || [];
   if(kind==='vj')     return (d.vj && d.vj.photos) || [];
+  if(kind==='backup') return (d.backup && d.backup.photos) || [];
   if(kind==='rack')   return (d.rack && d.rack.photos) || [];
   if(kind==='front')  return (d.rack && d.rack.frontPh) || [];
   if(kind==='rear')   return (d.rack && d.rack.rearPh) || [];
@@ -2155,7 +2260,7 @@ function openLightboxProj(id, kind, i){
   const p = entryPhotos(e, kind)[i];
   if(p){
     const P = e.data.project || {};
-    const lbl = kind==='server' ? 'Dome Server' : kind==='vj' ? 'VJ Server' : kind==='front' ? 'Rack — Front' : kind==='rear' ? 'Rack — Rear' : kind==='site' ? 'Site' : kind==='camera' ? 'Camera' : kind==='speakers' ? 'Speakers' : kind==='fan' ? 'Screen Fan' : kind==='cables' ? 'Cables' : kind==='tools' ? 'Tools' : 'Rack';
+    const lbl = kind==='server' ? 'Dome Server' : kind==='vj' ? 'VJ Server' : kind==='backup' ? 'Backup Server' : kind==='front' ? 'Rack — Front' : kind==='rear' ? 'Rack — Rear' : kind==='site' ? 'Site' : kind==='camera' ? 'Camera' : kind==='speakers' ? 'Speakers' : kind==='fan' ? 'Screen Fan' : kind==='cables' ? 'Cables' : kind==='tools' ? 'Tools' : 'Rack';
     openLightbox(p.src, lbl + ' — #' + (P.number||'') + ' · ' + (p.caption||p.name||''));
   }
 }
@@ -2408,6 +2513,350 @@ function projectForm(P){
       </div>`;
 }
 
+/* ============ PROJECTS PAGE (BUILD 14.41) ============
+   The main Project Information sheet — edit the SELECTED project, or start a brand-new one.
+   Fields are split into 4 blocks and stored on state.project (synced via the Firestore `project`
+   section). "+ New Project" opens a blank form independent of the selected project; Create Project
+   adds a separate project with a fresh pid; Cancel returns to the selected project untouched. */
+var _projMode = 'edit';            /* 'edit' = bound to the active project · 'new' = blank draft */
+var _projTitleManual = false;      /* user typed a custom Deal Title → stop auto-composing it */
+function projNewMode(){ _projMode = 'new'; _projTitleManual = false; goTo('#/projects'); }
+function projCancelNew(){ _projMode = 'edit'; goTo('#/projects'); }
+/* Project Name auto-format (BUILD 14.43): "<R/S> <Dome Size>m + <Server> <Client> <Location>"
+   e.g. "R 10m + DX8 L.L.Bean Maine". The field is READ-ONLY — always composed, never typed. */
+function projAutoTitle(){
+  const g = id => { const e = document.getElementById(id); return e ? e.value.trim() : ''; };
+  const dt = g('pj_dealType'), rs = dt==='Sale' ? 'S' : (dt==='Rental' ? 'R' : '');
+  const size = g('pj_domeSize'), srv = g('pj_type'), cl = g('pj_client'), loc = g('pj_location');   /* BUILD 14.44: Projection System Type IS the server */
+  let s = [rs, size ? (size + 'm') : ''].filter(Boolean).join(' ');
+  if(srv) s += (s ? ' ' : '') + '+ ' + srv;
+  if(cl)  s += (s ? ' ' : '') + cl;
+  if(loc) s += (s ? ' ' : '') + loc;
+  const e = document.getElementById('pj_projName'); if(e) e.value = s.trim();
+}
+function _pjSel(id, cur, values, ph, chg){
+  cur = cur || ''; const known = values.some(v => v === cur);
+  return `<select id="${id}"${chg?` onchange="${chg}"`:''}>`
+    + `<option value=""${!cur?' selected':''}>${esc(ph||'— Select —')}</option>`
+    + values.map(v=>`<option value="${esc(v)}"${cur===v?' selected':''}>${esc(v)}</option>`).join('')
+    + (cur && !known ? `<option value="${esc(cur)}" selected>${esc(cur)}</option>` : '')
+    + `</select>`;
+}
+function readProjForm(){
+  const t = id => { const e = document.getElementById(id); return e ? String(e.value).trim() : ''; };
+  const yn = id => { const e = document.getElementById(id); return e ? e.value === 'Yes' : false; };
+  return {
+    /* Commercial / Deal Basics (Projects-only keys) */
+    dealType:t('pj_dealType'), client:t('pj_client'), contactName:t('pj_contactName'),
+    phone:t('pj_phone'), email:t('pj_email'), totalAmount:t('pj_totalAmount'),
+    currency:t('pj_currency'), closeDate:t('pj_closeDate'), salesOffice:t('pj_salesOffice'),
+    termsOfPayment:t('pj_terms'), projectManager:t('pj_pm'),
+    /* Site & Logistics — location is an EXISTING key (sidebar card) */
+    location:t('pj_location') || '—',
+    installAddress:t('pj_address'), installDateTime:t('pj_install'), breakdownDateTime:t('pj_breakdown'),
+    shippingBudget:t('pj_shipBudget'), travelBudget:t('pj_travelBudget'),
+    localLabourQty:t('pj_labourQty'), localLabourBy:t('pj_labourBy'),
+    /* Dome Specification — title/domeDiameter/domeType are EXISTING keys (sidebar card) */
+    title:t('pj_projName'), domeDiameter:t('pj_domeSize'), domeType:t('pj_domeType'),
+    indoorOutdoor:t('pj_conditions'), outerCover:t('pj_outerCover'), coverColorNote:t('pj_coverNote'),
+    screenType:t('pj_screenType'), inflatableCover:t('pj_inflatable'),
+    /* Technical / AV — type/projectorModel/audioSystem/speakersModel/subwooferModel/screenFan/
+       captureRequired/vjRequired are EXISTING keys shared with the old Create/Edit form */
+    type:t('pj_type'), resolution:t('pj_resolution'),
+    projectorModel:t('pj_projModel'), projectorQty:t('pj_projQty'),
+    audioSystem:t('pj_audio'), speakersModel:t('pj_speakers'), subwooferModel:t('pj_sub'),
+    screenFan:t('pj_fan'), captureRequired:yn('pj_capture'), vjRequired:yn('pj_vj'),
+    soundSystem:t('pj_sound'), hvac:t('pj_hvac'), safetySigns:t('pj_safety'),
+    contentType:t('pj_contentType'), contentNotes:t('pj_contentNotes'), eventNotes:t('pj_eventNotes')
+  };
+}
+/* auto-add the Capture row / VJ rows exactly like the old Edit form (parity) */
+function _applyCapVj(data, f){
+  if(f.captureRequired && !data.server.rows.some(r => ((r.cat||'')+' '+(r.name||'')).toLowerCase().includes('capture')))
+    data.server.rows.push({cat:'Capture Card', name:'', qty:1, price:'', link:''});
+  if(f.vjRequired && !((data.vj && data.vj.rows) || []).length){
+    data.vj = data.vj || {rows:[],ready:false,photos:[]}; data.vj.rows = [blankRow(), blankRow(), blankRow()];
+  }
+}
+function saveProjChanges(){
+  try{
+    const e = activeEntry(); if(!e || !e.data.project){ flashStat('No project selected'); return; }
+    const _oldName = projDriveFolderName(e.data.project);   /* BUILD 14.46: detect a name change → rename Drive folder */
+    const f = readProjForm();
+    Object.assign(e.data.project, f);      /* existing keys (title/location/type/dome…) written directly */
+    _applyCapVj(e.data, f);
+    if(typeof revalidateReady === 'function') revalidateReady();
+    saveState(); renderHeader(); renderSideProject();
+    setTimeout(()=>{ try{ if(_FS || _FBP) syncPushNow(); else cloudPushNow(); }catch(_){ } }, 200);
+    if(projDriveFolderName(e.data.project) !== _oldName){ setTimeout(()=>{ try{ if(_cloudOn && _gTok) driveRenameProjectFolders(e, _oldName).catch(function(){}); }catch(_){ } }, 800); }
+    flashStat('Changes saved ✓');
+  }catch(err){ alert('Could not save: ' + (err && err.message || err)); }
+}
+function createProjFromForm(){
+  try{
+    const f = readProjForm();
+    const data = emptyState();
+    const P = Object.assign({}, PROJ_FIELDS, f, {
+      status:'Engineering', created:new Date().toISOString().slice(0,10), pid:newId(), _rev:Date.now()
+    });
+    /* keep the existing-form-only keys present so modules/sidebar behave */
+    ['number','sysNumber','ttNumber','domeCode','ttDate'].forEach(k=>{ if(P[k]===undefined) P[k]=''; });
+    if(!P.domeType) P.domeType = 'Standard';
+    data.project = P;
+    data.server.rows = [blankRow(), blankRow(), blankRow()];
+    data.rack.rows = [blankRackRow(), blankRackRow()];
+    _applyCapVj(data, f);                  /* Capture row / VJ rows, same as the old create flow */
+    const entry = { id:newId(), frozen:false, data, _localNew:1 };
+    db.projects.push(entry);
+    db.activeId = entry.id; syncActive();
+    saveState(); renderHeader(); renderSideProject();
+    setTimeout(()=>{ try{ if(_FS || _FBP) syncPushNow(); else cloudPushNow(); }catch(_){ } }, 200);
+    backupSoon(entry);
+    _projMode = 'edit'; goTo('#/projects');
+    flashStat('Project created ✓');
+  }catch(err){ alert('Could not create the project: ' + (err && err.message || err)); }
+}
+function pageProjects(){
+  const editing = _projMode !== 'new';
+  const e = editing ? activeEntry() : null;
+  if(editing && !e){
+    return `
+    <div class="page">
+      <div class="crumbs"><a href="#/dashboard">Dashboard</a> › <span class="cur">Projects</span></div>
+      <div class="pagehead"><div class="eyebrow">Fulldome Projection SP</div><h1 style="margin:0">Projects</h1>
+        <div class="sub">Pick a project in the sidebar to edit it, or start a new one.</div></div>
+      <div class="card" style="text-align:center;padding:38px 24px">
+        <p style="color:var(--ink2);margin:0 0 14px">No project selected.</p>
+        <button class="create-btn" style="max-width:240px;margin:0 auto" onclick="projNewMode()">${IC.check} New Project</button>
+      </div>
+    </div>`;
+  }
+  const P = editing ? e.data.project : {};
+  const projName = editing ? (P.title||'') : '';
+  const loc       = (editing && P.location && P.location!=='—') ? P.location : '';
+  const projModel = P.projectorModel || '';
+  const TYPES = ['HDx4','HDx6','HDx8','HDx12','UHDx4','UHDx6','UHDx8','UHDx12'];
+  const I  = (id, val, type, extra) => `<input id="${id}" autocomplete="off"${type?` type="${type}"`:''} value="${esc(val||'')}"${extra?(' '+extra):''}>`;
+  const TA = (id, val) => `<textarea id="${id}" rows="3">${esc(val||'')}</textarea>`;
+  const F  = (label, inner, full) => `<div class="fld${full?' full':''}"><label>${label}</label>${inner}</div>`;
+  const YN = ['Yes','No'];
+  const YNb = (id, val) => `<select id="${id}"><option value="No"${!val?' selected':''}>No</option><option value="Yes"${val?' selected':''}>Yes</option></select>`;
+  const form = `
+    <div class="fgrid">
+      ${F('Project Name <span style="color:#9aa2ad;text-transform:none;font-weight:400">(auto — Deal Type · Dome Size · System Type · Client · Location)</span>', `<input id="pj_projName" readonly value="${esc(projName)}" style="background:#f1f2f4;font-weight:700;cursor:default" title="Built automatically — edit the fields below">`, true)}
+
+      <div class="fsec">Commercial / Deal Basics</div>
+      ${F('Deal Type', _pjSel('pj_dealType', P.dealType, ['Rental','Sale'], '— Select —', 'projAutoTitle()'))}
+      ${F('Currency', _pjSel('pj_currency', P.currency, ['USD','EUR','THB','INR','CNY','RUB','AUD']))}
+      ${F('Company / Client', I('pj_client', P.client, '', 'oninput="projAutoTitle()"'))}
+      ${F('Contact Name', I('pj_contactName', P.contactName))}
+      ${F('Phone', I('pj_phone', P.phone))}
+      ${F('Email', I('pj_email', P.email, 'email'))}
+      ${F('Total Amount', I('pj_totalAmount', P.totalAmount))}
+      ${F('Close Date', I('pj_closeDate', P.closeDate, 'date'))}
+      ${F('Sales Office', _pjSel('pj_salesOffice', P.salesOffice, ['Thailand','India','USA','China','Russia','Australia']))}
+      ${F('Project Manager', I('pj_pm', P.projectManager))}
+      ${F('Terms of Payment', I('pj_terms', P.termsOfPayment), true)}
+
+      <div class="fsec">Site &amp; Logistics</div>
+      ${F('Location <span style="color:#9aa2ad;text-transform:none;font-weight:400">(City / State / Country)</span>', I('pj_location', loc, '', 'oninput="projAutoTitle()"'), true)}
+      ${F('Full Installation Address', I('pj_address', P.installAddress), true)}
+      ${F('Installation Date &amp; Time', I('pj_install', P.installDateTime, 'datetime-local'))}
+      ${F('Breakdown Date &amp; Time', I('pj_breakdown', P.breakdownDateTime, 'datetime-local'))}
+      ${F('Shipping Budget', I('pj_shipBudget', P.shippingBudget))}
+      ${F('Travel Expenses Budget', I('pj_travelBudget', P.travelBudget))}
+      ${F('Local Labour / Union — Qty', I('pj_labourQty', P.localLabourQty))}
+      ${F('Hired by whom', I('pj_labourBy', P.localLabourBy))}
+
+      <div class="fsec">Dome Specification</div>
+      ${F('Dome Size (m)', I('pj_domeSize', P.domeDiameter, 'number', 'min="1" step="0.5" oninput="projAutoTitle()"'))}
+      ${F('Dome Type', _pjSel('pj_domeType', P.domeType, ['Standard','Tilt','SRD','VR','WD'], '— Select —'))}
+      ${F('Conditions of Use', _pjSel('pj_conditions', P.indoorOutdoor, ['Indoor','Outdoor']))}
+      ${F('Outer Cover Material', _pjSel('pj_outerCover', P.outerCover, ['Grey','PVC']))}
+      ${F('Cover Colour Note', I('pj_coverNote', P.coverColorNote))}
+      ${F('Screen Type', _pjSel('pj_screenType', P.screenType, ['Tilted','Horizontal','SRD']))}
+      ${F('Inflatable Cover', _pjSel('pj_inflatable', P.inflatableCover, YN))}
+
+      <div class="fsec">Technical / AV</div>
+      ${F('Projection System Type', _pjSel('pj_type', P.type, TYPES, '— Select type —', 'projAutoTitle()'))}
+      ${F('Resolution', I('pj_resolution', P.resolution))}
+      ${F('Projector Model', I('pj_projModel', projModel))}
+      ${F('Projector Quantity', I('pj_projQty', P.projectorQty, 'number'))}
+      ${F('Audio System', I('pj_audio', P.audioSystem))}
+      ${F('Speakers Model', I('pj_speakers', P.speakersModel))}
+      ${F('Subwoofer Model', I('pj_sub', P.subwooferModel))}
+      ${F('Screen Fan System', I('pj_fan', P.screenFan))}
+      ${F('Capture Card', YNb('pj_capture', !!P.captureRequired))}
+      ${F('VJ Server (VJ Station)', YNb('pj_vj', !!P.vjRequired))}
+      ${F('Sound System', _pjSel('pj_sound', P.soundSystem, YN))}
+      ${F('HVAC', _pjSel('pj_hvac', P.hvac, YN))}
+      ${F('Safety Signs', _pjSel('pj_safety', P.safetySigns, YN))}
+      ${F('Content', _pjSel('pj_contentType', P.contentType, ['Standard Free Pack','Specific']))}
+      ${F('Content Notes', I('pj_contentNotes', P.contentNotes), true)}
+      ${F('Event / Rental Specifics', TA('pj_eventNotes', P.eventNotes), true)}
+    </div>`;
+  const headTitle = editing ? 'Project Information' : 'New Project';
+  const headSub = editing
+    ? ('Editing ' + (P.title ? esc(P.title) : ('#' + esc(P.number||'—'))) + ' — changes save only to this project.')
+    : 'A fresh, empty project sheet. Nothing is copied from the currently selected project.';
+  const actions = editing
+    ? `<button class="create-btn" style="margin:0;max-width:260px" onclick="saveProjChanges()">${IC.check} Save Changes</button>`
+    : `<button class="create-btn" style="margin:0;max-width:260px" onclick="createProjFromForm()">${IC.check} Create Project</button>
+       <button class="mod-btn" style="flex:none;padding:0 22px;font-size:13.5px" onclick="projCancelNew()">Cancel</button>`;
+  return `
+  <div class="page" style="max-width:900px">
+    <div class="crumbs"><a href="#/dashboard">Dashboard</a> › <span class="cur">Projects</span></div>
+    <div class="pagehead" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
+      <div><div class="eyebrow">Fulldome Projection SP</div>
+        <h1 style="margin:0">${headTitle}</h1>
+        <div class="sub">${headSub}</div></div>
+      ${editing ? `<button class="mod-btn primary" style="flex:none" onclick="projNewMode()">+ New Project</button>` : ''}
+    </div>
+    <div class="card">
+      ${form}
+      <div style="display:flex;gap:12px;margin-top:18px;align-items:center">${actions}</div>
+    </div>
+  </div>`;
+}
+
+/* ============ PROJECT CONSTRUCTOR (Settings page, BUILD 14.50) ============
+   Assemble the SELECTED project from ready-made modules of other projects. Two panes:
+   LEFT = every other project, expandable to its modules; RIGHT = the current project's
+   modules (filled / empty). "Copy →" copies a module into the same section here — with a
+   Replace confirm if the target section already has items. Equipment/config only (photos
+   stay project-specific). The normal Create/Edit forms are untouched. */
+const CONSTRUCT_MODULES = [
+  {key:'server',     label:'Dome Server',        ic:IC.server},
+  {key:'backup',     label:'Backup Server',      ic:IC.server},
+  {key:'vj',         label:'VJ Server',          ic:IC.server},
+  {key:'rack',       label:'Rack',               ic:IC.rack},
+  {key:'projectors', label:'Projectors',         ic:IC.proj},
+  {key:'camera',     label:'Calibration Camera', ic:IC.cam},
+  {key:'speakers',   label:'Speakers / Audio',   ic:IC.spk},
+  {key:'fan',        label:'Screen Fan',         ic:IC.fan},
+  {key:'cables',     label:'Cables & Adapters',  ic:IC.cable},
+  {key:'tools',      label:'Tools',              ic:IC.tool}
+];
+var _constrExpand = {};   /* which source projects are expanded (session-only) */
+function constructCount(data, key){
+  const m = (data && data[key]) || {};
+  if(key === 'projectors') return ((m.list)||[]).filter(p => (((p.mfr||'')+(p.model||'')).trim())).length;
+  return ((m.rows)||[]).filter(r => (r.name||'').trim()).length;
+}
+function constructCopy(src, dst, key){
+  const clone = o => (o==null ? null : JSON.parse(JSON.stringify(o)));
+  const s = src[key] || {};
+  if(key === 'projectors'){
+    dst.projectors = dst.projectors || {list:[], selId:null};
+    dst.projectors.list = clone(s.list) || [];
+    dst.projectors.selId = null;
+    dst.projectors.models = clone(s.models) || {};
+    return;
+  }
+  const cur = dst[key] || {};
+  const out = { rows: clone(s.rows) || [], ready: !!s.ready, photos: cur.photos || [] };   /* keep OUR photos */
+  if(key === 'rack'){ out.heightU = s.heightU || 12; out.slots = clone(s.slots) || {}; out.frontPh = cur.frontPh || []; out.rearPh = cur.rearPh || []; out.rackId = cur.rackId || ''; }   /* keep OUR Rack ID — it's a per-project identifier */
+  if(key === 'server'){ out.caseSize = s.caseSize || ''; }
+  if(key === 'backup'){ out.caseSize = s.caseSize || ''; out.name = s.name || ''; out.enabled = true; }   /* BUILD 14.64: carry the backup server config; copying it enables the block */
+  dst[key] = out;
+}
+function constructToggle(id){ _constrExpand[id] = !_constrExpand[id]; rerenderKeepScroll(); }
+function constructTransfer(srcId, key){
+  try{
+    const src = db.projects.find(p => p.id === srcId), active = activeEntry();
+    if(!src || !active || !active.data){ flashStat('No project selected'); return; }
+    const n = constructCount(src.data, key); if(!n){ return; }
+    const mod = CONSTRUCT_MODULES.find(m => m.key === key), label = mod ? mod.label : key;
+    const srcP = src.data.project || {}, srcName = srcP.title || ('#' + (srcP.number || '')) || 'project';
+    const dstN = constructCount(active.data, key);
+    if(dstN > 0 && !confirm('The "' + label + '" section already has ' + dstN + ' item(s).\n\nReplace it with ' + n + ' from "' + srcName + '"?')) return;
+    constructCopy(src.data, active.data, key);
+    try{ if(typeof revalidateReady === 'function') revalidateReady(); }catch(_){ }
+    saveState(); renderSideProject();
+    setTimeout(()=>{ try{ if(_FS || _FBP) syncPushNow(); else cloudPushNow(); }catch(_){ } }, 150);
+    flashStat(label + ' copied from ' + srcName + ' ✓');
+    rerenderKeepScroll();
+  }catch(err){ alert('Could not copy the module: ' + (err && err.message || err)); }
+}
+function constructSrcCard(p){
+  const P = p.data.project || {}, open = !!_constrExpand[p.id];
+  const rows = CONSTRUCT_MODULES.map(m => {
+    const n = constructCount(p.data, m.key);
+    return `<div class="crow">
+      <span class="cmi">${m.ic}</span>
+      <span style="flex:1;font-size:13px">${esc(m.label)}</span>
+      <span class="chip ${n?'c-ok':'c-mut'}"><span class="cd"></span>${n}</span>
+      ${n>0
+        ? `<button class="mod-btn primary" style="padding:5px 12px;font-size:12px;flex:none" onclick="event.stopPropagation();constructTransfer('${p.id}','${m.key}')">Copy ${IC.open}</button>`
+        : `<span style="width:86px;flex:none"></span>`}
+    </div>`;
+  }).join('');
+  return `<div class="card" style="margin-bottom:12px">
+    <div class="card-head" style="cursor:pointer;margin-bottom:0;user-select:none" onclick="constructToggle('${p.id}')">
+      <span style="display:inline-flex;width:16px;flex:none;color:var(--ink2);transition:transform .15s;transform:rotate(${open?'0':'-90'}deg)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="width:14px;height:14px"><path d="M6 9l6 6 6-6"/></svg></span>
+      <h3 style="margin:0;flex:1">#${esc(P.number||'—')} ${esc(P.title||'')}</h3>
+    </div>
+    <div style="display:${open?'block':'none'};margin-top:8px">${rows}</div>
+  </div>`;
+}
+function constructDstRow(active, m){
+  const n = constructCount(active.data, m.key);
+  return `<div class="crow" style="${n?'':'opacity:.5'}">
+    <span class="cmi">${m.ic}</span>
+    <span style="flex:1;font-size:13px;font-weight:${n?'700':'400'}">${esc(m.label)}</span>
+    <span class="chip ${n?'c-ok':'c-mut'}"><span class="cd"></span>${n ? (n + ' items') : 'Empty'}</span>
+  </div>`;
+}
+function pageSettings(){
+  const active = activeEntry();
+  const P = active ? (active.data.project || {}) : {};
+  const others = active ? db.projects.filter(p => p.id !== active.id && !p.frozen) : [];
+  const body = !active
+    ? `<div class="card" style="text-align:center;padding:38px 24px"><p style="color:var(--ink2);margin:0">Select a project in the sidebar first — then this page lets you build it from other projects' modules.</p></div>`
+    : `<div class="cgrid">
+        <div>
+          <div class="csec-title">Source projects</div>
+          ${others.length ? others.map(constructSrcCard).join('') : `<div class="card" style="padding:22px;text-align:center;color:var(--ink2)">No other projects yet — create another project to copy modules from it.</div>`}
+        </div>
+        <div>
+          <div class="csec-title">Current project — #${esc(P.number||'—')} ${esc(P.title||'')}</div>
+          <div class="card">${CONSTRUCT_MODULES.map(m => constructDstRow(active, m)).join('')}</div>
+        </div>
+      </div>`;
+  return `
+  <div class="page">
+    <div class="pagehead"><div class="eyebrow">Fulldome Projection SP</div>
+      <h1 style="margin:0">Project Constructor</h1>
+      <div class="sub">Assemble the selected project from ready-made modules of your other projects. Expand a project on the left, then "Copy →" a module into the matching section of the current project on the right. Existing sections ask before they're replaced.</div>
+    </div>
+    ${body}
+    ${settingsDriveCard(active)}
+  </div>`;
+}
+/* BUILD 14.62: Drive maintenance card — the repair helpers as buttons (were console-only). */
+function settingsDriveCard(active){
+  if(!active) return '';
+  return `
+    <div class="csec-title" style="margin-top:26px">Drive maintenance — current project</div>
+    <div class="card" style="padding:18px 20px">
+      <div style="color:var(--ink2);font-size:13px;margin:0 0 14px;line-height:1.5">
+        Repairs the current project's folder in the shared Drive. Safe to run — nothing is deleted except
+        confirmed duplicate folders (moved to Trash, recoverable ~30 days). Requires being signed in to Google.
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px">
+        <button class="mod-btn primary" style="padding:8px 14px" onclick="fixProjectDrive()"
+          title="Consolidate duplicate folders, keep one, and re-upload all photos/documents into it">Fix Drive folder + re-upload photos</button>
+        <button class="mod-btn" style="padding:8px 14px" onclick="dedupeDriveFolder()"
+          title="Remove duplicate folders of this project (keep the one in use)">Remove duplicate folders</button>
+        <button class="mod-btn" style="padding:8px 14px" onclick="rePushDrive()"
+          title="Force re-upload of this project's folder and its backup">Re-push project + backup</button>
+      </div>
+      <div style="color:var(--dim);font-size:11.5px;margin-top:12px">
+        Tip: use “Fix Drive folder” if a project has photos in the app but its Drive folder looks empty, or if the folder was created twice.
+      </div>
+    </div>`;
+}
+
 function pageCreate(){
   _capChoice = false; _vjChoice = false;
   return `
@@ -2646,6 +3095,7 @@ function pageDashboard(){
     <div class="readybar">
       <span class="rb-cap">Module readiness</span>
       ${READY_MODULES.map(([k,label])=>{ const c=readyColor(k); return `<span class="chip ${READY_CHIP[c]}" style="border-width:1px" title="${label}: ${READY_LABEL[c]} — set in the ${label} section"><span class="cd"></span>${esc(label)}</span>`; }).join('')}
+      <span class="rb-legend" title="The same colour language is used across the app: order dots, module readiness and validation."><span class="lg"><span class="cd c-off"></span>problem / not started</span><span class="lg"><span class="cd c-warn"></span>in progress</span><span class="lg"><span class="cd c-ok"></span>ready / done</span></span>
     </div>
 
     <div class="modgrid">
@@ -2777,9 +3227,10 @@ function pageDashboard(){
       </div>
 
       <div class="card sum"><h3>Project Equipment</h3>
+        <div class="srow"><span class="k">Rack ID</span><span class="v">${(state.rack.rackId && String(state.rack.rackId).trim()) ? esc(state.rack.rackId) : '—'}</span></div>
         <div class="srow"><span class="k">Rack Size</span><span class="v">${state.rack.heightU}U</span></div>
-        <div class="srow"><span class="k">Dome Server Name</span><span class="v">${P.sysNumber ? 'FDPSN#'+esc(P.sysNumber) : 'FDPSN# ****'}${P.type?' '+esc(P.type):''}</span></div>
-        <div class="srow"><span class="k">Server Case Size</span><span class="v">${(state.server.caseSize && String(state.server.caseSize).trim()) ? esc(state.server.caseSize) : '—'}</span></div>
+        <div class="srow"><span class="k">Main Server ID</span><span class="v">${P.sysNumber ? 'FDPSN#'+esc(P.sysNumber) : 'FDPSN# ****'}</span></div>
+        <div class="srow"><span class="k">Backup Server ID</span><span class="v">${(state.backup && state.backup.enabled && (state.backup.name||'').trim()) ? esc(state.backup.name) : '—'}</span></div>
         <div class="srow"><span class="k">Projector Model</span><span class="v">${(function(){ const ms=[...new Set(projList().map(p=>((p.mfr||'')+' '+(p.model||'')).trim()).filter(Boolean))]; return ms.length ? esc(ms.join(', ')) : (P.projectorModel ? esc(P.projectorModel) : '—'); })()}</span></div>
         <div class="srow"><span class="k">Speaker Model</span><span class="v">${(P.speakersModel && String(P.speakersModel).trim()) ? esc(P.speakersModel) : '—'}</span></div>
         <div class="srow"><span class="k">Subwoofer Model</span><span class="v">${(P.subwooferModel && String(P.subwooferModel).trim()) ? esc(P.subwooferModel) : '—'}</span></div>
@@ -2933,8 +3384,10 @@ function pageServerRack(){
         <button class="ready-btn ${ready?'on':''}" id="readyBtn" onclick="toggleReady()">
           <span class="led ${ready?'on':''}" id="btnLed"></span><span id="btnLbl">${ready ? 'Server Ready' : 'Mark as Ready'}</span></button>
       </div>
-      <div style="display:flex;align-items:center;gap:9px;padding:0 2px 12px;border-bottom:1px solid var(--line);margin-bottom:12px">
-        <span style="font-size:12.5px;font-weight:600;color:var(--ink2)">Server Case Size</span>
+      <div style="display:flex;align-items:center;gap:9px;padding:0 2px 12px;border-bottom:1px solid var(--line);margin-bottom:12px;flex-wrap:wrap">
+        <span style="font-size:12.5px;font-weight:600;color:var(--ink2)">Server Name</span>
+        <input class="cell" style="width:auto;min-width:150px;padding:6px 9px;background:#f0f1f4;font-weight:600" value="${state.project.sysNumber ? 'FDPSN#'+esc(state.project.sysNumber) : 'FDPSN# ****'}" readonly title="Main server name comes from the System Number (Project Setup)">
+        <span style="font-size:12.5px;font-weight:600;color:var(--ink2);margin-left:8px">Server Case Size</span>
         <select class="cell" style="width:auto;min-width:90px;padding:6px 9px" onchange="setServerCase(this.value)">
           <option value="" ${!state.server.caseSize?'selected':''}>—</option>
           ${['2U','3U','4U'].map(u=>`<option value="${u}" ${state.server.caseSize===u?'selected':''}>${u}</option>`).join('')}
@@ -2953,6 +3406,8 @@ function pageServerRack(){
 
     ${photoCard('server','Dome Server Photos','Component and assembly photos of this server — up to 10. Shown in Documentation as "Server — FDPSN#'+esc(state.project.number)+'".')}
 
+    ${backupServerSection()}
+
     ${state.project.vjRequired ? vjSection() : ''}
 
     <!-- ================= RACK ================= -->
@@ -2965,7 +3420,11 @@ function pageServerRack(){
     <div class="racklay" style="grid-template-columns:380px 1fr">
       <div class="card" style="margin-bottom:0">
         <div class="card-head"><h3>Rack Views</h3>
-          <div style="display:flex;gap:8px;align-items:center">
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <span style="display:inline-flex;align-items:center;gap:6px">
+              <span style="font-size:12px;color:var(--dim)">Rack ID</span>
+              <input class="cell" style="width:auto;min-width:90px;padding:5px 8px;font-weight:700" value="${esc(state.rack.rackId||'')}" placeholder="Rack ID" oninput="setRackId(this.value)" title="Rack identifier (manual)">
+            </span>
             <span style="display:inline-flex;align-items:center;gap:6px">
               <span style="font-size:12px;color:var(--dim)">Rack Size</span>
               <select class="cell" style="width:auto;min-width:74px;padding:5px 8px;font-weight:700" onchange="setRackSize(this.value)">
@@ -2980,7 +3439,9 @@ function pageServerRack(){
       </div>
 
       <div class="card" style="margin-bottom:0">
-        <div class="card-head"><h3>Rack equipment</h3><div style="display:flex;gap:8px;align-items:center"><button class="mod-btn" style="padding:5px 11px;font-size:11.5px;margin-right:8px" title="Fetch fresh prices from the links" onclick="refreshPrices('rack')">↻ Prices</button><span class="chip c-warn"><span class="cd"></span>Layout: Draft</span></div></div>
+        <div class="card-head"><h3>Rack equipment</h3><div style="display:flex;gap:8px;align-items:center"><button class="mod-btn" style="padding:5px 11px;font-size:11.5px;margin-right:8px" title="Fetch fresh prices from the links" onclick="refreshPrices('rack')">↻ Prices</button>
+          <button class="ready-btn ${state.rack.ready?'on':''}" id="rackReadyBtn" onclick="toggleRackReady()">
+            <span class="led ${state.rack.ready?'on':''}" id="rackBtnLed"></span><span id="rackBtnLbl">${state.rack.ready ? 'Rack Ready' : 'Mark as Ready'}</span></button></div></div>
         <table class="eq">
           <thead><tr><th>Category</th><th>Equipment</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:center" title="Combine into one shipping place">Ship</th><th style="text-align:right">Qty</th><th style="text-align:right">Price</th><th>Link</th><th></th><th></th></tr></thead>
           <tbody>${rackRows}</tbody>
@@ -3244,7 +3705,7 @@ function refreshReadyUI(){
 function addSrv(){ state.server.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
 function rmSrv(i){ state.server.rows.splice(i,1); revalidateReady(); saveState(); rerenderKeepScroll(); }
 function addRack(){ state.rack.rows.push(blankRackRow()); saveState(); rerenderKeepScroll(); }
-function rmRack(i){ state.rack.rows.splice(i,1); saveState(); rerenderKeepScroll(); }
+function rmRack(i){ state.rack.rows.splice(i,1); if(!state.rack.rows.some(r=>(r.name||'').trim())) state.rack.ready=false; saveState(); rerenderKeepScroll(); }
 
 function toggleReady(){
   if(state.server.ready){ state.server.ready = false; state._showProblems = false; saveState(); refreshReadyUI(); renderSideProject(); hideProblems(); return; }
@@ -3260,6 +3721,20 @@ function toggleReady(){
   state.server.ready = true; state._showProblems = false; saveState(); refreshReadyUI(); renderSideProject(); hideProblems();
 }
 function hideProblems(){ const b=document.getElementById('probBox'); if(b) b.classList.remove('show'); }
+/* BUILD 14.65: Rack Mark-as-Ready — simple toggle (needs ≥1 named rack row), mirrors camera/speakers.
+   Feeds the Module Readiness bar (rack can now go GREEN) and the sidebar card tint. */
+function toggleRackReady(){
+  if(state.rack.ready){ state.rack.ready = false; saveState(); refreshRackReadyUI(); renderSideProject(); return; }
+  if(!state.rack.rows.some(r=>(r.name||'').trim())){ alert('Add at least one rack equipment row before marking the Rack Ready.'); return; }
+  state.rack.ready = true; saveState(); refreshRackReadyUI(); renderSideProject();
+}
+function refreshRackReadyUI(){
+  const ready = state.rack.ready;
+  const set = (id,fn)=>{const e=document.getElementById(id); if(e) fn(e);};
+  set('rackReadyBtn', e=>e.classList.toggle('on',ready));
+  set('rackBtnLed', e=>e.classList.toggle('on',ready));
+  set('rackBtnLbl', e=>e.textContent = ready?'Rack Ready':'Mark as Ready');
+}
 
 function setRackU(d){
   const nu = Math.min(20, Math.max(8, state.rack.heightU + d));
@@ -3269,6 +3744,8 @@ function setRackU(d){
   Object.keys(state.rack.slots).forEach(u=>{ if(+u > nu) delete state.rack.slots[u]; });
   saveState(); rerenderKeepScroll();
 }
+/* Rack ID — manual rack identifier (BUILD 14.57), shown in the Project Equipment card */
+function setRackId(v){ state.rack.rackId = v; saveState(); }
 /* Rack Size dropdown (BUILD 12.39) — sets the height directly (8U–20U); feeds the dashboard card */
 function setRackSize(v){
   const nu = Math.min(20, Math.max(8, parseInt(v,10)||12));
@@ -3283,6 +3760,117 @@ function setServerCase(v){
   saveState(); rerenderKeepScroll();
 }
 
+/* ============ BACKUP SERVER (BUILD 14.56) — an optional second server builder, mirror of the Dome
+   Server. Uses the same Server Hardware library group; its own name (manual), case size, rows,
+   ready flag and photos. Toggled on with "+ Add backup server". ============ */
+function backupTotal(){ return state.backup.rows.reduce((s,r)=> s + rowSum(r), 0); }
+function addBackupServer(){ state.backup.enabled = true; if(!state.backup.rows.length) state.backup.rows = [blankRow(), blankRow(), blankRow()]; saveState(); rerenderKeepScroll(); }
+function removeBackupServer(){ if(!confirm('Remove the backup server and its hardware list from this project?')) return; state.backup = { rows:[], ready:false, photos:[], caseSize:'', name:'', enabled:false }; saveState(); renderSideProject(); rerenderKeepScroll(); }
+function setBkName(v){ state.backup.name = v; saveState(); }
+function setBkCase(v){ state.backup.caseSize = v || ''; saveState(); rerenderKeepScroll(); }
+function refreshBkTotals(){ const t = fmt(backupTotal()); ['kBk','stBk','bkFoot'].forEach(id=>{const e=document.getElementById(id); if(e) e.textContent=t;}); }
+function addBk(){ state.backup.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
+function rmBk(i){ state.backup.rows.splice(i,1); saveState(); rerenderKeepScroll(); }
+function setBkCat(i, v){
+  updBk(i, 'cat', v);
+  if(autoFillFromCat(state.backup.rows[i], libServerByCat(v))) flashStat('Filled from Library ✓');
+  sortByCat(state.backup.rows, srvCats());
+  saveState(); rerenderKeepScroll();
+}
+function updBk(i, k, v){
+  state.backup.rows[i][k] = v;
+  if(k === 'link') schedAutoPrice('backup', i);
+  if(k === 'name'){
+    const it = libFind(v);
+    if(it){
+      if(!(String(state.backup.rows[i].price||'').trim()) && String(it.price||'').trim()){
+        state.backup.rows[i].price = it.price;
+        const pe = document.getElementById('bkP'+i); if(pe) pe.value = it.price;
+      }
+      if(!(String(state.backup.rows[i].link||'').trim()) && (it.link||'').trim()){
+        state.backup.rows[i].link = it.link;
+        const le = document.getElementById('bkL'+i); if(le) le.value = it.link;
+      }
+    }
+  }
+  saveState();
+  const r = state.backup.rows[i];
+  const t = priceNum(r.price)*(parseFloat(r.qty)||1);
+  const cell = document.getElementById('bkRowT'+i); if(cell) cell.textContent = t ? fmt(t) : '—';
+  refreshBkTotals();
+}
+function addBkRowToLib(i){ addRowToLib('backup', i); }
+function toggleBkReady(){
+  if(state.backup.ready){ state.backup.ready = false; saveState(); refreshBkReadyUI(); renderSideProject(); return; }
+  if(!state.backup.rows.some(r=>(r.name||'').trim())){ alert('Add at least one component before marking the backup server Ready.'); return; }
+  state.backup.ready = true; saveState(); refreshBkReadyUI(); renderSideProject();
+}
+function refreshBkReadyUI(){
+  const ready = state.backup.ready;
+  const set = (id,fn)=>{const e=document.getElementById(id); if(e) fn(e);};
+  set('bkBtnLed', e=>e.classList.toggle('on',ready));
+  set('kBkLed', e=>e.classList.toggle('on',ready));
+  set('bkReadyBtn', e=>e.classList.toggle('on',ready));
+  set('bkBtnLbl', e=>e.textContent = ready?'Backup Server Ready':'Mark as Ready');
+  set('kBkLedTxt', e=>e.textContent = ready?'Ready':'Not Ready');
+}
+function backupServerSection(){
+  const B = state.backup;
+  if(!B.enabled){
+    return `
+    <div style="margin:6px 0 4px">
+      <button class="add-line" style="border-style:solid;border-color:var(--fdp-red);color:var(--fdp-red);font-weight:700" onclick="addBackupServer()">+ Add backup server</button>
+    </div>`;
+  }
+  const ready = B.ready;
+  const bkRows = B.rows.map((r,i)=>`
+    <tr>
+      <td class="tight" style="width:17%"><select class="cell ${!(r.cat||'').trim()?'empty':''}" onchange="setBkCat(${i},this.value);this.classList.toggle('empty',!this.value)">
+        <option value="" ${!(r.cat||'').trim()?'selected':''}>— Category —</option>
+        ${srvCats().map(c=>`<option value="${c}" ${r.cat===c?'selected':''}>${c}</option>`).join('')}
+        ${(r.cat||'').trim() && ciIndexOf(srvCats(), r.cat)===-1 ? `<option value="${esc(r.cat)}" selected>${esc(r.cat)}</option>` : ''}
+      </select></td>
+      <td class="tight"><input class="cell b" id="bkN${i}" onfocus="dlFocus(this)" onblur="dlBlur(this)" list="${(r.cat||'').trim()?catListId(r.cat):'dlLibAll'}" value="${esc(r.name)}" placeholder="Pick from Library or type" oninput="updBk(${i},'name',this.value)"></td>
+      <td style="width:6%;text-align:center">${ordDot('backup', i, r)}</td>
+      ${shipChk('backup', i, r)}
+      <td class="tight" style="width:7%"><input class="cell num" value="${esc(r.qty)}" oninput="updBk(${i},'qty',this.value)"></td>
+      <td class="tight" style="width:11%"><input class="cell num" id="bkP${i}" value="${esc(r.price)}" placeholder="—" oninput="updBk(${i},'price',this.value)"></td>
+      <td class="num" style="width:11%"><span id="bkRowT${i}">${fmt(priceNum(r.price)*(parseFloat(r.qty)||1) || null)}</span></td>
+      <td class="tight" style="width:15%"><div style="display:flex;align-items:center;gap:4px"><input class="cell" id="bkL${i}" onmouseenter="lpShow(this)" onmouseleave="lpHide()" value="${esc(r.link)}" placeholder="https://" oninput="updBk(${i},'link',this.value)"><button class="mod-btn" style="padding:4px 7px;flex:none" title="Copy link" onclick="copyRowLink('bkL${i}', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button><button class="mod-btn" style="padding:4px 7px;flex:none" title="Open link" onclick="openRowLink('bkL${i}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><path d="M15 3h6v6M10 14L21 3"/></svg></button></div></td>
+      <td class="tolib">${(r.name||'').trim() && !libFind(r.name) ? `<button title="Add to Library" onclick="addBkRowToLib(${i})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M9 9.5h6M12 6.5v6"/></svg></button>` : ''}</td>
+      <td class="rm"><button title="Remove" onclick="rmBk(${i})">×</button></td>
+    </tr>`).join('');
+  return `
+    <div class="sec-title" id="backup" style="margin-top:26px">
+      <div class="stic">${IC.server}</div>
+      <div><h2>Backup Server Builder</h2><div class="st-sub">Optional second server — same hardware library as the Dome Server. Its name is entered manually below.</div></div>
+      <div class="st-total"><div class="l">Components total</div><div class="v" id="stBk">${fmt(backupTotal())}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Hardware configuration</h3><button class="mod-btn" style="padding:5px 11px;font-size:11.5px;margin-right:8px" title="Fetch fresh prices from the links" onclick="refreshPrices('backup')">↻ Prices</button>
+        <button class="ready-btn ${ready?'on':''}" id="bkReadyBtn" onclick="toggleBkReady()">
+          <span class="led ${ready?'on':''}" id="bkBtnLed"></span><span id="bkBtnLbl">${ready ? 'Backup Server Ready' : 'Mark as Ready'}</span></button>
+        <button class="mod-btn" style="padding:5px 11px;font-size:11.5px;margin-left:8px;color:var(--fdp-red)" title="Remove the backup server" onclick="removeBackupServer()">Remove</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:0 2px 12px;border-bottom:1px solid var(--line);margin-bottom:12px">
+        <span style="display:inline-flex;align-items:center;gap:9px"><span style="font-size:12.5px;font-weight:600;color:var(--ink2)">Server Name</span>
+          <input class="cell" style="width:auto;min-width:200px;padding:6px 9px;font-weight:700" value="${esc(B.name)}" placeholder="Backup server name" oninput="setBkName(this.value)"></span>
+        <span style="display:inline-flex;align-items:center;gap:9px"><span style="font-size:12.5px;font-weight:600;color:var(--ink2)">Server Case Size</span>
+          <select class="cell" style="width:auto;min-width:90px;padding:6px 9px" onchange="setBkCase(this.value)">
+            <option value="" ${!B.caseSize?'selected':''}>—</option>
+            ${['2U','3U','4U'].map(u=>`<option value="${u}" ${B.caseSize===u?'selected':''}>${u}</option>`).join('')}
+          </select></span>
+      </div>
+      <table class="eq">
+        <thead><tr><th>Category</th><th>Hardware</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:center" title="Combine into one shipping place">Ship</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th><th>Link</th><th></th><th></th></tr></thead>
+        <tbody>${bkRows}</tbody>
+        <tfoot><tr><td colspan="6">Backup server total</td><td class="num" id="bkFoot">${fmt(backupTotal())}</td><td colspan="3"></td></tr></tfoot>
+      </table>
+      <button class="add-line" onclick="addBk()">+ Add component</button>
+    </div>
+    ${photoCard('backup','Backup Server Photos','Component and assembly photos of the backup server — up to 10. Shown in Documentation as "Backup Server".')}`;
+}
+
 /* ============ EQUIPMENT & SHIPPING MODULE (BUILD 12.53) ============
    PLACES are driven by the "Ship" checkbox on builder rows (isCombined):
    • Server & Rack — the server (one line) + VJ + every CHECKED rack row = one combined
@@ -3294,14 +3882,27 @@ function setServerCase(v){
 function shipPlaces(){
   const P = state.project; const places = [];
   const mkItem = (r, key) => ({ key, name:(r.name||'').trim(), qty:parseFloat(r.qty)||1, link:r.link||'' });
-  /* ---- Server & Rack ---- */
-  const srCombined = [], srSeparate = [];
+  /* ---- Server (main) → its OWN place — BUILD 14.59: split out of the old "Server & Rack" so
+         the shipping order reads Server → Backup Server → Rack ---- */
   const serverName = (P.sysNumber ? ('FDPSN#'+P.sysNumber) : 'Dome Server') + (P.type ? (' '+P.type) : '');
-  if((state.server.rows||[]).some(r=>(r.name||'').trim())) srCombined.push({key:'i|srv', name:serverName||'Dome Server', qty:1, link:''});
-  if(P.vjRequired && ((state.vj&&state.vj.rows)||[]).some(r=>(r.name||'').trim())) srCombined.push({key:'i|vj', name:'VJ Server', qty:1, link:''});
-  (state.rack.rows||[]).forEach((r,idx)=>{ if(!(r.name||'').trim()) return; (isCombined(r)?srCombined:srSeparate).push(mkItem(r,'i|rack|'+idx)); });
-  if(srCombined.length) places.push({key:'pl|sr', name:'Server & Rack', module:'Server & Rack', items:srCombined});
-  srSeparate.forEach((it,i)=> places.push({key:'pl|sr-sep|'+i, name:it.name, module:'Server & Rack', items:[it]}));
+  const srvItems = [];
+  if((state.server.rows||[]).some(r=>(r.name||'').trim())) srvItems.push({key:'i|srv', name:serverName||'Dome Server', qty:1, link:''});
+  if(P.vjRequired && ((state.vj&&state.vj.rows)||[]).some(r=>(r.name||'').trim())) srvItems.push({key:'i|vj', name:'VJ Server', qty:1, link:''});
+  if(srvItems.length) places.push({key:'pl|srv', name:'Server', module:'Server', items:srvItems});
+  /* ---- Backup Server — its own place, right after the main server (BUILD 14.56/14.59) ---- */
+  if(state.backup && state.backup.enabled && (state.backup.rows||[]).some(r=>(r.name||'').trim())){
+    const bkName = (state.backup.name||'').trim() || 'Backup Server';
+    places.push({key:'pl|bk', name:bkName, module:'Backup Server', items:[{key:'i|bk', name:bkName, qty:1, link:''}]});
+  }
+  /* ---- Rack → its OWN place, labelled by the Rack ID (BUILD 14.59). Checked rows combine into one
+         "Rack" place; unchecked rows ship separately. ---- */
+  const rackId = (state.rack.rackId||'').trim();
+  const rackLabel = rackId ? ('Rack ' + rackId) : 'Rack';
+  const rackMod = rackId ? ('Rack · ' + rackId) : 'Rack';     /* module header shows the Rack ID, e.g. "RACK · R01" */
+  const rkCombined = [], rkSeparate = [];
+  (state.rack.rows||[]).forEach((r,idx)=>{ if(!(r.name||'').trim()) return; (isCombined(r)?rkCombined:rkSeparate).push(mkItem(r,'i|rack|'+idx)); });
+  if(rkCombined.length) places.push({key:'pl|rack', name:rackLabel, module:rackMod, items:rkCombined});
+  rkSeparate.forEach((it,i)=> places.push({key:'pl|rack-sep|'+i, name:it.name, module:rackMod, items:[it]}));
   /* ---- Projectors — each unit its own place ---- */
   ((state.projectors&&state.projectors.list)||[]).forEach((p,i)=>{ const nm=((p.mfr||'')+' '+(p.model||'')).trim(); if(!nm) return; places.push({key:'pl|proj|'+(p.id||i), name: nm + (p.serial?(' · SN '+p.serial):(p.num?(' #'+p.num):'')), module:'Projectors', items:[{key:'i|proj|'+(p.id||i), name:nm, qty:1, link:''}]}); });
   /* ---- Speakers / Audio (BUILD 14.20) ---- */
@@ -3361,7 +3962,7 @@ function setPalletField(id, field, v){ const p = state.shipping.pallets.find(x=>
 function autoPlaces(){
   const places = shipPlaces();
   if(!places.length){ alert('No equipment yet — add components first.'); return; }
-  if(state.shipping.pallets.length && !confirm('Replace the current pallets with auto-created ones?\n\n• Server & Rack → 1 pallet\n• Each projector → its own pallet\n• Camera kit (body + case + lens + adapter) → 1 pallet\n• Tripod → its own pallet')) return;
+  if(state.shipping.pallets.length && !confirm('Replace the current pallets with auto-created ones?\n\n• Server → 1 pallet\n• Backup Server → 1 pallet (if present)\n• Rack → 1 pallet\n• Each projector → its own pallet\n• Camera kit (body + case + lens + adapter) → 1 pallet\n• Tripod → its own pallet')) return;
   const pals = [], assign = {}; let n = 0;
   places.forEach(pl => {
     n++;
@@ -3527,7 +4128,7 @@ function pageShipping(){
           : '';
         return `<tr class="${ii===pl.items.length-1?'pl-last':''}">
           <td class="tight" style="width:4%;text-align:right;color:var(--dim)">${n}</td>
-          <td>${esc(it.name)}</td>
+          <td title="${esc(it.name)}">${esc(it.name)}</td>
           <td class="tight" style="width:16%"><input class="cell" value="${esc(cmt)}" placeholder="—" oninput="setShipCmt('${it.key}',this.value)"></td>
           <td style="text-align:right;width:6%">${it.qty}</td>
           <td class="tight" style="width:5%;text-align:center">${link}</td>
@@ -3739,12 +4340,38 @@ async function driveEnsureFolder(name, parentId){
 /* ALWAYS create a fresh folder — never reuse one that happens to share the name.
    Two projects with the same/blank number+title must NOT land in one folder
    (that cross-linked them and let a new project overwrite an existing one — BUILD 12.69). */
-async function driveCreateFolder(name, parentId){
+async function driveCreateFolder(name, parentId, pid){
   const body = { name: name, mimeType: 'application/vnd.google-apps.folder' };
   if(parentId) body.parents = [parentId];
+  if(pid) body.appProperties = { psp_pid: String(pid) };   /* BUILD 14.58: stamp the folder with the project pid so it can be found again idempotently (no duplicates) */
   const c = await gFetch('https://www.googleapis.com/drive/v3/files?fields=id', {
     method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
   return (await c.json()).id;
+}
+/* BUILD 14.58: find THIS project's browsable folder by its stable pid stamp (appProperties.psp_pid),
+   independent of name — so a create can ADOPT the existing folder instead of making a duplicate.
+   Returns the folder id (or null). If several are tagged (from a past race) returns the one with the
+   MOST children so the repair keeps the populated one. */
+async function driveFindFolderByPid(pid, parentId){
+  if(!pid) return null;
+  try{
+    let q = "mimeType='application/vnd.google-apps.folder' and trashed=false and appProperties has { key='psp_pid' and value='" + String(pid).replace(/'/g,'') + "' }";
+    if(parentId) q += " and '" + parentId + "' in parents";
+    const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id,name)&pageSize=20');
+    const j = await r.json();
+    const files = (j && j.files) || [];
+    if(!files.length) return null;
+    if(files.length === 1) return files[0].id;
+    /* several tagged folders (past race) → keep the one with the most files inside */
+    let best = files[0].id, bestN = -1;
+    for(const f of files){ try{ const ls = await backupList(f.id); const n = (ls||[]).length; if(n > bestN){ bestN = n; best = f.id; } }catch(_){} }
+    return best;
+  }catch(_){ return null; }
+}
+/* stamp an existing (adopted / legacy) folder with our pid so future lookups find it */
+async function driveTagFolderPid(fid, pid){
+  if(!fid || !pid) return;
+  try{ await gFetch('https://www.googleapis.com/drive/v3/files/' + fid + '?fields=id', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ appProperties: { psp_pid: String(pid) } }) }); }catch(_){}
 }
 /* find an already-existing team folder that belongs to THIS project by its stable
    pid (written into meta.json), using the metas we already cached this poll — no
@@ -3877,8 +4504,9 @@ function liveSlice(d){
   return {
     project: d.project || {},
     server:  { rows: d.server.rows || [], ready: !!d.server.ready, caseSize: d.server.caseSize || '' },
+    backup:  { rows: (d.backup && d.backup.rows) || [], ready: !!(d.backup && d.backup.ready), caseSize: (d.backup && d.backup.caseSize) || '', name: (d.backup && d.backup.name) || '', enabled: !!(d.backup && d.backup.enabled) },
     vj:      { rows: (d.vj && d.vj.rows) || [], ready: !!(d.vj && d.vj.ready) },
-    rack:    { rows: d.rack.rows || [], heightU: d.rack.heightU || 12, slots: d.rack.slots || {} },
+    rack:    { rows: d.rack.rows || [], heightU: d.rack.heightU || 12, slots: d.rack.slots || {}, rackId: d.rack.rackId || '', ready: !!d.rack.ready },
     camera:  { rows: (d.camera && d.camera.rows) || [], ready: !!(d.camera && d.camera.ready) },
     speakers:{ rows: (d.speakers && d.speakers.rows) || [], ready: !!(d.speakers && d.speakers.ready) },
     fan:     { rows: (d.fan && d.fan.rows) || [], ready: !!(d.fan && d.fan.ready) },
@@ -3917,8 +4545,9 @@ function liveApply(d, live){
   };
   if(live.project) setIf(d, 'project', Object.assign({}, d.project, live.project));
   if(live.server){ setIf(d.server, 'rows', live.server.rows || []); setIf(d.server, 'ready', !!live.server.ready); if('caseSize' in live.server) setIf(d.server, 'caseSize', live.server.caseSize || ''); }
+  if(live.backup){ d.backup = d.backup || {rows:[],ready:false,photos:[],caseSize:'',name:'',enabled:false}; setIf(d.backup, 'rows', live.backup.rows || []); setIf(d.backup, 'ready', !!live.backup.ready); if('caseSize' in live.backup) setIf(d.backup, 'caseSize', live.backup.caseSize || ''); if('name' in live.backup) setIf(d.backup, 'name', live.backup.name || ''); if('enabled' in live.backup) setIf(d.backup, 'enabled', !!live.backup.enabled); }
   if(live.vj){ d.vj = d.vj || {rows:[],ready:false,photos:[]}; setIf(d.vj, 'rows', live.vj.rows || []); setIf(d.vj, 'ready', !!live.vj.ready); }
-  if(live.rack){ setIf(d.rack, 'rows', live.rack.rows || []); setIf(d.rack, 'heightU', live.rack.heightU || 12); setIf(d.rack, 'slots', live.rack.slots || {}); }
+  if(live.rack){ setIf(d.rack, 'rows', live.rack.rows || []); setIf(d.rack, 'heightU', live.rack.heightU || 12); setIf(d.rack, 'slots', live.rack.slots || {}); if('rackId' in live.rack) setIf(d.rack, 'rackId', live.rack.rackId || ''); if('ready' in live.rack) setIf(d.rack, 'ready', !!live.rack.ready); }
   if(live.camera){ d.camera = d.camera || {rows:[],ready:false,photos:[]}; setIf(d.camera, 'rows', live.camera.rows || []); setIf(d.camera, 'ready', !!live.camera.ready); }
   if(live.speakers){ d.speakers = d.speakers || {rows:[],ready:false,photos:[]}; setIf(d.speakers, 'rows', live.speakers.rows || []); setIf(d.speakers, 'ready', !!live.speakers.ready); }
   if(live.fan){ d.fan = d.fan || {rows:[],ready:false,photos:[]}; setIf(d.fan, 'rows', live.fan.rows || []); setIf(d.fan, 'ready', !!live.fan.ready); }
@@ -4092,6 +4721,10 @@ function isTypingInInput(){
   const a = document.activeElement;
   return !!(a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT'));
 }
+/* BUILD 14.46: while the user is filling a project FORM, a background re-render (route()) would wipe
+   what they typed (the form reads from the DOM, not a live model). Never auto-route on these pages —
+   the sidebar/header still refresh; the form is left intact until the user submits or navigates. */
+function onProjectFormPage(){ const h = location.hash; return h === '#/create' || h === '#/edit' || h === '#/projects'; }
 /* ---- send: publish my edits ---- */
 function liveTouch(){
   if(!fbReady() || !_fbPath || _fbApplying) return;
@@ -4319,6 +4952,7 @@ function fbpMediaPayload(e){
   const d = e.data || {};
   return {
     server:{ photos:(d.server&&d.server.photos)||[] },
+    backup:{ photos:(d.backup&&d.backup.photos)||[] },
     vj:{ photos:(d.vj&&d.vj.photos)||[] },
     rack:{ photos:(d.rack&&d.rack.photos)||[], frontPh:(d.rack&&d.rack.frontPh)||[], rearPh:(d.rack&&d.rack.rearPh)||[] },
     camera:{ photos:(d.camera&&d.camera.photos)||[] },
@@ -4399,6 +5033,7 @@ async function fbpMediaDelete(e){
   try{
     let bfid = e._browseFid || rec.browseFid;
     if(!bfid){ try{ bfid = await syncGetBrowseFid(pid); }catch(_){} }   /* BUILD 14.18: resolve the ONE shared folder by browseFid, not by name */
+    if(!bfid){ try{ const tr = await driveRootId(); bfid = await driveFindFolderByPid(pid, tr); }catch(_){} }   /* BUILD 14.63: find by pid stamp (14.58+) even if the name drifted */
     if(!bfid && wantName){ try{ const tr = await driveRootId(); bfid = await driveFindFolder(wantName, tr); }catch(_){} }
     if(bfid){
       await driveTrashTree(bfid);                                       /* trash the files inside (works cross-account) + best-effort the folder */
@@ -4427,8 +5062,27 @@ async function fbpMediaSync(){
       try{ if(await fbpMediaDownloadApply(e, want)) any = true; }catch(_){}
     }
   } finally { _fbpMediaBusy = false; }
-  if(any){ if(!isTypingInInput()) route(); renderHeader(); renderSideProject(); setCloudStat('Photos/docs updated from team ✓ · ' + hhmm()); }
+  if(any){ if(!isTypingInInput() && !onProjectFormPage()) rerenderKeepScroll(); renderHeader(); renderSideProject(); setCloudStat('Photos/docs updated from team ✓ · ' + hhmm()); }
 }
+/* BUILD 14.45: console helper — map each `_media/<pid>.media.json` file to its project (number + name),
+   so the opaque pid filenames in Drive are easy to identify. Run `mediaMapList()` in the browser console. */
+function mediaMapList(){
+  const mm = (typeof mediaMap === 'function') ? (mediaMap() || {}) : (db.mediaMap || {});
+  const rows = db.projects.map(function(e){
+    const P = (e.data && e.data.project) || {};
+    const pid = (typeof fbpPid === 'function' ? fbpPid(e) : '') || P.pid || '';
+    return {
+      file: pid ? (pid + '.media.json') : '(no pid yet)',
+      number: P.number || '—',
+      name: P.title || '(untitled)',
+      done: !!e.done,
+      mediaFileId: (mm[pid] && mm[pid].fileId) || '—'
+    };
+  });
+  try{ console.table(rows); }catch(_){ rows.forEach(function(r){ console.log(r.file + '  →  #' + r.number + '  ' + r.name); }); }
+  return rows;
+}
+try{ window.mediaMapList = mediaMapList; }catch(_){}
 /* ---- BROWSABLE MIRROR (BUILD 13.3, Phase 2b) — write each photo/document as a REAL
    FILE into a per-project folder in the shared team root, so they can be viewed and
    downloaded on Google Drive by hand (Photos/<Category>/… + Documentation/…). This is a
@@ -4468,8 +5122,15 @@ async function driveMarkDeletedFolder(fid, name){
 /* Resolve a project's browse folder STRICTLY by browseFid (pid-anchored), NEVER by name — so a rename
    on another machine renames the ONE shared folder instead of creating a duplicate (BUILD 14.16).
    Order: local cache → the browseFid published in the DB (same for all users) → create ONCE + publish. */
-async function fbpBrowseFolder(e){
-  const pid = fbpPid(e); if(!pid) return null;
+var _browseFolderP = {};   /* pid -> in-flight Promise resolving the ONE browse folder (BUILD 14.58: no duplicate folders — concurrent callers share it) */
+function fbpBrowseFolder(e){
+  const pid = fbpPid(e); if(!pid) return Promise.resolve(null);
+  if(_browseFolderP[pid]) return _browseFolderP[pid];      /* a resolution/creation is already running for this project → share it */
+  const run = _fbpResolveBrowseFolder(e, pid);
+  _browseFolderP[pid] = run;
+  return run.finally(() => { delete _browseFolderP[pid]; });
+}
+async function _fbpResolveBrowseFolder(e, pid){
   const rec = mediaMap()[pid] || (mediaMap()[pid] = {});
   const wantName = projDriveFolderName(e.data.project) || ('project ' + pid);
   let fid = e._browseFid || rec.browseFid;
@@ -4478,12 +5139,22 @@ async function fbpBrowseFolder(e){
     const shared = await syncGetBrowseFid(pid);
     if(shared && await driveAlive(shared)) fid = shared;
   }
-  if(!fid){                                                  /* truly none anywhere → create ONCE and publish so everyone shares it */
-    const teamRoot = await driveRootId();
-    fid = await driveCreateFolder(wantName, teamRoot);
+  const teamRoot = await driveRootId();
+  if(!fid){                                                  /* BUILD 14.58: adopt a folder already STAMPED with our pid — kills the duplicate-create race */
+    const tagged = await driveFindFolderByPid(pid, teamRoot);
+    if(tagged && await driveAlive(tagged)) fid = tagged;
+  }
+  if(!fid){                                                  /* truly none anywhere → create ONCE (pid-stamped) and publish so everyone shares it */
+    fid = await driveCreateFolder(wantName, teamRoot, pid);
     await syncSetBrowseFid(pid, fid);
-  } else if(rec.browseName && rec.browseName !== wantName){  /* name changed → rename the EXISTING folder by id (best-effort; 403 only if owned by another account) */
-    await driveRenameFolder(fid, wantName);
+  } else {                                                   /* reusing an existing folder → stamp our pid, publish it, keep a CLEAN name */
+    try{ await driveTagFolderPid(fid, pid); }catch(_){}
+    try{ if((await syncGetBrowseFid(pid)) !== fid) await syncSetBrowseFid(pid, fid); }catch(_){}
+    let realName = rec.browseName || '';
+    try{ const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + fid + '?fields=name'); const j = await r.json(); if(j && j.name) realName = j.name; }catch(_){}
+    /* BUILD 14.52: rename if the name drifted OR the folder is a "🗑 DELETED — …" tombstone being
+       revived by a Load Project File. Best-effort (403 only if owned by another account). */
+    if(realName !== wantName){ try{ await driveRenameFolder(fid, wantName); }catch(_){} }
   }
   e._browseFid = fid; rec.browseFid = fid; rec.browseName = wantName;
   return fid;
@@ -4493,8 +5164,9 @@ async function fbpBrowseMirror(e){
   const pid = fbpPid(e); if(!pid) return;
   const d = e.data, rec = mediaMap()[pid] || (mediaMap()[pid] = {});
   const fid = await fbpBrowseFolder(e); if(!fid) return;
+  let _mirrorFail = false;   /* BUILD 14.62: surface silent Drive upload failures in the status line */
   const _upFile = async (name, folderId, dataUrl) => {
-    try{ const ex = await driveFindFile(name, folderId); const mime = (dataUrl.match(/^data:([^;]+)/)||[])[1] || 'application/octet-stream'; await driveUpload(name, folderId, dataUrlToBytes(dataUrl), mime, ex); }catch(_){}
+    try{ const ex = await driveFindFile(name, folderId); const mime = (dataUrl.match(/^data:([^;]+)/)||[])[1] || 'application/octet-stream'; await driveUpload(name, folderId, dataUrlToBytes(dataUrl), mime, ex); return true; }catch(_){ return false; }
   };
   const _reconcile = async (folderId, keepNames) => {
     try{ const ex = await backupList(folderId); for(const x of ex){ if(x.mimeType === 'application/vnd.google-apps.folder') continue; if(!keepNames.has(x.name)){ try{ await driveTrash(x.id); }catch(_){} } } }catch(_){}
@@ -4506,15 +5178,17 @@ async function fbpBrowseMirror(e){
     if(d.contentList && d.contentList.data) rootFiles.push(d.contentList);
     const curDsig = docsSigStr(e);
     if(curDsig !== rec.browseDsig){
+      let docFail = false;
       if(rootFiles.length || tdFiles.length){
         const docId = await driveEnsureFolder('Documentation', fid);
-        for(const f of rootFiles) await _upFile(f.name, docId, f.data);
+        for(const f of rootFiles){ if(!(await _upFile(f.name, docId, f.data))) docFail = true; }
         await _reconcile(docId, new Set(rootFiles.map(f=>f.name)));
-        if(tdFiles.length){ const tdId = await driveEnsureFolder(TOOL_DB_SUBFOLDER, docId); for(const f of tdFiles) await _upFile(f.name, tdId, f.data); await _reconcile(tdId, new Set(tdFiles.map(f=>f.name))); }
+        if(tdFiles.length){ const tdId = await driveEnsureFolder(TOOL_DB_SUBFOLDER, docId); for(const f of tdFiles){ if(!(await _upFile(f.name, tdId, f.data))) docFail = true; } await _reconcile(tdId, new Set(tdFiles.map(f=>f.name))); }
       }
-      rec.browseDsig = curDsig;
+      if(!docFail) rec.browseDsig = curDsig;                    /* BUILD 14.58: retry next push if a doc failed to upload */
+      if(docFail) _mirrorFail = true;
     }
-  }catch(_){}
+  }catch(_){ _mirrorFail = true; }
   /* ---- Photos/<Category>/… ---- */
   try{
     const jobs = cloudPhotoJobs(e);
@@ -4523,21 +5197,28 @@ async function fbpBrowseMirror(e){
     const todo = jobs.filter(j => psig[j.dir + '/' + j.name] !== prev[j.dir + '/' + j.name]);
     const curSet = new Set(jobs.map(j => j.dir + ' ' + j.name));
     const removed = (rec.browsePhotoList || []).filter(pl => !curSet.has(pl.dir + ' ' + pl.name));
+    let photoFail = false;                                     /* BUILD 14.58: if ANY upload fails, don't mark the set done → it retries next push (was: folder stayed empty) */
     if(todo.length || removed.length){
       const photosRoot = await driveEnsureFolder('Photos', fid);
       const dirIds = {};
       for(let k=0;k<todo.length;k++){
         const j = todo[k];
         setCloudStat('Uploading photo ' + (k+1) + '/' + todo.length + ' — ' + j.dir);
-        try{ if(!dirIds[j.dir]) dirIds[j.dir] = await driveEnsureFolder(j.dir, photosRoot); const ex = await driveFindFile(j.name, dirIds[j.dir]); const mime = (j.data.match(/^data:([^;]+)/)||[,'image/jpeg'])[1]; await driveUpload(j.name, dirIds[j.dir], dataUrlToBytes(j.data), mime, ex); }catch(_){}
+        try{ if(!dirIds[j.dir]) dirIds[j.dir] = await driveEnsureFolder(j.dir, photosRoot); const ex = await driveFindFile(j.name, dirIds[j.dir]); const mime = (j.data.match(/^data:([^;]+)/)||[,'image/jpeg'])[1]; await driveUpload(j.name, dirIds[j.dir], dataUrlToBytes(j.data), mime, ex); }catch(_){ photoFail = true; }
       }
       for(const rp of removed){ try{ const folderId = await driveFindFolder(rp.dir, photosRoot); if(!folderId) continue; const fileId = await driveFindFile(rp.name, folderId); if(fileId) await driveTrash(fileId); }catch(_){} }
     }
-    rec.browsePhotoSig = psig;
-    rec.browsePhotoList = jobs.map(j => ({ dir:j.dir, name:j.name }));
-  }catch(_){}
+    if(!photoFail){                                            /* only remember as fully mirrored when every file landed */
+      rec.browsePhotoSig = psig;
+      rec.browsePhotoList = jobs.map(j => ({ dir:j.dir, name:j.name }));
+    }
+    if(photoFail) _mirrorFail = true;
+  }catch(_){ _mirrorFail = true; }
   saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
-  setCloudStat('Photos/docs on Drive ✓ · ' + hhmm());
+  /* BUILD 14.62: don't claim success when some files silently failed — show a visible warning
+     (the mirror auto-retries on the next push because the sig wasn't advanced). */
+  if(_mirrorFail) setCloudStat('⚠ Some photos/documents did not upload to Drive — will retry · ' + hhmm());
+  else setCloudStat('Photos/docs on Drive ✓ · ' + hhmm());
 }
 
 /* ============================================================================
@@ -4555,10 +5236,11 @@ async function fbpBrowseMirror(e){
    Google Drive (the 13.x media layer, untouched). A full project JSON is still assembled
    locally for export/backup at any time. Master switch: `var _FS = true` (RTDB `_FBP` off). */
 const FS_PROJECT_ID = 'fulldome-psp';
-const FS_SECTIONS = ['project','server','vj','rack','camera','speakers','fan','cables','tools','projectors','validation','vjValidation','shipping'];
+const FS_SECTIONS = ['project','server','backup','vj','rack','camera','speakers','fan','cables','tools','projectors','validation','vjValidation','shipping'];
 var _fsApp = null, _fsDb = null, _fsAuthObj = null, _fsCol = null, _fsUnsub = null, _fsSdkP = null;
 var _fsReady = false, _fsStarted = false, _fsApplying = false, _fsPushT = null, _fsSeededPush = false;
 var _fsLocal = {};   /* pid -> {section: sig, _seen, _done, _msig} — skip no-op section writes */
+var _mediaPushLock = {};   /* pid -> true while a media/browse-folder push is in flight (no duplicate folders) — BUILD 14.53 */
 function fsReady(){ return _FS && _fsReady && !!_fsCol; }
 /* strip `undefined` (Firestore rejects it) */
 function fsClean(v){
@@ -4626,10 +5308,26 @@ function fsChangedSections(e){
   const pid = fbpPid(e), sl = fsSlice(e.data), last = _fsLocal[pid] || {};
   return FS_SECTIONS.filter(s => last[s] !== JSON.stringify(sl[s] || {}));
 }
+/* BUILD 14.61 (F7): sections of the ACTIVE project that have local edits NOT yet pushed to Firestore —
+   we have a last-pushed baseline for the section (_fsLocal[pid][s] defined) AND the current local slice
+   differs from it. Used by fsApplyDoc to avoid clobbering an in-progress edit. NOTE: this protects the
+   local UNPUSHED edit only; two already-pushed concurrent edits to one section are still last-writer-wins
+   (F6 — needs section merge). Distinct from fsChangedSections: that treats a missing baseline as "changed"
+   (over-includes) — here a missing baseline means "never pushed by us → nothing unpushed to protect". */
+var _F7_GUARD = true;   /* runtime kill-switch — set false (code or console) to revert to pre-14.61 behavior */
+function fsPendingSections(e){
+  const pid = fbpPid(e); const last = pid && _fsLocal[pid];
+  if(!last) return [];
+  const sl = fsSlice(e.data);
+  return FS_SECTIONS.filter(s => last[s] !== undefined && last[s] !== JSON.stringify(sl[s] || {}));
+}
 function fsRememberPushed(e){
   const pid = fbpPid(e), sl = fsSlice(e.data), rec = _fsLocal[pid] || {};
   FS_SECTIONS.forEach(s => { rec[s] = JSON.stringify(sl[s] || {}); });
-  rec._seen = true; rec._done = e.done ? 1 : 0; rec._msig = fbpMediaSig(e);
+  rec._seen = true; rec._done = e.done ? 1 : 0;
+  /* BUILD 14.51: DON'T mark media (_msig) as pushed here — only after the Drive media upload + browse
+     mirror actually SUCCEED (below), so a failed upload (e.g. Drive rate limit) retries instead of
+     being silently skipped forever. */
   _fsLocal[pid] = rec;
 }
 async function fsPushNow(entry){
@@ -4657,13 +5355,27 @@ async function fsPushNow(entry){
     }
     fsRememberPushed(e); e._fbSeen = true; delete e._localNew;   /* BUILD 14.13: it's in Firestore now — no longer a pending local addition */
     setCloudStat('Synced ✓ ' + (_gUser || '') + ' · ' + hhmm());
-    if(msigChanged){ try{ if(await fbpMediaUpload(e)) await fbpBrowseMirror(e); }catch(_){} }
+    if(msigChanged && !_mediaPushLock[pid]){                    /* BUILD 14.53: serialize per-project so a retry can't create a DUPLICATE Drive folder */
+      _mediaPushLock[pid] = true;
+      try{
+        await fbpMediaUpload(e);                                /* compact sync file _media/<pid>.media.json (crosses machines) */
+        await fbpBrowseMirror(e);                               /* ALWAYS mirror to the browsable folder — BUILD 14.58: no longer gated behind the media upload's return, so a mirror that failed once RETRIES (was: browse folder stayed empty forever) */
+        (_fsLocal[pid] = _fsLocal[pid] || {})._msig = msig;     /* BUILD 14.51: mark pushed ONLY on success */
+      }catch(_){
+        setCloudStat('⚠ Photos/docs upload failed (Drive) — will retry');
+        setTimeout(function(){ try{ fsPushNow(e); }catch(_){ } }, 8000);   /* retry (rate limit / transient) — _msig stays unset so it re-fires */
+      } finally { _mediaPushLock[pid] = false; }
+    }
   }catch(err){ setCloudStat('⚠ Sync error: ' + (err.message || '') + ' — click to retry'); }
 }
 async function fsDelete(e){
   const pid = fbpPid(e); if(!pid || !fsReady()) return;
-  try{ await _fsCol.doc(pid).delete(); delete _fsLocal[pid]; }catch(_){}
+  /* BUILD 14.63: mark/clean the Drive folder FIRST — while the doc still exists, so the browse folder
+     id can be resolved from it (syncGetBrowseFid) as a fallback — THEN delete the Firestore record.
+     Any team member (Editor) can rename the folder to "🗑 DELETED — …" even if another account owns it
+     (renaming, unlike trashing, is not owner-only). */
   try{ await fbpMediaDelete(e); }catch(_){}
+  try{ await _fsCol.doc(pid).delete(); delete _fsLocal[pid]; }catch(_){}
 }
 function fsTouch(){
   if(!fsReady() || _fsApplying) return;
@@ -4708,6 +5420,9 @@ function fsApplyDoc(data){
   e._fbSeen = true; e._remoteMsig = data.msig || ''; if(data.browseFid) e._browseFid = data.browseFid;
   e._fsRev = e._fsRev || {};
   if(e === activeEntry() && isTypingInInput()) return false;   /* don't disturb active typing; next snapshot re-applies */
+  /* BUILD 14.61 (F7): for the ACTIVE project, never overwrite a section that has UNPUSHED local edits.
+     Skip it this round and leave _fsRev[s] stale so the snapshot AFTER our own push re-syncs it. */
+  const pending = (_F7_GUARD && e === activeEntry()) ? fsPendingSections(e) : [];
   let ch = false;
   FS_SECTIONS.forEach(s => {
     /* BUILD 14.32: apply a section whenever its remote revision DIFFERS from what we last applied —
@@ -4718,7 +5433,9 @@ function fsApplyDoc(data){
        then stopped"). Comparing by inequality is clock-independent. Applying our own echo is a no-op
        (identical data → liveApply reports no change) and never loops (applies use _skipCloud). */
     const rrev = revs[s] || 0, lrev = e._fsRev[s];
-    if(data[s] !== undefined && rrev !== lrev){ if(fsApplySection(e.data, s, data[s])) ch = true; e._fsRev[s] = rrev; }
+    if(data[s] === undefined || rrev === lrev) return;
+    if(pending.indexOf(s) >= 0) return;   /* BUILD 14.61: unpushed local edit → don't clobber; re-applies after our push */
+    if(fsApplySection(e.data, s, data[s])) ch = true; e._fsRev[s] = rrev;
   });
   if(!!data.done !== !!e.done){ if(data.done){ e.done = true; e.doneAt = data.doneAt || Date.now(); } else { delete e.done; delete e.doneAt; } ch = true; }
   return ch;
@@ -4915,7 +5632,7 @@ function fsOnSnapshot(snap){
   }catch(err){ /* keep going */ }
   if(touched){
     saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
-    if(!isTypingInInput()) route();
+    if(!isTypingInInput() && !onProjectFormPage()) rerenderKeepScroll();   /* BUILD 14.46/14.47: refresh but keep scroll (no jump-to-top on Library etc.); never wipe a form */
     renderHeader(); renderSideProject();
   }
   _fsApplying = false;
@@ -5036,7 +5753,7 @@ function driveMap(){ if(!db.driveMap || typeof db.driveMap!=='object') db.driveM
 function setCloudStat(t){ const el=document.getElementById('driveStat'); if(el) el.textContent = t; }
 function cloudGateShow(){ const g=document.getElementById('authGate'); if(g) g.style.display='flex'; }
 function cloudGateHide(){ const g=document.getElementById('authGate'); if(g) g.style.display='none'; }
-function cloudOffline(){ _cloudOn=false; cloudStopPoll(); if(typeof fbpStop==='function') fbpStop(); if(typeof fsStop==='function') fsStop(); backupStopLoop(); presenceStop(); cloudGateHide(); setCloudStat('Offline — click to sign in and sync'); }
+function cloudOffline(){ _cloudOn=false; cloudStopPoll(); if(typeof fbpStop==='function') fbpStop(); if(typeof fsStop==='function') fsStop(); backupStopLoop(); if(typeof domeBackupStop==='function') domeBackupStop(); presenceStop(); cloudGateHide(); setCloudStat('Offline — click to sign in and sync'); }
 async function cloudStart(silent){
   const err = document.getElementById('authErr');
   try{
@@ -5078,6 +5795,7 @@ async function cloudStart(silent){
     }
     backupStartLoop();                                  /* BUILD 12.74: write-only background backups every 15 min */
     setTimeout(function(){ backupAllChanged(false).catch(function(){}); }, 30000);   /* first backup ~30s after sign-in */
+    try{ domeBackupLoop(); }catch(_){}                  /* BUILD 15.06: Dome Library card JSON backups every 15 min */
     presenceStart();                                    /* BUILD 12.76: show who's online (top-right avatars) */
   }catch(e){
     if(silent){ setCloudStat('Not signed in — click here to sign in & sync'); return; }   /* silent attempt failed: no gate, one-click available */
@@ -5241,6 +5959,135 @@ function backupStopLoop(){ if(_backupTimer){ clearInterval(_backupTimer); _backu
 /* force a backup of ALL projects now (console: backupNow()) — BUILD 14.6 */
 async function backupNow(){ if(!_cloudOn || !_gTok){ alert('Sign in first'); return; } setCloudStat('Backing up all projects…'); await backupAllChanged(true); setCloudStat('Backup done ✓ · ' + hhmm()); }
 try{ window.backupNow = backupNow; }catch(_){}
+/* BUILD 14.52: force-recreate the ACTIVE project's Drive folder (media + browsable files) AND its
+   backup right now — recovery for a project that got stuck (e.g. reloaded after delete during a Drive
+   rate limit). Console: rePushDrive(). */
+async function rePushDrive(){
+  const e = activeEntry();
+  if(!e || !e.data || !e.data.project){ alert('No active project selected'); return; }
+  if(!(_cloudOn && _gTok)){ alert('Sign in to Google first (click the status line at the bottom of the sidebar).'); return; }
+  const pid = fbpPid(e);
+  try{
+    setCloudStat('Re-pushing project to Drive…');
+    if(mediaMap()[pid]) mediaMap()[pid].msig = null;          /* force media.json re-upload */
+    if(_FS && _fsLocal[pid]) _fsLocal[pid]._msig = null;      /* let fsPushNow re-fire the media step */
+    await fbpMediaUpload(e);
+    await fbpBrowseMirror(e);                                 /* (re)creates / revives the browsable folder */
+    (_fsLocal[pid] = _fsLocal[pid] || {})._msig = fbpMediaSig(e);
+    await backupMirrorProject(e, true);                       /* force-refresh the backup json */
+    setCloudStat('Project re-pushed to Drive ✓ · ' + hhmm());
+    alert('Done — the project folder and its backup were re-created / refreshed on Drive.');
+  }catch(err){
+    setCloudStat('⚠ Re-push failed: ' + (err && err.message || err));
+    alert('Re-push failed: ' + (err && err.message || err) + '\n\nIf the status shows a Google Drive rate limit, wait ~1 minute and run rePushDrive() again.');
+  }
+}
+try{ window.rePushDrive = rePushDrive; }catch(_){}
+/* BUILD 14.54: clean up DUPLICATE Drive folders for the ACTIVE project (same name in the team root) —
+   keeps the one the app points at (browseFid) or, if unknown, the one with the most files; trashes the
+   rest and re-points browseFid to the kept folder. Console: dedupeDriveFolder(). */
+async function dedupeDriveFolder(){
+  const e = activeEntry();
+  if(!e || !e.data || !e.data.project){ alert('No active project selected'); return; }
+  if(!(_cloudOn && _gTok)){ alert('Sign in to Google first.'); return; }
+  const pid = fbpPid(e);
+  const wantName = projDriveFolderName(e.data.project) || '';
+  try{
+    setCloudStat('Scanning Drive for duplicate folders…');
+    const root = await driveRootId();
+    const items = await backupList(root);
+    const dups = items.filter(it => it.mimeType === 'application/vnd.google-apps.folder' && (it.name||'') === wantName);
+    if(dups.length <= 1){ setCloudStat('No duplicates ✓ · ' + hhmm()); alert('No duplicate folders found for "' + wantName + '".'); return; }
+    let keepId = e._browseFid || (mediaMap()[pid]||{}).browseFid || await syncGetBrowseFid(pid);
+    if(!keepId || !dups.some(d => d.id === keepId)){          /* unknown → keep the folder with the most files inside */
+      let best = null, bestN = -1;
+      for(const d of dups){ let n = 0; try{ n = (await backupList(d.id)).length; }catch(_){ } if(n > bestN){ bestN = n; best = d.id; } }
+      keepId = best || dups[0].id;
+    }
+    let trashed = 0;
+    for(const d of dups){ if(d.id === keepId) continue; try{ await driveTrashTree(d.id); trashed++; }catch(_){ } }
+    (mediaMap()[pid] = mediaMap()[pid] || {}).browseFid = keepId; e._browseFid = keepId;
+    try{ await syncSetBrowseFid(pid, keepId); }catch(_){ }
+    saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
+    setCloudStat('Removed ' + trashed + ' duplicate folder(s) ✓ · ' + hhmm());
+    alert('Kept one folder, moved ' + trashed + ' duplicate(s) to Trash.\nThe app now points at the kept folder.');
+  }catch(err){ setCloudStat('⚠ Dedupe failed: ' + (err && err.message || err)); alert('Dedupe failed: ' + (err && err.message || err) + '\n\nIf the status shows a Drive rate limit, wait ~1 min and run dedupeDriveFolder() again.'); }
+}
+try{ window.dedupeDriveFolder = dedupeDriveFolder; }catch(_){}
+/* BUILD 14.58: ONE-COMMAND repair for the ACTIVE project — consolidate duplicate folders (by name AND
+   by pid stamp), keep the canonical one, stamp it with the pid, re-point browseFid, then FORCE a full
+   re-upload of every photo + document into it. Fixes "project has photos but the Drive folder is empty"
+   and "the folder was created twice". Console: fixProjectDrive(). */
+async function fixProjectDrive(){
+  const e = activeEntry();
+  if(!e || !e.data || !e.data.project){ alert('No active project selected'); return; }
+  if(!(_cloudOn && _gTok)){ alert('Sign in to Google first (click the status line at the bottom of the sidebar).'); return; }
+  const pid = fbpPid(e);
+  const wantName = projDriveFolderName(e.data.project) || ('project ' + pid);
+  try{
+    setCloudStat('Repairing project on Drive…');
+    const root = await driveRootId();
+    const items = await backupList(root);
+    /* every candidate folder for this project: same name OR stamped with our pid */
+    const cand = [];
+    for(const it of items){
+      if(it.mimeType !== 'application/vnd.google-apps.folder') continue;
+      if((it.name||'') === wantName){ cand.push(it.id); continue; }
+    }
+    const tagged = await driveFindFolderByPid(pid, root);
+    if(tagged && cand.indexOf(tagged) === -1) cand.push(tagged);
+    /* choose the canonical folder: the one the app points at, else the tagged one, else the fullest */
+    let keepId = e._browseFid || (mediaMap()[pid]||{}).browseFid || await syncGetBrowseFid(pid);
+    if(!keepId || cand.indexOf(keepId) === -1) keepId = tagged || null;
+    if(!keepId){
+      let best = null, bestN = -1;
+      for(const id of cand){ let n = 0; try{ n = (await backupList(id)).length; }catch(_){} if(n > bestN){ bestN = n; best = id; } }
+      keepId = best || cand[0] || null;
+    }
+    if(!keepId){                                               /* no folder at all → create a fresh, stamped one */
+      keepId = await driveCreateFolder(wantName, root, pid);
+    }
+    /* trash the empty/duplicate others (best-effort — cross-account 403 just leaves them) */
+    let trashed = 0;
+    for(const id of cand){ if(id === keepId) continue; try{ await driveTrashTree(id); trashed++; }catch(_){} }
+    /* make the kept folder the one true browse folder */
+    try{ await driveTagFolderPid(keepId, pid); }catch(_){}
+    try{ await driveRenameFolder(keepId, wantName); }catch(_){}
+    (mediaMap()[pid] = mediaMap()[pid] || {}).browseFid = keepId; e._browseFid = keepId;
+    try{ await syncSetBrowseFid(pid, keepId); }catch(_){}
+    /* FORCE a full re-mirror: clear the "already uploaded" markers so every photo + doc re-uploads */
+    const rec = mediaMap()[pid] = mediaMap()[pid] || {};
+    rec.browseDsig = null; rec.browsePhotoSig = {}; rec.browsePhotoList = [];
+    await fbpBrowseMirror(e);
+    saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
+    setCloudStat('Project Drive folder repaired ✓ · ' + hhmm());
+    alert('Repaired "' + wantName + '":\n• kept one folder, trashed ' + trashed + ' duplicate(s)\n• re-uploaded all photos and documents into it.\n\nOpen the folder in Drive — the photos should now be there.');
+  }catch(err){
+    setCloudStat('⚠ Repair failed: ' + (err && err.message || err));
+    alert('Repair failed: ' + (err && err.message || err) + '\n\nIf the status shows a Google Drive rate limit, wait ~1 minute and run fixProjectDrive() again.');
+  }
+}
+try{ window.fixProjectDrive = fixProjectDrive; }catch(_){}
+/* BUILD 14.63: mark an ALREADY-orphaned Drive folder as deleted by NAME (for folders left behind by a
+   pre-14.63 delete). Renames every matching folder in the shared team root to "🗑 DELETED — <name>"
+   (works for any Editor; skips ones already marked). Console: markDeletedFolder('exact folder name'). */
+async function markDeletedFolder(name){
+  name = (name || '').trim();
+  if(!name){ alert('Usage: markDeletedFolder("exact folder name as shown in Drive")'); return; }
+  if(!(_cloudOn && _gTok)){ alert('Sign in to Google first (click the status line at the bottom of the sidebar).'); return; }
+  try{
+    setCloudStat('Marking deleted folder…');
+    const root = await driveRootId();
+    const items = await backupList(root);
+    const hits = items.filter(it => it.mimeType === 'application/vnd.google-apps.folder' && (it.name||'') === name);
+    if(!hits.length){ setCloudStat('No folder named "' + name + '" · ' + hhmm()); alert('No folder named "' + name + '" found in the shared root.'); return; }
+    let done = 0;
+    for(const f of hits){ try{ await driveMarkDeletedFolder(f.id, name); done++; }catch(_){} }
+    setCloudStat('Marked ' + done + ' folder(s) as deleted ✓ · ' + hhmm());
+    alert('Renamed ' + done + ' folder(s) to "🗑 DELETED — ' + name + '".\n(If nothing changed, you may only have Viewer access to that folder — ask its owner to rename or trash it.)');
+  }catch(err){ setCloudStat('⚠ Mark-deleted failed: ' + (err && err.message || err)); alert('Failed: ' + (err && err.message || err)); }
+}
+try{ window.markDeletedFolder = markDeletedFolder; }catch(_){}
 /* ============================================================================
    ONLINE PRESENCE (BUILD 12.76) — over Google Drive (reliable; Firebase live is flaky).
    Each machine writes a tiny heartbeat file "presence/<email>.json" {email,name,picture,at}
@@ -5633,6 +6480,7 @@ const PHOTO_DIRS = [
   ['site',   'Site'],
   ['server', 'Dome Server'],
   ['vj',     'VJ Server'],
+  ['backup', 'Backup Server'],
   ['rack',   'Rack'],
   ['camera', 'Camera'],
   ['speakers', 'Speakers'],
@@ -5701,6 +6549,7 @@ function applyPhotosFrom(d, s){
   let ch = false;
   const setA = (obj, key, val) => { if(!obj) return; if(JSON.stringify(obj[key]||[]) !== JSON.stringify(val||[])){ obj[key] = val||[]; ch = true; } };
   if(s.server) setA(d.server, 'photos', s.server.photos);
+  if(s.backup){ d.backup = d.backup || {rows:[],ready:false,photos:[],caseSize:'',name:'',enabled:false}; setA(d.backup, 'photos', s.backup.photos); }
   if(s.vj){ d.vj = d.vj || {rows:[],ready:false,photos:[]}; setA(d.vj, 'photos', s.vj.photos); }
   if(s.rack){ setA(d.rack, 'photos', s.rack.photos); setA(d.rack, 'frontPh', s.rack.frontPh); setA(d.rack, 'rearPh', s.rack.rearPh); }
   if(s.camera){ d.camera = d.camera || {rows:[],ready:false,photos:[]}; setA(d.camera, 'photos', s.camera.photos); }
@@ -6214,7 +7063,7 @@ var _pfBusy = false;
 async function refreshPrices(kind){
   if(_pfBusy){ flashStat('Price update already running…'); return; }
   const rows = ordRowsOf(kind);
-  const pid = kind==='rack' ? 'rackP' : kind==='vj' ? 'vjP' : kind==='camera' ? 'camP' : kind==='speakers' ? 'spkP' : kind==='fan' ? 'fanP' : kind==='cables' ? 'cabP' : kind==='tools' ? 'toolP' : 'srvP';
+  const pid = kind==='rack' ? 'rackP' : kind==='vj' ? 'vjP' : kind==='backup' ? 'bkP' : kind==='camera' ? 'camP' : kind==='speakers' ? 'spkP' : kind==='fan' ? 'fanP' : kind==='cables' ? 'cabP' : kind==='tools' ? 'toolP' : 'srvP';
   const targets = rows.map((r,i)=>({r,i})).filter(t => lpUrlOf({value:t.r.link||''}));
   if(!targets.length){ flashStat('No links in this table'); return; }
   _pfBusy = true;
@@ -6266,7 +7115,7 @@ function schedAutoPrice(kind, i){
     const r2 = ordRowsOf(kind)[i];
     if(p && r2 && !String(r2.price||'').trim()){
       r2.price = p; saveState();
-      const pid = kind==='rack' ? 'rackP' : kind==='vj' ? 'vjP' : kind==='camera' ? 'camP' : kind==='speakers' ? 'spkP' : kind==='fan' ? 'fanP' : kind==='cables' ? 'cabP' : kind==='tools' ? 'toolP' : 'srvP';
+      const pid = kind==='rack' ? 'rackP' : kind==='vj' ? 'vjP' : kind==='backup' ? 'bkP' : kind==='camera' ? 'camP' : kind==='speakers' ? 'spkP' : kind==='fan' ? 'fanP' : kind==='cables' ? 'cabP' : kind==='tools' ? 'toolP' : 'srvP';
       const el = document.getElementById(pid + i); if(el) el.value = p;
       if(typeof refreshTotals==='function') refreshTotals();
       flashStat('Price fetched from the link: ' + fmt(parseFloat(p)) + ' ✓');
@@ -6364,7 +7213,7 @@ function lpHide(){
    place, no rerender. */
 const ORD_TITLES = ['Not ordered', 'Ordered', 'Received'];
 function ordRowsOf(kind){
-  return kind==='rack' ? state.rack.rows : kind==='vj' ? state.vj.rows : kind==='camera' ? state.camera.rows : kind==='speakers' ? state.speakers.rows : kind==='fan' ? state.fan.rows : kind==='cables' ? state.cables.rows : kind==='tools' ? state.tools.rows : state.server.rows;
+  return kind==='rack' ? state.rack.rows : kind==='vj' ? state.vj.rows : kind==='backup' ? state.backup.rows : kind==='camera' ? state.camera.rows : kind==='speakers' ? state.speakers.rows : kind==='fan' ? state.fan.rows : kind==='cables' ? state.cables.rows : kind==='tools' ? state.tools.rows : state.server.rows;
 }
 function ordDot(kind, i, r){
   const s = parseInt(r.ord)||0;
@@ -6374,9 +7223,9 @@ function ordDot(kind, i, r){
    checked = this item ships in its module's combined place; unchecked = its own place.
    Default: checked, EXCEPT tripods (they ship separately). */
 function isCombined(r){ if(!r) return false; return (r.ship===undefined) ? !/tripod/i.test(r.name||'') : !!r.ship; }
-function shipRowsOf(kind){ return kind==='server'?state.server.rows : kind==='vj'?(state.vj&&state.vj.rows||[]) : kind==='rack'?state.rack.rows : kind==='camera'?(state.camera&&state.camera.rows||[]) : kind==='speakers'?(state.speakers&&state.speakers.rows||[]) : kind==='fan'?(state.fan&&state.fan.rows||[]) : kind==='cables'?(state.cables&&state.cables.rows||[]) : kind==='tools'?(state.tools&&state.tools.rows||[]) : []; }
+function shipRowsOf(kind){ return kind==='server'?state.server.rows : kind==='vj'?(state.vj&&state.vj.rows||[]) : kind==='backup'?(state.backup&&state.backup.rows||[]) : kind==='rack'?state.rack.rows : kind==='camera'?(state.camera&&state.camera.rows||[]) : kind==='speakers'?(state.speakers&&state.speakers.rows||[]) : kind==='fan'?(state.fan&&state.fan.rows||[]) : kind==='cables'?(state.cables&&state.cables.rows||[]) : kind==='tools'?(state.tools&&state.tools.rows||[]) : []; }
 function toggleShip(kind, i, checked){ const rows=shipRowsOf(kind); if(!rows[i]) return; rows[i].ship = !!checked; saveState(); }
-function shipChk(kind, i, r){ return `<td style="width:4%;text-align:center" title="Shipping — combine into one place (uncheck = ships as its own place)"><input type="checkbox" style="width:15px;height:15px;cursor:pointer;accent-color:var(--fdp-red)" ${isCombined(r)?'checked':''} onchange="toggleShip('${kind}',${i},this.checked)"></td>`; }
+function shipChk(kind, i, r){ return `<td style="width:4%;text-align:center" title="Shipping — combine into one place (uncheck = ships as its own place)"><input type="checkbox" style="width:15px;height:15px;cursor:pointer;accent-color:#2e9e5b" ${isCombined(r)?'checked':''} onchange="toggleShip('${kind}',${i},this.checked)"></td>`; }
 function cycOrd(kind, i, el){
   const rows = ordRowsOf(kind); if(!rows[i]) return;
   const s = ((parseInt(rows[i].ord)||0) + 1) % 3;
@@ -7905,8 +8754,8 @@ function pageLibrary(){
     <div class="card" style="${cardStyle}">
       <div class="card-head" style="cursor:${(editing||frozen)?'default':'pointer'};user-select:none" ${(editing||frozen)?'':`onclick="toggleLibGroup('${g.key}')"`} title="${editing?'':(frozen?'Frozen — unfreeze in Edit to open':(collapsed?'Expand':'Collapse'))}">
         ${editing||frozen ? '' : `<span style="display:inline-flex;width:16px;flex:none;color:var(--ink2);transition:transform .15s;transform:rotate(${collapsed?'-90deg':'0deg'})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="width:14px;height:14px"><path d="M6 9l6 6 6-6"/></svg></span>`}
-        <h3 style="margin:0;${frozen?'color:#3a4658':''}">${g.label}</h3>
-        <span class="chip c-mut"><span class="cd"></span>${items.filter(x=>(x.name||'').trim()).length} items</span>
+        <h3 style="margin:0;flex:1;${frozen?'color:#3a4658':''}">${g.label}</h3>
+        <div class="libcount">${libGroupIcon(g.key, collapsed)}<span class="chip c-mut" style="min-width:66px;justify-content:center"><span class="cd"></span>${items.filter(x=>(x.name||'').trim()).length} items</span></div>
         ${headCtrls}</div>
       <div style="display:${collapsed?'none':'block'}">${body}
       </div>
@@ -7932,16 +8781,228 @@ function pageLibrary(){
 }
 
 /* ---------- router ---------- */
+/* ============================================================================
+   DOME LIBRARY (BUILD 15.02) — global shared catalogue of domes, independent of the
+   selected project. Firestore: dome_models/{domeUid} (stable hidden id ≠ visible Serial).
+   IndexedDB = local cache (db.domeLib). Overview-only for now (Units/Components/Packing/
+   Files/History deferred). Does NOT touch Projects / Equipment Library / Auth / Drive / F6-F7.
+   ============================================================================ */
+const DOME_TYPES = ['Open','Blackout'];
+const DOME_SCREEN = ['Tilted','Vertical','Straight','SRD Screen','Other'];
+const DOME_DOORS = ['WD','1D','2D','3D','Custom'];
+const DOME_DOOR_LABELS = { 'WD':'WD — Without Doors','1D':'1D — 1 Door','2D':'2D — 2 Doors','3D':'3D — 3 Doors','Custom':'Custom' };
+
+function domeEmptyModel(){
+  return { domeUid:newId(), serial:'', size:'', type:'', screenType:'', screenTypeOther:'',
+    doors:'', doorsCustom:'', hvacOpenings:'', fanOpenings:'', archived:false, rev:0, _saved:false };
+}
+function domeFind(uid){ return db.domeLib.find(m=>m.domeUid===uid) || null; }
+function domeEditing(){ return _domeEditId ? domeFind(_domeEditId) : null; }
+function domeSizeM(m){ const n = String(m.size||'').replace(/\s*m$/i,'').trim(); return n ? (n + ' m') : ''; }
+function domeTitle(m){ return [domeSizeM(m), m.type, m.serial].filter(Boolean).join(' · ') || 'New Dome'; }
+function domeScreenLabel(m){ return m.screenType==='Other' ? ('Other' + (m.screenTypeOther?(' · '+m.screenTypeOther):'')) : (m.screenType||'—'); }
+function domeDoorsLabel(m){ if(!m.doors) return '—'; return m.doors==='Custom' ? ('Custom' + (m.doorsCustom?(' · '+m.doorsCustom):'')) : (DOME_DOOR_LABELS[m.doors]||m.doors); }
+function domeSearchBlob(m){ return [m.serial,m.size,m.type,m.screenType,m.screenTypeOther].filter(Boolean).join(' ').toLowerCase(); }
+function saveDomeLib(){ saveState._skipCloud = true; try{ saveState(); }finally{ saveState._skipCloud = false; } }
+
+/* ---- Firestore sync (reuses the project Firestore connection; separate collection) ---- */
+var _domeView = 'list', _domeEditId = null, _domeSearch = '', _domeFilterType = '', _domeFilterScreen = '';
+var _domeFsStarted = false, _domeFsUnsub = null;
+function domeFsReady(){ return (typeof fsReady==='function') && fsReady() && !!_fsDb; }
+function domeFsEnsureStarted(){
+  if(_domeFsStarted || !domeFsReady()) return;
+  _domeFsStarted = true;
+  try{
+    _domeFsUnsub = _fsDb.collection('dome_models').onSnapshot(function(snap){
+      snap.forEach(function(doc){ domeFsApplyModel(doc.data()); });
+      saveDomeLib();
+      if(location.hash==='#/dome-library' && !isTypingInInput()){ try{ rerenderKeepScroll(); }catch(_){} }
+    }, function(err){ setCloudStat('⚠ Dome Library read failed: ' + (err.message||'') + ' — check the dome_models rules'); });
+  }catch(e){ _domeFsStarted = false; }
+}
+function domeFsApplyModel(data){
+  if(!data || !data.domeUid) return;
+  if(_domeEditId === data.domeUid) return;                 /* don't disturb an open card being edited */
+  const i = db.domeLib.findIndex(m=>m.domeUid===data.domeUid);
+  const model = Object.assign(domeEmptyModel(), data, { _saved:true });
+  if(i>=0) db.domeLib[i] = model; else db.domeLib.push(model);
+}
+function domeFsModelDoc(m){
+  return { domeUid:m.domeUid, serial:m.serial||'', size:String(m.size||''), type:m.type||'', screenType:m.screenType||'',
+    screenTypeOther:m.screenTypeOther||'', doors:m.doors||'', doorsCustom:m.doorsCustom||'',
+    hvacOpenings:String(m.hvacOpenings||''), fanOpenings:String(m.fanOpenings||''),
+    archived:!!m.archived, updatedBy:_gUser||'', rev:(m.rev||0) };
+}
+async function domeFsPushModel(m){
+  if(!m) return;
+  m.rev = (m.rev||0) + 1;
+  if(!domeFsReady()){ setCloudStat('Dome card saved locally — deploy the dome_models rules to sync'); return; }
+  try{
+    await _fsDb.collection('dome_models').doc(m.domeUid).set(domeFsModelDoc(m));
+    setCloudStat('Dome Library synced ✓ · ' + hhmm());
+  }catch(e){ setCloudStat('⚠ Dome Library sync failed: ' + (e && e.message || e) + ' — saved locally (rules deployed?)'); }
+}
+
+/* ---- Google Drive backup (BUILD 15.06): on Save, and every 15 min if changed, write the dome card
+   JSON into Fulldome PSP / Dome Library / <label> / <label>.json, with Photos/ + Documentation/ subfolders
+   for future schematics & photos. Metadata cache lives in db.domeDriveMap (NOT synced). Never deletes. */
+function domeDriveMap(){ if(!db.domeDriveMap || typeof db.domeDriveMap!=='object') db.domeDriveMap={}; return db.domeDriveMap; }
+function domeFolderName(m){ return (domeTitle(m)||m.domeUid).replace(/[\/\\:*?"<>|]/g,'-').replace(/\s+/g,' ').trim() || m.domeUid; }
+function domeBackupPayload(m){ const c=Object.assign({}, m); delete c._saved; return JSON.stringify({ app:'Fulldome PSP — Dome Card', savedAt:new Date().toISOString(), dome:c }, null, 2); }
+function domeSig(m){ const s=JSON.stringify(domeFsModelDoc(m)); let h=5381; for(let i=0;i<s.length;i++){ h=((h<<5)+h+s.charCodeAt(i))|0; } return (h>>>0).toString(36); }
+async function domeDriveRoot(){ if(db.domeDriveRootId && await driveAlive(db.domeDriveRootId)) return db.domeDriveRootId; const root=await driveRootId(); const id=await driveEnsureFolder('Dome Library', root); db.domeDriveRootId=id; return id; }
+async function domeEnsureDriveFolder(m){
+  const rec=domeDriveMap()[m.domeUid] || {};
+  const wantName=domeFolderName(m);
+  let fid=rec.folderId; if(fid && !(await driveAlive(fid))) fid=null;
+  const root=await domeDriveRoot();
+  if(!fid) fid=await driveFindFolder(wantName, root);
+  if(!fid) fid=await driveCreateFolder(wantName, root);
+  else if(rec.name && rec.name!==wantName){ try{ await driveRenameFolder(fid, wantName); }catch(_){} }
+  try{ await driveEnsureFolder('Photos', fid); await driveEnsureFolder('Documentation', fid); }catch(_){}   /* homes for future schematics/photos */
+  domeDriveMap()[m.domeUid]=Object.assign(rec, { folderId:fid, name:wantName });
+  return fid;
+}
+async function domeBackupWrite(m, force){
+  if(!m || m.archived || !(_cloudOn && _gTok)) return;
+  const rec=domeDriveMap()[m.domeUid] || {};
+  const sig=domeSig(m);
+  if(!force && rec.sig===sig && rec.jsonId) return;                 /* unchanged since last backup */
+  try{
+    const fid=await domeEnsureDriveFolder(m);
+    const jsonName=domeFolderName(m)+'.json';
+    const jsonId=await backupPutInPlace(jsonName, fid, domeBackupPayload(m), rec.jsonId);
+    domeDriveMap()[m.domeUid]=Object.assign(domeDriveMap()[m.domeUid]||{}, { jsonId, sig, jsonName });
+    saveDomeLib();
+    if(force) setCloudStat('Dome card backed up to Drive ✓ · ' + hhmm());
+  }catch(e){ setCloudStat('⚠ Dome backup failed: ' + (e && e.message || e)); }
+}
+var _domeBackupTimer=null;
+function domeBackupLoop(){ if(_domeBackupTimer) return; _domeBackupTimer=setInterval(function(){ domeBackupAllChanged(); }, 15*60*1000); setTimeout(domeBackupAllChanged, 22000); }
+function domeBackupStop(){ if(_domeBackupTimer){ clearInterval(_domeBackupTimer); _domeBackupTimer=null; } }
+async function domeBackupAllChanged(){ if(!(_cloudOn && _gTok)) return; for(const m of (db.domeLib||[])){ if(m && m._saved && !m.archived){ try{ await domeBackupWrite(m,false); }catch(_){} } } }
+
+/* ---------- navigation / CRUD ---------- */
+function domeNewCard(){ const m = domeEmptyModel(); db.domeLib.push(m); _domeEditId = m.domeUid; _domeView='card'; saveDomeLib(); rerenderKeepScroll(); }
+function domeOpenCard(uid){ _domeEditId = uid; _domeView='card'; rerenderKeepScroll(); }
+function domeBackToList(){ _domeEditId=null; _domeView='list'; rerenderKeepScroll(); }
+function domeCancelCard(){ const m=domeEditing(); if(m && !m._saved){ db.domeLib = db.domeLib.filter(x=>x.domeUid!==m.domeUid); saveDomeLib(); } domeBackToList(); }
+function domeSetSearch(v){ _domeSearch=v; }
+function domeApplySearch(){ rerenderKeepScroll(); }
+function domeSetFilterType(v){ _domeFilterType=v; rerenderKeepScroll(); }
+function domeSetFilterScreen(v){ _domeFilterScreen=v; rerenderKeepScroll(); }
+function domeUpd(field, val){ const m=domeEditing(); if(!m) return; m[field]=val; saveDomeLib(); }
+function domeSaveCard(){
+  const m=domeEditing(); if(!m) return;
+  /* BUILD 15.03: can save once ANY Overview field is filled (Serial no longer mandatory). */
+  const filled = ['serial','size','type','screenType','screenTypeOther','doors','doorsCustom','hvacOpenings','fanOpenings']
+    .some(f => String(m[f]||'').trim() !== '');
+  if(!filled){ alert('Fill at least one field before saving.'); return; }
+  m._saved = true; saveDomeLib(); domeFsPushModel(m); domeBackupWrite(m, true);   /* BUILD 15.06: write the card JSON to Drive now */
+  flashStat('Dome card saved ✓');
+  domeBackToList();   /* return to the Dome Library list and show the saved dome */
+}
+function domeArchiveCard(){
+  const m=domeEditing(); if(!m) return;
+  if(!confirm('Archive this dome card? It is hidden from the catalogue (soft-delete via archived:true, never physically deleted).')) return;
+  m.archived = true; m.rev=(m.rev||0)+0; saveDomeLib(); if(m._saved) domeFsPushModel(m); domeBackToList();
+}
+
+/* ---------- PAGES ---------- */
+function pageDomeLibrary(){
+  domeFsEnsureStarted();
+  if(_domeView==='card' && domeEditing()) return pageDomeCard();
+  _domeView='list';
+  const q=(_domeSearch||'').trim().toLowerCase();
+  const list = db.domeLib.filter(m=>!m.archived).filter(m=>{
+    if(_domeFilterType && m.type!==_domeFilterType) return false;
+    if(_domeFilterScreen && (m.screenType||'')!==_domeFilterScreen) return false;
+    if(q && domeSearchBlob(m).indexOf(q)<0) return false;
+    return true;
+  });
+  const opt=(arr,cur,all)=>[`<option value="">${all}</option>`].concat(arr.map(x=>`<option value="${esc(x)}" ${cur===x?'selected':''}>${esc(x)}</option>`)).join('');
+  const rows = list.map(m=>`
+    <tr>
+      <td class="tight"><b>${esc(m.serial||'—')}</b></td>
+      <td class="tight">${esc(domeSizeM(m)||'—')}</td>
+      <td class="tight">${esc(m.type||'—')}</td>
+      <td class="tight">${esc(domeScreenLabel(m))}</td>
+      <td class="tight">${esc(domeDoorsLabel(m))}</td>
+      <td class="tight" style="text-align:center">${(String(m.hvacOpenings||'').trim()!=='')?esc(m.hvacOpenings):'—'}</td>
+      <td class="tight" style="text-align:center">${(String(m.fanOpenings||'').trim()!=='')?esc(m.fanOpenings):'—'}</td>
+      <td class="tight" style="text-align:right"><button class="mod-btn primary" style="padding:5px 12px" onclick="domeOpenCard('${m.domeUid}')">Open / Edit</button></td>
+    </tr>`).join('') || `<tr><td colspan="8" style="text-align:center;color:var(--ink2);padding:26px">No domes yet — click “+ Create Dome Card”.</td></tr>`;
+  return `
+  <div class="page">
+    <div class="pagehead"><div class="eyebrow">Fulldome Projection SP</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <h1 style="margin:0">Dome Library</h1>
+        <button class="mod-btn primary" style="padding:9px 16px;flex:none" onclick="domeNewCard()">${IC.check} Create Dome Card</button>
+      </div>
+      <div class="sub">Shared catalogue of domes — independent of the selected project. Synced across the team via Firestore.</div>
+    </div>
+    <div class="card" style="padding:14px 16px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <input class="cell" style="flex:1;min-width:240px;padding:8px 11px" placeholder="Search Serial / Size / Dome Type / Screen Type" value="${esc(_domeSearch)}" oninput="domeSetSearch(this.value)" onkeydown="if(event.key==='Enter')domeApplySearch()">
+        <button class="mod-btn" style="padding:8px 12px" onclick="domeApplySearch()">Search</button>
+        <span style="display:inline-flex;align-items:center;gap:6px"><span style="font-size:12px;color:var(--dim)">Dome Type</span>
+          <select class="cell" style="width:auto;padding:7px 9px" onchange="domeSetFilterType(this.value)">${opt(DOME_TYPES,_domeFilterType,'All Types')}</select></span>
+        <span style="display:inline-flex;align-items:center;gap:6px"><span style="font-size:12px;color:var(--dim)">Screen Type</span>
+          <select class="cell" style="width:auto;padding:7px 9px" onchange="domeSetFilterScreen(this.value)">${opt(DOME_SCREEN,_domeFilterScreen,'All Screens')}</select></span>
+      </div>
+    </div>
+    <div class="card">
+      <table class="eq">
+        <thead><tr><th>Dome ID / Serial</th><th>Size</th><th>Dome Type</th><th>Screen Type</th><th>Doors</th><th style="text-align:center">HVAC (in)</th><th style="text-align:center">Fan (in)</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+function pageDomeCard(){
+  const m=domeEditing(); if(!m) return pageDomeLibrary();
+  return `
+  <div class="page">
+    <div class="pagehead" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <div><a href="#/dome-library" onclick="domeBackToList();return false;" style="font-size:12px;color:var(--ink2);text-decoration:none">‹ Back to Library</a>
+        <h1 style="margin:2px 0 0">${esc(domeTitle(m))} <span style="font-size:13px;color:var(--dim);font-weight:400">(${m._saved?'saved':'unsaved'})</span></h1></div>
+      <div style="display:flex;gap:8px;flex:none">
+        <button class="mod-btn" style="padding:8px 14px" onclick="domeCancelCard()">Cancel</button>
+        ${m._saved ? `<button class="mod-btn" style="padding:8px 14px;color:var(--fdp-red)" onclick="domeArchiveCard()">Archive</button>` : ''}
+        <button class="mod-btn primary" style="padding:8px 16px" onclick="domeSaveCard()">Save Dome Card</button>
+      </div>
+    </div>
+    <div class="dtabs"><button class="dtab sel">Overview</button></div>
+    <div class="card">${domeTabOverview(m)}</div>
+  </div>`;
+}
+function _dfld(label,inner){ return `<div class="fld"><label>${label}</label>${inner}</div>`; }
+function _dsel(field,val,arr){ return `<select class="cell" onchange="domeUpd('${field}',this.value)">${arr.map(x=>`<option value="${esc(x)}" ${val===x?'selected':''}>${esc(x||'—')}</option>`).join('')}</select>`; }
+function domeTabOverview(m){
+  return `<div class="fgrid">
+    ${_dfld('Dome ID / Serial Number *', `<input class="cell" value="${esc(m.serial)}" placeholder="e.g. FD-10-024" oninput="domeUpd('serial',this.value)" style="font-weight:700">`)}
+    ${_dfld('Size (m)', `<input class="cell" type="number" step="0.1" min="0" value="${esc(m.size)}" placeholder="e.g. 10" oninput="domeUpd('size',this.value)">`)}
+    ${_dfld('Dome Type', _dsel('type', m.type, ['',...DOME_TYPES]))}
+    ${_dfld('Screen Type', _dsel('screenType', m.screenType, ['',...DOME_SCREEN]) + (m.screenType==='Other' ? `<input class="cell" style="margin-top:6px" placeholder="Specify screen type" value="${esc(m.screenTypeOther)}" oninput="domeUpd('screenTypeOther',this.value)">` : ''))}
+    ${_dfld('Doors', `<select class="cell" onchange="domeUpd('doors',this.value)"><option value="" ${!m.doors?'selected':''}>—</option>${DOME_DOORS.map(d=>`<option value="${d}" ${m.doors===d?'selected':''}>${esc(DOME_DOOR_LABELS[d])}</option>`).join('')}</select>` + (m.doors==='Custom' ? `<input class="cell" style="margin-top:6px" placeholder="Describe the doors" value="${esc(m.doorsCustom)}" oninput="domeUpd('doorsCustom',this.value)">` : ''))}
+    ${_dfld('HVAC Openings (in)', `<input class="cell num" type="number" min="0" step="1" value="${esc(m.hvacOpenings)}" placeholder="0" oninput="domeUpd('hvacOpenings',this.value)">`)}
+    ${_dfld('Fan Openings (in)', `<input class="cell num" type="number" min="0" step="1" value="${esc(m.fanOpenings)}" placeholder="0" oninput="domeUpd('fanOpenings',this.value)">`)}
+  </div>
+  <div style="margin-top:12px;color:var(--dim);font-size:11.5px">The card title is built automatically as “&lt;size&gt; · &lt;dome type&gt; · &lt;serial&gt;”. The Serial is the visible Dome ID; the document keeps a separate stable internal id (${esc(m.domeUid)}). Save requires a Serial Number. Removal is Archive only (never physical delete).</div>`;
+}
+
 const ROUTES = {
   '#/create':        {nav:'projects', render:pageCreate, noProject:true},
   '#/edit':          {nav:'projects', render:pageEdit},
   '#/dashboard':     {nav:'dashboard', render:pageDashboard},
   '#/server-rack':   {nav:'dashboard', render:pageServerRack},
-  '#/projects':      {nav:'projects', render:()=>pagePlaceholder('Projects', IC.proj, 'Project list and switching will be added here.', 'Coming Soon')},
+  '#/projects':      {nav:'projects', render:pageProjects, noProject:true},
   '#/library':       {nav:'library', render:pageLibrary, noProject:true},
+  '#/dome-library':  {nav:'dome-library', render:pageDomeLibrary, noProject:true},   /* BUILD 15.0 */
   '#/documentation': {nav:'documentation', render:pageDocumentation, noProject:true},
   '#/logs':          {nav:'logs', render:()=>pagePlaceholder('System Logs', IC.logs, 'Platform and agent activity logs will appear here.', 'Coming Soon')},
-  '#/settings':      {nav:'settings', render:()=>pagePlaceholder('Settings', IC.set, 'Platform, storage and agent settings.', 'Coming Soon')},
+  '#/settings':      {nav:'settings', render:pageSettings, noProject:true},
   '#/projectors':    {nav:'dashboard', render:pageProjectors},
   '#/camera':        {nav:'dashboard', render:pageCamera},
   '#/cables':        {nav:'dashboard', render:pageCables},
@@ -7969,14 +9030,34 @@ function route(){
   /* BUILD 14.20: entering the Equipment Library tab collapses every group (in-page
      rerenders keep the state — route._prevHash stays '#/library'). */
   if(h === '#/library' && route._prevHash !== '#/library'){ _libCollapsed = {}; LIB_GROUPS.forEach(g=>{ _libCollapsed[g.key] = true; }); _libGroupsEdit = false; }
+  if(h === '#/projects' && route._prevHash !== '#/projects'){ _projMode = 'edit'; _projTitleManual = false; }   /* BUILD 14.41: enter Projects showing the selected project */
   route._prevHash = h;
   renderNav(rr.nav);
   document.getElementById('content').innerHTML = rr.render();
   /* normal navigation resets to top; an in-place rerender (rerenderKeepScroll) preserves the offset */
   document.getElementById('content').scrollTop = (_keepScrollTop != null ? _keepScrollTop : 0);
-  if(h === '#/create' || h === '#/edit') noAutofill();   /* BUILD 14.15: stop the browser from auto-filling form fields (e.g. a stray project number into Screen Fan) */
+  if(h === '#/create' || h === '#/edit' || h === '#/projects') noAutofill();   /* BUILD 14.15/14.41: stop browser autofill in the project forms */
   renderHeader(); renderSideProject();
+  polishPass();   /* BUILD 14.60: tooltips on truncated names + dim empty-link buttons */
 }
+/* BUILD 14.60 — after every render: show the full text of a truncated name on hover (title),
+   and grey-out / disable the copy+open buttons of a link field that is empty. */
+function polishPass(){
+  try{
+    document.querySelectorAll('input.cell.b').forEach(el=>{ if(el.value) el.title = el.value; else el.removeAttribute('title'); });
+    document.querySelectorAll('input[onmouseenter^="lpShow"]').forEach(inp=>{
+      const w = inp.parentElement; if(!w) return; w.classList.add('lnkbtns'); w.classList.toggle('empty', !(inp.value||'').trim());
+    });
+  }catch(_){}
+}
+/* keep the tooltip + link-button state live while typing (renders don't fire on every keystroke) */
+try{
+  document.addEventListener('input', function(e){
+    const t = e.target; if(!t || !t.matches) return;
+    if(t.matches('input.cell.b')){ if(t.value) t.title = t.value; else t.removeAttribute('title'); }
+    if(t.matches('input[onmouseenter^="lpShow"]')){ const w = t.parentElement; if(w){ w.classList.add('lnkbtns'); w.classList.toggle('empty', !(t.value||'').trim()); } }
+  }, true);
+}catch(_){}
 /* Chrome/Firefox ignore autocomplete="off" on single fields and drop remembered values into the
    Create/Edit form (e.g. a past project number into "Screen Fan System"). Give every field a UNIQUE
    random name so the browser's form-history has nothing to match, and re-assert autocomplete=off.
@@ -8002,6 +9083,8 @@ window.addEventListener('hashchange', route);
   const num = (tag.match(/BUILD\s+([\d.]+)/) || [,''])[1];
   const sb = document.getElementById('sideBuild');
   if(sb && num) sb.textContent = 'build ' + num;           /* sidebar subtitle build, sourced from the one footer tag */
+  const tb = document.getElementById('topBuild');          /* BUILD 14.62: build number visible in the top bar (catch mixed-build machines) */
+  if(tb && num) tb.textContent = 'b' + num;
   if(tag) document.title = 'Fulldome Projection SP — ' + tag.replace('BUILD ','b').split(' · ')[0];
 })();
 loadState(()=>{ restoreHandles(); renderHeader(); renderSideProject();
