@@ -671,7 +671,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.11 · OVERVIEW DERIVES SERIAL / SCREEN TYPE / DOORS FROM COMPONENTS</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.13 · OVERVIEW — DIAMETER (m + ft·in) + FAN/HVAC SWAPPED</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -8864,6 +8864,9 @@ function domeComponentsDoc(c){
 function domeFind(uid){ return db.domeLib.find(m=>m.domeUid===uid) || null; }
 function domeEditing(){ return _domeEditId ? domeFind(_domeEditId) : null; }
 function domeSizeM(m){ const n = String(m.size||'').replace(/\s*m$/i,'').trim(); return n ? (n + ' m') : ''; }
+/* BUILD 15.13: meters → feet·inches, e.g. 2.5 m → 8' 2". Empty/invalid → ''. */
+function domeFeetInches(mStr){ const v=parseFloat(String(mStr==null?'':mStr).replace(',','.')); if(!isFinite(v)||v<=0) return '';
+  const totalIn=v*39.3700787; let ft=Math.floor(totalIn/12); let inch=Math.round(totalIn-ft*12); if(inch===12){ ft+=1; inch=0; } return ft+"' "+inch+'"'; }
 function domeTitle(m){ return [domeSizeM(m), m.type, m.serial].filter(Boolean).join(' · ') || 'New Dome'; }
 function domeScreenLabel(m){ return m.screenType==='Other' ? ('Other' + (m.screenTypeOther?(' · '+m.screenTypeOther):'')) : (m.screenType||'—'); }
 function domeDoorsLabel(m){ if(!m.doors) return '—'; return m.doors==='Custom' ? ('Custom' + (m.doorsCustom?(' · '+m.doorsCustom):'')) : (DOME_DOOR_LABELS[m.doors]||m.doors); }
@@ -8959,6 +8962,7 @@ function domeClearSearch(){ _domeSearch=''; _domeFilterType=''; _domeFilterScree
 function domeSetFilterType(v){ _domeFilterType=v; rerenderKeepScroll(); }
 function domeSetFilterScreen(v){ _domeFilterScreen=v; rerenderKeepScroll(); }
 function domeUpd(field, val){ const m=domeEditing(); if(!m) return; m[field]=val; saveDomeLib(); }
+function domeSizeFtRefresh(val){ const el=document.getElementById('domeSizeFt'); if(el) el.value = domeFeetInches(val); }   /* BUILD 15.13: live ft·in box */
 /* BUILD 15.09: Dome serial and Frame serial are ONE value — set both, either direction. */
 function domeSetSerial(val){ const m=domeEditing(); if(!m) return; m.serial=val; domeEnsureComponents(m); m.components.frame.serial=val; saveDomeLib(); }
 /* ---- Components tab (BUILD 15.08) — Frame / Covers & Screens / Connectors ---- */
@@ -8987,6 +8991,7 @@ function domeSaveCard(){
   if(!filled){ alert('Fill at least one field before saving.'); return; }
   m._saved = true; saveDomeLib(); domeFsPushModel(m); domeBackupWrite(m, true);   /* BUILD 15.06: write the card JSON to Drive now */
   flashStat('Dome card saved ✓');
+  _domeSearch=''; _domeFilterType=''; _domeFilterScreen='';   /* BUILD 15.12: never hide the just-saved dome behind a stale/autofilled search or filter */
   domeBackToList();   /* return to the Dome Library list and show the saved dome */
 }
 function domeArchiveCard(){
@@ -9015,8 +9020,8 @@ function pageDomeLibrary(){
       <td class="tight">${esc(m.type||'—')}</td>
       <td class="tight">${esc(domeScreenLabel(m))}</td>
       <td class="tight">${esc(domeDoorsLabel(m))}</td>
-      <td class="tight" style="text-align:center">${(String(m.hvacOpenings||'').trim()!=='')?esc(m.hvacOpenings):'—'}</td>
       <td class="tight" style="text-align:center">${(String(m.fanOpenings||'').trim()!=='')?esc(m.fanOpenings):'—'}</td>
+      <td class="tight" style="text-align:center">${(String(m.hvacOpenings||'').trim()!=='')?esc(m.hvacOpenings):'—'}</td>
       <td class="tight" style="text-align:right"><button class="mod-btn primary" style="padding:5px 12px" onclick="domeOpenCard('${m.domeUid}')">Open / Edit</button></td>
     </tr>`).join('');
   const totalActive = db.domeLib.filter(m=>!m.archived).length;
@@ -9036,7 +9041,7 @@ function pageDomeLibrary(){
     </div>
     <div class="card" style="padding:14px 16px">
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-        <input class="cell" style="flex:1;min-width:240px;padding:8px 11px" placeholder="Search Serial / Size / Dome Type / Screen Type" value="${esc(_domeSearch)}" name="dome_search_${Math.random().toString(36).slice(2)}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" oninput="domeSetSearch(this.value)" onkeydown="if(event.key==='Enter')domeApplySearch()">
+        <input class="cell" style="flex:1;min-width:240px;padding:8px 11px" placeholder="Search Serial / Size / Dome Type / Screen Type" value="${esc(_domeSearch)}" name="dome_search_${Math.random().toString(36).slice(2)}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" readonly onfocus="this.removeAttribute('readonly')" oninput="domeSetSearch(this.value)" onkeydown="if(event.key==='Enter')domeApplySearch()">
         <button class="mod-btn" style="padding:8px 12px" onclick="domeApplySearch()">Search</button>
         <span style="display:inline-flex;align-items:center;gap:6px"><span style="font-size:12px;color:var(--dim)">Dome Type</span>
           <select class="cell" style="width:auto;padding:7px 9px" onchange="domeSetFilterType(this.value)">${opt(DOME_TYPES,_domeFilterType,'All Types')}</select></span>
@@ -9046,7 +9051,7 @@ function pageDomeLibrary(){
     </div>
     <div class="card">
       <table class="eq">
-        <thead><tr><th>Dome ID / Serial</th><th>Size</th><th>Dome Type</th><th>Screen Type</th><th>Doors</th><th style="text-align:center">HVAC (in)</th><th style="text-align:center">Fan (in)</th><th></th></tr></thead>
+        <thead><tr><th>Dome ID / Serial</th><th>Diameter</th><th>Dome Type</th><th>Screen Type</th><th>Doors</th><th style="text-align:center">Fan (in)</th><th style="text-align:center">HVAC (in)</th><th></th></tr></thead>
         <tbody>${tbody}</tbody>
       </table>
     </div>
@@ -9082,12 +9087,17 @@ function domeTabOverview(m){
   const hasScreen = c.covers.some(x=>x.kind==='Screen' && !x.archived);
   return `<div class="fgrid">
     ${_dfld('Dome ID / Serial Number', `<input class="cell" value="${esc(m.serial)}" readonly tabindex="-1" placeholder="— set in Components → Frame" style="font-weight:700;${_droStyle}"><div class="hint">Filled in Components → Frame (Frame Serial = Dome Serial).</div>`)}
-    ${_dfld('Size (m)', `<input class="cell" type="number" step="0.1" min="0" value="${esc(m.size)}" placeholder="e.g. 10" oninput="domeUpd('size',this.value)">`)}
+    ${_dfld('Diameter Ø (m)', `<div style="display:flex;gap:8px;align-items:center">
+        <input class="cell num" type="number" step="0.1" min="0" style="max-width:130px" value="${esc(m.size)}" placeholder="e.g. 2.5" oninput="domeUpd('size',this.value);domeSizeFtRefresh(this.value)">
+        <span style="color:var(--dim);font-size:13px">m</span>
+        <input class="cell" id="domeSizeFt" value="${esc(domeFeetInches(m.size))}" readonly tabindex="-1" placeholder="ft · in" style="max-width:120px;text-align:center;${_droStyle}" title="Feet & inches (converted from metres)">
+      </div>
+      <div class="hint">Diameter in metres; the box on the right is the feet · inches equivalent (e.g. 2.5 m → 8' 2").</div>`)}
     ${_dfld('Dome Type', _dsel('type', m.type, ['',...DOME_TYPES]))}
     ${ hasScreen ? _dfld('Screen Type', `<input class="cell" value="${esc(domeScreenLabel(m))}" readonly tabindex="-1" style="${_droStyle}"><div class="hint">Filled in Components → Covers &amp; Screens (main screen).</div>`) : '' }
     ${_dfld('Doors', `<input class="cell" value="${esc(domeDoorsLabel(m))}" readonly tabindex="-1" style="${_droStyle}"><div class="hint">Filled in Components → Doors (number of doors).</div>`)}
-    ${_dfld('HVAC Openings (in)', `<input class="cell num" type="number" min="0" step="1" value="${esc(m.hvacOpenings)}" placeholder="0" oninput="domeUpd('hvacOpenings',this.value)">`)}
     ${_dfld('Fan Openings (in)', `<input class="cell num" type="number" min="0" step="1" value="${esc(m.fanOpenings)}" placeholder="0" oninput="domeUpd('fanOpenings',this.value)">`)}
+    ${_dfld('HVAC Openings (in)', `<input class="cell num" type="number" min="0" step="1" value="${esc(m.hvacOpenings)}" placeholder="0" oninput="domeUpd('hvacOpenings',this.value)">`)}
   </div>
   <div style="margin-top:12px;color:var(--dim);font-size:11.5px">Serial, Screen Type and Doors are filled in the <b>Components</b> tab and shown here read-only (Screen Type appears once a screen is added). Size, Dome Type, HVAC and Fan Openings are edited here. Card title: “&lt;size&gt; · &lt;dome type&gt; · &lt;serial&gt;”. Internal id ${esc(m.domeUid)}. Removal is Archive only (never physical delete).</div>`;
 }
