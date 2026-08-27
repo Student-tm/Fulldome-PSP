@@ -671,11 +671,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-<<<<<<< HEAD
     <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.06 · DOME CARD → GOOGLE DRIVE BACKUP (JSON + 15 MIN)</div>
-=======
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.02 · DOME LIBRARY — OVERVIEW-ONLY REWORK</div>
->>>>>>> 5197b0102edcf218a2276a22b9dcf5c6ee3e7ba7
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -8847,7 +8843,6 @@ async function domeFsPushModel(m){
   }catch(e){ setCloudStat('⚠ Dome Library sync failed: ' + (e && e.message || e) + ' — saved locally (rules deployed?)'); }
 }
 
-<<<<<<< HEAD
 /* ---- Google Drive backup (BUILD 15.06): on Save, and every 15 min if changed, write the dome card
    JSON into Fulldome PSP / Dome Library / <label> / <label>.json, with Photos/ + Documentation/ subfolders
    for future schematics & photos. Metadata cache lives in db.domeDriveMap (NOT synced). Never deletes. */
@@ -8887,8 +8882,6 @@ function domeBackupLoop(){ if(_domeBackupTimer) return; _domeBackupTimer=setInte
 function domeBackupStop(){ if(_domeBackupTimer){ clearInterval(_domeBackupTimer); _domeBackupTimer=null; } }
 async function domeBackupAllChanged(){ if(!(_cloudOn && _gTok)) return; for(const m of (db.domeLib||[])){ if(m && m._saved && !m.archived){ try{ await domeBackupWrite(m,false); }catch(_){} } } }
 
-=======
->>>>>>> 5197b0102edcf218a2276a22b9dcf5c6ee3e7ba7
 /* ---------- navigation / CRUD ---------- */
 function domeNewCard(){ const m = domeEmptyModel(); db.domeLib.push(m); _domeEditId = m.domeUid; _domeView='card'; saveDomeLib(); rerenderKeepScroll(); }
 function domeOpenCard(uid){ _domeEditId = uid; _domeView='card'; rerenderKeepScroll(); }
@@ -8901,7 +8894,6 @@ function domeSetFilterScreen(v){ _domeFilterScreen=v; rerenderKeepScroll(); }
 function domeUpd(field, val){ const m=domeEditing(); if(!m) return; m[field]=val; saveDomeLib(); }
 function domeSaveCard(){
   const m=domeEditing(); if(!m) return;
-<<<<<<< HEAD
   /* BUILD 15.03: can save once ANY Overview field is filled (Serial no longer mandatory). */
   const filled = ['serial','size','type','screenType','screenTypeOther','doors','doorsCustom','hvacOpenings','fanOpenings']
     .some(f => String(m[f]||'').trim() !== '');
@@ -8909,10 +8901,6 @@ function domeSaveCard(){
   m._saved = true; saveDomeLib(); domeFsPushModel(m); domeBackupWrite(m, true);   /* BUILD 15.06: write the card JSON to Drive now */
   flashStat('Dome card saved ✓');
   domeBackToList();   /* return to the Dome Library list and show the saved dome */
-=======
-  if(!(m.serial||'').trim()){ alert('Dome ID / Serial Number is required before saving.'); return; }
-  m._saved = true; saveDomeLib(); domeFsPushModel(m); rerenderKeepScroll(); flashStat('Dome card saved ✓');
->>>>>>> 5197b0102edcf218a2276a22b9dcf5c6ee3e7ba7
 }
 function domeArchiveCard(){
   const m=domeEditing(); if(!m) return;
@@ -8940,15 +8928,10 @@ function pageDomeLibrary(){
       <td class="tight">${esc(m.type||'—')}</td>
       <td class="tight">${esc(domeScreenLabel(m))}</td>
       <td class="tight">${esc(domeDoorsLabel(m))}</td>
-<<<<<<< HEAD
       <td class="tight" style="text-align:center">${(String(m.hvacOpenings||'').trim()!=='')?esc(m.hvacOpenings):'—'}</td>
       <td class="tight" style="text-align:center">${(String(m.fanOpenings||'').trim()!=='')?esc(m.fanOpenings):'—'}</td>
       <td class="tight" style="text-align:right"><button class="mod-btn primary" style="padding:5px 12px" onclick="domeOpenCard('${m.domeUid}')">Open / Edit</button></td>
     </tr>`).join('') || `<tr><td colspan="8" style="text-align:center;color:var(--ink2);padding:26px">No domes yet — click “+ Create Dome Card”.</td></tr>`;
-=======
-      <td class="tight" style="text-align:right"><button class="mod-btn primary" style="padding:5px 12px" onclick="domeOpenCard('${m.domeUid}')">Open / Edit</button></td>
-    </tr>`).join('') || `<tr><td colspan="6" style="text-align:center;color:var(--ink2);padding:26px">No domes yet — click “+ Create Dome Card”.</td></tr>`;
->>>>>>> 5197b0102edcf218a2276a22b9dcf5c6ee3e7ba7
   return `
   <div class="page">
     <div class="pagehead"><div class="eyebrow">Fulldome Projection SP</div>
@@ -8970,11 +8953,7 @@ function pageDomeLibrary(){
     </div>
     <div class="card">
       <table class="eq">
-<<<<<<< HEAD
         <thead><tr><th>Dome ID / Serial</th><th>Size</th><th>Dome Type</th><th>Screen Type</th><th>Doors</th><th style="text-align:center">HVAC (in)</th><th style="text-align:center">Fan (in)</th><th></th></tr></thead>
-=======
-        <thead><tr><th>Dome ID / Serial</th><th>Size</th><th>Dome Type</th><th>Screen Type</th><th>Doors</th><th></th></tr></thead>
->>>>>>> 5197b0102edcf218a2276a22b9dcf5c6ee3e7ba7
         <tbody>${rows}</tbody>
       </table>
     </div>
@@ -9007,13 +8986,8 @@ function domeTabOverview(m){
     ${_dfld('Dome Type', _dsel('type', m.type, ['',...DOME_TYPES]))}
     ${_dfld('Screen Type', _dsel('screenType', m.screenType, ['',...DOME_SCREEN]) + (m.screenType==='Other' ? `<input class="cell" style="margin-top:6px" placeholder="Specify screen type" value="${esc(m.screenTypeOther)}" oninput="domeUpd('screenTypeOther',this.value)">` : ''))}
     ${_dfld('Doors', `<select class="cell" onchange="domeUpd('doors',this.value)"><option value="" ${!m.doors?'selected':''}>—</option>${DOME_DOORS.map(d=>`<option value="${d}" ${m.doors===d?'selected':''}>${esc(DOME_DOOR_LABELS[d])}</option>`).join('')}</select>` + (m.doors==='Custom' ? `<input class="cell" style="margin-top:6px" placeholder="Describe the doors" value="${esc(m.doorsCustom)}" oninput="domeUpd('doorsCustom',this.value)">` : ''))}
-<<<<<<< HEAD
     ${_dfld('HVAC Openings (in)', `<input class="cell num" type="number" min="0" step="1" value="${esc(m.hvacOpenings)}" placeholder="0" oninput="domeUpd('hvacOpenings',this.value)">`)}
     ${_dfld('Fan Openings (in)', `<input class="cell num" type="number" min="0" step="1" value="${esc(m.fanOpenings)}" placeholder="0" oninput="domeUpd('fanOpenings',this.value)">`)}
-=======
-    ${_dfld('HVAC Openings', `<input class="cell num" type="number" min="0" step="1" value="${esc(m.hvacOpenings)}" placeholder="0" oninput="domeUpd('hvacOpenings',this.value)">`)}
-    ${_dfld('Fan Openings', `<input class="cell num" type="number" min="0" step="1" value="${esc(m.fanOpenings)}" placeholder="0" oninput="domeUpd('fanOpenings',this.value)">`)}
->>>>>>> 5197b0102edcf218a2276a22b9dcf5c6ee3e7ba7
   </div>
   <div style="margin-top:12px;color:var(--dim);font-size:11.5px">The card title is built automatically as “&lt;size&gt; · &lt;dome type&gt; · &lt;serial&gt;”. The Serial is the visible Dome ID; the document keeps a separate stable internal id (${esc(m.domeUid)}). Save requires a Serial Number. Removal is Archive only (never physical delete).</div>`;
 }
