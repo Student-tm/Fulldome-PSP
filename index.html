@@ -671,7 +671,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.26 · TRUSS KIT DELETE — REQUIRES CODE 420</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.29 · TRUSS COMPONENTS TABLE MERGED INTO THE TRUSS MODULE CARD</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -8832,8 +8832,6 @@ function domeEmptyKit(num){ return { id:newId(), num:num||'01', status:'draft', 
 /* Candidates offered when creating a kit: the dome truss ring + couplers + every Truss element (from library). */
 function domeTrussCandidates(m){ const t=(m&&m.truss)||{}; const out=[];
   out.push({ key:'truss', cat:'', name:domeTrussName(m), qty:'1', price:'', link:'' });
-  const cp=String(t.couplers||'').trim();
-  if(cp) out.push({ key:'coupler', cat:'Coupler', name:'Coupler for F23/F24', qty:cp, price:'', link:'' });
   (Array.isArray(t.elements)?t.elements:[]).forEach(e=>{ if(e && String(e.name||'').trim()){ const hit=libFind(e.name);
     out.push({ key:'el:'+e.id, cat:e.cat||'', name:e.name, qty:String(e.qty||'1'), price:(hit&&hit.price)||'', link:(hit&&hit.link)||'' }); } });
   return out; }
@@ -9364,15 +9362,14 @@ function domeTabTruss(m){
     </div>`).join('') || `<div style="color:var(--dim);font-size:12.5px;padding:4px 2px 10px">No files yet. Add a PDF or DWG/DXF drawing below.</div>`;
   return `<div class="card">
     <div class="card-head"><h3>Truss</h3></div>
-    <div class="fgrid">
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px">
       ${_dfld('Truss Serial Number (SN)', `<input class="cell" value="${esc(t.sn)}" placeholder="e.g. TR-10-001" oninput="domeTrussUpd('sn',this.value)">`)}
       ${_dfld('Colour', `<select class="cell" onchange="domeTrussUpd('color',this.value)"><option value="" ${!t.color?'selected':''}>—</option>${TRUSS_COLORS.map(x=>`<option value="${esc(x)}" ${t.color===x?'selected':''}>${esc(x)}</option>`).join('')}</select>`)}
       ${_dfld('Number of Parts', `<input class="cell num" type="number" min="0" step="1" value="${esc(t.parts)}" placeholder="0" oninput="domeTrussUpd('parts',this.value)">`)}
       ${_dfld('Number of Bags', `<input class="cell num" type="number" min="0" step="1" value="${esc(t.bags)}" placeholder="0" oninput="domeTrussUpd('bags',this.value)">`)}
-      ${_dfld('Coupler for F23/F24 Truss', `<input class="cell num" type="number" min="0" step="1" value="${esc(t.couplers)}" placeholder="0" oninput="domeTrussUpd('couplers',this.value)">`)}
     </div>
+    ${domeTrussElementsCard(m)}
   </div>
-  ${domeTrussElementsCard(m)}
   <div class="card">
     <div class="card-head" style="flex-wrap:wrap"><h3>Truss Drawings &amp; Files</h3>
       <div><input type="file" id="trussFile" accept=".pdf,.dwg,.dxf,application/pdf" style="display:none" onchange="domeTrussAddFile(this)">
@@ -9400,32 +9397,31 @@ function domeTrussElRow(e){
 }
 function domeTrussElementsCard(m){
   const t=domeEnsureTruss(m); const els=t.elements;
-  const rows=els.map(domeTrussElRow).join('') || `<tr><td colspan="5" style="text-align:center;color:var(--dim);padding:14px">No elements yet. Add couplers, plates, braces… that ship with this truss.</td></tr>`;
-  return `<div class="card">
+  const rows=els.map(domeTrussElRow).join('') || `<tr><td colspan="5" style="text-align:center;color:var(--dim);padding:14px">No components yet. Add couplers, plates, braces… that ship with this truss.</td></tr>`;
+  return `<div style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px">
     <datalist id="dlTrussKit">${(db.library&&db.library.truss||[]).filter(it=>(it.name||'').trim()).map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>
     ${groupCats('truss').map((c,ci)=>`<datalist id="dlTrussCat_${ci}">${libByGroupCat('truss',c).map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>`).join('')}
-    <div class="card-head" style="flex-wrap:wrap"><h3>Truss Components</h3>
-      <button class="mod-btn" style="padding:6px 12px" onclick="domeTrussElAdd()">+ Add from Truss Library</button></div>
-    <div class="hint" style="margin:-6px 0 12px;color:var(--dim);font-size:11.5px">Components that ship WITH this dome's truss (couplers, plates, braces…). They appear as checkboxes when you create a Truss Kit.</div>
+    <div class="hint" style="margin:0 0 12px;color:var(--dim);font-size:11.5px">Components that ship WITH this dome's truss (couplers, plates, braces…). They appear as checkboxes when you create a Truss Kit.</div>
     <table class="eq"><thead><tr><th>Category</th><th>Item</th><th style="text-align:right">Qty</th><th colspan="2"></th></tr></thead><tbody>${rows}</tbody></table>
+    <button class="add-line" onclick="domeTrussElAdd()">+ Add from Truss Library</button>
   </div>`;
 }
 function domeKitCard(m){
   const t=domeEnsureTruss(m);
-  const open = _domeKitOpen ? t.kits.find(k=>k.id===_domeKitOpen) : null;
-  if(open) return domeKitEditor(m, open);
-  const cards = t.kits.map(k=>{ const named=k.items.filter(it=>String(it.name||'').trim());
+  const openKit = _domeKitOpen ? t.kits.find(k=>k.id===_domeKitOpen) : null;
+  const listKits = openKit ? t.kits.filter(k=>k.id!==openKit.id) : t.kits;   /* BUILD 15.27: the editing kit shows below; the rest stay visible above */
+  const cards = listKits.map(k=>{ const named=k.items.filter(it=>String(it.name||'').trim());
     const table = named.length
       ? `<table class="eq" style="background:transparent">
-          <thead><tr><th style="width:4%">#</th><th style="width:28%">Category</th><th>Item</th><th style="text-align:right;width:12%">Qty</th></tr></thead>
+          <thead><tr><th style="width:4%">#</th><th style="width:28%">Category</th><th>Item</th><th class="num" style="width:12%">Qty</th></tr></thead>
           <tbody>${named.map((it,i)=>`<tr>
-            <td class="tight" style="text-align:center;color:var(--dim)">${i+1}</td>
-            <td class="tight">${esc((it.cat||'').trim()||'—')}</td>
-            <td class="tight">${esc(it.name)}</td>
-            <td class="tight" style="text-align:right">${esc((it.qty||'').trim()||'1')}</td>
+            <td style="text-align:center;color:var(--dim)">${i+1}</td>
+            <td>${esc((it.cat||'').trim()||'—')}</td>
+            <td>${esc(it.name)}</td>
+            <td class="num">${esc((it.qty||'').trim()||'1')}</td>
           </tr>`).join('')}</tbody>
         </table>`
-      : `<div style="color:var(--ink2);font-size:12px">No components yet — Open / Edit to add.</div>`;
+      : `<div style="color:var(--ink2);font-size:13px;padding:2px 0">No components yet — Open / Edit to add.</div>`;
     return `<div style="background:#fdf3f3;border:1px solid #f2c9c9;border-left:5px solid var(--fdp-red);border-radius:10px;padding:12px 15px;margin:0 0 12px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px">
         <div style="font-weight:700;font-size:14px">Truss Kit ${esc(k.num)} <span style="font-size:11.5px;font-weight:600;color:${k.status==='saved'?'#2e9e5b':'var(--dim)'}">· ${k.status==='saved'?'Saved':'Draft'}</span></div>
@@ -9435,13 +9431,14 @@ function domeKitCard(m){
       </div>
       ${table}
       <div style="color:var(--ink2);font-size:11.5px;margin-top:6px">${named.length} component${named.length===1?'':'s'}</div>
-    </div>`; }).join('') || `<div style="text-align:center;color:var(--dim);padding:18px">No truss kits yet — create the first ready configuration for this dome.</div>`;
-  return `<div class="card">
+    </div>`; }).join('') || (openKit ? '' : `<div style="text-align:center;color:var(--dim);padding:18px">No truss kits yet — create the first ready configuration for this dome.</div>`);
+  const listCard = `<div class="card">
     <div class="card-head" style="flex-wrap:wrap"><h3>Ready Truss Kit</h3>
       <button class="mod-btn primary" style="padding:7px 14px" onclick="domeKitCreate()">+ Create Truss Kit</button></div>
     <div class="hint" style="margin:-6px 0 12px;color:var(--dim);font-size:11.5px">Ready configurations typically used with this dome. Each kit is auto-numbered (01, 02, …); open one to edit. When assembling a project you'll be able to drop a saved kit in ready-made.</div>
     ${cards}
   </div>`;
+  return listCard + (openKit ? domeKitEditor(m, openKit) : '');
 }
 const _SVG_UP='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M18 15l-6-6-6 6"/></svg>';
 const _SVG_DN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M6 9l6 6 6-6"/></svg>';
