@@ -671,7 +671,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.0 · DOME LIBRARY (SHARED CATALOGUE)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.02 · DOME LIBRARY — OVERVIEW-ONLY REWORK</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1059,6 +1059,7 @@ function adoptDb(s){
     db.library = Object.assign(emptyLibrary(), db.library || {});
     if(!db.customCats || typeof db.customCats!=='object') db.customCats = {};
     if(!Array.isArray(db.domeLib)) db.domeLib = [];   /* BUILD 15.0: Dome Library local cache (additive) */
+    db.domeLib.forEach(function(m){ if(m && typeof m==='object'){ if(!m.domeUid) m.domeUid = m.domeId || newId(); if(m.serial===undefined) m.serial = m.domeId || ''; if(typeof m.hvacOpenings==='undefined') m.hvacOpenings=''; if(typeof m.fanOpenings==='undefined') m.fanOpenings=''; } });   /* BUILD 15.02: normalise older dome cards (domeId→serial + stable domeUid) */
     return true;
   }
   if(s && typeof s === 'object' && 'server' in s && s.project){
@@ -8780,62 +8781,31 @@ function pageLibrary(){
 
 /* ---------- router ---------- */
 /* ============================================================================
-   DOME LIBRARY (BUILD 15.0) — global shared catalogue of domes, independent of the
-   selected project. Firestore: dome_models/{domeId} (+ units subcollection). Files → Google
-   Drive (metadata + driveFileId only, no base64). IndexedDB = local cache (db.domeLib).
-   Does NOT touch Projects / Equipment Library / Auth / project backups / F6-F7.
+   DOME LIBRARY (BUILD 15.02) — global shared catalogue of domes, independent of the
+   selected project. Firestore: dome_models/{domeUid} (stable hidden id ≠ visible Serial).
+   IndexedDB = local cache (db.domeLib). Overview-only for now (Units/Components/Packing/
+   Files/History deferred). Does NOT touch Projects / Equipment Library / Auth / Drive / F6-F7.
    ============================================================================ */
-const DOME_TYPES = ['Open','Enclosed','SRD','Blackout','Other'];
-const DOME_SCREEN = ['Horizontal','Inclined','Reality','Other'];
-const DOME_STATUS = ['Available','In Use','Inspection','Repair','Retired'];
-const DOME_PACK_STATUS = ['Not Packed','Partial','Ready'];
-const DOME_COMP_TYPES = ['Frame','Cover','Curtain','Screen','Floor','Pole','Base Tube','Connector','Door','Duct','Truss','Other'];
-const DOME_COND = ['Good','Inspection','Repair','Replace','Order'];
-const DOME_FILE_CATS = ['BAS','VCP','PDS','Assembly Drawings','Packing Drawings','Manuals','Photos','Other'];
-const DOME_TABS = [['overview','Overview'],['units','Dome Units'],['components','Components'],['packing','Packing'],['files','Drawings & Files'],['history','History']];
+const DOME_TYPES = ['Open','Blackout'];
+const DOME_SCREEN = ['Tilted','Vertical','Straight','SRD Screen','Other'];
+const DOME_DOORS = ['WD','1D','2D','3D','Custom'];
+const DOME_DOOR_LABELS = { 'WD':'WD — Without Doors','1D':'1D — 1 Door','2D':'2D — 2 Doors','3D':'3D — 3 Doors','Custom':'Custom' };
 
 function domeEmptyModel(){
-  return { domeId:newId(), name:'', size:'', type:'', frameTubeSize:'', screenType:'', coverColor:'',
-    defaultStatus:'Available', ductSize:'', trussConfig:'', baseConnector:'', doors:'', standard:'', notes:'',
-    packing:{ description:'', bagsCasesTubes:'', palletQty:'', palletDims:'', totalWeight:'', status:'Not Packed', notes:'' },
-    files:[], units:[], archived:false, rev:0, _saved:false };
+  return { domeUid:newId(), serial:'', size:'', type:'', screenType:'', screenTypeOther:'',
+    doors:'', doorsCustom:'', hvacOpenings:'', fanOpenings:'', archived:false, rev:0, _saved:false };
 }
-function domeEmptyUnit(domeId){ return { unitId:newId(), domeId:domeId||'', kitId:'', serial:'', location:'', lastUsed:'', status:'Available', checked:false, archived:false, notes:'', components:[], history:[] }; }
-function domeEmptyComp(){ return { id:newId(), type:'', name:'', serial:'', reqQty:0, availQty:0, replaceOrderQty:0, condition:'Good', notes:'' }; }
-function domeEmptyHistory(){ return { id:newId(), date:'', projectEvent:'', location:'', installDate:'', breakdownDate:'', conditionAfter:'', inspectionNotes:'', repairNotes:'', updatedBy:'' }; }
-function domeEmptyFile(){ return { id:newId(), category:'BAS', name:'', revision:'', date:'', notes:'', driveFileId:'', uploadedBy:'', uploadedAt:0 }; }
-
-/* per-component order math (BUILD 15.0): Missing = max(req-avail,0); Total Order = Missing + manual Replace/Order Qty;
-   Need to Order flag when avail<req OR condition Order/Replace — never auto-orders all Required. */
-function domeCompCalc(c){
-  const req = parseFloat(c.reqQty)||0, avail = parseFloat(c.availQty)||0, rep = parseFloat(c.replaceOrderQty)||0;
-  const missing = Math.max(req - avail, 0);
-  return { missing, replaceOrder: rep, totalOrder: missing + rep, needToOrder: (avail < req) || c.condition==='Order' || c.condition==='Replace' };
-}
-function domeUnitRollup(u){
-  let complete=0, missing=0, extra=0, totalOrder=0;
-  (u.components||[]).forEach(c=>{ const req=parseFloat(c.reqQty)||0, avail=parseFloat(c.availQty)||0, k=domeCompCalc(c);
-    if(req>0 && avail>=req) complete++; missing+=k.missing; extra+=Math.max(avail-req,0); totalOrder+=k.totalOrder; });
-  return { complete, missing, extra, totalOrder };
-}
-function domeFind(id){ return db.domeLib.find(m=>m.domeId===id) || null; }
+function domeFind(uid){ return db.domeLib.find(m=>m.domeUid===uid) || null; }
 function domeEditing(){ return _domeEditId ? domeFind(_domeEditId) : null; }
-function domeUnitsActive(m){ return (m.units||[]).filter(u=>!u.archived); }
-function domeLastUsedLoc(m){
-  const us = domeUnitsActive(m); if(!us.length) return '—';
-  let best=null; us.forEach(u=>{ if(u.lastUsed && (!best || String(u.lastUsed)>String(best.lastUsed))) best=u; });
-  const u = best || us[0];
-  return [(u.lastUsed||''), (u.location||'')].filter(Boolean).join(' · ') || '—';
-}
-function domeSearchBlob(m){
-  const parts = [m.name,m.domeId,m.size,m.type,m.defaultStatus];
-  (m.units||[]).forEach(u=>{ parts.push(u.kitId,u.serial,u.location,u.status); (u.components||[]).forEach(c=>parts.push(c.name,c.type,c.serial)); });
-  return parts.filter(Boolean).join(' ').toLowerCase();
-}
+function domeSizeM(m){ const n = String(m.size||'').replace(/\s*m$/i,'').trim(); return n ? (n + ' m') : ''; }
+function domeTitle(m){ return [domeSizeM(m), m.type, m.serial].filter(Boolean).join(' · ') || 'New Dome'; }
+function domeScreenLabel(m){ return m.screenType==='Other' ? ('Other' + (m.screenTypeOther?(' · '+m.screenTypeOther):'')) : (m.screenType||'—'); }
+function domeDoorsLabel(m){ if(!m.doors) return '—'; return m.doors==='Custom' ? ('Custom' + (m.doorsCustom?(' · '+m.doorsCustom):'')) : (DOME_DOOR_LABELS[m.doors]||m.doors); }
+function domeSearchBlob(m){ return [m.serial,m.size,m.type,m.screenType,m.screenTypeOther].filter(Boolean).join(' ').toLowerCase(); }
 function saveDomeLib(){ saveState._skipCloud = true; try{ saveState(); }finally{ saveState._skipCloud = false; } }
 
 /* ---- Firestore sync (reuses the project Firestore connection; separate collection) ---- */
-var _domeView = 'list', _domeEditId = null, _domeTab = 'overview', _domeSearch = '', _domeFilterType = '', _domeFilterStatus = '', _domeUnitSel = '';
+var _domeView = 'list', _domeEditId = null, _domeSearch = '', _domeFilterType = '', _domeFilterScreen = '';
 var _domeFsStarted = false, _domeFsUnsub = null;
 function domeFsReady(){ return (typeof fsReady==='function') && fsReady() && !!_fsDb; }
 function domeFsEnsureStarted(){
@@ -8850,129 +8820,50 @@ function domeFsEnsureStarted(){
   }catch(e){ _domeFsStarted = false; }
 }
 function domeFsApplyModel(data){
-  if(!data || !data.domeId) return;
-  if(_domeEditId === data.domeId) return;                 /* don't disturb an open card being edited */
-  const i = db.domeLib.findIndex(m=>m.domeId===data.domeId);
-  const local = i>=0 ? db.domeLib[i] : null;
-  const model = Object.assign(domeEmptyModel(), data, { units: (local && local.units) || [], _saved:true });
+  if(!data || !data.domeUid) return;
+  if(_domeEditId === data.domeUid) return;                 /* don't disturb an open card being edited */
+  const i = db.domeLib.findIndex(m=>m.domeUid===data.domeUid);
+  const model = Object.assign(domeEmptyModel(), data, { _saved:true });
   if(i>=0) db.domeLib[i] = model; else db.domeLib.push(model);
 }
 function domeFsModelDoc(m){
-  return { domeId:m.domeId, name:m.name||'', size:m.size||'', type:m.type||'', frameTubeSize:m.frameTubeSize||'',
-    screenType:m.screenType||'', coverColor:m.coverColor||'', defaultStatus:m.defaultStatus||'', ductSize:m.ductSize||'',
-    trussConfig:m.trussConfig||'', baseConnector:m.baseConnector||'', doors:m.doors||'', standard:m.standard||'', notes:m.notes||'',
-    packing:Object.assign({}, m.packing||{}),
-    files:(m.files||[]).map(f=>({ id:f.id, category:f.category, name:f.name||'', revision:f.revision||'', date:f.date||'', notes:f.notes||'', driveFileId:f.driveFileId||'', uploadedBy:f.uploadedBy||'', uploadedAt:f.uploadedAt||0 })),
-    archived:!!m.archived, unitCount:domeUnitsActive(m).length, updatedBy:_gUser||'', rev:(m.rev||0) };
-}
-function domeFsUnitDoc(domeId, u){
-  return { unitId:u.unitId, domeId:domeId, kitId:u.kitId||'', serial:u.serial||'', location:u.location||'', lastUsed:u.lastUsed||'',
-    status:u.status||'', checked:!!u.checked, archived:!!u.archived, notes:u.notes||'',
-    components:(u.components||[]).map(c=>({ id:c.id, type:c.type||'', name:c.name||'', serial:c.serial||'', reqQty:parseFloat(c.reqQty)||0, availQty:parseFloat(c.availQty)||0, replaceOrderQty:parseFloat(c.replaceOrderQty)||0, condition:c.condition||'Good', notes:c.notes||'' })),
-    history:(u.history||[]).map(h=>Object.assign({}, h)) };
+  return { domeUid:m.domeUid, serial:m.serial||'', size:String(m.size||''), type:m.type||'', screenType:m.screenType||'',
+    screenTypeOther:m.screenTypeOther||'', doors:m.doors||'', doorsCustom:m.doorsCustom||'',
+    hvacOpenings:String(m.hvacOpenings||''), fanOpenings:String(m.fanOpenings||''),
+    archived:!!m.archived, updatedBy:_gUser||'', rev:(m.rev||0) };
 }
 async function domeFsPushModel(m){
   if(!m) return;
   m.rev = (m.rev||0) + 1;
-  if(!domeFsReady()){ setCloudStat('Dome card saved locally — sign in / deploy dome rules to sync'); return; }
+  if(!domeFsReady()){ setCloudStat('Dome card saved locally — deploy the dome_models rules to sync'); return; }
   try{
-    const col = _fsDb.collection('dome_models');
-    await col.doc(m.domeId).set(domeFsModelDoc(m));
-    let skipped = 0;
-    for(const u of (m.units||[])){
-      if(!(u.kitId||'').trim()){ skipped++; continue; }   /* rules require a non-empty Unit/Kit ID */
-      await col.doc(m.domeId).collection('units').doc(u.unitId).set(domeFsUnitDoc(m.domeId, u));
-    }
-    setCloudStat('Dome Library synced ✓' + (skipped ? (' · ' + skipped + ' unit(s) need a Kit ID') : '') + ' · ' + hhmm());
+    await _fsDb.collection('dome_models').doc(m.domeUid).set(domeFsModelDoc(m));
+    setCloudStat('Dome Library synced ✓ · ' + hhmm());
   }catch(e){ setCloudStat('⚠ Dome Library sync failed: ' + (e && e.message || e) + ' — saved locally (rules deployed?)'); }
-}
-async function domePullUnits(domeId){
-  if(!domeFsReady()) return;
-  try{
-    const qs = await _fsDb.collection('dome_models').doc(domeId).collection('units').get();
-    const m = domeFind(domeId); if(!m) return;
-    const units = []; qs.forEach(function(d){ units.push(Object.assign(domeEmptyUnit(domeId), d.data())); });
-    if(units.length || !(m.units||[]).length){ m.units = units; saveDomeLib(); if(location.hash==='#/dome-library') rerenderKeepScroll(); }
-  }catch(e){}
-}
-
-/* ---- Drive: files live under Fulldome PSP / Dome Library / <Dome ID — Name> / <Category>/ ---- */
-async function domeLibraryDriveRoot(){ const root = await driveRootId(); return await driveEnsureFolder('Dome Library', root); }
-async function domeDriveFolder(m, cat){
-  const dl = await domeLibraryDriveRoot();
-  const name = (m.domeId + ' — ' + (m.name||'Dome')).replace(/[\/\\:*?"<>|]/g,'-').trim();
-  const domeF = await driveEnsureFolder(name, dl);
-  return await driveEnsureFolder(cat, domeF);
 }
 
 /* ---------- navigation / CRUD ---------- */
-function domeNewCard(){ const m = domeEmptyModel(); m.createdBy = _gUser||''; db.domeLib.push(m); _domeEditId = m.domeId; _domeView='card'; _domeTab='overview'; saveDomeLib(); rerenderKeepScroll(); }
-function domeOpenCard(domeId){ _domeEditId = domeId; _domeView='card'; _domeTab='overview'; const m=domeFind(domeId); if(m) _domeUnitSel = (domeUnitsActive(m)[0]||{}).unitId || ''; domePullUnits(domeId); rerenderKeepScroll(); }
+function domeNewCard(){ const m = domeEmptyModel(); db.domeLib.push(m); _domeEditId = m.domeUid; _domeView='card'; saveDomeLib(); rerenderKeepScroll(); }
+function domeOpenCard(uid){ _domeEditId = uid; _domeView='card'; rerenderKeepScroll(); }
 function domeBackToList(){ _domeEditId=null; _domeView='list'; rerenderKeepScroll(); }
-function domeCancelCard(){ const m=domeEditing(); if(m && !m._saved){ db.domeLib = db.domeLib.filter(x=>x.domeId!==m.domeId); saveDomeLib(); } domeBackToList(); }
-function domeSetTab(t){ _domeTab=t; rerenderKeepScroll(); }
-function domeSetSearch(v){ _domeSearch=v; }   /* input handler — no rerender per keystroke */
-function domeSetFilterType(v){ _domeFilterType=v; rerenderKeepScroll(); }
-function domeSetFilterStatus(v){ _domeFilterStatus=v; rerenderKeepScroll(); }
+function domeCancelCard(){ const m=domeEditing(); if(m && !m._saved){ db.domeLib = db.domeLib.filter(x=>x.domeUid!==m.domeUid); saveDomeLib(); } domeBackToList(); }
+function domeSetSearch(v){ _domeSearch=v; }
 function domeApplySearch(){ rerenderKeepScroll(); }
-
-function domeUpd(field, val){ const m=domeEditing(); if(!m) return; if(field==='domeId'){ if(m._saved) return; val=(val||'').trim(); if(domeLib_idTaken(val, m)) { return; } m.domeId=val; _domeEditId=val; } else m[field]=val; saveDomeLib(); }
-function domeLib_idTaken(id, self){ return db.domeLib.some(x=>x!==self && x.domeId===id); }
-function domeUpdPacking(field, val){ const m=domeEditing(); if(!m) return; m.packing=m.packing||{}; m.packing[field]=val; saveDomeLib(); }
+function domeSetFilterType(v){ _domeFilterType=v; rerenderKeepScroll(); }
+function domeSetFilterScreen(v){ _domeFilterScreen=v; rerenderKeepScroll(); }
+function domeUpd(field, val){ const m=domeEditing(); if(!m) return; m[field]=val; saveDomeLib(); }
 function domeSaveCard(){
   const m=domeEditing(); if(!m) return;
-  if(!(m.name||'').trim()){ alert('Dome Name is required before saving.'); return; }
-  if(!(m.domeId||'').trim()){ alert('Dome ID is required.'); return; }
+  if(!(m.serial||'').trim()){ alert('Dome ID / Serial Number is required before saving.'); return; }
   m._saved = true; saveDomeLib(); domeFsPushModel(m); rerenderKeepScroll(); flashStat('Dome card saved ✓');
 }
-
-/* Units */
-function domeAddUnit(){ const m=domeEditing(); if(!m) return; const u=domeEmptyUnit(m.domeId); m.units.push(u); _domeUnitSel=u.unitId; saveDomeLib(); rerenderKeepScroll(); }
-function domeUpdUnit(uid, field, val){ const m=domeEditing(); if(!m) return; const u=(m.units||[]).find(x=>x.unitId===uid); if(!u) return; u[field]=(field==='checked')?!!val:val; saveDomeLib(); if(m._saved) domeFsPushModel(m); }
-function domeArchiveUnit(uid){ const m=domeEditing(); if(!m) return; const u=(m.units||[]).find(x=>x.unitId===uid); if(!u) return; if(!confirm('Archive this Dome Unit? It is hidden from the catalogue but kept (soft-delete).')) return; u.archived=true; saveDomeLib(); if(m._saved) domeFsPushModel(m); rerenderKeepScroll(); }
-
-/* Components (arrays inside a unit) */
-function domeSelUnit(uid){ _domeUnitSel=uid; rerenderKeepScroll(); }
-function domeAddComp(){ const m=domeEditing(); const u=m&&(m.units||[]).find(x=>x.unitId===_domeUnitSel); if(!u) return; u.components.push(domeEmptyComp()); saveDomeLib(); rerenderKeepScroll(); }
-function domeDupComp(cid){ const m=domeEditing(); const u=m&&(m.units||[]).find(x=>x.unitId===_domeUnitSel); if(!u) return; const c=u.components.find(x=>x.id===cid); if(!c) return; const copy=Object.assign({}, c, {id:newId()}); u.components.push(copy); saveDomeLib(); rerenderKeepScroll(); }
-function domeRmComp(cid){ const m=domeEditing(); const u=m&&(m.units||[]).find(x=>x.unitId===_domeUnitSel); if(!u) return; u.components=u.components.filter(x=>x.id!==cid); saveDomeLib(); if(m._saved) domeFsPushModel(m); rerenderKeepScroll(); }
-function domeUpdComp(cid, field, val){ const m=domeEditing(); const u=m&&(m.units||[]).find(x=>x.unitId===_domeUnitSel); if(!u) return; const c=u.components.find(x=>x.id===cid); if(!c) return; c[field]=val; saveDomeLib();
-  const el=document.getElementById('dcTot_'+cid); if(el){ const k=domeCompCalc(c); el.textContent=k.totalOrder; } const nd=document.getElementById('dcNeed_'+cid); if(nd){ nd.textContent=domeCompCalc(c).needToOrder?'Yes':'—'; } }
-
-/* Files */
-function domePickDomeFile(cat){ const m=domeEditing(); if(!m) return; if(!m._saved){ alert('Save the Dome Card (Overview) first, then add files.'); return; }
-  const inp=document.createElement('input'); inp.type='file'; inp.onchange=function(){ const f=inp.files&&inp.files[0]; if(f) domeUploadFile(cat,f); }; inp.click(); }
-async function domeUploadFile(cat, f){
+function domeArchiveCard(){
   const m=domeEditing(); if(!m) return;
-  if(!(_cloudOn && _gTok)){ alert('Sign in to Google to upload files to Drive.'); return; }
-  try{
-    setCloudStat('Uploading ' + f.name + ' to Drive…');
-    const folder = await domeDriveFolder(m, cat);
-    const dataUrl = await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(f); });
-    const bytes = dataUrlToBytes(dataUrl);
-    const existing = await driveFindFile(f.name, folder);
-    const id = await driveUpload(f.name, folder, bytes, f.type||'application/octet-stream', existing);
-    const meta = Object.assign(domeEmptyFile(), { category:cat, name:f.name, date:new Date().toISOString().slice(0,10), driveFileId:id, uploadedBy:_gUser||'', uploadedAt:Date.now() });
-    m.files.push(meta); saveDomeLib(); domeFsPushModel(m); rerenderKeepScroll();
-    setCloudStat('File uploaded to Drive ✓ · ' + hhmm());
-  }catch(e){ setCloudStat('⚠ File upload failed: ' + (e && e.message || e)); alert('Upload failed: ' + (e && e.message || e)); }
+  if(!confirm('Archive this dome card? It is hidden from the catalogue (soft-delete via archived:true, never physically deleted).')) return;
+  m.archived = true; m.rev=(m.rev||0)+0; saveDomeLib(); if(m._saved) domeFsPushModel(m); domeBackToList();
 }
-function domeUpdFileMeta(fileId, field, val){ const m=domeEditing(); const f=m&&(m.files||[]).find(x=>x.id===fileId); if(!f) return; f[field]=val; saveDomeLib(); if(m._saved) domeFsPushModel(m); }
-function domeOpenFile(fileId){ const m=domeEditing(); const f=m&&(m.files||[]).find(x=>x.id===fileId); if(f&&f.driveFileId) window.open('https://drive.google.com/file/d/'+f.driveFileId+'/view','_blank'); }
-function domeRmFileMeta(fileId){ const m=domeEditing(); if(!m) return; if(!confirm('Remove this file from the Dome Library card?\nThe actual file STAYS in Google Drive.')) return; m.files=(m.files||[]).filter(x=>x.id!==fileId); saveDomeLib(); if(m._saved) domeFsPushModel(m); rerenderKeepScroll(); }
-async function domeTrashDriveFile(fileId){ const m=domeEditing(); if(!m) return; const f=(m.files||[]).find(x=>x.id===fileId); if(!f) return;
-  if(!confirm('Move this file to Google Drive Trash?\nThis removes the ACTUAL file from Drive (recoverable ~30 days), and also removes it from the card.\n\n'+f.name)) return;
-  try{ if(f.driveFileId && _cloudOn && _gTok) await driveTrashFolder(f.driveFileId); }catch(e){ alert('Could not trash the Drive file: '+(e&&e.message||e)); return; }
-  m.files=(m.files||[]).filter(x=>x.id!==fileId); saveDomeLib(); if(m._saved) domeFsPushModel(m); rerenderKeepScroll(); }
-
-/* History */
-function domeHistUnit(){ const m=domeEditing(); return m && (m.units||[]).find(x=>x.unitId===_domeUnitSel); }
-function domeAddHistory(){ const u=domeHistUnit(); if(!u){ alert('Select a Dome Unit first (Components tab).'); return; } u.history=u.history||[]; u.history.push(Object.assign(domeEmptyHistory(),{updatedBy:_gUser||''})); saveDomeLib(); rerenderKeepScroll(); }
-function domeUpdHistory(hid, field, val){ const u=domeHistUnit(); if(!u) return; const h=(u.history||[]).find(x=>x.id===hid); if(!h) return; h[field]=val; saveDomeLib(); }
-function domeRmHistory(hid){ const u=domeHistUnit(); if(!u) return; u.history=(u.history||[]).filter(x=>x.id!==hid); saveDomeLib(); const m=domeEditing(); if(m&&m._saved) domeFsPushModel(m); rerenderKeepScroll(); }
 
 /* ---------- PAGES ---------- */
-function domeStatusChip(s){ const map={ 'Available':'c-ok','In Use':'c-warn','Inspection':'c-warn','Repair':'c-off','Retired':'c-mut' }; return `<span class="chip ${map[s]||'c-mut'}"><span class="cd"></span>${esc(s||'—')}</span>`; }
 function pageDomeLibrary(){
   domeFsEnsureStarted();
   if(_domeView==='card' && domeEditing()) return pageDomeCard();
@@ -8980,45 +8871,42 @@ function pageDomeLibrary(){
   const q=(_domeSearch||'').trim().toLowerCase();
   const list = db.domeLib.filter(m=>!m.archived).filter(m=>{
     if(_domeFilterType && m.type!==_domeFilterType) return false;
-    if(_domeFilterStatus && (m.defaultStatus||'')!==_domeFilterStatus) return false;
+    if(_domeFilterScreen && (m.screenType||'')!==_domeFilterScreen) return false;
     if(q && domeSearchBlob(m).indexOf(q)<0) return false;
     return true;
   });
   const opt=(arr,cur,all)=>[`<option value="">${all}</option>`].concat(arr.map(x=>`<option value="${esc(x)}" ${cur===x?'selected':''}>${esc(x)}</option>`)).join('');
   const rows = list.map(m=>`
     <tr>
-      <td class="tight"><b>${esc(m.name||'—')}</b></td>
-      <td class="tight" style="color:var(--ink2)">${esc(m.domeId)}</td>
-      <td class="tight">${esc(m.size||'—')}</td>
+      <td class="tight"><b>${esc(m.serial||'—')}</b></td>
+      <td class="tight">${esc(domeSizeM(m)||'—')}</td>
       <td class="tight">${esc(m.type||'—')}</td>
-      <td class="tight">${esc(m.frameTubeSize||'—')}</td>
-      <td class="tight" style="text-align:center">${domeUnitsActive(m).length}</td>
-      <td class="tight">${esc(domeLastUsedLoc(m))}</td>
-      <td class="tight">${domeStatusChip(m.defaultStatus)}</td>
-      <td class="tight" style="text-align:right"><button class="mod-btn primary" style="padding:5px 12px" onclick="domeOpenCard('${m.domeId}')">Open / Edit</button></td>
-    </tr>`).join('') || `<tr><td colspan="9" style="text-align:center;color:var(--ink2);padding:26px">No domes yet — click “+ Create Dome Card”.</td></tr>`;
+      <td class="tight">${esc(domeScreenLabel(m))}</td>
+      <td class="tight">${esc(domeDoorsLabel(m))}</td>
+      <td class="tight" style="text-align:right"><button class="mod-btn primary" style="padding:5px 12px" onclick="domeOpenCard('${m.domeUid}')">Open / Edit</button></td>
+    </tr>`).join('') || `<tr><td colspan="6" style="text-align:center;color:var(--ink2);padding:26px">No domes yet — click “+ Create Dome Card”.</td></tr>`;
   return `
   <div class="page">
     <div class="pagehead"><div class="eyebrow">Fulldome Projection SP</div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
         <h1 style="margin:0">Dome Library</h1>
-        <button class="create-btn" style="max-width:210px" onclick="domeNewCard()">${IC.check} Create Dome Card</button>
+        <button class="mod-btn primary" style="padding:9px 16px;flex:none" onclick="domeNewCard()">${IC.check} Create Dome Card</button>
       </div>
-      <div class="sub">Shared catalogue of domes — independent of the selected project. Synced across the team via Firestore; files stored in Google Drive.</div>
+      <div class="sub">Shared catalogue of domes — independent of the selected project. Synced across the team via Firestore.</div>
     </div>
     <div class="card" style="padding:14px 16px">
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-        <input class="cell" style="flex:1;min-width:240px;padding:8px 11px" placeholder="Search name / ID / size / type / serial / location / status / components" value="${esc(_domeSearch)}" oninput="domeSetSearch(this.value)" onkeydown="if(event.key==='Enter')domeApplySearch()">
+        <input class="cell" style="flex:1;min-width:240px;padding:8px 11px" placeholder="Search Serial / Size / Dome Type / Screen Type" value="${esc(_domeSearch)}" oninput="domeSetSearch(this.value)" onkeydown="if(event.key==='Enter')domeApplySearch()">
         <button class="mod-btn" style="padding:8px 12px" onclick="domeApplySearch()">Search</button>
-        <span style="display:inline-flex;align-items:center;gap:6px"><span style="font-size:12px;color:var(--dim)">Type</span>
+        <span style="display:inline-flex;align-items:center;gap:6px"><span style="font-size:12px;color:var(--dim)">Dome Type</span>
           <select class="cell" style="width:auto;padding:7px 9px" onchange="domeSetFilterType(this.value)">${opt(DOME_TYPES,_domeFilterType,'All Types')}</select></span>
-        <span style="display:inline-flex;align-items:center;gap:6px"><span style="font-size:12px;color:var(--dim)">Status</span>
-          <select class="cell" style="width:auto;padding:7px 9px" onchange="domeSetFilterStatus(this.value)">${opt(DOME_STATUS,_domeFilterStatus,'All Statuses')}</select></span>
+        <span style="display:inline-flex;align-items:center;gap:6px"><span style="font-size:12px;color:var(--dim)">Screen Type</span>
+          <select class="cell" style="width:auto;padding:7px 9px" onchange="domeSetFilterScreen(this.value)">${opt(DOME_SCREEN,_domeFilterScreen,'All Screens')}</select></span>
       </div>
     </div>
     <div class="card">
       <table class="eq">
-        <thead><tr><th>Dome Name</th><th>Dome ID</th><th>Size</th><th>Type</th><th>Frame Tube</th><th style="text-align:center">Units</th><th>Last Used / Location</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Dome ID / Serial</th><th>Size</th><th>Dome Type</th><th>Screen Type</th><th>Doors</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>
@@ -9027,163 +8915,34 @@ function pageDomeLibrary(){
 
 function pageDomeCard(){
   const m=domeEditing(); if(!m) return pageDomeLibrary();
-  const tabbar = DOME_TABS.map(([k,l])=>`<button class="dtab ${_domeTab===k?'sel':''}" onclick="domeSetTab('${k}')">${esc(l)}</button>`).join('');
   return `
   <div class="page">
     <div class="pagehead" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
       <div><a href="#/dome-library" onclick="domeBackToList();return false;" style="font-size:12px;color:var(--ink2);text-decoration:none">‹ Back to Library</a>
-        <h1 style="margin:2px 0 0">Dome Card ${m.name?('— '+esc(m.name)):''} <span style="font-size:13px;color:var(--dim);font-weight:400">(${esc(m.domeId)}${m._saved?'':' · unsaved'})</span></h1></div>
-      <div style="display:flex;gap:8px"><button class="mod-btn" style="padding:8px 14px" onclick="domeCancelCard()">Cancel</button>
-        <button class="create-btn" style="max-width:180px" onclick="domeSaveCard()">Save Dome Card</button></div>
+        <h1 style="margin:2px 0 0">${esc(domeTitle(m))} <span style="font-size:13px;color:var(--dim);font-weight:400">(${m._saved?'saved':'unsaved'})</span></h1></div>
+      <div style="display:flex;gap:8px;flex:none">
+        <button class="mod-btn" style="padding:8px 14px" onclick="domeCancelCard()">Cancel</button>
+        ${m._saved ? `<button class="mod-btn" style="padding:8px 14px;color:var(--fdp-red)" onclick="domeArchiveCard()">Archive</button>` : ''}
+        <button class="mod-btn primary" style="padding:8px 16px" onclick="domeSaveCard()">Save Dome Card</button>
+      </div>
     </div>
-    <div class="dtabs">${tabbar}</div>
-    <div class="card">${domeTabBody(m)}</div>
+    <div class="dtabs"><button class="dtab sel">Overview</button></div>
+    <div class="card">${domeTabOverview(m)}</div>
   </div>`;
-}
-function domeTabBody(m){
-  if(_domeTab==='overview') return domeTabOverview(m);
-  if(_domeTab==='units') return domeTabUnits(m);
-  if(_domeTab==='components') return domeTabComponents(m);
-  if(_domeTab==='packing') return domeTabPacking(m);
-  if(_domeTab==='files') return domeTabFiles(m);
-  if(_domeTab==='history') return domeTabHistory(m);
-  return '';
 }
 function _dfld(label,inner){ return `<div class="fld"><label>${label}</label>${inner}</div>`; }
-function _dinp(field,val,extra){ return `<input class="cell" value="${esc(val||'')}" oninput="domeUpd('${field}',this.value)"${extra||''}>`; }
-function _dsel(field,val,arr){ return `<select class="cell" onchange="domeUpd('${field}',this.value)">${arr.map(x=>`<option value="${esc(x)}" ${val===x?'selected':''}>${esc(x)}</option>`).join('')}</select>`; }
+function _dsel(field,val,arr){ return `<select class="cell" onchange="domeUpd('${field}',this.value)">${arr.map(x=>`<option value="${esc(x)}" ${val===x?'selected':''}>${esc(x||'—')}</option>`).join('')}</select>`; }
 function domeTabOverview(m){
   return `<div class="fgrid">
-    ${_dfld('Dome Name *', _dinp('name', m.name))}
-    ${_dfld('Dome ID '+(m._saved?'(locked)':'(editable until first save)'), m._saved
-        ? `<input class="cell" value="${esc(m.domeId)}" readonly style="background:#f0f1f4;font-weight:700">`
-        : `<input class="cell" value="${esc(m.domeId)}" oninput="domeUpd('domeId',this.value)" style="font-weight:700">`)}
-    ${_dfld('Size', _dinp('size', m.size))}
-    ${_dfld('Type', _dsel('type', m.type, ['',...DOME_TYPES]))}
-    ${_dfld('Frame Tube Size', _dinp('frameTubeSize', m.frameTubeSize))}
-    ${_dfld('Screen Type', _dsel('screenType', m.screenType, ['',...DOME_SCREEN]))}
-    ${_dfld('Cover Color', _dinp('coverColor', m.coverColor))}
-    ${_dfld('Default Status', _dsel('defaultStatus', m.defaultStatus, DOME_STATUS))}
-    ${_dfld('Duct Size', _dinp('ductSize', m.ductSize))}
-    ${_dfld('Truss Configuration', _dinp('trussConfig', m.trussConfig))}
-    ${_dfld('Base Connector', _dinp('baseConnector', m.baseConnector))}
-    ${_dfld('Doors', _dinp('doors', m.doors))}
-    ${_dfld('Standard', _dinp('standard', m.standard))}
-    ${_dfld('General Notes', `<textarea class="cell" rows="3" oninput="domeUpd('notes',this.value)">${esc(m.notes||'')}</textarea>`)}
+    ${_dfld('Dome ID / Serial Number *', `<input class="cell" value="${esc(m.serial)}" placeholder="e.g. FD-10-024" oninput="domeUpd('serial',this.value)" style="font-weight:700">`)}
+    ${_dfld('Size (m)', `<input class="cell" type="number" step="0.1" min="0" value="${esc(m.size)}" placeholder="e.g. 10" oninput="domeUpd('size',this.value)">`)}
+    ${_dfld('Dome Type', _dsel('type', m.type, ['',...DOME_TYPES]))}
+    ${_dfld('Screen Type', _dsel('screenType', m.screenType, ['',...DOME_SCREEN]) + (m.screenType==='Other' ? `<input class="cell" style="margin-top:6px" placeholder="Specify screen type" value="${esc(m.screenTypeOther)}" oninput="domeUpd('screenTypeOther',this.value)">` : ''))}
+    ${_dfld('Doors', `<select class="cell" onchange="domeUpd('doors',this.value)"><option value="" ${!m.doors?'selected':''}>—</option>${DOME_DOORS.map(d=>`<option value="${d}" ${m.doors===d?'selected':''}>${esc(DOME_DOOR_LABELS[d])}</option>`).join('')}</select>` + (m.doors==='Custom' ? `<input class="cell" style="margin-top:6px" placeholder="Describe the doors" value="${esc(m.doorsCustom)}" oninput="domeUpd('doorsCustom',this.value)">` : ''))}
+    ${_dfld('HVAC Openings', `<input class="cell num" type="number" min="0" step="1" value="${esc(m.hvacOpenings)}" placeholder="0" oninput="domeUpd('hvacOpenings',this.value)">`)}
+    ${_dfld('Fan Openings', `<input class="cell num" type="number" min="0" step="1" value="${esc(m.fanOpenings)}" placeholder="0" oninput="domeUpd('fanOpenings',this.value)">`)}
   </div>
-  <div style="margin-top:12px;color:var(--dim);font-size:11.5px">First save stores Overview and creates the card; Units, Components, Packing, Files and History can be added after saving.</div>`;
-}
-function domeTabUnits(m){
-  const rows = domeUnitsActive(m).map(u=>`
-    <tr>
-      <td class="tight"><input class="cell" value="${esc(u.kitId)}" placeholder="Kit ID *" oninput="domeUpdUnit('${u.unitId}','kitId',this.value)"></td>
-      <td class="tight"><input class="cell" value="${esc(u.serial)}" oninput="domeUpdUnit('${u.unitId}','serial',this.value)"></td>
-      <td class="tight"><input class="cell" value="${esc(u.location)}" oninput="domeUpdUnit('${u.unitId}','location',this.value)"></td>
-      <td class="tight"><input class="cell" value="${esc(u.lastUsed)}" placeholder="YYYY-MM-DD" oninput="domeUpdUnit('${u.unitId}','lastUsed',this.value)"></td>
-      <td class="tight">${_domeUnitStatusSel(u)}</td>
-      <td class="tight" style="text-align:center"><input type="checkbox" style="width:15px;height:15px;accent-color:#2e9e5b" ${u.checked?'checked':''} onchange="domeUpdUnit('${u.unitId}','checked',this.checked)"></td>
-      <td class="tight"><input class="cell" value="${esc(u.notes)}" oninput="domeUpdUnit('${u.unitId}','notes',this.value)"></td>
-      <td class="rm"><button title="Archive unit" onclick="domeArchiveUnit('${u.unitId}')">×</button></td>
-    </tr>`).join('') || `<tr><td colspan="8" style="text-align:center;color:var(--ink2);padding:18px">No units yet.</td></tr>`;
-  return `<div class="card-head"><h3>Dome Units — one Dome Type can have several physical kits</h3><button class="mod-btn primary" style="padding:6px 12px" onclick="domeAddUnit()">+ Add Dome Unit</button></div>
-    <table class="eq"><thead><tr><th>Unit / Kit ID</th><th>Serial Number</th><th>Current Location</th><th>Last Used</th><th>Status</th><th style="text-align:center">Checked</th><th>Notes</th><th></th></tr></thead>
-    <tbody>${rows}</tbody></table>`;
-}
-function _domeUnitStatusSel(u){ return `<select class="cell" onchange="domeUpdUnit('${u.unitId}','status',this.value)">${DOME_STATUS.map(s=>`<option value="${esc(s)}" ${u.status===s?'selected':''}>${esc(s)}</option>`).join('')}</select>`; }
-function domeTabComponents(m){
-  const units = domeUnitsActive(m);
-  if(!units.length) return `<div style="padding:22px;text-align:center;color:var(--ink2)">Add a Dome Unit first (Dome Units tab) — components belong to a unit.</div>`;
-  if(!_domeUnitSel || !units.some(u=>u.unitId===_domeUnitSel)) _domeUnitSel=units[0].unitId;
-  const u = units.find(x=>x.unitId===_domeUnitSel);
-  const roll = domeUnitRollup(u);
-  const rows = (u.components||[]).map(c=>{ const k=domeCompCalc(c); return `
-    <tr>
-      <td class="tight" style="width:12%">${_dcompSel(c,'type',['',...DOME_COMP_TYPES])}</td>
-      <td class="tight"><input class="cell" value="${esc(c.name)}" oninput="domeUpdComp('${c.id}','name',this.value)"></td>
-      <td class="tight" style="width:11%"><input class="cell" value="${esc(c.serial)}" oninput="domeUpdComp('${c.id}','serial',this.value)"></td>
-      <td class="tight" style="width:7%"><input class="cell num" value="${esc(c.reqQty)}" oninput="domeUpdComp('${c.id}','reqQty',this.value)"></td>
-      <td class="tight" style="width:7%"><input class="cell num" value="${esc(c.availQty)}" oninput="domeUpdComp('${c.id}','availQty',this.value)"></td>
-      <td class="tight" style="width:9%"><input class="cell num" value="${esc(c.replaceOrderQty)}" title="Manual Replace / Order Qty" oninput="domeUpdComp('${c.id}','replaceOrderQty',this.value)"></td>
-      <td class="num" style="width:6%"><span id="dcTot_${c.id}">${k.totalOrder}</span></td>
-      <td class="tight" style="width:10%">${_dcompSel(c,'condition',DOME_COND)}</td>
-      <td class="tight" style="width:6%;text-align:center"><span id="dcNeed_${c.id}">${k.needToOrder?'Yes':'—'}</span></td>
-      <td class="tight"><div style="display:flex;gap:4px"><button class="mod-btn" style="padding:4px 8px;font-size:11px" title="Duplicate component" onclick="domeDupComp('${c.id}')">Dup</button><button class="mod-btn" style="padding:4px 7px" title="Delete component" onclick="domeRmComp('${c.id}')">×</button></div></td>
-    </tr>`; }).join('') || `<tr><td colspan="10" style="text-align:center;color:var(--ink2);padding:16px">No components yet.</td></tr>`;
-  return `<div class="card-head"><h3>Components</h3>
-      <div style="display:flex;gap:8px;align-items:center">
-        <span style="font-size:12px;color:var(--dim)">Unit</span>
-        <select class="cell" style="width:auto;padding:6px 9px" onchange="domeSelUnit(this.value)">${units.map(x=>`<option value="${x.unitId}" ${x.unitId===_domeUnitSel?'selected':''}>${esc(x.kitId||x.unitId)}</option>`).join('')}</select>
-        <button class="mod-btn primary" style="padding:6px 11px" onclick="domeAddComp()">+ Add Component</button>
-      </div></div>
-    <table class="eq"><thead><tr><th>Type</th><th>Component Name</th><th>Serial</th><th style="text-align:right">Req</th><th style="text-align:right">Avail</th><th style="text-align:right">Replace/Order</th><th style="text-align:right">Total Order</th><th>Condition</th><th style="text-align:center">Need&nbsp;Order</th><th></th></tr></thead>
-    <tbody>${rows}</tbody></table>
-    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:12.5px">
-      <span class="chip c-ok"><span class="cd"></span>Complete ${roll.complete}</span>
-      <span class="chip c-off"><span class="cd"></span>Missing ${roll.missing}</span>
-      <span class="chip c-mut"><span class="cd"></span>Extra ${roll.extra}</span>
-      <span class="chip c-warn"><span class="cd"></span>Total Order Qty ${roll.totalOrder}</span>
-    </div>
-    <div style="margin-top:8px;color:var(--dim);font-size:11px">Total Order = Missing (Req − Avail) + manual Replace/Order Qty. Condition Order/Replace raises “Need Order” but never auto-orders all Required.</div>`;
-}
-function _dcompSel(c,field,arr){ return `<select class="cell" onchange="domeUpdComp('${c.id}','${field}',this.value)">${arr.map(x=>`<option value="${esc(x)}" ${c[field]===x?'selected':''}>${esc(x||'—')}</option>`).join('')}</select>`; }
-function domeTabPacking(m){ const p=m.packing||{};
-  return `<div class="fgrid">
-    ${_dfld('Packing Description', `<input class="cell" value="${esc(p.description||'')}" oninput="domeUpdPacking('description',this.value)">`)}
-    ${_dfld('Bags / Cases / Tubes', `<input class="cell" value="${esc(p.bagsCasesTubes||'')}" oninput="domeUpdPacking('bagsCasesTubes',this.value)">`)}
-    ${_dfld('Pallet Quantity', `<input class="cell" value="${esc(p.palletQty||'')}" oninput="domeUpdPacking('palletQty',this.value)">`)}
-    ${_dfld('Pallet Dimensions', `<input class="cell" value="${esc(p.palletDims||'')}" oninput="domeUpdPacking('palletDims',this.value)">`)}
-    ${_dfld('Total Weight', `<input class="cell" value="${esc(p.totalWeight||'')}" oninput="domeUpdPacking('totalWeight',this.value)">`)}
-    ${_dfld('Packing Status', `<select class="cell" onchange="domeUpdPacking('status',this.value)">${DOME_PACK_STATUS.map(s=>`<option value="${esc(s)}" ${p.status===s?'selected':''}>${esc(s)}</option>`).join('')}</select>`)}
-    ${_dfld('Packing Notes', `<textarea class="cell" rows="3" oninput="domeUpdPacking('notes',this.value)">${esc(p.notes||'')}</textarea>`)}
-  </div>`;
-}
-function domeTabFiles(m){
-  const rows=(m.files||[]).map(f=>`
-    <tr>
-      <td class="tight">${esc(f.category)}</td>
-      <td class="tight"><b>${esc(f.name)}</b></td>
-      <td class="tight" style="width:8%"><input class="cell" value="${esc(f.revision)}" oninput="domeUpdFileMeta('${f.id}','revision',this.value)"></td>
-      <td class="tight" style="width:12%"><input class="cell" value="${esc(f.date)}" oninput="domeUpdFileMeta('${f.id}','date',this.value)"></td>
-      <td class="tight"><input class="cell" value="${esc(f.notes)}" oninput="domeUpdFileMeta('${f.id}','notes',this.value)"></td>
-      <td class="tight" style="color:var(--dim)">${esc(f.uploadedBy||'')}</td>
-      <td class="tight" style="text-align:right"><div style="display:inline-flex;gap:5px">
-        <button class="mod-btn" style="padding:4px 8px" onclick="domeOpenFile('${f.id}')" title="Open in Drive">Open</button>
-        <button class="mod-btn" style="padding:4px 8px" onclick="domeRmFileMeta('${f.id}')" title="Remove from Dome Library (file stays in Drive)">Remove</button>
-        <button class="mod-btn" style="padding:4px 8px;color:var(--fdp-red)" onclick="domeTrashDriveFile('${f.id}')" title="Move Drive file to Trash">Trash</button>
-      </div></td>
-    </tr>`).join('') || `<tr><td colspan="7" style="text-align:center;color:var(--ink2);padding:16px">No files yet.</td></tr>`;
-  return `<div class="card-head"><h3>Drawings & Files</h3>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        ${DOME_FILE_CATS.map(c=>`<button class="mod-btn" style="padding:5px 9px;font-size:11.5px" onclick="domePickDomeFile('${esc(c)}')">+ ${esc(c)}</button>`).join('')}
-      </div></div>
-    <div style="color:var(--dim);font-size:11.5px;margin:0 0 10px">Files upload to Google Drive: <code>Fulldome PSP / Dome Library / ${esc(m.domeId)} — ${esc(m.name||'Dome')} / &lt;Category&gt;/</code>. Firestore keeps only metadata + Drive file ID (no base64). “Remove” deletes only the card entry; “Trash” moves the actual Drive file to Trash (with confirmation).</div>
-    <table class="eq"><thead><tr><th>Category</th><th>File Name</th><th>Rev</th><th>Date</th><th>Notes</th><th>Uploaded By</th><th></th></tr></thead>
-    <tbody>${rows}</tbody></table>`;
-}
-function domeTabHistory(m){
-  const units=domeUnitsActive(m);
-  if(!units.length) return `<div style="padding:22px;text-align:center;color:var(--ink2)">Add a Dome Unit first — history is recorded per unit.</div>`;
-  if(!_domeUnitSel || !units.some(u=>u.unitId===_domeUnitSel)) _domeUnitSel=units[0].unitId;
-  const u=units.find(x=>x.unitId===_domeUnitSel);
-  const rows=(u.history||[]).map(h=>`
-    <tr>
-      <td class="tight" style="width:10%"><input class="cell" value="${esc(h.date)}" placeholder="YYYY-MM-DD" oninput="domeUpdHistory('${h.id}','date',this.value)"></td>
-      <td class="tight"><input class="cell" value="${esc(h.projectEvent)}" oninput="domeUpdHistory('${h.id}','projectEvent',this.value)"></td>
-      <td class="tight"><input class="cell" value="${esc(h.location)}" oninput="domeUpdHistory('${h.id}','location',this.value)"></td>
-      <td class="tight" style="width:10%"><input class="cell" value="${esc(h.installDate)}" oninput="domeUpdHistory('${h.id}','installDate',this.value)"></td>
-      <td class="tight" style="width:10%"><input class="cell" value="${esc(h.breakdownDate)}" oninput="domeUpdHistory('${h.id}','breakdownDate',this.value)"></td>
-      <td class="tight"><input class="cell" value="${esc(h.conditionAfter)}" oninput="domeUpdHistory('${h.id}','conditionAfter',this.value)"></td>
-      <td class="tight"><input class="cell" value="${esc(h.inspectionNotes)}" oninput="domeUpdHistory('${h.id}','inspectionNotes',this.value)"></td>
-      <td class="tight"><input class="cell" value="${esc(h.repairNotes)}" oninput="domeUpdHistory('${h.id}','repairNotes',this.value)"></td>
-      <td class="tight" style="color:var(--dim)">${esc(h.updatedBy||'')}</td>
-      <td class="rm"><button title="Delete" onclick="domeRmHistory('${h.id}')">×</button></td>
-    </tr>`).join('') || `<tr><td colspan="10" style="text-align:center;color:var(--ink2);padding:16px">No history yet.</td></tr>`;
-  return `<div class="card-head"><h3>History</h3>
-      <div style="display:flex;gap:8px;align-items:center"><span style="font-size:12px;color:var(--dim)">Unit</span>
-        <select class="cell" style="width:auto;padding:6px 9px" onchange="domeSelUnit(this.value)">${units.map(x=>`<option value="${x.unitId}" ${x.unitId===_domeUnitSel?'selected':''}>${esc(x.kitId||x.unitId)}</option>`).join('')}</select>
-        <button class="mod-btn primary" style="padding:6px 11px" onclick="domeAddHistory()">+ Add History</button></div></div>
-    <table class="eq"><thead><tr><th>Date</th><th>Project / Event</th><th>Location</th><th>Install</th><th>Breakdown</th><th>Condition After</th><th>Inspection</th><th>Repair</th><th>By</th><th></th></tr></thead>
-    <tbody>${rows}</tbody></table>`;
+  <div style="margin-top:12px;color:var(--dim);font-size:11.5px">The card title is built automatically as “&lt;size&gt; · &lt;dome type&gt; · &lt;serial&gt;”. The Serial is the visible Dome ID; the document keeps a separate stable internal id (${esc(m.domeUid)}). Save requires a Serial Number. Removal is Archive only (never physical delete).</div>`;
 }
 
 const ROUTES = {
