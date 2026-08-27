@@ -671,7 +671,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.07 · DOME LIST — NO AUTOFILL IN SEARCH + CLEAR FILTERS</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.11 · OVERVIEW DERIVES SERIAL / SCREEN TYPE / DOORS FROM COMPONENTS</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1059,7 +1059,7 @@ function adoptDb(s){
     db.library = Object.assign(emptyLibrary(), db.library || {});
     if(!db.customCats || typeof db.customCats!=='object') db.customCats = {};
     if(!Array.isArray(db.domeLib)) db.domeLib = [];   /* BUILD 15.0: Dome Library local cache (additive) */
-    db.domeLib.forEach(function(m){ if(m && typeof m==='object'){ if(!m.domeUid) m.domeUid = m.domeId || newId(); if(m.serial===undefined) m.serial = m.domeId || ''; if(typeof m.hvacOpenings==='undefined') m.hvacOpenings=''; if(typeof m.fanOpenings==='undefined') m.fanOpenings=''; } });   /* BUILD 15.02: normalise older dome cards (domeId→serial + stable domeUid) */
+    db.domeLib.forEach(function(m){ if(m && typeof m==='object'){ if(!m.domeUid) m.domeUid = m.domeId || newId(); if(m.serial===undefined) m.serial = m.domeId || ''; if(typeof m.hvacOpenings==='undefined') m.hvacOpenings=''; if(typeof m.fanOpenings==='undefined') m.fanOpenings=''; try{ domeEnsureComponents(m); }catch(_){} } });   /* BUILD 15.02: normalise older dome cards (domeId→serial + stable domeUid); 15.08: components */
     return true;
   }
   if(s && typeof s === 'object' && 'server' in s && s.project){
@@ -8791,10 +8791,75 @@ const DOME_TYPES = ['Open','Blackout'];
 const DOME_SCREEN = ['Tilted','Vertical','Straight','SRD Screen','Other'];
 const DOME_DOORS = ['WD','1D','2D','3D','Custom'];
 const DOME_DOOR_LABELS = { 'WD':'WD — Without Doors','1D':'1D — 1 Door','2D':'2D — 2 Doors','3D':'3D — 3 Doors','Custom':'Custom' };
+/* BUILD 15.08 — Components tab.  BUILD 15.09 — per-connector materials + Frame material + serial mirror */
+const DOME_COVER_KINDS = ['Cover','Screen','Inflatable Cover'];
+const DOME_FRAME_MATERIALS = ['Aluminum','Steel'];
+/* BUILD 15.10 — Doors block (Components): quantity 0..3, type Rectangular/Hexagonal (+ H×W when Rectangular) */
+const DOME_DOOR_QTY = ['0','1','2','3'];
+const DOME_DOOR_TYPES = ['Rectangular','Hexagonal'];
+/* Each connector: its own Material option list, or materials:null → no Material field (Quantity only). */
+const DOME_CONNECTORS = [
+  {key:'hole5', label:'5-Hole Connector', materials:['Aluminum','Plastic']},
+  {key:'hole6', label:'6-Hole Connector', materials:null},                 /* Quantity only — no Material */
+  {key:'base',  label:'Base Connector',   materials:['Aluminum','Plastic']}
+];
 
+function domeEmptyComponents(){
+  return {
+    frame: { serial:'', tubeOuter:'', tubeWall:'', material:'' },
+    covers: [],   /* [{ id, kind:Cover|Screen|Inflatable Cover, serial, screenType, screenTypeOther, notes, archived }] */
+    doors: { qty:'', type:'', height:'', width:'' },   /* physical doors: qty 0..3, type Rectangular/Hexagonal (+H×W if Rectangular) */
+    connectors: { hole5:{qty:'',material:''}, hole6:{qty:'',material:''}, base:{qty:'',material:''} }
+  };
+}
 function domeEmptyModel(){
   return { domeUid:newId(), serial:'', size:'', type:'', screenType:'', screenTypeOther:'',
-    doors:'', doorsCustom:'', hvacOpenings:'', fanOpenings:'', archived:false, rev:0, _saved:false };
+    doors:'', doorsCustom:'', hvacOpenings:'', fanOpenings:'', components:domeEmptyComponents(), archived:false, rev:0, _saved:false };
+}
+/* Normalise a model's components to the current shape (lazy migration for older dome cards). */
+function domeEnsureComponents(m){
+  if(!m) return null;
+  if(!m.components || typeof m.components!=='object') m.components = domeEmptyComponents();
+  const c=m.components;
+  if(!c.frame || typeof c.frame!=='object') c.frame={serial:'',tubeOuter:'',tubeWall:'',material:''};
+  ['serial','tubeOuter','tubeWall','material'].forEach(f=>{ if(typeof c.frame[f]!=='string') c.frame[f]=String(c.frame[f]==null?'':c.frame[f]); });
+  c.frame.serial = String(m.serial||'');   /* BUILD 15.09: Frame serial === Dome serial (single value, mirrored) */
+  if(!c.doors || typeof c.doors!=='object') c.doors={qty:'',type:'',height:'',width:''};
+  ['qty','type','height','width'].forEach(f=>{ if(typeof c.doors[f]!=='string') c.doors[f]=String(c.doors[f]==null?'':c.doors[f]); });
+  if(!Array.isArray(c.covers)) c.covers=[];
+  c.covers.forEach(x=>{ if(x && typeof x==='object'){ if(!x.id) x.id=newId(); if(typeof x.kind!=='string' || DOME_COVER_KINDS.indexOf(x.kind)<0) x.kind='Cover';
+    ['serial','screenType','screenTypeOther','notes'].forEach(f=>{ if(typeof x[f]!=='string') x[f]=String(x[f]==null?'':x[f]); }); x.archived=!!x.archived; } });
+  if(!c.connectors || typeof c.connectors!=='object') c.connectors={};
+  DOME_CONNECTORS.forEach(cn=>{ const q=c.connectors[cn.key]; if(!q||typeof q!=='object') c.connectors[cn.key]={qty:'',material:''};
+    else { ['qty','material'].forEach(f=>{ if(typeof q[f]!=='string') q[f]=String(q[f]==null?'':q[f]); }); } });
+  /* BUILD 15.11: one-time move of legacy Overview Screen Type / Doors into Components (Components is now the source). */
+  if(!m._compMig){
+    m._compMig = true;
+    if(m.screenType && !c.covers.some(x=>x.kind==='Screen' && !x.archived)){
+      const inList = DOME_SCREEN.indexOf(m.screenType)>=0;
+      c.covers.push({ id:newId(), kind:'Screen', serial:'', screenType:(inList?m.screenType:'Other'),
+        screenTypeOther:(inList?(m.screenTypeOther||''):(m.screenTypeOther||m.screenType||'')), notes:'', archived:false });
+    }
+    if(!String(c.doors.qty||'').trim() && m.doors){ const map={WD:'0','1D':'1','2D':'2','3D':'3'}; if(map[m.doors]) c.doors.qty=map[m.doors]; }
+  }
+  return m.components;
+}
+/* Frame Tube Size label: "12 × 1.5 mm" (outer Ø × wall thickness); one value → "<v> mm". */
+function domeTubeLabel(fr){ fr=fr||{}; const o=String(fr.tubeOuter||'').trim(), w=String(fr.tubeWall||'').trim(); if(!o && !w) return ''; if(o && w) return o+' × '+w+' mm'; return (o||w)+' mm'; }
+function domeHasComponents(m){ const c=domeEnsureComponents(m); const fr=c.frame;
+  if(String(fr.serial||'').trim()||String(fr.tubeOuter||'').trim()||String(fr.tubeWall||'').trim()||String(fr.material||'').trim()) return true;
+  const dr=c.doors||{}; if(String(dr.qty||'').trim()||String(dr.type||'').trim()||String(dr.height||'').trim()||String(dr.width||'').trim()) return true;
+  if(c.covers.some(x=>!x.archived)) return true;
+  return DOME_CONNECTORS.some(cn=>{ const q=c.connectors[cn.key]||{}; return String(q.qty||'').trim() || String(q.material||'').trim(); }); }
+function domeComponentsDoc(c){
+  c = c || {}; const fr = c.frame||{};
+  return {
+    frame: { serial:String(fr.serial||''), tubeOuter:String(fr.tubeOuter||''), tubeWall:String(fr.tubeWall||''), material:String(fr.material||'') },
+    doors: (dr=>({ qty:String(dr.qty||''), type:String(dr.type||''), height:String(dr.height||''), width:String(dr.width||'') }))(c.doors||{}),
+    covers: (Array.isArray(c.covers)?c.covers:[]).map(x=>({ id:String(x.id||''), kind:String(x.kind||'Cover'), serial:String(x.serial||''),
+      screenType:String(x.screenType||''), screenTypeOther:String(x.screenTypeOther||''), notes:String(x.notes||''), archived:!!x.archived })),
+    connectors: DOME_CONNECTORS.reduce((o,cn)=>{ const q=(c.connectors&&c.connectors[cn.key])||{}; o[cn.key]={ qty:String(q.qty||''), material:String(q.material||'') }; return o; }, {})
+  };
 }
 function domeFind(uid){ return db.domeLib.find(m=>m.domeUid===uid) || null; }
 function domeEditing(){ return _domeEditId ? domeFind(_domeEditId) : null; }
@@ -8806,7 +8871,7 @@ function domeSearchBlob(m){ return [m.serial,m.size,m.type,m.screenType,m.screen
 function saveDomeLib(){ saveState._skipCloud = true; try{ saveState(); }finally{ saveState._skipCloud = false; } }
 
 /* ---- Firestore sync (reuses the project Firestore connection; separate collection) ---- */
-var _domeView = 'list', _domeEditId = null, _domeSearch = '', _domeFilterType = '', _domeFilterScreen = '';
+var _domeView = 'list', _domeEditId = null, _domeSearch = '', _domeFilterType = '', _domeFilterScreen = '', _domeTab = 'overview';
 var _domeFsStarted = false, _domeFsUnsub = null;
 function domeFsReady(){ return (typeof fsReady==='function') && fsReady() && !!_fsDb; }
 function domeFsEnsureStarted(){
@@ -8831,7 +8896,7 @@ function domeFsModelDoc(m){
   return { domeUid:m.domeUid, serial:m.serial||'', size:String(m.size||''), type:m.type||'', screenType:m.screenType||'',
     screenTypeOther:m.screenTypeOther||'', doors:m.doors||'', doorsCustom:m.doorsCustom||'',
     hvacOpenings:String(m.hvacOpenings||''), fanOpenings:String(m.fanOpenings||''),
-    archived:!!m.archived, updatedBy:_gUser||'', rev:(m.rev||0) };
+    components:domeComponentsDoc(m.components), archived:!!m.archived, updatedBy:_gUser||'', rev:(m.rev||0) };
 }
 async function domeFsPushModel(m){
   if(!m) return;
@@ -8883,8 +8948,9 @@ function domeBackupStop(){ if(_domeBackupTimer){ clearInterval(_domeBackupTimer)
 async function domeBackupAllChanged(){ if(!(_cloudOn && _gTok)) return; for(const m of (db.domeLib||[])){ if(m && m._saved && !m.archived){ try{ await domeBackupWrite(m,false); }catch(_){} } } }
 
 /* ---------- navigation / CRUD ---------- */
-function domeNewCard(){ const m = domeEmptyModel(); db.domeLib.push(m); _domeEditId = m.domeUid; _domeView='card'; saveDomeLib(); rerenderKeepScroll(); }
-function domeOpenCard(uid){ _domeEditId = uid; _domeView='card'; rerenderKeepScroll(); }
+function domeNewCard(){ const m = domeEmptyModel(); db.domeLib.push(m); _domeEditId = m.domeUid; _domeView='card'; _domeTab='overview'; saveDomeLib(); rerenderKeepScroll(); }
+function domeOpenCard(uid){ _domeEditId = uid; _domeView='card'; _domeTab='overview'; rerenderKeepScroll(); }
+function domeSetTab(t){ _domeTab=t; rerenderKeepScroll(); }
 function domeBackToList(){ _domeEditId=null; _domeView='list'; rerenderKeepScroll(); }
 function domeCancelCard(){ const m=domeEditing(); if(m && !m._saved){ db.domeLib = db.domeLib.filter(x=>x.domeUid!==m.domeUid); saveDomeLib(); } domeBackToList(); }
 function domeSetSearch(v){ _domeSearch=v; }
@@ -8893,11 +8959,31 @@ function domeClearSearch(){ _domeSearch=''; _domeFilterType=''; _domeFilterScree
 function domeSetFilterType(v){ _domeFilterType=v; rerenderKeepScroll(); }
 function domeSetFilterScreen(v){ _domeFilterScreen=v; rerenderKeepScroll(); }
 function domeUpd(field, val){ const m=domeEditing(); if(!m) return; m[field]=val; saveDomeLib(); }
+/* BUILD 15.09: Dome serial and Frame serial are ONE value — set both, either direction. */
+function domeSetSerial(val){ const m=domeEditing(); if(!m) return; m.serial=val; domeEnsureComponents(m); m.components.frame.serial=val; saveDomeLib(); }
+/* ---- Components tab (BUILD 15.08) — Frame / Covers & Screens / Connectors ---- */
+function domeFrameUpd(field, val){ const m=domeEditing(); if(!m) return; domeEnsureComponents(m); m.components.frame[field]=val; saveDomeLib();
+  if(field==='tubeOuter'||field==='tubeWall'){ const el=document.getElementById('domeTubePrev'); if(el) el.textContent = domeTubeLabel(m.components.frame) || '—'; } }
+/* BUILD 15.11: Overview Screen Type is DERIVED from the first (main) Components screen. */
+function domeMirrorScreen(m){ if(!m||!m.components) return; const s=m.components.covers.find(x=>x.kind==='Screen' && !x.archived);
+  m.screenType = s?(s.screenType||''):''; m.screenTypeOther = s?(s.screenTypeOther||''):''; }
+function domeAddCover(kind){ const m=domeEditing(); if(!m) return; if(DOME_COVER_KINDS.indexOf(kind)<0) kind='Cover'; domeEnsureComponents(m);
+  m.components.covers.push({ id:newId(), kind:kind, serial:'', screenType:'', screenTypeOther:'', notes:'', archived:false }); domeMirrorScreen(m); saveDomeLib(); rerenderKeepScroll(); }
+function domeCoverUpd(id, field, val){ const m=domeEditing(); if(!m) return; domeEnsureComponents(m); const x=m.components.covers.find(c=>c.id===id); if(!x) return;
+  x[field]=val; domeMirrorScreen(m); saveDomeLib(); if(field==='screenType') rerenderKeepScroll(); }
+function domeArchiveCover(id){ const m=domeEditing(); if(!m) return; domeEnsureComponents(m); const x=m.components.covers.find(c=>c.id===id); if(!x) return;
+  if(!confirm('Archive this '+(x.kind||'item')+'? It is hidden from the card (soft-delete via archived:true, never physically deleted).')) return;
+  x.archived=true; domeMirrorScreen(m); saveDomeLib(); rerenderKeepScroll(); }
+function domeConnUpd(key, field, val){ const m=domeEditing(); if(!m) return; domeEnsureComponents(m); if(!m.components.connectors[key]) return;
+  m.components.connectors[key][field]=val; saveDomeLib(); }
+function domeDoorUpd(field, val){ const m=domeEditing(); if(!m) return; domeEnsureComponents(m); m.components.doors[field]=val;
+  if(field==='qty'){ const map={'0':'WD','1':'1D','2':'2D','3':'3D'}; m.doors = map[val]||''; }   /* BUILD 15.11: Overview Doors derived from qty */
+  saveDomeLib(); if(field==='type') rerenderKeepScroll(); }   /* Rectangular ⇄ Hexagonal toggles the H×W fields */
 function domeSaveCard(){
   const m=domeEditing(); if(!m) return;
   /* BUILD 15.03: can save once ANY Overview field is filled (Serial no longer mandatory). */
   const filled = ['serial','size','type','screenType','screenTypeOther','doors','doorsCustom','hvacOpenings','fanOpenings']
-    .some(f => String(m[f]||'').trim() !== '');
+    .some(f => String(m[f]||'').trim() !== '') || domeHasComponents(m);
   if(!filled){ alert('Fill at least one field before saving.'); return; }
   m._saved = true; saveDomeLib(); domeFsPushModel(m); domeBackupWrite(m, true);   /* BUILD 15.06: write the card JSON to Drive now */
   flashStat('Dome card saved ✓');
@@ -8980,23 +9066,111 @@ function pageDomeCard(){
         <button class="mod-btn primary" style="padding:8px 16px" onclick="domeSaveCard()">Save Dome Card</button>
       </div>
     </div>
-    <div class="dtabs"><button class="dtab sel">Overview</button></div>
-    <div class="card">${domeTabOverview(m)}</div>
+    <div class="dtabs">
+      <button class="dtab ${_domeTab==='components'?'':'sel'}" onclick="domeSetTab('overview')">Overview</button>
+      <button class="dtab ${_domeTab==='components'?'sel':''}" onclick="domeSetTab('components')">Components</button>
+    </div>
+    ${_domeTab==='components' ? domeTabComponents(m) : `<div class="card">${domeTabOverview(m)}</div>`}
   </div>`;
 }
 function _dfld(label,inner){ return `<div class="fld"><label>${label}</label>${inner}</div>`; }
 function _dsel(field,val,arr){ return `<select class="cell" onchange="domeUpd('${field}',this.value)">${arr.map(x=>`<option value="${esc(x)}" ${val===x?'selected':''}>${esc(x||'—')}</option>`).join('')}</select>`; }
+const _droStyle = 'background:#f1f2f4;color:var(--ink2);cursor:default';
 function domeTabOverview(m){
+  domeEnsureComponents(m);
+  const c=m.components;
+  const hasScreen = c.covers.some(x=>x.kind==='Screen' && !x.archived);
   return `<div class="fgrid">
-    ${_dfld('Dome ID / Serial Number *', `<input class="cell" value="${esc(m.serial)}" placeholder="e.g. FD-10-024" oninput="domeUpd('serial',this.value)" style="font-weight:700">`)}
+    ${_dfld('Dome ID / Serial Number', `<input class="cell" value="${esc(m.serial)}" readonly tabindex="-1" placeholder="— set in Components → Frame" style="font-weight:700;${_droStyle}"><div class="hint">Filled in Components → Frame (Frame Serial = Dome Serial).</div>`)}
     ${_dfld('Size (m)', `<input class="cell" type="number" step="0.1" min="0" value="${esc(m.size)}" placeholder="e.g. 10" oninput="domeUpd('size',this.value)">`)}
     ${_dfld('Dome Type', _dsel('type', m.type, ['',...DOME_TYPES]))}
-    ${_dfld('Screen Type', _dsel('screenType', m.screenType, ['',...DOME_SCREEN]) + (m.screenType==='Other' ? `<input class="cell" style="margin-top:6px" placeholder="Specify screen type" value="${esc(m.screenTypeOther)}" oninput="domeUpd('screenTypeOther',this.value)">` : ''))}
-    ${_dfld('Doors', `<select class="cell" onchange="domeUpd('doors',this.value)"><option value="" ${!m.doors?'selected':''}>—</option>${DOME_DOORS.map(d=>`<option value="${d}" ${m.doors===d?'selected':''}>${esc(DOME_DOOR_LABELS[d])}</option>`).join('')}</select>` + (m.doors==='Custom' ? `<input class="cell" style="margin-top:6px" placeholder="Describe the doors" value="${esc(m.doorsCustom)}" oninput="domeUpd('doorsCustom',this.value)">` : ''))}
+    ${ hasScreen ? _dfld('Screen Type', `<input class="cell" value="${esc(domeScreenLabel(m))}" readonly tabindex="-1" style="${_droStyle}"><div class="hint">Filled in Components → Covers &amp; Screens (main screen).</div>`) : '' }
+    ${_dfld('Doors', `<input class="cell" value="${esc(domeDoorsLabel(m))}" readonly tabindex="-1" style="${_droStyle}"><div class="hint">Filled in Components → Doors (number of doors).</div>`)}
     ${_dfld('HVAC Openings (in)', `<input class="cell num" type="number" min="0" step="1" value="${esc(m.hvacOpenings)}" placeholder="0" oninput="domeUpd('hvacOpenings',this.value)">`)}
     ${_dfld('Fan Openings (in)', `<input class="cell num" type="number" min="0" step="1" value="${esc(m.fanOpenings)}" placeholder="0" oninput="domeUpd('fanOpenings',this.value)">`)}
   </div>
-  <div style="margin-top:12px;color:var(--dim);font-size:11.5px">The card title is built automatically as “&lt;size&gt; · &lt;dome type&gt; · &lt;serial&gt;”. The Serial is the visible Dome ID; the document keeps a separate stable internal id (${esc(m.domeUid)}). Save requires a Serial Number. Removal is Archive only (never physical delete).</div>`;
+  <div style="margin-top:12px;color:var(--dim);font-size:11.5px">Serial, Screen Type and Doors are filled in the <b>Components</b> tab and shown here read-only (Screen Type appears once a screen is added). Size, Dome Type, HVAC and Fan Openings are edited here. Card title: “&lt;size&gt; · &lt;dome type&gt; · &lt;serial&gt;”. Internal id ${esc(m.domeUid)}. Removal is Archive only (never physical delete).</div>`;
+}
+
+/* ---------- Components tab (BUILD 15.08) ---------- */
+function domeMatSelect(key, cur, opts){
+  return `<select class="cell" onchange="domeConnUpd('${key}','material',this.value)"><option value="" ${!cur?'selected':''}>—</option>${opts.map(x=>`<option value="${esc(x)}" ${cur===x?'selected':''}>${esc(x)}</option>`).join('')}</select>`;
+}
+function domeCoverCard(x){
+  const isScreen = x.kind==='Screen';
+  const screenFld = isScreen ? _dfld('Screen Type',
+      `<select class="cell" onchange="domeCoverUpd('${x.id}','screenType',this.value)"><option value="" ${!x.screenType?'selected':''}>—</option>${DOME_SCREEN.map(s=>`<option value="${esc(s)}" ${x.screenType===s?'selected':''}>${esc(s)}</option>`).join('')}</select>`
+      + (x.screenType==='Other' ? `<input class="cell" style="margin-top:6px" placeholder="Specify screen type" value="${esc(x.screenTypeOther)}" oninput="domeCoverUpd('${x.id}','screenTypeOther',this.value)">` : '')) : '';
+  return `<div style="border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:0 0 10px;background:#fbfbfc">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
+      <span style="font-weight:700;font-size:12px;color:var(--fdp-red);text-transform:uppercase;letter-spacing:.6px">${esc(x.kind)}</span>
+      <button class="mod-btn" style="padding:5px 12px;color:var(--fdp-red)" onclick="domeArchiveCover('${x.id}')">Archive</button>
+    </div>
+    <div class="fgrid">
+      ${_dfld('Serial Number', `<input class="cell" value="${esc(x.serial)}" placeholder="e.g. SC-10-002" oninput="domeCoverUpd('${x.id}','serial',this.value)">`)}
+      ${screenFld}
+      ${_dfld('Notes', `<textarea class="cell" placeholder="Notes" oninput="domeCoverUpd('${x.id}','notes',this.value)">${esc(x.notes)}</textarea>`)}
+    </div>
+  </div>`;
+}
+function domeTabComponents(m){
+  const c = domeEnsureComponents(m), fr = c.frame;
+  /* 1. Frame */
+  const frame = `<div class="card">
+    <div class="card-head"><h3>Frame</h3></div>
+    <div class="fgrid">
+      ${_dfld('Frame Serial Number', `<input class="cell" value="${esc(m.serial)}" placeholder="e.g. FD-10-024" oninput="domeSetSerial(this.value)"><div class="hint">Same as the Dome ID / Serial Number in Overview — editing either updates both.</div>`)}
+      ${_dfld('Frame Tube Size', `<div style="display:flex;gap:8px;align-items:center">
+          <input class="cell num" type="number" step="0.1" min="0" style="max-width:120px" value="${esc(fr.tubeOuter)}" placeholder="12" oninput="domeFrameUpd('tubeOuter',this.value)" title="Outer diameter (mm)">
+          <span style="color:var(--dim);font-weight:700">×</span>
+          <input class="cell num" type="number" step="0.1" min="0" style="max-width:120px" value="${esc(fr.tubeWall)}" placeholder="1.5" oninput="domeFrameUpd('tubeWall',this.value)" title="Wall thickness (mm)">
+          <span style="color:var(--dim);font-size:13px">mm</span>
+        </div>
+        <div class="hint">Format: <b id="domeTubePrev">${esc(domeTubeLabel(fr)||'—')}</b> — outer Ø (mm) × wall thickness (mm).</div>`)}
+      ${_dfld('Frame Material', `<select class="cell" onchange="domeFrameUpd('material',this.value)"><option value="" ${!fr.material?'selected':''}>—</option>${DOME_FRAME_MATERIALS.map(x=>`<option value="${esc(x)}" ${fr.material===x?'selected':''}>${esc(x)}</option>`).join('')}</select>`)}
+    </div>
+  </div>`;
+  /* 2. Covers & Screens */
+  const active = c.covers.filter(x=>!x.archived);
+  const coverCards = active.map(domeCoverCard).join('') || `<div style="color:var(--dim);font-size:12.5px;padding:4px 2px 10px">No covers or screens yet. Use the buttons above to add one.</div>`;
+  const covers = `<div class="card">
+    <div class="card-head" style="flex-wrap:wrap">
+      <h3>Covers &amp; Screens</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${DOME_COVER_KINDS.map(k=>`<button class="mod-btn" style="padding:6px 12px" onclick="domeAddCover('${esc(k)}')">+ Add ${esc(k)}</button>`).join('')}
+      </div>
+    </div>
+    <div class="hint" style="margin:-6px 0 12px;color:var(--dim);font-size:11.5px">One frame can hold several covers, screens and inflatable covers — each is its own entry with its own Serial Number. Screen Type is per screen (independent of the Overview screen type).</div>
+    ${coverCards}
+  </div>`;
+  /* 3. Doors (physical) */
+  const dr = c.doors;
+  const doorDims = dr.type==='Rectangular' ? `
+      ${_dfld('Door Height (mm)', `<input class="cell num" type="number" min="0" step="1" value="${esc(dr.height)}" placeholder="0" oninput="domeDoorUpd('height',this.value)">`)}
+      ${_dfld('Door Width (mm)', `<input class="cell num" type="number" min="0" step="1" value="${esc(dr.width)}" placeholder="0" oninput="domeDoorUpd('width',this.value)">`)}` : '';
+  const doors = `<div class="card">
+    <div class="card-head"><h3>Doors</h3></div>
+    <div class="fgrid">
+      ${_dfld('Number of Doors', `<select class="cell" onchange="domeDoorUpd('qty',this.value)"><option value="" ${!dr.qty?'selected':''}>—</option>${DOME_DOOR_QTY.map(x=>`<option value="${esc(x)}" ${dr.qty===x?'selected':''}>${esc(x)}</option>`).join('')}</select>`)}
+      ${_dfld('Door Type', `<select class="cell" onchange="domeDoorUpd('type',this.value)"><option value="" ${!dr.type?'selected':''}>—</option>${DOME_DOOR_TYPES.map(x=>`<option value="${esc(x)}" ${dr.type===x?'selected':''}>${esc(x)}</option>`).join('')}</select>`)}
+      ${doorDims}
+    </div>
+  </div>`;
+  /* 4. Connectors */
+  const connRows = DOME_CONNECTORS.map(cn=>{ const q=c.connectors[cn.key]||{qty:'',material:''};
+    const matFld = cn.materials ? _dfld('Material', domeMatSelect(cn.key, q.material, cn.materials)) : '';
+    return `<div style="border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:0 0 10px;background:#fbfbfc">
+      <div style="font-weight:700;font-size:12.5px;margin-bottom:10px">${esc(cn.label)}</div>
+      <div class="fgrid">
+        ${_dfld('Quantity', `<input class="cell num" type="number" min="0" step="1" value="${esc(q.qty)}" placeholder="0" oninput="domeConnUpd('${cn.key}','qty',this.value)">`)}
+        ${matFld}
+      </div>
+    </div>`; }).join('');
+  const connectors = `<div class="card">
+    <div class="card-head"><h3>Connectors</h3></div>
+    ${connRows}
+  </div>`;
+  return frame + covers + doors + connectors;
 }
 
 const ROUTES = {
