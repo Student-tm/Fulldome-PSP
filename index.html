@@ -671,7 +671,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.22 · TRUSS COMPONENTS/KIT PICKER + CONSTRUCTOR ROW ALIGNMENT</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.26 · TRUSS KIT DELETE — REQUIRES CODE 420</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -2780,8 +2780,9 @@ function constructTransfer(srcId, key){
     rerenderKeepScroll();
   }catch(err){ alert('Could not copy the module: ' + (err && err.message || err)); }
 }
-/* BUILD 15.22: drop the right "Current project" card so its Dome Server row sits exactly opposite
-   the expanded source project's Dome Server row (rows are uniform height, so all rows then line up). */
+/* BUILD 15.22/15.23: drop the right "Current project" card so its Dome Server row sits exactly opposite
+   the expanded source project's Dome Server row (rows are uniform height, so all rows then line up).
+   Runs several times because the freshly-expanded list needs a frame or two to settle before measuring. */
 function constructAlign(){
   try{
     const grid=document.querySelector('.cgrid'); const dst=document.getElementById('cdstCard'); if(!grid||!dst) return;
@@ -2791,8 +2792,14 @@ function constructAlign(){
     const exp=document.querySelector('.csrc-open .csrc-mods .crow'); const dstRow=dst.querySelector('.crow');
     if(!exp || !dstRow) return;
     const off = exp.getBoundingClientRect().top - dstRow.getBoundingClientRect().top;
-    if(off>0) dst.style.marginTop = Math.round(off)+'px';
+    dst.style.marginTop = (off>0? Math.round(off) : 0)+'px';
   }catch(_){}
+}
+function constructAlignSoon(){
+  if(typeof requestAnimationFrame!=='undefined') requestAnimationFrame(constructAlign);
+  setTimeout(constructAlign, 90); setTimeout(constructAlign, 250);
+  if(!constructAlign._bound && typeof window!=='undefined'){ constructAlign._bound=true;
+    window.addEventListener('resize', function(){ if(location.hash==='#/settings') constructAlign(); }); }
 }
 function constructSrcCard(p){
   const P = p.data.project || {}, open = !!_constrExpand[p.id];
@@ -2839,7 +2846,7 @@ function pageSettings(){
           <div class="card" id="cdstCard">${CONSTRUCT_MODULES.map(m => constructDstRow(active, m)).join('')}</div>
         </div>
       </div>`;
-  if(active && typeof requestAnimationFrame!=='undefined') requestAnimationFrame(constructAlign);   /* BUILD 15.22: line the right panel up with the expanded source project */
+  if(active) constructAlignSoon();   /* BUILD 15.22/15.23: line the right panel up with the expanded source project */
   return `
   <div class="page">
     <div class="pagehead"><div class="eyebrow">Fulldome Projection SP</div>
@@ -9101,7 +9108,8 @@ function domeKitCreate(){ const m=domeEditing(); if(!m) return; domeEnsureTruss(
 function domeKitOpen(id){ _domeKitOpen=id; rerenderKeepScroll(); }
 function domeKitBack(){ _domeKitOpen=null; _domeKitPick=null; rerenderKeepScroll(); }
 function domeKitRemove(id){ const m=domeEditing(); if(!m) return; domeEnsureTruss(m); const k=m.truss.kits.find(x=>x.id===id); if(!k) return;
-  if(!confirm('Delete Truss Kit '+(k.num||'')+'? It is removed from this dome card.')) return;
+  const code=prompt('Enter delete code to remove Truss Kit '+(k.num||'')+':');   /* BUILD 15.26: PIN-protected delete (420) */
+  if(code===null) return; if(String(code).trim()!=='420'){ alert('Wrong code — Truss Kit not deleted.'); return; }
   m.truss.kits=m.truss.kits.filter(x=>x.id!==id); if(_domeKitOpen===id) _domeKitOpen=null; saveDomeLib(); rerenderKeepScroll(); }
 /* Truss elements — components that ship WITH this dome's truss, picked from the Truss library */
 function domeTrussEl(iid){ const m=domeEditing(); if(!m) return null; domeEnsureTruss(m); return m.truss.elements.find(e=>e.id===iid)||null; }
@@ -9407,19 +9415,26 @@ function domeKitCard(m){
   const open = _domeKitOpen ? t.kits.find(k=>k.id===_domeKitOpen) : null;
   if(open) return domeKitEditor(m, open);
   const cards = t.kits.map(k=>{ const named=k.items.filter(it=>String(it.name||'').trim());
-    const subtotal=k.items.reduce((s,it)=>s+(priceNum(it.price)*(parseFloat(it.qty)||1)||0),0);
-    const lines = named.length
-      ? named.map(it=>`<div style="display:flex;gap:8px;padding:2px 0"><span style="font-weight:600">${esc(it.name)}</span>${(parseFloat(it.qty)>1)?`<span style="color:var(--ink2);font-size:11.5px">× ${esc(it.qty)}</span>`:''}</div>`).join('')
+    const table = named.length
+      ? `<table class="eq" style="background:transparent">
+          <thead><tr><th style="width:4%">#</th><th style="width:28%">Category</th><th>Item</th><th style="text-align:right;width:12%">Qty</th></tr></thead>
+          <tbody>${named.map((it,i)=>`<tr>
+            <td class="tight" style="text-align:center;color:var(--dim)">${i+1}</td>
+            <td class="tight">${esc((it.cat||'').trim()||'—')}</td>
+            <td class="tight">${esc(it.name)}</td>
+            <td class="tight" style="text-align:right">${esc((it.qty||'').trim()||'1')}</td>
+          </tr>`).join('')}</tbody>
+        </table>`
       : `<div style="color:var(--ink2);font-size:12px">No components yet — Open / Edit to add.</div>`;
     return `<div style="background:#fdf3f3;border:1px solid #f2c9c9;border-left:5px solid var(--fdp-red);border-radius:10px;padding:12px 15px;margin:0 0 12px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px">
-        <div style="font-weight:800;font-size:14px">Truss Kit ${esc(k.num)} <span style="font-size:11.5px;font-weight:600;color:${k.status==='saved'?'#2e9e5b':'var(--dim)'}">· ${k.status==='saved'?'Saved':'Draft'}</span></div>
+        <div style="font-weight:700;font-size:14px">Truss Kit ${esc(k.num)} <span style="font-size:11.5px;font-weight:600;color:${k.status==='saved'?'#2e9e5b':'var(--dim)'}">· ${k.status==='saved'?'Saved':'Draft'}</span></div>
         <div style="display:flex;gap:6px;flex:none">
           <button class="mod-btn" style="padding:5px 12px" onclick="domeKitOpen('${k.id}')">Open / Edit</button>
           <button class="mod-btn" style="padding:5px 10px;color:var(--fdp-red)" onclick="domeKitRemove('${k.id}')">Delete</button></div>
       </div>
-      ${lines}
-      <div style="border-top:1px solid #f2cfcf;margin-top:8px;padding-top:7px;color:var(--ink2);font-size:11.5px">${named.length} component${named.length===1?'':'s'}${subtotal?(' · '+fmt(subtotal)):''}</div>
+      ${table}
+      <div style="color:var(--ink2);font-size:11.5px;margin-top:6px">${named.length} component${named.length===1?'':'s'}</div>
     </div>`; }).join('') || `<div style="text-align:center;color:var(--dim);padding:18px">No truss kits yet — create the first ready configuration for this dome.</div>`;
   return `<div class="card">
     <div class="card-head" style="flex-wrap:wrap"><h3>Ready Truss Kit</h3>
@@ -9436,16 +9451,16 @@ function domeKitItemRow(k, it, n){
   const listId=(it.cat||'').trim() ? kitCatListId(it.cat) : 'dlTrussKit';
   return `<tr>
     <td class="tight" style="width:3%;text-align:center;color:var(--dim)">${n}</td>
-    <td class="tight" style="width:14%"><select class="cell ${!(it.cat||'').trim()?'empty':''}" onchange="domeKitItemUpd('${k.id}','${it.id}','cat',this.value)">
+    <td class="tight" style="width:11%"><select class="cell ${!(it.cat||'').trim()?'empty':''}" onchange="domeKitItemUpd('${k.id}','${it.id}','cat',this.value)">
       <option value="" ${!(it.cat||'').trim()?'selected':''}>— Category —</option>
       ${cats.map(c=>`<option value="${esc(c)}" ${it.cat===c?'selected':''}>${esc(c)}</option>`).join('')}
       ${(it.cat||'').trim() && ciIndexOf(cats, it.cat)===-1 ? `<option value="${esc(it.cat)}" selected>${esc(it.cat)}</option>` : ''}
     </select></td>
     <td class="tight"><input class="cell b" list="${listId}" value="${esc(it.name)}" placeholder="Pick from Truss library or type" oninput="domeKitItemUpd('${k.id}','${it.id}','name',this.value)"></td>
-    <td class="tight" style="width:7%"><input class="cell num" value="${esc(it.qty)}" placeholder="1" oninput="domeKitItemUpd('${k.id}','${it.id}','qty',this.value)"></td>
-    <td class="tight" style="width:10%"><input class="cell num" id="kiP_${it.id}" value="${esc(it.price)}" placeholder="—" oninput="domeKitItemUpd('${k.id}','${it.id}','price',this.value)"></td>
-    <td class="num" style="width:9%"><span id="kiT_${it.id}">${domeKitItemTotal(it)}</span></td>
-    <td class="tight" style="width:20%"><input class="cell" value="${esc(it.comment)}" placeholder="Comment" oninput="domeKitItemUpd('${k.id}','${it.id}','comment',this.value)"></td>
+    <td class="tight" style="width:5.5%"><input class="cell num" value="${esc(it.qty)}" placeholder="1" oninput="domeKitItemUpd('${k.id}','${it.id}','qty',this.value)"></td>
+    <td class="tight" style="width:8%"><input class="cell num" id="kiP_${it.id}" value="${esc(it.price)}" placeholder="—" oninput="domeKitItemUpd('${k.id}','${it.id}','price',this.value)"></td>
+    <td class="num" style="width:7%"><span id="kiT_${it.id}">${domeKitItemTotal(it)}</span></td>
+    <td class="tight" style="width:23%"><input class="cell" value="${esc(it.comment)}" placeholder="Comment" oninput="domeKitItemUpd('${k.id}','${it.id}','comment',this.value)"></td>
     <td class="tight" style="width:16%"><input class="cell" id="kiL_${it.id}" value="${esc(it.link)}" placeholder="https://" oninput="domeKitItemUpd('${k.id}','${it.id}','link',this.value)"></td>
     <td class="tight" style="text-align:center;width:5%"><button class="mod-btn" style="padding:3px 6px" title="Move up" onclick="domeKitItemMove('${k.id}','${it.id}',-1)">${_SVG_UP}</button><button class="mod-btn" style="padding:3px 6px" title="Move down" onclick="domeKitItemMove('${k.id}','${it.id}',1)">${_SVG_DN}</button></td>
     <td class="tolib">${(it.name||'').trim() && !libFind(it.name) ? `<button title="Add to Truss library" onclick="domeKitItemAddToLib('${k.id}','${it.id}')">${_SVG_BOOK}</button>` : ''}</td>
