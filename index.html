@@ -671,7 +671,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.29 · TRUSS COMPONENTS TABLE MERGED INTO THE TRUSS MODULE CARD</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.30 · TRUSS COMPONENTS # COLUMN · DOME-CORE KIT ROWS HIGHLIGHTED · FIELD SWAP</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -8825,7 +8825,7 @@ const DOME_DOOR_TYPES = ['Rectangular','Hexagonal'];
 const TRUSS_COLORS = ['Black','Aluminum (unpainted)'];
 function domeEmptyTruss(){ return { sn:'', color:'', bags:'', parts:'', couplers:'', elements:[], files:[], kits:[] }; }   /* elements = components that ship WITH the truss (from library); kits = numbered ready configs */
 function domeEmptyTrussEl(){ return { id:newId(), cat:'', name:'', qty:'' }; }
-function domeEmptyKitItem(){ return { id:newId(), cat:'', name:'', qty:'', price:'', comment:'', link:'' }; }
+function domeEmptyKitItem(){ return { id:newId(), core:false, cat:'', name:'', qty:'', price:'', comment:'', link:'' }; }
 function domeKitPad(n){ n=parseInt(n,10)||0; return (n<10?'0':'')+n; }
 function domeNextKitNum(m){ let mx=0; ((m.truss&&m.truss.kits)||[]).forEach(k=>{ const n=parseInt(k.num,10); if(isFinite(n)&&n>mx) mx=n; }); return domeKitPad(mx+1); }
 function domeEmptyKit(num){ return { id:newId(), num:num||'01', status:'draft', items:[], created:'' }; }
@@ -8861,11 +8861,11 @@ function domeEnsureTruss(m){ if(!m) return null; if(!m.truss || typeof m.truss!=
     if(k.core || ('coreRemoved' in k) || ('coreQty' in k)){
       const rem=(k.core && k.core.removed) || (k.coreRemoved ? {truss:true} : {});
       const qty=(k.core && k.core.qty) || k.coreQty || '1'; const pre=[];
-      if(!rem.truss) pre.push({ id:newId(), cat:'', name:domeTrussName(m), qty:String(qty||'1'), price:'', comment:'', link:'' });
-      const cp=String(t.couplers||'').trim(); if(cp && !rem.coupler) pre.push({ id:newId(), cat:'Coupler', name:'Coupler for F23/F24', qty:cp, price:'', comment:'', link:'' });
+      if(!rem.truss) pre.push({ id:newId(), core:true, cat:'', name:domeTrussName(m), qty:String(qty||'1'), price:'', comment:'', link:'' });
+      const cp=String(t.couplers||'').trim(); if(cp && !rem.coupler) pre.push({ id:newId(), core:true, cat:'Coupler', name:'Coupler for F23/F24', qty:cp, price:'', comment:'', link:'' });
       k.items = pre.concat(k.items); delete k.core; delete k.coreQty; delete k.coreRemoved;
     }
-    k.items.forEach(it=>{ if(it && typeof it==='object'){ if(!it.id) it.id=newId(); ['cat','name','qty','price','comment','link'].forEach(f=>{ if(typeof it[f]!=='string') it[f]=String(it[f]==null?'':it[f]); }); } }); } });
+    k.items.forEach(it=>{ if(it && typeof it==='object'){ if(!it.id) it.id=newId(); ['cat','name','qty','price','comment','link'].forEach(f=>{ if(typeof it[f]!=='string') it[f]=String(it[f]==null?'':it[f]); }); it.core=!!it.core; } }); } });
   return m.truss; }
 function domeTrussName(m){ const t=(m&&m.truss)||{}; const sn=String(t.sn||'').trim(); const col=String(t.color||'').trim();
   return sn ? ('Dome Truss Ring · '+sn) : (col ? ('Dome Truss Ring · '+col) : 'Dome Truss Ring'); }
@@ -8883,7 +8883,7 @@ function domeTrussDoc(t){ t=t||{}; return { sn:String(t.sn||''), color:String(t.
     added:String(f.added||''), archived:!!f.archived })),
   elements:(Array.isArray(t.elements)?t.elements:[]).map(e=>({ id:String(e.id||''), cat:String(e.cat||''), name:String(e.name||''), qty:String(e.qty||'') })),
   kits:(Array.isArray(t.kits)?t.kits:[]).map(k=>({ id:String(k.id||''), num:String(k.num||''), status:(k.status==='saved'?'saved':'draft'), created:String(k.created||''),
-    items:(Array.isArray(k.items)?k.items:[]).map(it=>({ id:String(it.id||''), cat:String(it.cat||''), name:String(it.name||''), qty:String(it.qty||''),
+    items:(Array.isArray(k.items)?k.items:[]).map(it=>({ id:String(it.id||''), core:!!it.core, cat:String(it.cat||''), name:String(it.name||''), qty:String(it.qty||''),
       price:String(it.price||''), comment:String(it.comment||''), link:String(it.link||'') })) })) }; }
 /* Each connector: its own Material option list, or materials:null → no Material field (Quantity only). */
 const DOME_CONNECTORS = [
@@ -9121,7 +9121,7 @@ var _domeKitPick = null;
 function domeKitPickSkip(){ _domeKitPick=null; rerenderKeepScroll(); }
 function domeKitPickApply(kitId, keys){ const k=domeKitFind(kitId); if(!k) return; const m=domeEditing();
   const cand=domeTrussCandidates(m); const set={}; (keys||[]).forEach(x=>set[x]=1);
-  cand.forEach(c=>{ if(set[c.key]) k.items.push({ id:newId(), cat:c.cat||'', name:c.name, qty:String(c.qty||'1'), price:c.price||'', comment:'', link:c.link||'' }); });
+  cand.forEach(c=>{ if(set[c.key]) k.items.push({ id:newId(), core:true, cat:c.cat||'', name:c.name, qty:String(c.qty||'1'), price:c.price||'', comment:'', link:c.link||'' }); });
   _domeKitPick=null; saveDomeLib(); rerenderKeepScroll(); }
 function domeKitPickAdd(kitId){ const keys=[]; document.querySelectorAll('#kitPick input.kpk').forEach(b=>{ if(b.checked) keys.push(b.getAttribute('data-key')); }); domeKitPickApply(kitId, keys); }
 /* modular items */
@@ -9364,8 +9364,8 @@ function domeTabTruss(m){
     <div class="card-head"><h3>Truss</h3></div>
     <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px">
       ${_dfld('Truss Serial Number (SN)', `<input class="cell" value="${esc(t.sn)}" placeholder="e.g. TR-10-001" oninput="domeTrussUpd('sn',this.value)">`)}
-      ${_dfld('Colour', `<select class="cell" onchange="domeTrussUpd('color',this.value)"><option value="" ${!t.color?'selected':''}>—</option>${TRUSS_COLORS.map(x=>`<option value="${esc(x)}" ${t.color===x?'selected':''}>${esc(x)}</option>`).join('')}</select>`)}
       ${_dfld('Number of Parts', `<input class="cell num" type="number" min="0" step="1" value="${esc(t.parts)}" placeholder="0" oninput="domeTrussUpd('parts',this.value)">`)}
+      ${_dfld('Colour', `<select class="cell" onchange="domeTrussUpd('color',this.value)"><option value="" ${!t.color?'selected':''}>—</option>${TRUSS_COLORS.map(x=>`<option value="${esc(x)}" ${t.color===x?'selected':''}>${esc(x)}</option>`).join('')}</select>`)}
       ${_dfld('Number of Bags', `<input class="cell num" type="number" min="0" step="1" value="${esc(t.bags)}" placeholder="0" oninput="domeTrussUpd('bags',this.value)">`)}
     </div>
     ${domeTrussElementsCard(m)}
@@ -9380,10 +9380,11 @@ function domeTabTruss(m){
   </div>
   ${domeKitCard(m)}`;
 }
-function domeTrussElRow(e){
+function domeTrussElRow(e, n){
   const cats=groupCats('truss');
   const listId=(e.cat||'').trim()?kitCatListId(e.cat):'dlTrussKit';
   return `<tr>
+    <td style="width:4%;text-align:center;color:var(--dim)">${n}</td>
     <td class="tight" style="width:22%"><select class="cell ${!(e.cat||'').trim()?'empty':''}" onchange="domeTrussElUpd('${e.id}','cat',this.value)">
       <option value="" ${!(e.cat||'').trim()?'selected':''}>— Category —</option>
       ${cats.map(c=>`<option value="${esc(c)}" ${e.cat===c?'selected':''}>${esc(c)}</option>`).join('')}
@@ -9397,12 +9398,12 @@ function domeTrussElRow(e){
 }
 function domeTrussElementsCard(m){
   const t=domeEnsureTruss(m); const els=t.elements;
-  const rows=els.map(domeTrussElRow).join('') || `<tr><td colspan="5" style="text-align:center;color:var(--dim);padding:14px">No components yet. Add couplers, plates, braces… that ship with this truss.</td></tr>`;
+  const rows=els.map((e,i)=>domeTrussElRow(e,i+1)).join('') || `<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:14px">No components yet. Add couplers, plates, braces… that ship with this truss.</td></tr>`;
   return `<div style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px">
     <datalist id="dlTrussKit">${(db.library&&db.library.truss||[]).filter(it=>(it.name||'').trim()).map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>
     ${groupCats('truss').map((c,ci)=>`<datalist id="dlTrussCat_${ci}">${libByGroupCat('truss',c).map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>`).join('')}
     <div class="hint" style="margin:0 0 12px;color:var(--dim);font-size:11.5px">Components that ship WITH this dome's truss (couplers, plates, braces…). They appear as checkboxes when you create a Truss Kit.</div>
-    <table class="eq"><thead><tr><th>Category</th><th>Item</th><th style="text-align:right">Qty</th><th colspan="2"></th></tr></thead><tbody>${rows}</tbody></table>
+    <table class="eq"><thead><tr><th style="width:4%">#</th><th>Category</th><th>Item</th><th style="text-align:right">Qty</th><th colspan="2"></th></tr></thead><tbody>${rows}</tbody></table>
     <button class="add-line" onclick="domeTrussElAdd()">+ Add from Truss Library</button>
   </div>`;
 }
@@ -9446,8 +9447,9 @@ const _SVG_BOOK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
 function domeKitItemRow(k, it, n){
   const cats=groupCats('truss');
   const listId=(it.cat||'').trim() ? kitCatListId(it.cat) : 'dlTrussKit';
-  return `<tr>
-    <td class="tight" style="width:3%;text-align:center;color:var(--dim)">${n}</td>
+  const core = !!it.core;   /* came from the dome's truss (via the create-picker) — highlight it */
+  return `<tr style="${core?'background:#fdf3f3':''}">
+    <td class="tight" style="width:3%;text-align:center;color:var(--dim);${core?'border-left:3px solid var(--fdp-red)':''}">${n}</td>
     <td class="tight" style="width:11%"><select class="cell ${!(it.cat||'').trim()?'empty':''}" onchange="domeKitItemUpd('${k.id}','${it.id}','cat',this.value)">
       <option value="" ${!(it.cat||'').trim()?'selected':''}>— Category —</option>
       ${cats.map(c=>`<option value="${esc(c)}" ${it.cat===c?'selected':''}>${esc(c)}</option>`).join('')}
