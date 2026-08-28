@@ -671,7 +671,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.30 · TRUSS COMPONENTS # COLUMN · DOME-CORE KIT ROWS HIGHLIGHTED · FIELD SWAP</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.31 · CONSTRUCTOR ALIGN ITERATIVE (EXACT) · QTT OF PARTS LABEL</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -2786,13 +2786,18 @@ function constructTransfer(srcId, key){
 function constructAlign(){
   try{
     const grid=document.querySelector('.cgrid'); const dst=document.getElementById('cdstCard'); if(!grid||!dst) return;
-    dst.style.marginTop='0px';
     const two = dst.getBoundingClientRect().left > grid.getBoundingClientRect().left + 40;   /* two columns? (not stacked on mobile) */
-    if(!two) return;
     const exp=document.querySelector('.csrc-open .csrc-mods .crow'); const dstRow=dst.querySelector('.crow');
-    if(!exp || !dstRow) return;
-    const off = exp.getBoundingClientRect().top - dstRow.getBoundingClientRect().top;
-    dst.style.marginTop = (off>0? Math.round(off) : 0)+'px';
+    if(!two || !exp || !dstRow){ dst.style.marginTop='0px'; return; }
+    /* Iterate: after each shift, re-measure the residual and correct it — converges to an exact row match
+       regardless of any systematic under/over-shoot from late layout/font settling. */
+    let cur = parseFloat(dst.style.marginTop) || 0;
+    for(let i=0;i<5;i++){
+      const off = exp.getBoundingClientRect().top - dstRow.getBoundingClientRect().top;
+      if(Math.abs(off) < 0.5) break;
+      cur = Math.max(0, cur + off);
+      dst.style.marginTop = cur + 'px';
+    }
   }catch(_){}
 }
 function constructAlignSoon(){
@@ -9364,7 +9369,7 @@ function domeTabTruss(m){
     <div class="card-head"><h3>Truss</h3></div>
     <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px">
       ${_dfld('Truss Serial Number (SN)', `<input class="cell" value="${esc(t.sn)}" placeholder="e.g. TR-10-001" oninput="domeTrussUpd('sn',this.value)">`)}
-      ${_dfld('Number of Parts', `<input class="cell num" type="number" min="0" step="1" value="${esc(t.parts)}" placeholder="0" oninput="domeTrussUpd('parts',this.value)">`)}
+      ${_dfld('QTT of Parts', `<input class="cell num" type="number" min="0" step="1" value="${esc(t.parts)}" placeholder="0" oninput="domeTrussUpd('parts',this.value)">`)}
       ${_dfld('Colour', `<select class="cell" onchange="domeTrussUpd('color',this.value)"><option value="" ${!t.color?'selected':''}>—</option>${TRUSS_COLORS.map(x=>`<option value="${esc(x)}" ${t.color===x?'selected':''}>${esc(x)}</option>`).join('')}</select>`)}
       ${_dfld('Number of Bags', `<input class="cell num" type="number" min="0" step="1" value="${esc(t.bags)}" placeholder="0" oninput="domeTrussUpd('bags',this.value)">`)}
     </div>
