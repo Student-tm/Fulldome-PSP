@@ -705,7 +705,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.35 · DASHBOARD — SHIPPING INFO CARD (PALLETS · SIZE · WEIGHT · SHIP DATE)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.36 · DOME LIBRARY DRIVE FOLDER → _dome library + BACKUPS MIRROR</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -9057,7 +9057,38 @@ function domeDriveMap(){ if(!db.domeDriveMap || typeof db.domeDriveMap!=='object
 function domeFolderName(m){ return (domeTitle(m)||m.domeUid).replace(/[\/\\:*?"<>|]/g,'-').replace(/\s+/g,' ').trim() || m.domeUid; }
 function domeBackupPayload(m){ const c=Object.assign({}, m); delete c._saved; return JSON.stringify({ app:'Fulldome PSP — Dome Card', savedAt:new Date().toISOString(), dome:c }, null, 2); }
 function domeSig(m){ const s=JSON.stringify(domeFsModelDoc(m)); let h=5381; for(let i=0;i<s.length;i++){ h=((h<<5)+h+s.charCodeAt(i))|0; } return (h>>>0).toString(36); }
-async function domeDriveRoot(){ if(db.domeDriveRootId && await driveAlive(db.domeDriveRootId)) return db.domeDriveRootId; const root=await driveRootId(); const id=await driveEnsureFolder('Dome Library', root); db.domeDriveRootId=id; return id; }
+/* BUILD 15.36: the working Dome Library folder is now the service folder "_dome library" (underscore-prefixed,
+   like _system / _media). An existing "Dome Library" folder is adopted and renamed once. */
+async function domeDriveRoot(){
+  const NAME='_dome library';
+  if(db.domeDriveRootId && await driveAlive(db.domeDriveRootId)){
+    if(db.domeDriveRootName!==NAME){ try{ await driveRenameFolder(db.domeDriveRootId, NAME); db.domeDriveRootName=NAME; saveDomeLib(); }catch(_){} }
+    return db.domeDriveRootId;
+  }
+  const root=await driveRootId();
+  let id=await driveFindFolder(NAME, root);
+  if(!id){ const old=await driveFindFolder('Dome Library', root); if(old){ try{ await driveRenameFolder(old, NAME); }catch(_){} id=old; } }
+  if(!id) id=await driveEnsureFolder(NAME, root);
+  db.domeDriveRootId=id; db.domeDriveRootName=NAME; saveDomeLib(); return id;
+}
+/* BUILD 15.36: mirror each dome card's JSON into the shared BACKUPS folder (Fulldome PSP — BACKUPS / Dome Library),
+   smart (skips unchanged via sig) — same principle as the per-dome working backup. */
+async function domeBackupRoot(){
+  if(db.domeBackupRootId && await driveAlive(db.domeBackupRootId)) return db.domeBackupRootId;
+  const rootId=await backupRootId();
+  const id=await driveEnsureFolder('Dome Library', rootId);
+  db.domeBackupRootId=id; saveDomeLib(); return id;
+}
+async function domeBackupToBackupRoot(m){
+  if(!m || m.archived || !(_cloudOn && _gTok)) return;
+  const rec=domeDriveMap()[m.domeUid]||{}; const sig=domeSig(m);
+  if(rec.bkSig===sig && rec.bkJsonId) return;                       /* unchanged since last backup-root write */
+  const bkRoot=await domeBackupRoot();
+  const jsonName=domeFolderName(m)+'.json';
+  const bkJsonId=await backupPutInPlace(jsonName, bkRoot, domeBackupPayload(m), rec.bkJsonId);
+  domeDriveMap()[m.domeUid]=Object.assign(domeDriveMap()[m.domeUid]||{}, { bkJsonId, bkSig:sig, bkName:jsonName });
+  saveDomeLib();
+}
 async function domeEnsureDriveFolder(m){
   const rec=domeDriveMap()[m.domeUid] || {};
   const wantName=domeFolderName(m);
@@ -9082,6 +9113,7 @@ async function domeBackupWrite(m, force){
     domeDriveMap()[m.domeUid]=Object.assign(domeDriveMap()[m.domeUid]||{}, { jsonId, sig, jsonName });
     saveDomeLib();
     try{ await domeTrussUploadFiles(m, fid); }catch(_){}   /* BUILD 15.14: upload attached truss PDFs/DWGs (best-effort) */
+    try{ await domeBackupToBackupRoot(m); }catch(_){}      /* BUILD 15.36: mirror JSON into Fulldome PSP — BACKUPS / Dome Library */
     if(force) setCloudStat('Dome card backed up to Drive ✓ · ' + hhmm());
   }catch(e){ setCloudStat('⚠ Dome backup failed: ' + (e && e.message || e)); }
 }
