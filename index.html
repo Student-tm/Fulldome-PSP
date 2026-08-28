@@ -705,7 +705,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.37 · DOME LIBRARY → _dome library (WORKING + BACKUPS), RENAME NOW RUNS EVERY CYCLE</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.38 · MEDIA-LOSS GUARD — UNPULLED COPY CAN'T EMPTY DRIVE OR BACKUP + RESTORE BUTTON</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -5035,6 +5035,22 @@ function fbpMediaPayload(e){
     contentList: d.contentList || null
   };
 }
+/* BUILD 15.38: true when a media payload carries NOTHING (no photos anywhere, no doc files, no projector
+   web files, no content list) — used to refuse an empty upload/backup that could only destroy Drive data. */
+function fbpMediaIsEmpty(e){
+  const m = fbpMediaPayload(e);
+  const anyArr = a => Array.isArray(a) && a.length > 0;
+  const photoSets = [ m.server&&m.server.photos, m.backup&&m.backup.photos, m.vj&&m.vj.photos,
+    m.rack&&m.rack.photos, m.rack&&m.rack.frontPh, m.rack&&m.rack.rearPh, m.camera&&m.camera.photos,
+    m.docs&&m.docs.sitePh ];
+  if(photoSets.some(anyArr)) return false;
+  if(m.projectors && m.projectors.models && Object.keys(m.projectors.models).length) return false;
+  if(m.shipping && m.shipping.palletPhotos && Object.keys(m.shipping.palletPhotos).some(k=>anyArr(m.shipping.palletPhotos[k]))) return false;
+  if(m.projectorsWeb && Object.keys(m.projectorsWeb).some(k=>anyArr(m.projectorsWeb[k]))) return false;
+  if(m.docs && m.docs.files && Object.keys(m.docs.files).some(k=>anyArr(m.docs.files[k]))) return false;
+  if(m.contentList) return false;
+  return true;
+}
 async function fbpMediaRoot(){
   /* BUILD 13.2: the media folder MUST live inside the SHARED team root "Fulldome PSP"
      (both accounts converge on it via driveRootId's shared-folder preference), NOT in a
@@ -5049,9 +5065,16 @@ async function fbpMediaRoot(){
 async function fbpMediaUpload(e){
   if(!_cloudOn || !_gTok) return false;
   const pid = fbpPid(e); if(!pid) return false;
+  /* BUILD 15.38 — Замок 2: never upload while media is still pending (a cloud-materialized copy whose
+     real photos/docs have NOT been pulled yet) — an empty upload would overwrite the full Drive file. */
+  if(e._mediaPending) return false;
   const sig = fbpMediaSig(e);
   const rec = mediaMap()[pid] || {};
   if(rec.msig === sig && rec.fileId) return false;         /* media unchanged since our last upload */
+  /* BUILD 15.38 — belt: if THIS payload carries no photos AND no docs AND no projector-web files, but a
+     remote media file already exists (rec.fileId), refuse — emptiness can only destroy. A genuine "user
+     deleted everything" is rare; the recovery cost of a wrongful wipe is far higher. */
+  if(rec.fileId && fbpMediaIsEmpty(e)) return false;
   const root = await fbpMediaRoot();
   const content = JSON.stringify(fbpMediaPayload(e));
   const fileId = await backupPutInPlace(pid + '.media.json', root, content, rec.fileId);   /* PATCH in place → one compact sync file + version history */
@@ -5066,16 +5089,31 @@ async function fbpMediaDownloadApply(e, wantSig){
   const root = await fbpMediaRoot();
   let fileId = (mediaMap()[pid] || {}).fileId;
   if(!fileId) fileId = await backupFindFile(pid + '.media.json', root);
-  if(!fileId){ mediaMap()[pid] = { fileId:null, msig: wantSig }; return false; }   /* remote has no media file yet */
+  if(!fileId){ mediaMap()[pid] = { fileId:null, msig: wantSig }; e._mediaPending = false; return false; }   /* remote has no media file yet — nothing to pull, empty is legitimately correct (BUILD 15.38) */
   const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media');
   const media = JSON.parse(await r.text());
   let ch = applyPhotosFrom(e.data, media);
   if(applyDocsFrom(e.data, media)) ch = true;
   if(applyProjWebFrom(e.data, media)) ch = true;             /* BUILD 14.5: restore projector Web-settings files */
   mediaMap()[pid] = { fileId, msig: wantSig || fbpMediaSig(e) };
+  e._mediaPending = false;                                    /* BUILD 15.38: real media is now local → safe to upload/backup again */
   if(ch){ saveState._skipCloud = true; saveState(); saveState._skipCloud = false; }
   return ch;
 }
+/* BUILD 15.38: force-restore the ACTIVE project's photos + documents from its Drive media file,
+   ignoring the msig "already in sync" check. Recovery button (Documentation page) + console alias. */
+async function mediaRestoreActive(){
+  const e = activeEntry();
+  if(!e){ alert('Open a project first'); return; }
+  if(!(_cloudOn && _gTok)){ alert('Sign in to Google first'); return; }
+  setCloudStat('Restoring photos & documents from Drive…');
+  try{
+    const ok = await fbpMediaDownloadApply(e, 'forced-restore');
+    setCloudStat(ok ? ('Photos & documents restored from Drive ✓ · ' + hhmm()) : ('No media file on Drive for this project · ' + hhmm()));
+    rerenderKeepScroll();
+  }catch(err){ setCloudStat('⚠ Restore failed: ' + (err && err.message || err)); }
+}
+try{ window.mediaRestoreActive = mediaRestoreActive; window.restoreMedia = mediaRestoreActive; }catch(_){}
 /* trash every FILE inside a folder (recursing into subfolders), then best-effort trash the folder
    itself. Files are trashable by any editor even if the folder is owned by another account; the
    folder-trash only succeeds for its owner. BUILD 14.10 */
@@ -5484,7 +5522,11 @@ function fsApplyDoc(data){
     FS_SECTIONS.forEach(s => { if(data[s] !== undefined) fsApplySection(d, s, data[s]); });
     if(!d.project) d.project = {}; d.project.pid = pid;
     d.shipping = d.shipping || {date:'',pallets:[],assign:{},docs:[],meta:{},packed:{}}; d.ready = d.ready || {}; d.docs = d.docs || {sitePh:[],files:{}};
-    e = { id:newId(), frozen:false, data:d, _fbSeen:true, _fsRev:Object.assign({}, revs), _remoteMsig:data.msig||'', _browseFid:data.browseFid||'' };
+    /* BUILD 15.38: a project MATERIALIZED from the cloud has NO docs/photos yet (they ride only in
+       _media/<pid>.media.json on Drive, not in the Firestore doc). Mark it _mediaPending so it can
+       NEITHER upload its (empty) media NOR overwrite its backup until the real media is pulled —
+       this is the root fix for "opened an old project, Documentation empty, backup shrank to half". */
+    e = { id:newId(), frozen:false, data:d, _fbSeen:true, _fsRev:Object.assign({}, revs), _remoteMsig:data.msig||'', _browseFid:data.browseFid||'', _mediaPending:true };
     if(data.done){ e.done = true; e.doneAt = data.doneAt || Date.now(); }
     db.projects.push(e);
     return true;
@@ -5998,6 +6040,11 @@ async function backupMirrorFolder(srcId, dstParentId, folderName){
 async function backupMirrorProject(e, forced){
   if(!_cloudOn || !_gTok) return false;
   if(!e || !e.data || !e.data.project) return false;
+  /* BUILD 15.38 — Замок 4: NEVER overwrite the backup while media is pending (a cloud-materialized copy
+     whose photos/docs haven't been pulled) — that is exactly how the full 13 MB backup got shrunk to a
+     half-empty 2.6 MB copy. The backup writes projPayload(e) from the LOCAL entry, so an unpulled
+     entry would strip every base64 doc/photo from the saved copy. */
+  if(e._mediaPending){ return false; }
   const P = e.data.project;
   const pid = P.pid || e.id;
   const rev = P._rev || 0;
@@ -6619,15 +6666,16 @@ function docsSigStr(e){
 /* copy all photo arrays from a downloaded project state onto the local entry data */
 function applyPhotosFrom(d, s){
   let ch = false;
-  const setA = (obj, key, val) => { if(!obj) return; if(JSON.stringify(obj[key]||[]) !== JSON.stringify(val||[])){ obj[key] = val||[]; ch = true; } };
+  /* BUILD 15.38 — Замок 5 (photos): an EMPTY incoming array never overwrites a NON-empty local one. */
+  const setA = (obj, key, val) => { if(!obj) return; const cur = obj[key]||[]; if(!(val||[]).length && cur.length) return; if(JSON.stringify(cur) !== JSON.stringify(val||[])){ obj[key] = val||[]; ch = true; } };
   if(s.server) setA(d.server, 'photos', s.server.photos);
   if(s.backup){ d.backup = d.backup || {rows:[],ready:false,photos:[],caseSize:'',name:'',enabled:false}; setA(d.backup, 'photos', s.backup.photos); }
   if(s.vj){ d.vj = d.vj || {rows:[],ready:false,photos:[]}; setA(d.vj, 'photos', s.vj.photos); }
   if(s.rack){ setA(d.rack, 'photos', s.rack.photos); setA(d.rack, 'frontPh', s.rack.frontPh); setA(d.rack, 'rearPh', s.rack.rearPh); }
   if(s.camera){ d.camera = d.camera || {rows:[],ready:false,photos:[]}; setA(d.camera, 'photos', s.camera.photos); }
   if(s.docs){ d.docs = d.docs || {}; setA(d.docs, 'sitePh', s.docs.sitePh); }
-  if(s.projectors && s.projectors.models){ d.projectors = d.projectors || {}; if(JSON.stringify(d.projectors.models||{}) !== JSON.stringify(s.projectors.models)){ d.projectors.models = s.projectors.models; ch = true; } }
-  if(s.shipping){ d.shipping = d.shipping || {}; if(JSON.stringify(d.shipping.palletPhotos||{}) !== JSON.stringify(s.shipping.palletPhotos||{})){ d.shipping.palletPhotos = s.shipping.palletPhotos || {}; ch = true; } }
+  if(s.projectors && s.projectors.models){ d.projectors = d.projectors || {}; const inM=s.projectors.models, loM=d.projectors.models||{}; if(!(Object.keys(inM).length===0 && Object.keys(loM).length>0) && JSON.stringify(loM) !== JSON.stringify(inM)){ d.projectors.models = inM; ch = true; } }
+  if(s.shipping){ d.shipping = d.shipping || {}; const inP=s.shipping.palletPhotos||{}, loP=d.shipping.palletPhotos||{}; const hasP=o=>Object.keys(o).some(k=>Array.isArray(o[k])&&o[k].length); if(!(!hasP(inP) && hasP(loP)) && JSON.stringify(loP) !== JSON.stringify(inP)){ d.shipping.palletPhotos = inP; ch = true; } }
   return ch;
 }
 /* apply the DOCUMENTATION files + content list from a newer copy (BUILD 12.89) — these ride
@@ -6637,10 +6685,15 @@ function applyDocsFrom(d, s){
   let ch = false;
   if(s.docs && s.docs.files){
     d.docs = d.docs || { files:{}, sitePh:[] };
-    if(JSON.stringify(d.docs.files || {}) !== JSON.stringify(s.docs.files)){ d.docs.files = s.docs.files; ch = true; }
+    const incoming = s.docs.files || {}, local = d.docs.files || {};
+    const hasFiles = o => Object.keys(o).some(k => Array.isArray(o[k]) && o[k].length);
+    /* BUILD 15.38 — Замок 5: an EMPTY incoming doc set never wipes a NON-empty local one (protects
+       against a peer that materialized the project and pushed empty docs before its media synced). */
+    if(!(!hasFiles(incoming) && hasFiles(local)) && JSON.stringify(local) !== JSON.stringify(incoming)){ d.docs.files = incoming; ch = true; }
   }
   if('contentList' in s){
-    if(JSON.stringify(d.contentList || null) !== JSON.stringify(s.contentList || null)){ d.contentList = s.contentList || null; ch = true; }
+    /* same guard: don't let an empty content list clear a real one */
+    if(!(s.contentList == null && d.contentList != null) && JSON.stringify(d.contentList || null) !== JSON.stringify(s.contentList || null)){ d.contentList = s.contentList || null; ch = true; }
   }
   return ch;
 }
@@ -8674,6 +8727,7 @@ function pageDocumentation(){
       <div class="eyebrow">Fulldome Projection SP</div>
       <h1>Schematics, Manuals &amp; Photos</h1>
       <div class="sub">Archive of the ACTIVE project: photos, drawings, manuals and documents. Photos from Server, Rack and other modules appear here automatically; everything rides inside this project's file. Switch projects in the sidebar to see their archives.</div>
+      ${act ? `<div style="margin-top:10px"><button class="mod-btn" style="border-color:var(--fdp-red);color:var(--fdp-red)" onclick="mediaRestoreActive()" title="Re-download this project's photos and documents from Google Drive (use if this list looks empty but the files are on Drive)">↻ Restore photos &amp; documents from Drive</button></div>` : ''}
     </div>
 
     ${secHead('Technical Task','The source TT of the project — PDF and JSON from Fulldome DCS.' + (act ? ' Files attach to the active project — #'+esc(actP.number)+'. Tip: the same files autofill the Create/Edit form.' : ' Select a project to upload.'))}
