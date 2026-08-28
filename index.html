@@ -705,7 +705,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.33 · DOME PASSPORT — EXPANDABLE FULL DATA SHEET IN THE LIBRARY LIST</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.35 · DASHBOARD — SHIPPING INFO CARD (PALLETS · SIZE · WEIGHT · SHIP DATE)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -3286,7 +3286,6 @@ function pageDashboard(){
         <div class="srow"><span class="k">Capture Card</span><span class="v">${P.captureRequired?'<span class="chip c-ok"><span class="cd"></span>Yes</span>':'<span class="chip c-mut"><span class="cd"></span>No</span>'}</span></div>
         <div class="srow"><span class="k">VJ Server</span><span class="v">${P.vjRequired?'<span class="chip c-ok"><span class="cd"></span>Yes</span>':'<span class="chip c-mut"><span class="cd"></span>No</span>'}</span></div>
         <div class="srow"><span class="k">Created</span><span class="v">${esc(P.created)}</span></div>
-        <div class="srow"><span class="k">Shipping Date</span><span class="v">${(state.shipping&&state.shipping.date) ? esc(state.shipping.date) : '—'}</span></div>
       </div>
 
       <div class="card sum"><h3>Project Equipment</h3>
@@ -3317,13 +3316,23 @@ function pageDashboard(){
              </button>`}</span></div>
       </div>
 
-      <div class="card sum"><h3>Equipment Summary</h3>
+      <div class="card sum"><h3>Shipping Info</h3>
         <div class="srow"><span class="k">Total Equipment</span><span class="v">${totalItems()} items</span></div>
-        <div class="srow"><span class="k">Purchased</span><span class="v mut">No Data</span></div>
-        <div class="srow"><span class="k">Received</span><span class="v mut">No Data</span></div>
-        <div class="srow"><span class="k">Tested</span><span class="v mut">No Data</span></div>
-        <div class="srow"><span class="k">Packed</span><span class="v mut">No Data</span></div>
-        <div class="srow"><span class="k">Shipped</span><span class="v mut">No Data</span></div>
+        ${(function(){ const ps=(state.shipping&&state.shipping.pallets)||[];
+          let rows=`<div class="srow"><span class="k">Number of Pallets</span><span class="v ${ps.length?'ok':'mut'}">${ps.length||'—'}</span></div>`;
+          let totWt=0;
+          ps.forEach((p,i)=>{
+            const dims=[p.l,p.w,p.h].map(x=>String(x==null?'':x).trim());
+            const size=dims.some(x=>x)?dims.map(x=>x||'—').join(' × ')+' in':'—';
+            const w=String(p.wt==null?'':p.wt).trim(); const wt=w?(w+' lb'):'—'; const wn=parseFloat(w); if(isFinite(wn)) totWt+=wn;
+            const lbl='Pallet '+((String(p.num==null?'':p.num).trim())||(i+1))+((p.name||'').trim()?(' · '+p.name):'');
+            rows+=`<div class="srow"><span class="k">${esc(lbl)} · Size</span><span class="v">${esc(size)}</span></div>`;
+            rows+=`<div class="srow"><span class="k">${esc(lbl)} · Weight</span><span class="v">${esc(wt)}</span></div>`;
+          });
+          if(totWt>0) rows+=`<div class="srow"><span class="k">Total Weight</span><span class="v">${totWt} lb</span></div>`;
+          return rows;
+        })()}
+        <div class="srow"><span class="k">Shipping Date</span><span class="v ${(state.shipping&&state.shipping.date)?'ok':'mut'}">${(state.shipping&&state.shipping.date)?esc(state.shipping.date):'—'}</span></div>
       </div>
 
       <div class="card sum"><h3>Server Validation Status</h3>
@@ -8870,7 +8879,7 @@ function domeNextKitNum(m){ let mx=0; ((m.truss&&m.truss.kits)||[]).forEach(k=>{
 function domeEmptyKit(num){ return { id:newId(), num:num||'01', status:'draft', items:[], created:'' }; }
 /* Candidates offered when creating a kit: the dome truss ring + couplers + every Truss element (from library). */
 function domeTrussCandidates(m){ const t=(m&&m.truss)||{}; const out=[];
-  out.push({ key:'truss', cat:'', name:domeTrussName(m), qty:'1', price:'', link:'' });
+  if(String(t.sn||'').trim()) out.push({ key:'truss', cat:'', name:domeTrussName(m), qty:'1', price:'', link:'' });   /* the dome truss ring exists only once the truss has a serial */
   (Array.isArray(t.elements)?t.elements:[]).forEach(e=>{ if(e && String(e.name||'').trim()){ const hit=libFind(e.name);
     out.push({ key:'el:'+e.id, cat:e.cat||'', name:e.name, qty:String(e.qty||'1'), price:(hit&&hit.price)||'', link:(hit&&hit.link)||'' }); } });
   return out; }
@@ -9143,7 +9152,8 @@ async function domeTrussUploadFiles(m, fid){ if(!m||!m.truss||!(_cloudOn && _gTo
 var _domeKitOpen = null;   /* id of the kit currently in edit mode, or null (list view) */
 function domeKitFind(id){ const m=domeEditing(); if(!m) return null; domeEnsureTruss(m); return m.truss.kits.find(k=>k.id===id)||null; }
 function domeKitCreate(){ const m=domeEditing(); if(!m) return; domeEnsureTruss(m); const k=domeEmptyKit(domeNextKitNum(m)); k.created=new Date().toISOString();
-  m.truss.kits.push(k); _domeKitOpen=k.id; _domeKitPick=k.id; saveDomeLib(); rerenderKeepScroll(); }   /* new kit → number → edit mode + component picker */
+  m.truss.kits.push(k); _domeKitOpen=k.id; _domeKitPick = domeTrussCandidates(m).length ? k.id : null;   /* BUILD 15.34: no picker when the truss is empty — nothing to pick */
+  saveDomeLib(); rerenderKeepScroll(); }
 function domeKitOpen(id){ _domeKitOpen=id; rerenderKeepScroll(); }
 function domeKitBack(){ _domeKitOpen=null; _domeKitPick=null; rerenderKeepScroll(); }
 function domeKitRemove(id){ const m=domeEditing(); if(!m) return; domeEnsureTruss(m); const k=m.truss.kits.find(x=>x.id===id); if(!k) return;
