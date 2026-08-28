@@ -705,7 +705,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.36 · DOME LIBRARY DRIVE FOLDER → _dome library + BACKUPS MIRROR</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.37 · DOME LIBRARY → _dome library (WORKING + BACKUPS), RENAME NOW RUNS EVERY CYCLE</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -9074,10 +9074,16 @@ async function domeDriveRoot(){
 /* BUILD 15.36: mirror each dome card's JSON into the shared BACKUPS folder (Fulldome PSP — BACKUPS / Dome Library),
    smart (skips unchanged via sig) — same principle as the per-dome working backup. */
 async function domeBackupRoot(){
-  if(db.domeBackupRootId && await driveAlive(db.domeBackupRootId)) return db.domeBackupRootId;
+  const NAME='_dome library';
+  if(db.domeBackupRootId && await driveAlive(db.domeBackupRootId)){
+    if(db.domeBackupRootName!==NAME){ try{ await driveRenameFolder(db.domeBackupRootId, NAME); db.domeBackupRootName=NAME; saveDomeLib(); }catch(_){} }
+    return db.domeBackupRootId;
+  }
   const rootId=await backupRootId();
-  const id=await driveEnsureFolder('Dome Library', rootId);
-  db.domeBackupRootId=id; saveDomeLib(); return id;
+  let id=await driveFindFolder(NAME, rootId);
+  if(!id){ const old=await driveFindFolder('Dome Library', rootId); if(old){ try{ await driveRenameFolder(old, NAME); }catch(_){} id=old; } }
+  if(!id) id=await driveEnsureFolder(NAME, rootId);
+  db.domeBackupRootId=id; db.domeBackupRootName=NAME; saveDomeLib(); return id;
 }
 async function domeBackupToBackupRoot(m){
   if(!m || m.archived || !(_cloudOn && _gTok)) return;
@@ -9120,7 +9126,12 @@ async function domeBackupWrite(m, force){
 var _domeBackupTimer=null;
 function domeBackupLoop(){ if(_domeBackupTimer) return; _domeBackupTimer=setInterval(function(){ domeBackupAllChanged(); }, 15*60*1000); setTimeout(domeBackupAllChanged, 22000); }
 function domeBackupStop(){ if(_domeBackupTimer){ clearInterval(_domeBackupTimer); _domeBackupTimer=null; } }
-async function domeBackupAllChanged(){ if(!(_cloudOn && _gTok)) return; for(const m of (db.domeLib||[])){ if(m && m._saved && !m.archived){ try{ await domeBackupWrite(m,false); }catch(_){} } } }
+async function domeBackupAllChanged(){ if(!(_cloudOn && _gTok)) return;
+  /* BUILD 15.37: resolve (and rename) both folders once per cycle, even if no dome changed —
+     so the working folder becomes "_dome library" and the BACKUPS mirror folder exists regardless of edits. */
+  try{ await domeDriveRoot(); }catch(_){}
+  try{ await domeBackupRoot(); }catch(_){}
+  for(const m of (db.domeLib||[])){ if(m && m._saved && !m.archived){ try{ await domeBackupWrite(m,false); }catch(_){} } } }
 
 /* ---------- navigation / CRUD ---------- */
 function domeNewCard(){ const m = domeEmptyModel(); db.domeLib.push(m); _domeEditId = m.domeUid; _domeView='card'; _domeTab='overview'; _domeKitOpen=null; _domeKitPick=null; saveDomeLib(); rerenderKeepScroll(); }
