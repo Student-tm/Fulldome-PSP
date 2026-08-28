@@ -674,7 +674,7 @@
     <button class="top-btn" onclick="location.hash='#/create'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New Project</button>
     <span class="build-chip" id="topBuild" title="App build — every machine must be on the SAME build (mixed builds can corrupt sync)">b—</span>
     <div class="online-users" id="onlineUsers" title="Online now"></div>
-    <button class="icon-btn" title="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/></svg></button>
+    <button class="icon-btn" onclick="openMediaVault()" title="Drive media files (code protected)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 018 0v3.5"/><circle cx="12" cy="15.5" r="1.4" fill="currentColor" stroke="none"/></svg></button>
     <div class="avatar" title="User">FD</div>
   </div>
 </header>
@@ -705,7 +705,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.38 · MEDIA-LOSS GUARD — UNPULLED COPY CAN'T EMPTY DRIVE OR BACKUP + RESTORE BUTTON</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.41 · MEDIA VAULT — LOCK ICON (CODE 1008) → PROJECT↔FILE TABLE + AUTO-DETECT & CLEAN JUNK</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -772,6 +772,28 @@
       <button class="yes" id="saveSameBtn" onclick="saveSame()">Overwrite the same file</button>
       <button class="no" onclick="saveAsNew()">Choose a new file / location…</button>
       <button class="no" onclick="closeSaveDlg()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="mediaVaultModal">
+  <div class="box" style="max-width:820px;width:92%">
+    <div class="mt" style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 018 0v3.5"/></svg> Drive Media Files</div>
+    <div id="mvGate">
+      <div class="mm">Enter the code to view Drive media files.</div>
+      <input class="pin-input" id="mvPin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" onkeydown="if(event.key==='Enter')mvUnlock()">
+      <div class="pin-err" id="mvErr"></div>
+      <div class="mb"><button class="no" onclick="closeMediaVault()">Cancel</button><button class="yes" onclick="mvUnlock()">Unlock</button></div>
+    </div>
+    <div id="mvPanel" style="display:none">
+      <div class="mm" id="mvSummary" style="margin-bottom:8px">Scanning Google Drive…</div>
+      <div id="mvBody" style="max-height:52vh;overflow:auto;border:1px solid var(--line);border-radius:8px"></div>
+      <div class="mb" style="flex-wrap:wrap;justify-content:space-between">
+        <button class="no" onclick="mvScan()" title="Re-read the _media folder">↻ Refresh</button>
+        <span style="flex:1"></span>
+        <button class="no" id="mvCleanBtn" onclick="mvClean()" style="border-color:var(--fdp-red);color:var(--fdp-red)" title="Move junk media files to Drive trash (recoverable 30 days)">Remove junk</button>
+        <button class="yes" onclick="closeMediaVault()">Done</button>
+      </div>
     </div>
   </div>
 </div>
@@ -5062,15 +5084,36 @@ async function fbpMediaRoot(){
   if(!id) id = await backupCreateFolder('_media', teamRoot);
   db.mediaRootId2 = id; return id;
 }
+/* BUILD 15.39: resolve the ONE media file for a pid, DUPLICATE-SAFE. `<pid>.media.json` can exist more
+   than once in _media (two machines each created one before caching the id) — a full one AND an empty
+   240-byte shell. `backupFindFile` returned the FIRST match (could be the empty shell → the app pulled
+   nothing → data looked lost). This lists ALL matches and returns the LARGEST, and best-effort TRASHES
+   tiny empty duplicates (< 2 KB) so the folder self-heals. Never trashes a non-trivial file. */
+async function fbpMediaFileId(pid, root){
+  const name = pid + '.media.json';
+  const q = encodeURIComponent("name = '" + name.replace(/'/g,"\\'") + "' and '" + root + "' in parents and trashed=false");
+  let files = [];
+  try{ const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,size)&pageSize=100'); files = (await r.json()).files || []; }catch(_){ return null; }
+  if(!files.length) return null;
+  files.sort((a,b)=> (Number(b.size)||0) - (Number(a.size)||0));   /* largest (most complete) first */
+  const best = files[0];
+  for(let i=1;i<files.length;i++){ if((Number(files[i].size)||0) < 2048){ try{ await driveTrashFolder(files[i].id); }catch(_){} } }   /* remove empty poison duplicates only */
+  return best.id;
+}
 async function fbpMediaUpload(e){
   if(!_cloudOn || !_gTok) return false;
   const pid = fbpPid(e); if(!pid) return false;
-  /* BUILD 15.38 — Замок 2: never upload while media is still pending (a cloud-materialized copy whose
-     real photos/docs have NOT been pulled yet) — an empty upload would overwrite the full Drive file. */
-  if(e._mediaPending) return false;
+  /* BUILD 15.38/15.40 — Замок 2: never upload an EMPTY still-pending copy (a cloud-materialized project
+     whose real photos/docs have NOT been pulled) — it would overwrite the full Drive file. Once it holds
+     real media (pull or manual restore) it may upload normally. */
+  if(e._mediaPending && fbpMediaIsEmpty(e)) return false;
+  if(!fbpMediaIsEmpty(e)) e._mediaPending = false;
   const sig = fbpMediaSig(e);
   const rec = mediaMap()[pid] || {};
   if(rec.msig === sig && rec.fileId) return false;         /* media unchanged since our last upload */
+  /* BUILD 15.39: PATCH the LARGEST existing media file (never create a 3rd duplicate, never write into
+     an empty shell) — resolve it when we don't already hold a valid cached id. */
+  if(!rec.fileId){ const root0 = await fbpMediaRoot(); const best = await fbpMediaFileId(pid, root0); if(best) rec.fileId = best; }
   /* BUILD 15.38 — belt: if THIS payload carries no photos AND no docs AND no projector-web files, but a
      remote media file already exists (rec.fileId), refuse — emptiness can only destroy. A genuine "user
      deleted everything" is rare; the recovery cost of a wrongful wipe is far higher. */
@@ -5088,7 +5131,8 @@ async function fbpMediaDownloadApply(e, wantSig){
   const pid = fbpPid(e); if(!pid) return false;
   const root = await fbpMediaRoot();
   let fileId = (mediaMap()[pid] || {}).fileId;
-  if(!fileId) fileId = await backupFindFile(pid + '.media.json', root);
+  if(fileId && !(await driveAlive(fileId))) fileId = null;                 /* BUILD 15.39: a cached id may point at a trashed duplicate */
+  if(!fileId) fileId = await fbpMediaFileId(pid, root);                    /* BUILD 15.39: pick the LARGEST <pid>.media.json, never an empty duplicate */
   if(!fileId){ mediaMap()[pid] = { fileId:null, msig: wantSig }; e._mediaPending = false; return false; }   /* remote has no media file yet — nothing to pull, empty is legitimately correct (BUILD 15.38) */
   const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media');
   const media = JSON.parse(await r.text());
@@ -5114,6 +5158,102 @@ async function mediaRestoreActive(){
   }catch(err){ setCloudStat('⚠ Restore failed: ' + (err && err.message || err)); }
 }
 try{ window.mediaRestoreActive = mediaRestoreActive; window.restoreMedia = mediaRestoreActive; }catch(_){}
+/* ============================================================================
+   BUILD 15.41 — DRIVE MEDIA VAULT (lock icon in the top bar → code 1008 → table).
+   Shows every <pid>.media.json in _media mapped to its project name + size + status,
+   and lets the user trash the junk the SOFTWARE itself classifies:
+     • LIVE      — the largest media file of a project that exists in the app (keep)
+     • DUPLICATE — a smaller extra copy of a pid that already has a larger file (junk)
+     • ORPHAN    — a media file whose pid is not any project in the app (junk)
+   An empty file of a LIVE project (a project that genuinely has no photos yet) is kept.
+   Trash is recoverable in Drive for ~30 days; nothing is hard-deleted. */
+var _mvJunk = [];
+function mvBytes(n){ n=Number(n)||0; if(n<1024) return n+' B'; if(n<1048576) return (n/1024).toFixed(0)+' KB'; return (n/1048576).toFixed(1)+' MB'; }
+function openMediaVault(){
+  _mvJunk = [];
+  const m=document.getElementById('mediaVaultModal'); if(!m) return;
+  document.getElementById('mvGate').style.display='';
+  document.getElementById('mvPanel').style.display='none';
+  const err=document.getElementById('mvErr'); if(err) err.textContent='';
+  const pin=document.getElementById('mvPin'); if(pin) pin.value='';
+  m.classList.add('open');
+  setTimeout(function(){ try{ pin.focus(); }catch(_){} }, 30);
+}
+function closeMediaVault(){ const m=document.getElementById('mediaVaultModal'); if(m) m.classList.remove('open'); }
+function mvUnlock(){
+  const pin=(document.getElementById('mvPin').value||'').trim();
+  if(pin!==DELETE_PIN){ document.getElementById('mvErr').textContent='Wrong code.'; return; }
+  document.getElementById('mvGate').style.display='none';
+  document.getElementById('mvPanel').style.display='';
+  mvScan();
+}
+async function mediaVaultList(){
+  const root = await fbpMediaRoot();
+  const q = encodeURIComponent("'" + root + "' in parents and trashed=false and name contains '.media.json'");
+  const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name,size)&pageSize=1000');
+  return (await r.json()).files || [];
+}
+function mvProjectName(pid){
+  const e=(db.projects||[]).find(p=>fbpPid(p)===pid);
+  if(!e) return null;
+  const P=e.data&&e.data.project||{};
+  return (projDriveFolderName(P) || (P.title||'') || pid);
+}
+async function mvScan(){
+  const body=document.getElementById('mvBody'), sum=document.getElementById('mvSummary');
+  sum.textContent='Scanning Google Drive…'; body.innerHTML='';
+  if(!(_cloudOn && _gTok)){ sum.textContent='Sign in to Google first — the media files live on Drive.'; return; }
+  let files;
+  try{ files = await mediaVaultList(); }catch(e){ sum.textContent='⚠ Could not read Drive: '+(e&&e.message||e); return; }
+  /* group by pid (name without .media.json) */
+  const groups={};
+  files.forEach(f=>{ const pid=(f.name||'').replace(/\.media\.json$/,''); (groups[pid]=groups[pid]||[]).push({id:f.id,size:Number(f.size)||0}); });
+  const rows=[]; _mvJunk=[];
+  Object.keys(groups).forEach(pid=>{
+    const list=groups[pid].sort((a,b)=>b.size-a.size);   /* largest first = keeper */
+    const name=mvProjectName(pid);   /* null → orphan (no such project in the app) */
+    list.forEach((f,i)=>{
+      let status;
+      if(i>0) status='duplicate';                        /* a smaller extra copy → junk */
+      else if(name===null) status='orphan';              /* keeper but no project → junk */
+      else status='live';                                /* keeper of a real project → keep */
+      if(status!=='live') _mvJunk.push(f.id);
+      rows.push({pid,name,size:f.size,status,id:f.id});
+    });
+  });
+  /* live projects first, then junk; within, largest first */
+  const order={live:0,duplicate:1,orphan:2};
+  rows.sort((a,b)=> (order[a.status]-order[b.status]) || (b.size-a.size));
+  const badge=s=> s==='live' ? '<span style="color:#2fa35a;font-weight:700">LIVE</span>'
+    : s==='duplicate' ? '<span style="color:#c07800;font-weight:700">DUPLICATE</span>'
+    : '<span style="color:var(--fdp-red);font-weight:700">ORPHAN</span>';
+  let html='<table style="width:100%;border-collapse:collapse;font-size:12.5px">'
+    +'<thead><tr style="text-align:left;background:#f4f5f7"><th style="padding:7px 9px">Project</th><th style="padding:7px 9px">Media file</th><th style="padding:7px 9px;text-align:right">Size</th><th style="padding:7px 9px">Status</th></tr></thead><tbody>';
+  rows.forEach(r=>{
+    const proj = r.status==='orphan' ? '<span style="color:var(--ink2)">— not in app —</span>'
+      : (r.name? esc(r.name) : esc(r.pid)) + (r.status==='duplicate'?' <span style="color:var(--ink2)">(extra copy)</span>':'');
+    html+='<tr style="border-top:1px solid var(--line)">'
+      +'<td style="padding:7px 9px">'+proj+'</td>'
+      +'<td style="padding:7px 9px;font-family:monospace;color:var(--ink2)">'+esc(r.pid)+'.media.json</td>'
+      +'<td style="padding:7px 9px;text-align:right">'+mvBytes(r.size)+'</td>'
+      +'<td style="padding:7px 9px">'+badge(r.status)+'</td></tr>';
+  });
+  html+='</tbody></table>';
+  body.innerHTML=html;
+  const live=rows.filter(r=>r.status==='live').length, junk=_mvJunk.length;
+  sum.innerHTML = live+' live project file'+(live===1?'':'s')+' · <b style="color:var(--fdp-red)">'+junk+' junk</b> (duplicates + orphans). Live files are always kept.';
+  const btn=document.getElementById('mvCleanBtn'); if(btn){ btn.disabled = junk===0; btn.style.opacity = junk===0?'0.4':'1'; btn.textContent = junk? ('Remove junk ('+junk+')') : 'No junk'; }
+}
+async function mvClean(){
+  if(!_mvJunk.length) return;
+  if(!confirm('Move '+_mvJunk.length+' junk media file(s) to Drive trash?\nLive project files are NOT touched. Trash is recoverable for ~30 days.')) return;
+  const sum=document.getElementById('mvSummary'); sum.textContent='Removing junk…';
+  let done=0;
+  for(const id of _mvJunk.slice()){ try{ await driveTrashFolder(id); done++; }catch(_){} }
+  sum.textContent='Removed '+done+' file(s) to trash. Re-scanning…';
+  await mvScan();
+}
+try{ window.openMediaVault = openMediaVault; }catch(_){}
 /* trash every FILE inside a folder (recursing into subfolders), then best-effort trash the folder
    itself. Files are trashable by any editor even if the folder is owned by another account; the
    folder-trash only succeeds for its owner. BUILD 14.10 */
@@ -6040,11 +6180,13 @@ async function backupMirrorFolder(srcId, dstParentId, folderName){
 async function backupMirrorProject(e, forced){
   if(!_cloudOn || !_gTok) return false;
   if(!e || !e.data || !e.data.project) return false;
-  /* BUILD 15.38 — Замок 4: NEVER overwrite the backup while media is pending (a cloud-materialized copy
-     whose photos/docs haven't been pulled) — that is exactly how the full 13 MB backup got shrunk to a
-     half-empty 2.6 MB copy. The backup writes projPayload(e) from the LOCAL entry, so an unpulled
-     entry would strip every base64 doc/photo from the saved copy. */
-  if(e._mediaPending){ return false; }
+  /* BUILD 15.38/15.40 — Замок 4: don't overwrite the backup with an EMPTY unpulled copy (a
+     cloud-materialized project whose photos/docs haven't been pulled) — that is how the full 13 MB
+     backup got shrunk to a half-empty 2.6 MB copy. 15.40: only block when the copy is BOTH pending
+     AND actually empty; once it has real media locally (a pull or a manual restore), a normal save
+     re-backs it up. */
+  if(e._mediaPending && fbpMediaIsEmpty(e)){ return false; }
+  if(!fbpMediaIsEmpty(e)) e._mediaPending = false;   /* the entry has real media → it's no longer pending */
   const P = e.data.project;
   const pid = P.pid || e.id;
   const rev = P._rev || 0;
@@ -8727,7 +8869,6 @@ function pageDocumentation(){
       <div class="eyebrow">Fulldome Projection SP</div>
       <h1>Schematics, Manuals &amp; Photos</h1>
       <div class="sub">Archive of the ACTIVE project: photos, drawings, manuals and documents. Photos from Server, Rack and other modules appear here automatically; everything rides inside this project's file. Switch projects in the sidebar to see their archives.</div>
-      ${act ? `<div style="margin-top:10px"><button class="mod-btn" style="border-color:var(--fdp-red);color:var(--fdp-red)" onclick="mediaRestoreActive()" title="Re-download this project's photos and documents from Google Drive (use if this list looks empty but the files are on Drive)">↻ Restore photos &amp; documents from Drive</button></div>` : ''}
     </div>
 
     ${secHead('Technical Task','The source TT of the project — PDF and JSON from Fulldome DCS.' + (act ? ' Files attach to the active project — #'+esc(actP.number)+'. Tip: the same files autofill the Create/Edit form.' : ' Select a project to upload.'))}
