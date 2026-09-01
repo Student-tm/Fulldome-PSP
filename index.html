@@ -705,7 +705,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.45 · LIVE EDITING PRESENCE (TIER 1) — WHO IS EDITING WHICH MODULE / DOME / SECTION, LIVE</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.46 · PRESENCE MARKER = COLORED INITIALS AVATAR (NO EMAIL TEXT), SAME COLOUR AS ONLINE AVATAR</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -10008,8 +10008,9 @@ function presInjectStyle(){ if(_presStyled) return; _presStyled=true; try{
    '.pres-on{position:relative!important;box-shadow:0 0 0 2px var(--pc,#2e9e5b)!important;border-radius:12px}'
    +'tr.pres-on{box-shadow:inset 4px 0 0 var(--pc,#2e9e5b)!important}'
    +'tr.pres-on td{background:color-mix(in srgb, var(--pc,#2e9e5b) 8%, #fff)}'
-   +'.pres-chip{position:absolute;top:8px;right:10px;z-index:6;display:inline-flex;align-items:center;gap:6px;color:#fff;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px;box-shadow:0 1px 4px rgba(0,0,0,.18);white-space:nowrap}'
-   +'.pres-chip.inl{position:static;margin-left:8px;vertical-align:middle}'
+   +'.pres-ava{position:absolute;top:7px;right:9px;z-index:6;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:800;letter-spacing:.3px;box-shadow:0 1px 4px rgba(0,0,0,.25)}'
+   +'.pres-ava.inl{position:static;margin-left:8px;vertical-align:middle;width:20px;height:20px;font-size:9.5px}'
+   +'.pres-ava.me{box-shadow:0 0 0 2px #fff,0 1px 4px rgba(0,0,0,.3)}'
    +'.pres-dot{width:7px;height:7px;border-radius:50%;background:#fff;opacity:.9;flex:none}'
    +'.pres-banner{display:flex;align-items:center;gap:8px;font-size:12px;color:#5a4b00;background:#fff8e1;border:1px solid #ffe6a1;border-radius:8px;padding:7px 10px;margin:0 0 14px}'
    +'.pres-banner b{color:var(--pc,#2e9e5b)}'
@@ -10037,11 +10038,13 @@ function presSubDomeList(on){ if(_presDomeSub){ try{_presDomeSub();}catch(_){}_p
   if(!on||!presReady()) return;
   _presDomeSub=_fsDb.collection('presence').where('scopeKey','>=','dome:').where('scopeKey','<=','dome:').onSnapshot(function(snap){ const a=[]; snap.forEach(function(d){a.push(d.data());}); _presDomeLive=a; presPaint(); presGc(snap); }, function(_){}); }
 function presLabel(r,isYou){ return isYou ? 'You editing' : ((r.displayName||(r.email||'').split('@')[0]||'Someone')+' editing'); }
-function presChip(r,isYou,inl){ return '<span class="pres-chip'+(inl?' inl':'')+'" style="background:'+(r.color||'#2e9e5b')+'"><span class="pres-dot"></span>'+esc(presLabel(r,isYou))+'</span>'; }
+function presInitials(r){ const s=(r.displayName||(r.email||'').split('@')[0]||'?'); const p=String(s).split(/[\s@._-]+/).filter(Boolean); return ((p[0]||'?')[0]+(p[1]?p[1][0]:'')).toUpperCase(); }
+/* compact colored avatar (initials) — same colour as the person's "online" avatar; hover = full name */
+function presChip(r,isYou,inl){ return '<span class="pres-ava'+(inl?' inl':'')+(isYou?' me':'')+'" style="background:'+(r.color||'#2e9e5b')+'" title="'+esc(presLabel(r,isYou))+'">'+esc(presInitials(r))+'</span>'; }
 function presPick(list,me){ return list.find(function(r){return r.sessionId!==me;}) || list.find(function(r){return r.sessionId===me;}) || null; }
 function presPaint(){ try{
   presInjectStyle();
-  document.querySelectorAll('.pres-chip,.pres-banner').forEach(function(e){ e.remove(); });
+  document.querySelectorAll('.pres-ava,.pres-banner').forEach(function(e){ e.remove(); });
   document.querySelectorAll('.pres-on').forEach(function(e){ e.classList.remove('pres-on'); e.style.removeProperty('--pc'); });
   document.querySelectorAll('.dtab .pres-dot').forEach(function(e){ e.remove(); });
   const me=presSid(), scope=presLiveOnly(_presLive), domeL=presLiveOnly(_presDomeLive);
@@ -10065,7 +10068,7 @@ function presPaint(){ try{
   /* 4) module page banner — someone ELSE editing the module you are on */
   const h=location.hash, mod=PRES_ROUTE_MOD[h];
   if(mod && state.project){ const other=scope.find(function(r){return r.moduleId===mod && r.sessionId!==me;});
-    if(other){ const ph=document.querySelector('#content .pagehead'); if(ph) ph.insertAdjacentHTML('afterend', '<div class="pres-banner" style="--pc:'+(other.color||'#2e9e5b')+'">⚠ <b>'+esc(other.displayName||(other.email||'').split('@')[0])+'</b> is editing this — your changes still merge on save.</div>'); } }
+    if(other){ const ph=document.querySelector('#content .pagehead'); if(ph) ph.insertAdjacentHTML('afterend', '<div class="pres-banner" style="--pc:'+(other.color||'#2e9e5b')+'">'+presChip(other,false,true)+' editing here — your changes still merge on save.</div>'); } }
 }catch(_){}}
 /* decide the current editable area for this route, (un)subscribe, start/stop own presence, paint */
 function presenceOnRoute(){
