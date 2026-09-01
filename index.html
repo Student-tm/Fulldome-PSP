@@ -705,7 +705,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.41 · MEDIA VAULT — LOCK ICON (CODE 1008) → PROJECT↔FILE TABLE + AUTO-DETECT & CLEAN JUNK</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.43 · DOME LIBRARY SYNCS LIKE EQUIPMENT LIBRARY — ONE SHARED DOC, EXISTING RULE, NO NEW RULES</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -9211,38 +9211,76 @@ var _domeExpanded = {};   /* BUILD 15.33: expanded dome passports in the list, k
 function domeToggleExpand(uid){ _domeExpanded[uid] = !_domeExpanded[uid]; rerenderKeepScroll(); }
 var _domeFsStarted = false, _domeFsUnsub = null;
 function domeFsReady(){ return (typeof fsReady==='function') && fsReady() && !!_fsDb; }
+var _domePushedOnce = false;
+/* BUILD 15.43 — Dome Library now syncs EXACTLY like the Equipment Library: ONE shared Firestore
+   document `projects/dome_library` (a reserved id, no `pid`, so the project sync skips it — same as
+   `projects/shared_library`). It is covered by the EXISTING `projects/{pid}` rule that is ALREADY
+   published, so NO new Firestore rules are needed and every team member can read AND fill it. Photos
+   and documents stay on Google Drive (never in the doc). The metadata is small text → well under the
+   1 MiB doc limit. Writes go through a transaction that MERGES by domeUid (newest rev wins) so two
+   people adding different domes both survive — nobody clobbers anyone. */
+var DOME_DOC_ID = 'dome_library';
+function domeFsDocRef(){ return _fsDb.collection('projects').doc(DOME_DOC_ID); }
+function domeMergeLists(a, b){                       /* union by domeUid; newest rev wins */
+  const by = {};
+  (a||[]).concat(b||[]).forEach(function(m){ if(!m || !m.domeUid) return; const p=by[m.domeUid]; if(!p || (m.rev||0) >= (p.rev||0)) by[m.domeUid]=m; });
+  return Object.keys(by).map(function(k){ return by[k]; });
+}
+function domeFsApplyDoc(data){                        /* merge an incoming dome_library doc into db.domeLib */
+  const list = (data && data.domes) || [];
+  let ch=false;
+  list.forEach(function(d){
+    if(!d || !d.domeUid) return;
+    if(_domeEditId === d.domeUid) return;            /* don't disturb an open card being edited */
+    const i = db.domeLib.findIndex(function(m){ return m.domeUid===d.domeUid; });
+    const model = Object.assign(domeEmptyModel(), d, { _saved:true });
+    if(i>=0){ if((d.rev||0) >= (db.domeLib[i].rev||0)){ db.domeLib[i]=model; ch=true; } }
+    else { db.domeLib.push(model); ch=true; }
+  });
+  return ch;
+}
 function domeFsEnsureStarted(){
   if(_domeFsStarted || !domeFsReady()) return;
   _domeFsStarted = true;
   try{
-    _domeFsUnsub = _fsDb.collection('dome_models').onSnapshot(function(snap){
-      snap.forEach(function(doc){ domeFsApplyModel(doc.data()); });
-      saveDomeLib();
-      if(location.hash==='#/dome-library' && !isTypingInInput()){ try{ rerenderKeepScroll(); }catch(_){} }
-    }, function(err){ setCloudStat('⚠ Dome Library read failed: ' + (err.message||'') + ' — check the dome_models rules'); });
+    _domeFsUnsub = domeFsDocRef().onSnapshot(function(snap){
+      if(snap.exists){
+        domeFsApplyDoc(snap.data()); saveDomeLib();
+        if(location.hash==='#/dome-library' && !isTypingInInput()){ try{ rerenderKeepScroll(); }catch(_){} }
+      }
+    }, function(err){ setCloudStat('⚠ Dome Library read failed: ' + (err.message||'')); });
+    /* push our local cards ONCE per session, so a machine that has cards seeds/updates the shared doc */
+    if(!_domePushedOnce){ _domePushedOnce = true; setTimeout(function(){ if((db.domeLib||[]).some(function(m){ return m && m.domeUid; })) domeFsPush(); }, 2500); }
   }catch(e){ _domeFsStarted = false; }
 }
-function domeFsApplyModel(data){
-  if(!data || !data.domeUid) return;
-  if(_domeEditId === data.domeUid) return;                 /* don't disturb an open card being edited */
-  const i = db.domeLib.findIndex(m=>m.domeUid===data.domeUid);
-  const model = Object.assign(domeEmptyModel(), data, { _saved:true });
-  if(i>=0) db.domeLib[i] = model; else db.domeLib.push(model);
+/* write the shared dome_library doc, MERGING our cards onto the server's inside a transaction */
+async function domeFsPush(){
+  if(!domeFsReady()){ setCloudStat('Dome card saved locally — sign in to sync the Dome Library'); return 0; }
+  try{
+    const ref = domeFsDocRef();
+    let merged = null;
+    await _fsDb.runTransaction(async function(tx){
+      const snap = await tx.get(ref);
+      const server = (snap.exists && snap.data() && snap.data().domes) || [];
+      const localDocs = (db.domeLib||[]).filter(function(m){ return m && m.domeUid; }).map(function(m){ return domeFsModelDoc(m); });
+      merged = domeMergeLists(server, localDocs);
+      tx.set(ref, { kind:'dome_library', domes: merged, rev: Date.now(), updatedBy:_gUser||'' });
+    });
+    if(merged){ domeFsApplyDoc({ domes: merged }); saveDomeLib(); }
+    setCloudStat('Dome Library synced ✓ · ' + hhmm());
+    return (merged||[]).length;
+  }catch(e){ setCloudStat('⚠ Dome Library sync failed: ' + (e && e.message || e)); return 0; }
 }
+/* per-card save hook (bumps that card's rev, then pushes the whole shared doc) */
+async function domeFsPushModel(m){ if(m) m.rev = (m.rev||0) + 1; return domeFsPush(); }
+/* console/manual: push everything now */
+async function domePushAll(){ return domeFsPush(); }
+try{ window.domePushAll = domePushAll; }catch(_){}
 function domeFsModelDoc(m){
   return { domeUid:m.domeUid, serial:m.serial||'', size:String(m.size||''), type:m.type||'', screenType:m.screenType||'',
     screenTypeOther:m.screenTypeOther||'', doors:m.doors||'', doorsCustom:m.doorsCustom||'',
     hvacOpenings:String(m.hvacOpenings||''), fanOpenings:String(m.fanOpenings||''),
     components:domeComponentsDoc(m.components), truss:domeTrussDoc(m.truss), archived:!!m.archived, updatedBy:_gUser||'', rev:(m.rev||0) };
-}
-async function domeFsPushModel(m){
-  if(!m) return;
-  m.rev = (m.rev||0) + 1;
-  if(!domeFsReady()){ setCloudStat('Dome card saved locally — deploy the dome_models rules to sync'); return; }
-  try{
-    await _fsDb.collection('dome_models').doc(m.domeUid).set(domeFsModelDoc(m));
-    setCloudStat('Dome Library synced ✓ · ' + hhmm());
-  }catch(e){ setCloudStat('⚠ Dome Library sync failed: ' + (e && e.message || e) + ' — saved locally (rules deployed?)'); }
 }
 
 /* ---- Google Drive backup (BUILD 15.06): on Save, and every 15 min if changed, write the dome card
