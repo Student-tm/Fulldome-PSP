@@ -124,11 +124,15 @@
   .preurow input{width:16px;height:16px;accent-color:#2f6fed;flex:none}
   .preav{width:24px;height:24px;border-radius:50%;color:#fff;font-weight:800;font-size:10px;display:inline-flex;align-items:center;justify-content:center;flex:none}
   .preem{font-size:12.5px;color:var(--ink)}
-  .pj.pre{border-color:#2f6fed;box-shadow:inset 0 0 0 1px #2f6fed}
+  /* pre-project card: ALWAYS blue (the red selection/readiness frame never applies to pre-projects) */
+  .pj.pre, .pj.pre:hover, .pj.pre.sel, .pj.pre.rc-green, .pj.pre.rc-yellow{position:relative;border:2px solid #2f6fed !important;box-shadow:none !important;background:#f0f5ff !important}
+  .pj.pre.sel{background:#dfeaff !important}
+  .pj.pre::before, .pj.pre.sel::before{display:none !important}
   .pj.pre .pjnum{color:#2f6fed}
+  .pj.pre .pjt, .pj.pre .pcv{color:#1b2b52}
   .pjhead.pre-h{color:#2f6fed}
   .pjhead.pre-h .n{background:#e7eefc;color:#2f6fed}
-  .presnow{display:inline-flex;vertical-align:middle;margin-left:5px;color:#2f6fed}
+  .presnow-tr{position:absolute;top:8px;right:9px;color:#2f6fed;z-index:2;line-height:0}
   .fld-aud{position:absolute;top:0;right:0;width:18px;height:18px;border-radius:50%;color:#fff;font-size:8.5px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.25);z-index:2}
   .modgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
   .mod{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:11px;position:relative;transition:border-color .12s,box-shadow .12s}
@@ -717,7 +721,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.50 · PROJECTS PAGE — TWO CREATE BUTTONS (NEW PROJECT / NEW PRE-PROJECT) OVER A RED LINE, FORM BELOW</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.52 · PRE-PROJECT — EVERYONE SEES THE CARD, OPENING FROZEN UNLESS ON THE ACCESS LIST (EDIT); AN/GT/2F PROMOTE</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1097,7 +1101,8 @@ function editProject(id, ev){
 function openPreProject(id, ev){
   if(ev) ev.stopPropagation();
   const e = db.projects.find(p => p.id === id); if(!e) return;
-  if(!preCanAccess(e.data.project)){ alert('You are not on the access list for this pre-project.'); return; }
+  /* BUILD 15.52: anyone may OPEN a pre-project card; if they're not on the access list the form shows a
+     frozen/locked panel instead of editable fields (see pageProjects). */
   if(db.activeId !== id){ db.activeId = id; syncActive(); saveState._skipCloud = true; saveState(); saveState._skipCloud = false; }
   _projMode = 'edit'; goTo('#/projects');
 }
@@ -2143,19 +2148,19 @@ function renderSideProject(){
       </div>
     </div>`;
   };
-  /* BUILD 15.48 — pinned Pre-project section (blue + snowflake), visible only to its access list */
-  const SNOW = '<span class="presnow" title="Pre-project (frozen)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M4 6l16 12M20 6L4 18M4 18l16-12"/></svg></span>';
+  /* BUILD 15.51 — pinned Pre-project section: ALWAYS blue frame (never red), a bigger snowflake at the
+     top-right, and NO pencil (clicking the card opens the project). Visible to the access list + AN/GT/2F. */
+  const SNOW = '<span class="presnow-tr" title="Pre-project (frozen)"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 2.5v19M3.8 7.25l16.4 9.5M20.2 7.25L3.8 16.75"/><path d="M12 5.7l-2.3 1.35M12 5.7l2.3 1.35M12 18.3l-2.3-1.35M12 18.3l2.3-1.35M4.9 9.1l.1 2.65M4.9 9.1l2.3.15M19.1 9.1l-.1 2.65M19.1 9.1l-2.3.15M4.9 14.9l.1-2.65M4.9 14.9l2.3-.15M19.1 14.9l-.1-2.65M19.1 14.9l-2.3-.15"/></svg></span>';
   const preCard = (e)=>{
     const P = e.data.project || {}; const sel = e.id===db.activeId;
     const cells=[]; if(P.type) cells.push(['Type',P.type]); if(P.domeDiameter) cells.push(['Dome',P.domeDiameter+' m'+(P.domeType?' '+P.domeType:'')]);
     const foot = cells.length ? '<div class="pjcells">'+cells.map(c=>'<div class="pc"><div class="pcl">'+esc(c[0])+'</div><div class="pcv">'+esc(c[1])+'</div></div>').join('')+'</div>' : '';
     const loc = (P.location && P.location!=='—') ? '<span class="pjloc">'+esc(P.location)+'</span>' : '';
-    return '<div class="pj pre '+(sel?'sel':'')+'" onclick="openPreProject(\''+e.id+'\',event)" title="Pre-project — click to open">'
-      +'<div class="pjmeta"><div class="pjn"><span class="pjnum">#'+esc(P.number||'—')+'</span>'+SNOW+loc+'</div>'
-      +'<div class="pjt">'+esc(P.title||'—')+'</div>'+foot+'</div>'
-      +'<div class="pjbtns"><button class="pjb" title="Open / edit pre-project" onclick="openPreProject(\''+e.id+'\',event)">'+IC_EDIT+'</button></div></div>';
+    return '<div class="pj pre '+(sel?'sel':'')+'" onclick="openPreProject(\''+e.id+'\',event)" title="Pre-project — click to open">'+SNOW
+      +'<div class="pjmeta"><div class="pjn"><span class="pjnum">#'+esc(P.number||'—')+'</span>'+loc+'</div>'
+      +'<div class="pjt">'+esc(P.title||'—')+'</div>'+foot+'</div></div>';
   };
-  const preList = db.projects.filter(e=>isPreEntry(e) && preCanAccess(e.data.project));
+  const preList = db.projects.filter(e=>isPreEntry(e));   /* BUILD 15.52: everyone SEES the card; opening/editing is gated separately */
   const cloudFolders = _cloudOn ? cloudUnlinkedFolders() : [];
   const cloudProg = cloudFolders.filter(f => !(_cloudMeta[f.id] && _cloudMeta[f.id].done));
   const cloudDone = cloudFolders.filter(f =>  (_cloudMeta[f.id] && _cloudMeta[f.id].done));
@@ -2718,7 +2723,8 @@ function isPreP(P){ return !!(P && P.stage==='pre'); }
 function isPreEntry(e){ return !!(e && e.data && e.data.project && isPreP(e.data.project)); }
 function preAccessList(P){ return (P && Array.isArray(P.access)) ? P.access.map(x=>String(x).toLowerCase()) : []; }
 /* who may SEE a pre-project: anyone on its access list, or its creator; non-pre → everyone */
-function preCanAccess(P){ if(!isPreP(P)) return true; const me=myEmail(); if(!me) return false; return preAccessList(P).indexOf(me)>=0 || String(P.createdBy||'').toLowerCase()===me; }
+function preCanAccess(P){ if(!isPreP(P)) return true; const me=myEmail(); if(!me) return false;
+  return preAccessList(P).indexOf(me)>=0 || String(P.createdBy||'').toLowerCase()===me || PROMOTE_EMAILS.indexOf(me)>=0; }   /* BUILD 15.51: AN/GT/2F always see pre-projects (they promote them) */
 function preCanPromote(){ return PROMOTE_EMAILS.indexOf(myEmail())>=0; }
 /* BUILD 15.49 — per-field audit for pre-projects: which teammate last changed each field.
    Stored in P._audit = { <key>:{by,at} }; rides in the project doc, so it syncs. Shown as a small
@@ -2909,6 +2915,7 @@ function pageProjects(){
       ${F('Event / Rental Specifics', TA('pj_eventNotes', P.eventNotes), true)}
     </div>`;
   const isPre = editing && !!e && isPreP(P);
+  const canEdit = !isPre || preCanAccess(P);   /* BUILD 15.52: access list + creator + AN/GT/2F may edit; others get a frozen view */
   const preBadge = '<span style="font-size:12px;color:#2f6fed;font-weight:700;border:1px solid #2f6fed;border-radius:20px;padding:2px 10px;vertical-align:middle;margin-left:6px">PRE</span>';
   /* Administration / Access panel — shown when editing a pre-project */
   const accEmails = preAccessList(P);
@@ -2944,9 +2951,20 @@ function pageProjects(){
   } else if(e){
     actions = `<button class="create-btn" style="margin:0;max-width:260px" onclick="saveProjChanges()">${IC.check} Save Changes</button>`;
   } else { actions = ''; }
+  /* frozen/locked view — a pre-project opened by someone NOT on its access list */
+  const lockedBody = `
+    <div style="margin:2px 0 12px"><h2 style="margin:0;font-size:17px;font-weight:800">Pre-Project ${preBadge} <span style="font-size:12px;color:#2f6fed;font-weight:700;margin-left:4px">· locked</span></h2>
+      <div class="sub" style="margin-top:3px">You can see this pre-project, but you're not on its access list — opening is frozen.</div></div>
+    <div class="card" style="text-align:center;padding:36px 24px;border:2px solid #2f6fed;background:#f0f5ff">
+      <div style="color:#2f6fed;margin-bottom:10px"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 2.5v19M3.8 7.25l16.4 9.5M20.2 7.25L3.8 16.75"/><path d="M12 5.7l-2.3 1.35M12 5.7l2.3 1.35M12 18.3l-2.3-1.35M12 18.3l2.3-1.35M4.9 9.1l2.3.15M4.9 9.1l.1 2.65M19.1 9.1l-2.3.15M19.1 9.1l-.1 2.65M4.9 14.9l2.3-.15M19.1 14.9l-2.3-.15"/></svg></div>
+      <div style="font-weight:800;font-size:17px;color:#1b2b52">${esc(P.title || ('#'+(P.number||'—')))}</div>
+      <div class="sub" style="margin-top:8px">🔒 Frozen — only the access list can open and edit it${accEmails.length?(': '+accEmails.map(em=>esc(teamInitials(em))).join(' · ')):''}.${createdBy?(' Creator: '+esc(teamInitials(createdBy))+'.'):''}</div>
+    </div>`;
   const body = (editing && !e)
     ? `<div class="card" style="text-align:center;padding:34px 24px"><p style="color:var(--ink2);margin:0">No project selected. Pick one in the sidebar, or create a new project / pre-project above.</p></div>`
-    : `<div style="margin:2px 0 12px"><h2 style="margin:0;font-size:17px;font-weight:800">${bodyTitle}</h2><div class="sub" style="margin-top:3px">${bodySub}</div></div>
+    : (isPre && !canEdit)
+      ? lockedBody
+      : `<div style="margin:2px 0 12px"><h2 style="margin:0;font-size:17px;font-weight:800">${bodyTitle}</h2><div class="sub" style="margin-top:3px">${bodySub}</div></div>
        <div class="card">${form}${adminPanel}<div style="display:flex;gap:12px;margin-top:18px;align-items:center;flex-wrap:wrap">${actions}</div></div>`;
   return `
   <div class="page" style="max-width:900px">
