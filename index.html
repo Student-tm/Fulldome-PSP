@@ -118,6 +118,18 @@
   .card-head h3{margin:0}
 
   /* module cards grid */
+  /* BUILD 15.48 — pre-project */
+  .preurow{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:8px;cursor:pointer}
+  .preurow:hover{background:#f4f5f7}
+  .preurow input{width:16px;height:16px;accent-color:#2f6fed;flex:none}
+  .preav{width:24px;height:24px;border-radius:50%;color:#fff;font-weight:800;font-size:10px;display:inline-flex;align-items:center;justify-content:center;flex:none}
+  .preem{font-size:12.5px;color:var(--ink)}
+  .pj.pre{border-color:#2f6fed;box-shadow:inset 0 0 0 1px #2f6fed}
+  .pj.pre .pjnum{color:#2f6fed}
+  .pjhead.pre-h{color:#2f6fed}
+  .pjhead.pre-h .n{background:#e7eefc;color:#2f6fed}
+  .presnow{display:inline-flex;vertical-align:middle;margin-left:5px;color:#2f6fed}
+  .fld-aud{position:absolute;top:0;right:0;width:18px;height:18px;border-radius:50%;color:#fff;font-size:8.5px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.25);z-index:2}
   .modgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
   .mod{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:11px;position:relative;transition:border-color .12s,box-shadow .12s}
   /* red frame now means "hovered" or "the module you last opened" — not the ACTIVE status (BUILD 12.43) */
@@ -705,7 +717,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.46 · PRESENCE MARKER = COLORED INITIALS AVATAR (NO EMAIL TEXT), SAME COLOUR AS ONLINE AVATAR</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.50 · PROJECTS PAGE — TWO CREATE BUTTONS (NEW PROJECT / NEW PRE-PROJECT) OVER A RED LINE, FORM BELOW</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -810,6 +822,15 @@
       <button class="no" id="delLocalBtn" onclick="doDelete('local')" title="Removes it from this computer only; the team's Google Drive copy stays">This computer only</button>
       <button class="yes" id="delEverywhereBtn" onclick="doDelete('cloud')" title="Deletes the project for the whole team">Delete everywhere</button>
     </div>
+  </div>
+</div>
+
+<div class="modal" id="preAdminModal">
+  <div class="box" style="max-width:520px;width:92%">
+    <div class="mt" style="display:flex;align-items:center;gap:8px"><span style="color:#2f6fed">☆</span> Administration — access</div>
+    <div class="mm" style="margin-bottom:10px">Select who can open and edit this pre-project. Everyone else won't see it.</div>
+    <div id="preAdminBody" style="max-height:46vh;overflow:auto;display:flex;flex-direction:column;gap:2px"></div>
+    <div class="mb"><button class="no" onclick="preAdminCancel()">Cancel</button><button class="yes" onclick="preAdminSave()">Save</button></div>
   </div>
 </div>
 
@@ -1072,6 +1093,15 @@ function editProject(id, ev){
   if(db.activeId !== id){ db.activeId = id; syncActive(); saveState._skipCloud = true; saveState(); saveState._skipCloud = false; }   /* selecting a project is NOT an edit — must not bump its _rev (BUILD 12.72) */
   location.hash = '#/edit'; route();
 }
+/* BUILD 15.48 — open a PRE-project in the Projects form (which carries the Admin panel + Move-to-In-Progress) */
+function openPreProject(id, ev){
+  if(ev) ev.stopPropagation();
+  const e = db.projects.find(p => p.id === id); if(!e) return;
+  if(!preCanAccess(e.data.project)){ alert('You are not on the access list for this pre-project.'); return; }
+  if(db.activeId !== id){ db.activeId = id; syncActive(); saveState._skipCloud = true; saveState(); saveState._skipCloud = false; }
+  _projMode = 'edit'; goTo('#/projects');
+}
+try{ window.openPreProject = openPreProject; }catch(_){}
 
 /* Persistence: the platform writes everything into itself automatically —
    create → fill → close → reopen and all projects are still there.
@@ -2113,16 +2143,35 @@ function renderSideProject(){
       </div>
     </div>`;
   };
+  /* BUILD 15.48 — pinned Pre-project section (blue + snowflake), visible only to its access list */
+  const SNOW = '<span class="presnow" title="Pre-project (frozen)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M4 6l16 12M20 6L4 18M4 18l16-12"/></svg></span>';
+  const preCard = (e)=>{
+    const P = e.data.project || {}; const sel = e.id===db.activeId;
+    const cells=[]; if(P.type) cells.push(['Type',P.type]); if(P.domeDiameter) cells.push(['Dome',P.domeDiameter+' m'+(P.domeType?' '+P.domeType:'')]);
+    const foot = cells.length ? '<div class="pjcells">'+cells.map(c=>'<div class="pc"><div class="pcl">'+esc(c[0])+'</div><div class="pcv">'+esc(c[1])+'</div></div>').join('')+'</div>' : '';
+    const loc = (P.location && P.location!=='—') ? '<span class="pjloc">'+esc(P.location)+'</span>' : '';
+    return '<div class="pj pre '+(sel?'sel':'')+'" onclick="openPreProject(\''+e.id+'\',event)" title="Pre-project — click to open">'
+      +'<div class="pjmeta"><div class="pjn"><span class="pjnum">#'+esc(P.number||'—')+'</span>'+SNOW+loc+'</div>'
+      +'<div class="pjt">'+esc(P.title||'—')+'</div>'+foot+'</div>'
+      +'<div class="pjbtns"><button class="pjb" title="Open / edit pre-project" onclick="openPreProject(\''+e.id+'\',event)">'+IC_EDIT+'</button></div></div>';
+  };
+  const preList = db.projects.filter(e=>isPreEntry(e) && preCanAccess(e.data.project));
   const cloudFolders = _cloudOn ? cloudUnlinkedFolders() : [];
   const cloudProg = cloudFolders.filter(f => !(_cloudMeta[f.id] && _cloudMeta[f.id].done));
   const cloudDone = cloudFolders.filter(f =>  (_cloudMeta[f.id] && _cloudMeta[f.id].done));
-  const inProg = db.projects.filter(e=>!e.done);
-  const done   = db.projects.filter(e=>e.done).sort((a,b)=>(a.doneAt||0)-(b.doneAt||0));
+  const inProg = db.projects.filter(e=>!e.done && !isPreEntry(e));
+  const done   = db.projects.filter(e=>e.done && !isPreEntry(e)).sort((a,b)=>(a.doneAt||0)-(b.doneAt||0));
   const progRows = cloudProg.map(cloudCard).join('') + inProg.map(cardHtml).join('');
   const doneRows = cloudDone.map(cloudCard).join('') + done.map(cardHtml).join('');
   const doneCount = done.length + cloudDone.length;
   const split = doneCount > 0;
   let html = '<div class="pjsplit">';
+  if(preList.length){
+    html += '<div class="pjpane">' +
+              '<div class="pjhead pre-h">Pre-project <span class="n">' + preList.length + '</span></div>' +
+              '<div class="pjrows">' + preList.map(preCard).join('') + '</div>' +
+            '</div>';
+  }
   html += '<div class="pjpane top">' +
             '<div class="pjhead">In progress <span class="n">' + (inProg.length + cloudProg.length) + '</span></div>' +
             '<div class="pjrows">' + (progRows || '<div style="font-size:11px;color:#565c66;padding:4px">No active projects</div>') + '</div>' +
@@ -2579,6 +2628,8 @@ function projectForm(P){
 var _projMode = 'edit';            /* 'edit' = bound to the active project · 'new' = blank draft */
 var _projTitleManual = false;      /* user typed a custom Deal Title → stop auto-composing it */
 function projNewMode(){ _projMode = 'new'; _projTitleManual = false; goTo('#/projects'); }
+function projNewPreMode(){ _projMode = 'newpre'; _projTitleManual = false; goTo('#/projects'); }   /* BUILD 15.50 */
+try{ window.projNewPreMode = projNewPreMode; }catch(_){}
 function projCancelNew(){ _projMode = 'edit'; goTo('#/projects'); }
 /* Project Name auto-format (BUILD 14.43): "<R/S> <Dome Size>m + <Server> <Client> <Location>"
    e.g. "R 10m + DX8 L.L.Bean Maine". The field is READ-ONLY — always composed, never typed. */
@@ -2641,29 +2692,108 @@ function saveProjChanges(){
     const e = activeEntry(); if(!e || !e.data.project){ flashStat('No project selected'); return; }
     const _oldName = projDriveFolderName(e.data.project);   /* BUILD 14.46: detect a name change → rename Drive folder */
     const f = readProjForm();
+    if(isPreP(e.data.project)){ const ch = preAuditDiffKeys(e.data.project, f); if(ch.length) preAuditSet(e.data.project, ch, myEmail()); }   /* BUILD 15.49: per-field audit (pre only) */
     Object.assign(e.data.project, f);      /* existing keys (title/location/type/dome…) written directly */
     _applyCapVj(e.data, f);
     if(typeof revalidateReady === 'function') revalidateReady();
     saveState(); renderHeader(); renderSideProject();
     setTimeout(()=>{ try{ if(_FS || _FBP) syncPushNow(); else cloudPushNow(); }catch(_){ } }, 200);
     if(projDriveFolderName(e.data.project) !== _oldName){ setTimeout(()=>{ try{ if(_cloudOn && _gTok) driveRenameProjectFolders(e, _oldName).catch(function(){}); }catch(_){ } }, 800); }
+    try{ if(isPreP(e.data.project)) preAuditPaint(); }catch(_){}
     flashStat('Changes saved ✓');
   }catch(err){ alert('Could not save: ' + (err && err.message || err)); }
 }
+/* ============================================================================
+   BUILD 15.48 — PRE-PROJECT (предпроект). A project can be created as a PRE-PROJECT:
+   it lives in a pinned "Pre-project" sidebar section (blue outline + snowflake), is visible
+   ONLY to the team members on its access list (client-side gating, Variant A), and creates
+   NO Drive folder / backup until it is promoted. "Move to In-Progress" (allowed only for
+   AN/GT/2F) turns it into a normal project and THEN the Drive folder + backup are created.
+   ============================================================================ */
+var TEAM_EMAILS = ['chernetsov.pgs@gmail.com','measurepoint.tm@gmail.com','gopageorge@gmail.com','vanhampton41@gmail.com','iris.shurkina@gmail.com','2e.fdpro@gmail.com'];
+var PROMOTE_EMAILS = ['chernetsov.pgs@gmail.com','gopageorge@gmail.com','2e.fdpro@gmail.com'];   /* AN / GT / 2F */
+function myEmail(){ return String(_gUser||'').toLowerCase(); }
+function teamInitials(em){ em=String(em||'').toLowerCase(); return presInitials({email:em}); }
+function isPreP(P){ return !!(P && P.stage==='pre'); }
+function isPreEntry(e){ return !!(e && e.data && e.data.project && isPreP(e.data.project)); }
+function preAccessList(P){ return (P && Array.isArray(P.access)) ? P.access.map(x=>String(x).toLowerCase()) : []; }
+/* who may SEE a pre-project: anyone on its access list, or its creator; non-pre → everyone */
+function preCanAccess(P){ if(!isPreP(P)) return true; const me=myEmail(); if(!me) return false; return preAccessList(P).indexOf(me)>=0 || String(P.createdBy||'').toLowerCase()===me; }
+function preCanPromote(){ return PROMOTE_EMAILS.indexOf(myEmail())>=0; }
+/* BUILD 15.49 — per-field audit for pre-projects: which teammate last changed each field.
+   Stored in P._audit = { <key>:{by,at} }; rides in the project doc, so it syncs. Shown as a small
+   initials avatar at the top-right of each field, only in the pre-project edit form. */
+var PROJ_ID2KEY = { pj_dealType:'dealType', pj_client:'client', pj_contactName:'contactName', pj_phone:'phone', pj_email:'email', pj_totalAmount:'totalAmount', pj_currency:'currency', pj_closeDate:'closeDate', pj_salesOffice:'salesOffice', pj_terms:'termsOfPayment', pj_pm:'projectManager', pj_location:'location', pj_address:'installAddress', pj_install:'installDateTime', pj_breakdown:'breakdownDateTime', pj_shipBudget:'shippingBudget', pj_travelBudget:'travelBudget', pj_labourQty:'localLabourQty', pj_labourBy:'localLabourBy', pj_projName:'title', pj_domeSize:'domeDiameter', pj_domeType:'domeType', pj_conditions:'indoorOutdoor', pj_outerCover:'outerCover', pj_coverNote:'coverColorNote', pj_screenType:'screenType', pj_inflatable:'inflatableCover', pj_type:'type', pj_resolution:'resolution', pj_projModel:'projectorModel', pj_projQty:'projectorQty', pj_audio:'audioSystem', pj_speakers:'speakersModel', pj_sub:'subwooferModel', pj_fan:'screenFan', pj_capture:'captureRequired', pj_vj:'vjRequired', pj_sound:'soundSystem', pj_hvac:'hvac', pj_safety:'safetySigns', pj_contentType:'contentType', pj_contentNotes:'contentNotes', pj_eventNotes:'eventNotes' };
+function preAuditSet(P, keys, by){ if(!P) return; P._audit = P._audit || {}; const at=Date.now(); (keys||[]).forEach(function(k){ P._audit[k]={by:by, at:at}; }); }
+function preAuditDiffKeys(P, f){ const ch=[]; Object.keys(f||{}).forEach(function(k){ const nv=f[k], ov=P?P[k]:undefined; if(String(nv==null?'':nv)!==String(ov==null?'':ov)) ch.push(k); }); return ch; }
+function preAuditAva(meta){ if(!meta||!meta.by) return ''; const em=String(meta.by).toLowerCase(); const d=meta.at?(' · '+new Date(meta.at).toLocaleDateString()):''; return '<span class="fld-aud" title="Last edited by '+esc(em)+d+'" style="background:'+presenceColor(em)+'">'+esc(teamInitials(em))+'</span>'; }
+function preAuditPaint(){
+  try{
+    if(location.hash!=='#/projects') return;
+    const e=activeEntry(); if(!e||!isPreEntry(e)) return;
+    const aud=(e.data.project&&e.data.project._audit)||{};
+    document.querySelectorAll('#content .fld').forEach(function(fld){
+      const old=fld.querySelector('.fld-aud'); if(old) old.remove();
+      const ctl=fld.querySelector('input[id^="pj_"],select[id^="pj_"],textarea[id^="pj_"]'); if(!ctl) return;
+      const key=PROJ_ID2KEY[ctl.id]; if(!key) return; const meta=aud[key]; if(!meta) return;
+      fld.style.position='relative';
+      fld.insertAdjacentHTML('beforeend', preAuditAva(meta));
+    });
+  }catch(_){}
+}
+
+var _prePendingForm = null, _preAdminForEdit = null;
+/* click "Save as Pre-Project" on the New Project form → capture the form, open the Administration modal */
+function preOpenAdmin(){
+  try{ _prePendingForm = readProjForm(); }catch(_){ _prePendingForm = {}; }
+  _preAdminForEdit = null;
+  preRenderAdmin([myEmail()]);            /* creator pre-selected */
+  const m=document.getElementById('preAdminModal'); if(m) m.classList.add('open');
+}
+/* open the Administration modal to EDIT an existing pre-project's access list */
+function preEditAccess(){
+  const e=activeEntry(); if(!e) return; const P=e.data.project||{};
+  _prePendingForm=null; _preAdminForEdit=e.id;
+  preRenderAdmin(preAccessList(P).length?preAccessList(P):[String(P.createdBy||myEmail()).toLowerCase()]);
+  const m=document.getElementById('preAdminModal'); if(m) m.classList.add('open');
+}
+function preRenderAdmin(sel){
+  const me=myEmail(); const set={}; (sel||[]).forEach(x=>set[String(x).toLowerCase()]=1); set[me]=1;   /* creator always in */
+  const body=document.getElementById('preAdminBody'); if(!body) return;
+  body.innerHTML = TEAM_EMAILS.map(function(em){ const on=!!set[em]; const isMe=(em===me);
+    return '<label class="preurow"><input type="checkbox" value="'+em+'" '+(on?'checked':'')+(isMe?' disabled':'')+'>'
+      +'<span class="preav" style="background:'+presenceColor(em)+'">'+esc(teamInitials(em))+'</span>'
+      +'<span class="preem">'+esc(em)+(isMe?' <b style="color:var(--fdp-red)">(you — creator)</b>':'')+'</span></label>'; }).join('');
+}
+function preAdminSelected(){ const out=[myEmail()]; document.querySelectorAll('#preAdminBody input[type=checkbox]').forEach(function(c){ if(c.checked && out.indexOf(c.value)<0) out.push(c.value); }); return out; }
+function preAdminSave(){
+  const access = preAdminSelected();
+  const m=document.getElementById('preAdminModal'); if(m) m.classList.remove('open');
+  if(_preAdminForEdit){                                   /* editing an existing pre-project's access */
+    const e=db.projects.find(x=>x.id===_preAdminForEdit); _preAdminForEdit=null;
+    if(e){ e.data.project.access=access; e.data.project._rev=Date.now(); e._dirtyAt=Date.now();
+      saveState(); renderSideProject(); setTimeout(()=>{ try{ syncPushNow(); }catch(_){ } },150); flashStat('Access updated ✓'); }
+    return;
+  }
+  createPreFromForm(_prePendingForm||{}, access);         /* creating a new pre-project */
+  _prePendingForm=null;
+}
+function preAdminCancel(){ const m=document.getElementById('preAdminModal'); if(m) m.classList.remove('open'); _prePendingForm=null; _preAdminForEdit=null; }
+
+function _buildProjectData(f){
+  const data = emptyState();
+  const P = Object.assign({}, PROJ_FIELDS, f, { status:'Engineering', created:new Date().toISOString().slice(0,10), pid:newId(), _rev:Date.now() });
+  ['number','sysNumber','ttNumber','domeCode','ttDate'].forEach(k=>{ if(P[k]===undefined) P[k]=''; });
+  if(!P.domeType) P.domeType = 'Standard';
+  data.project = P;
+  data.server.rows = [blankRow(), blankRow(), blankRow()];
+  data.rack.rows = [blankRackRow(), blankRackRow()];
+  _applyCapVj(data, f);
+  return data;
+}
 function createProjFromForm(){
   try{
-    const f = readProjForm();
-    const data = emptyState();
-    const P = Object.assign({}, PROJ_FIELDS, f, {
-      status:'Engineering', created:new Date().toISOString().slice(0,10), pid:newId(), _rev:Date.now()
-    });
-    /* keep the existing-form-only keys present so modules/sidebar behave */
-    ['number','sysNumber','ttNumber','domeCode','ttDate'].forEach(k=>{ if(P[k]===undefined) P[k]=''; });
-    if(!P.domeType) P.domeType = 'Standard';
-    data.project = P;
-    data.server.rows = [blankRow(), blankRow(), blankRow()];
-    data.rack.rows = [blankRackRow(), blankRackRow()];
-    _applyCapVj(data, f);                  /* Capture row / VJ rows, same as the old create flow */
+    const data = _buildProjectData(readProjForm());
     const entry = { id:newId(), frozen:false, data, _localNew:1 };
     db.projects.push(entry);
     db.activeId = entry.id; syncActive();
@@ -2674,24 +2804,49 @@ function createProjFromForm(){
     flashStat('Project created ✓');
   }catch(err){ alert('Could not create the project: ' + (err && err.message || err)); }
 }
+/* create the project as a PRE-PROJECT — no Drive folder / backup yet, gated to the access list */
+function createPreFromForm(f, access){
+  try{
+    const data = _buildProjectData(f);
+    data.project.stage = 'pre';
+    data.project.createdBy = myEmail();
+    data.project.access = (access&&access.length)?access:[myEmail()];
+    /* BUILD 15.49: seed the per-field audit — creator is the last editor of every filled field */
+    const seedKeys = Object.keys(f||{}).filter(function(k){ const v=f[k]; return !(v===''||v==null||v===false||v==='—'); });
+    preAuditSet(data.project, seedKeys, myEmail());
+    const entry = { id:newId(), frozen:false, data, _localNew:1 };
+    db.projects.push(entry);
+    db.activeId = entry.id; syncActive();
+    saveState(); renderHeader(); renderSideProject();
+    setTimeout(()=>{ try{ if(_FS || _FBP) syncPushNow(); else cloudPushNow(); }catch(_){ } }, 200);
+    /* NO backupSoon / no Drive folder while it is a pre-project */
+    _projMode = 'edit'; goTo('#/projects');
+    flashStat('Pre-project created ✓');
+  }catch(err){ alert('Could not create the pre-project: ' + (err && err.message || err)); }
+}
+/* promote a pre-project to a normal In-Progress project → now the Drive folder + backup are made */
+function preMoveToInProgress(id){
+  if(!preCanPromote()){ alert('Only AN, GT or 2F can move a pre-project to In-Progress.'); return; }
+  const e = db.projects.find(x=>x.id===(id||db.activeId)); if(!e) return;
+  if(!isPreEntry(e)){ return; }
+  if(!confirm('Move this pre-project to In-Progress? A Google Drive folder and a backup will be created.')) return;
+  delete e.data.project.stage;                 /* → active */
+  e.data.project._rev = Date.now(); e._dirtyAt = Date.now(); e._localNew = 1;
+  saveState(); renderHeader(); renderSideProject();
+  setTimeout(()=>{ try{ if(_FS || _FBP) syncPushNow(); else cloudPushNow(); }catch(_){ } }, 150);
+  backupSoon(e);                               /* create the backup now */
+  flashStat('Moved to In-Progress ✓ — Drive folder & backup are being created');
+  rerenderKeepScroll();
+}
+try{ window.preMoveToInProgress = preMoveToInProgress; }catch(_){}
 function pageProjects(){
-  const editing = _projMode !== 'new';
-  const e = editing ? activeEntry() : null;
-  if(editing && !e){
-    return `
-    <div class="page">
-      <div class="crumbs"><a href="#/dashboard">Dashboard</a> › <span class="cur">Projects</span></div>
-      <div class="pagehead"><div class="eyebrow">Fulldome Projection SP</div><h1 style="margin:0">Projects</h1>
-        <div class="sub">Pick a project in the sidebar to edit it, or start a new one.</div></div>
-      <div class="card" style="text-align:center;padding:38px 24px">
-        <p style="color:var(--ink2);margin:0 0 14px">No project selected.</p>
-        <button class="create-btn" style="max-width:240px;margin:0 auto" onclick="projNewMode()">${IC.check} New Project</button>
-      </div>
-    </div>`;
-  }
-  const P = editing ? e.data.project : {};
-  const projName = editing ? (P.title||'') : '';
-  const loc       = (editing && P.location && P.location!=='—') ? P.location : '';
+  /* BUILD 15.50 — modes: 'edit' (selected project below the red line), 'new', 'newpre'. */
+  const creating = (_projMode==='new' || _projMode==='newpre');
+  const editing = !creating;
+  const e = creating ? null : activeEntry();
+  const P = e ? e.data.project : {};
+  const projName = e ? (P.title||'') : '';
+  const loc       = (e && P.location && P.location!=='—') ? P.location : '';
   const projModel = P.projectorModel || '';
   const TYPES = ['HDx4','HDx6','HDx8','HDx12','UHDx4','UHDx6','UHDx8','UHDx12'];
   const I  = (id, val, type, extra) => `<input id="${id}" autocomplete="off"${type?` type="${type}"`:''} value="${esc(val||'')}"${extra?(' '+extra):''}>`;
@@ -2753,27 +2908,60 @@ function pageProjects(){
       ${F('Content Notes', I('pj_contentNotes', P.contentNotes), true)}
       ${F('Event / Rental Specifics', TA('pj_eventNotes', P.eventNotes), true)}
     </div>`;
-  const headTitle = editing ? 'Project Information' : 'New Project';
-  const headSub = editing
-    ? ('Editing ' + (P.title ? esc(P.title) : ('#' + esc(P.number||'—'))) + ' — changes save only to this project.')
-    : 'A fresh, empty project sheet. Nothing is copied from the currently selected project.';
-  const actions = editing
-    ? `<button class="create-btn" style="margin:0;max-width:260px" onclick="saveProjChanges()">${IC.check} Save Changes</button>`
-    : `<button class="create-btn" style="margin:0;max-width:260px" onclick="createProjFromForm()">${IC.check} Create Project</button>
-       <button class="mod-btn" style="flex:none;padding:0 22px;font-size:13.5px" onclick="projCancelNew()">Cancel</button>`;
+  const isPre = editing && !!e && isPreP(P);
+  const preBadge = '<span style="font-size:12px;color:#2f6fed;font-weight:700;border:1px solid #2f6fed;border-radius:20px;padding:2px 10px;vertical-align:middle;margin-left:6px">PRE</span>';
+  /* Administration / Access panel — shown when editing a pre-project */
+  const accEmails = preAccessList(P);
+  const createdBy = String(P.createdBy||'').toLowerCase();
+  const adminPanel = isPre ? `
+    <div class="fsec" style="margin-top:22px">Administration / Access</div>
+    ${createdBy ? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:12.5px;color:var(--ink2)">Created by <span class="preav" style="width:22px;height:22px;background:${presenceColor(createdBy)}" title="${esc(createdBy)}">${esc(teamInitials(createdBy))}</span> <b style="color:var(--ink)">${esc(createdBy)}</b></div>`:''}
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:6px">
+      ${(accEmails.length?accEmails:[createdBy]).filter(Boolean).map(em=>`<span class="preav" style="background:${presenceColor(em)}" title="${esc(em)}">${esc(teamInitials(em))}</span>`).join('')}
+      <button class="mod-btn" style="flex:none;padding:0 14px" onclick="preEditAccess()">Edit access</button>
+    </div>
+    <div class="sub" style="margin:0">Only these team members can open and edit this pre-project. The avatar at the top-right of each field shows who last changed it.</div>` : '';
+  /* body sub-title + actions per mode */
+  const bodyTitle = (_projMode==='newpre') ? ('New Pre-Project'+preBadge)
+    : (_projMode==='new') ? 'New Project'
+    : (e ? (isPre ? ('Pre-Project'+preBadge) : 'Project Information') : 'Projects');
+  const bodySub = (_projMode==='newpre') ? 'A fresh pre-project. Fill it in, then Save as Pre-Project to choose who can access it.'
+    : (_projMode==='new') ? 'A fresh, empty project sheet. Nothing is copied from the selected project.'
+    : (e ? (isPre ? 'Pre-project — visible only to its access list. No Drive folder or backup until it is moved to In-Progress.'
+                  : ('Editing ' + (P.title ? esc(P.title) : ('#' + esc(P.number||'—'))) + ' — changes save only to this project.'))
+         : 'Pick a project in the sidebar to edit it, or create one above.');
+  let actions;
+  if(_projMode==='newpre'){
+    actions = `<button class="create-btn" style="margin:0;max-width:250px;background:#2f6fed" onclick="preOpenAdmin()">☆ Save as Pre-Project</button>
+      <button class="mod-btn" style="flex:none;padding:0 22px;font-size:13.5px" onclick="projCancelNew()">Cancel</button>`;
+  } else if(_projMode==='new'){
+    actions = `<button class="create-btn" style="margin:0;max-width:240px" onclick="createProjFromForm()">${IC.check} Create Project</button>
+      <button class="mod-btn" style="flex:none;padding:0 22px;font-size:13.5px" onclick="projCancelNew()">Cancel</button>`;
+  } else if(isPre){
+    const canP = preCanPromote();
+    actions = `<button class="create-btn" style="margin:0;max-width:240px" onclick="saveProjChanges()">${IC.check} Save Changes</button>
+      <button class="create-btn" style="margin:0;max-width:280px;background:${canP?'#2e9e5b':'#9aa2ad'};${canP?'':'cursor:not-allowed'}" ${canP?'onclick="preMoveToInProgress(\''+e.id+'\')"':'disabled title="Only AN, GT or 2F can promote"'}>→ Move to In-Progress</button>`;
+  } else if(e){
+    actions = `<button class="create-btn" style="margin:0;max-width:260px" onclick="saveProjChanges()">${IC.check} Save Changes</button>`;
+  } else { actions = ''; }
+  const body = (editing && !e)
+    ? `<div class="card" style="text-align:center;padding:34px 24px"><p style="color:var(--ink2);margin:0">No project selected. Pick one in the sidebar, or create a new project / pre-project above.</p></div>`
+    : `<div style="margin:2px 0 12px"><h2 style="margin:0;font-size:17px;font-weight:800">${bodyTitle}</h2><div class="sub" style="margin-top:3px">${bodySub}</div></div>
+       <div class="card">${form}${adminPanel}<div style="display:flex;gap:12px;margin-top:18px;align-items:center;flex-wrap:wrap">${actions}</div></div>`;
   return `
   <div class="page" style="max-width:900px">
     <div class="crumbs"><a href="#/dashboard">Dashboard</a> › <span class="cur">Projects</span></div>
     <div class="pagehead" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
       <div><div class="eyebrow">Fulldome Projection SP</div>
-        <h1 style="margin:0">${headTitle}</h1>
-        <div class="sub">${headSub}</div></div>
-      ${editing ? `<button class="mod-btn primary" style="flex:none" onclick="projNewMode()">+ New Project</button>` : ''}
+        <h1 style="margin:0">Projects</h1>
+        <div class="sub">Create a project or pre-project, or edit the one selected in the sidebar.</div></div>
+      <div style="display:flex;gap:10px;flex:none;flex-wrap:wrap">
+        <button class="mod-btn primary" style="flex:none" onclick="projNewMode()">+ New Project</button>
+        <button class="mod-btn" style="flex:none;border-color:#2f6fed;color:#2f6fed" onclick="projNewPreMode()">+ New Pre-Project</button>
+      </div>
     </div>
-    <div class="card">
-      ${form}
-      <div style="display:flex;gap:12px;margin-top:18px;align-items:center">${actions}</div>
-    </div>
+    <div style="border-top:2px solid var(--fdp-red);margin:8px 0 18px"></div>
+    ${body}
   </div>`;
 }
 
@@ -5411,6 +5599,7 @@ async function _fbpResolveBrowseFolder(e, pid){
 }
 async function fbpBrowseMirror(e){
   if(!_cloudOn || !_gTok) return;
+  if(isPreEntry(e)) return;   /* BUILD 15.48: no browsable Drive folder for a pre-project until promoted */
   const pid = fbpPid(e); if(!pid) return;
   const d = e.data, rec = mediaMap()[pid] || (mediaMap()[pid] = {});
   const fid = await fbpBrowseFolder(e); if(!fid) return;
@@ -6180,6 +6369,7 @@ async function backupMirrorFolder(srcId, dstParentId, folderName){
 async function backupMirrorProject(e, forced){
   if(!_cloudOn || !_gTok) return false;
   if(!e || !e.data || !e.data.project) return false;
+  if(isPreEntry(e)) return false;   /* BUILD 15.48: pre-projects get no backup until promoted */
   /* BUILD 15.38/15.40 — Замок 4: don't overwrite the backup with an EMPTY unpulled copy (a
      cloud-materialized project whose photos/docs haven't been pulled) — that is how the full 13 MB
      backup got shrunk to a half-empty 2.6 MB copy. 15.40: only block when the copy is BOTH pending
@@ -10038,7 +10228,10 @@ function presSubDomeList(on){ if(_presDomeSub){ try{_presDomeSub();}catch(_){}_p
   if(!on||!presReady()) return;
   _presDomeSub=_fsDb.collection('presence').where('scopeKey','>=','dome:').where('scopeKey','<=','dome:').onSnapshot(function(snap){ const a=[]; snap.forEach(function(d){a.push(d.data());}); _presDomeLive=a; presPaint(); presGc(snap); }, function(_){}); }
 function presLabel(r,isYou){ return isYou ? 'You editing' : ((r.displayName||(r.email||'').split('@')[0]||'Someone')+' editing'); }
-function presInitials(r){ const s=(r.displayName||(r.email||'').split('@')[0]||'?'); const p=String(s).split(/[\s@._-]+/).filter(Boolean); return ((p[0]||'?')[0]+(p[1]?p[1][0]:'')).toUpperCase(); }
+/* BUILD 15.47 — fixed 2-letter initials per team member (email → initials); auto fallback for others */
+var PRES_INITIALS = { 'chernetsov.pgs@gmail.com':'AN','measurepoint.tm@gmail.com':'MT','gopageorge@gmail.com':'GT','vanhampton41@gmail.com':'VH','iris.shurkina@gmail.com':'IS','2e.fdpro@gmail.com':'2F' };
+function presInitials(r){ const em=String((r&&r.email)||'').toLowerCase(); if(PRES_INITIALS[em]) return PRES_INITIALS[em];
+  const s=(r.displayName||(r.email||'').split('@')[0]||'?'); const p=String(s).split(/[\s@._-]+/).filter(Boolean); return ((p[0]||'?')[0]+(p[1]?p[1][0]:'')).toUpperCase(); }
 /* compact colored avatar (initials) — same colour as the person's "online" avatar; hover = full name */
 function presChip(r,isYou,inl){ return '<span class="pres-ava'+(inl?' inl':'')+(isYou?' me':'')+'" style="background:'+(r.color||'#2e9e5b')+'" title="'+esc(presLabel(r,isYou))+'">'+esc(presInitials(r))+'</span>'; }
 function presPick(list,me){ return list.find(function(r){return r.sessionId!==me;}) || list.find(function(r){return r.sessionId===me;}) || null; }
@@ -10110,6 +10303,7 @@ function route(){
   renderHeader(); renderSideProject();
   polishPass();   /* BUILD 14.60: tooltips on truncated names + dim empty-link buttons */
   try{ presenceOnRoute(); }catch(_){}   /* BUILD 15.45: live editing presence overlays */
+  try{ preAuditPaint(); }catch(_){}     /* BUILD 15.49: per-field "last edited by" avatars (pre-project only) */
 }
 /* BUILD 14.60 — after every render: show the full text of a truncated name on hover (title),
    and grey-out / disable the copy+open buttons of a link field that is empty. */
