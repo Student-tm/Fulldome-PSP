@@ -705,7 +705,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.43 · DOME LIBRARY SYNCS LIKE EQUIPMENT LIBRARY — ONE SHARED DOC, EXISTING RULE, NO NEW RULES</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.45 · LIVE EDITING PRESENCE (TIER 1) — WHO IS EDITING WHICH MODULE / DOME / SECTION, LIVE</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -6007,7 +6007,7 @@ function driveMap(){ if(!db.driveMap || typeof db.driveMap!=='object') db.driveM
 function setCloudStat(t){ const el=document.getElementById('driveStat'); if(el) el.textContent = t; }
 function cloudGateShow(){ const g=document.getElementById('authGate'); if(g) g.style.display='flex'; }
 function cloudGateHide(){ const g=document.getElementById('authGate'); if(g) g.style.display='none'; }
-function cloudOffline(){ _cloudOn=false; cloudStopPoll(); if(typeof fbpStop==='function') fbpStop(); if(typeof fsStop==='function') fsStop(); backupStopLoop(); if(typeof domeBackupStop==='function') domeBackupStop(); presenceStop(); cloudGateHide(); setCloudStat('Offline — click to sign in and sync'); }
+function cloudOffline(){ _cloudOn=false; cloudStopPoll(); if(typeof fbpStop==='function') fbpStop(); if(typeof fsStop==='function') fsStop(); backupStopLoop(); if(typeof domeBackupStop==='function') domeBackupStop(); presenceStop(); try{ presStop(); }catch(_){} cloudGateHide(); setCloudStat('Offline — click to sign in and sync'); }
 async function cloudStart(silent){
   const err = document.getElementById('authErr');
   try{
@@ -9221,23 +9221,74 @@ var _domePushedOnce = false;
    people adding different domes both survive — nobody clobbers anyone. */
 var DOME_DOC_ID = 'dome_library';
 function domeFsDocRef(){ return _fsDb.collection('projects').doc(DOME_DOC_ID); }
-function domeMergeLists(a, b){                       /* union by domeUid; newest rev wins */
-  const by = {};
-  (a||[]).concat(b||[]).forEach(function(m){ if(!m || !m.domeUid) return; const p=by[m.domeUid]; if(!p || (m.rev||0) >= (p.rev||0)) by[m.domeUid]=m; });
-  return Object.keys(by).map(function(k){ return by[k]; });
+/* BUILD 15.44 — FIELD-LEVEL (base-aware 3-way) merge for a dome card, so two people editing DIFFERENT
+   fields of the SAME dome both survive (Аня-diameter + Боря-Truss). NOT a shallow spread: it recurses
+   into Components / Truss and their nested maps, and merges equal-length lists element-by-element.
+   `db.domeBase[domeUid]` holds the last-synced version of each card = the merge BASE; a side that did
+   not touch a leaf yields to the side that did; a real conflict (same leaf changed on both) is resolved
+   by rev (localNewer). Base is updated after every push and every applied snapshot. */
+function domeBaseMap(){ if(!db.domeBase || typeof db.domeBase!=='object') db.domeBase={}; return db.domeBase; }
+function _domeEqj(a,b){ return JSON.stringify(a===undefined?null:a)===JSON.stringify(b===undefined?null:b); }
+function _domeIsObj(x){ return x && typeof x==='object' && !Array.isArray(x); }
+function domeMerge3(base, local, server, localNewer){
+  if(_domeEqj(local, server)) return (local!==undefined ? local : server);
+  if(base!==undefined && _domeEqj(local, base)) return server;      /* we didn't touch it → take server's */
+  if(base!==undefined && _domeEqj(server, base)) return local;      /* server didn't touch it → keep ours */
+  if(local===undefined) return server;
+  if(server===undefined) return local;
+  if(_domeIsObj(local) && _domeIsObj(server)){                      /* recurse per key */
+    const b = _domeIsObj(base) ? base : {};
+    const keys = {}; Object.keys(b).forEach(k=>keys[k]=1); Object.keys(local).forEach(k=>keys[k]=1); Object.keys(server).forEach(k=>keys[k]=1);
+    const out = {}; Object.keys(keys).forEach(function(k){ out[k] = domeMerge3(b[k], local[k], server[k], localNewer); });
+    return out;
+  }
+  if(Array.isArray(local) && Array.isArray(server) && Array.isArray(base)
+     && local.length===server.length && base.length===local.length){    /* row-by-row when lengths match */
+    return local.map(function(_, i){ return domeMerge3(base[i], local[i], server[i], localNewer); });
+  }
+  return localNewer ? local : server;                              /* conflicting leaf / length-changed list → newest wins */
 }
-function domeFsApplyDoc(data){                        /* merge an incoming dome_library doc into db.domeLib */
-  const list = (data && data.domes) || [];
+/* merge a whole shared list (server) with our local docs, per domeUid, using the per-card base */
+function domeMergeDocs(server, local){
+  const sBy={}, lBy={}, base=domeBaseMap();
+  (server||[]).forEach(function(d){ if(d && d.domeUid) sBy[d.domeUid]=d; });
+  (local||[]).forEach(function(d){ if(d && d.domeUid) lBy[d.domeUid]=d; });
+  const uids={}; Object.keys(sBy).forEach(u=>uids[u]=1); Object.keys(lBy).forEach(u=>uids[u]=1);
+  return Object.keys(uids).map(function(u){
+    const s=sBy[u], l=lBy[u];
+    if(s && l){ const m = domeMerge3(base[u], l, s, (l.rev||0) >= (s.rev||0)); m.rev = Math.max(l.rev||0, s.rev||0); return m; }
+    return s || l;
+  });
+}
+function domeFsApplyDoc(data){                        /* field-level merge an incoming dome_library doc into db.domeLib */
+  const list = (data && data.domes) || [], base = domeBaseMap();
   let ch=false;
-  list.forEach(function(d){
-    if(!d || !d.domeUid) return;
-    if(_domeEditId === d.domeUid) return;            /* don't disturb an open card being edited */
-    const i = db.domeLib.findIndex(function(m){ return m.domeUid===d.domeUid; });
-    const model = Object.assign(domeEmptyModel(), d, { _saved:true });
-    if(i>=0){ if((d.rev||0) >= (db.domeLib[i].rev||0)){ db.domeLib[i]=model; ch=true; } }
-    else { db.domeLib.push(model); ch=true; }
+  list.forEach(function(s){
+    if(!s || !s.domeUid) return;
+    const uid = s.domeUid;
+    if(_domeEditId === uid) return;                  /* don't disturb an open card; base stays, push merges on save */
+    const i = db.domeLib.findIndex(function(m){ return m.domeUid===uid; });
+    if(i<0){ db.domeLib.push(Object.assign(domeEmptyModel(), s, { _saved:true })); base[uid]=s; ch=true; return; }
+    const localDoc = domeFsModelDoc(db.domeLib[i]);
+    const merged = domeMerge3(base[uid], localDoc, s, (localDoc.rev||0) >= (s.rev||0));
+    merged.rev = Math.max(localDoc.rev||0, s.rev||0);
+    if(!_domeEqj(merged, localDoc)){ db.domeLib[i] = Object.assign(domeEmptyModel(), merged, { _saved:true }); ch=true; }
+    base[uid] = merged;                              /* new agreed base */
   });
   return ch;
+}
+/* after OUR push: merged is authoritative → adopt it into db.domeLib AND set it as the new base
+   (do NOT route through domeMerge3 here — base would equal server and wrongly keep local). */
+function domeAdoptMerged(list){
+  const base=domeBaseMap();
+  (list||[]).forEach(function(d){
+    if(!d || !d.domeUid) return;
+    base[d.domeUid]=d;                               /* new agreed base */
+    if(_domeEditId===d.domeUid) return;              /* don't disturb an open card */
+    const i=db.domeLib.findIndex(function(m){ return m.domeUid===d.domeUid; });
+    const model=Object.assign(domeEmptyModel(), d, { _saved:true });
+    if(i>=0) db.domeLib[i]=model; else db.domeLib.push(model);
+  });
 }
 function domeFsEnsureStarted(){
   if(_domeFsStarted || !domeFsReady()) return;
@@ -9263,10 +9314,10 @@ async function domeFsPush(){
       const snap = await tx.get(ref);
       const server = (snap.exists && snap.data() && snap.data().domes) || [];
       const localDocs = (db.domeLib||[]).filter(function(m){ return m && m.domeUid; }).map(function(m){ return domeFsModelDoc(m); });
-      merged = domeMergeLists(server, localDocs);
+      merged = domeMergeDocs(server, localDocs);          /* base-aware 3-way per card (BUILD 15.44) */
       tx.set(ref, { kind:'dome_library', domes: merged, rev: Date.now(), updatedBy:_gUser||'' });
     });
-    if(merged){ domeFsApplyDoc({ domes: merged }); saveDomeLib(); }
+    if(merged){ domeAdoptMerged(merged); saveDomeLib(); }   /* adopt merged + set it as the new base */
     setCloudStat('Dome Library synced ✓ · ' + hhmm());
     return (merged||[]).length;
   }catch(e){ setCloudStat('⚠ Dome Library sync failed: ' + (e && e.message || e)); return 0; }
@@ -9572,7 +9623,7 @@ function pageDomeLibrary(){
   const opt=(arr,cur,all)=>[`<option value="">${all}</option>`].concat(arr.map(x=>`<option value="${esc(x)}" ${cur===x?'selected':''}>${esc(x)}</option>`)).join('');
   const rows = list.map(m=>{ const exp=!!_domeExpanded[m.domeUid];
     return `
-    <tr>
+    <tr data-presdome="${m.domeUid}">
       <td><span style="display:inline-flex;align-items:center;gap:9px">
         <button class="dexp" title="${exp?'Collapse':'Expand'} dome passport" onclick="event.stopPropagation();domeToggleExpand('${m.domeUid}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" style="transform:rotate(${exp?'0':'-90'}deg)"><path d="M6 9l6 6 6-6"/></svg></button>
         <b>${esc(m.serial||'—')}</b></span></td>
@@ -9632,9 +9683,9 @@ function pageDomeCard(){
       </div>
     </div>
     <div class="dtabs">
-      <button class="dtab ${_domeTab==='overview'?'sel':''}" onclick="domeSetTab('overview')">Overview</button>
-      <button class="dtab ${_domeTab==='components'?'sel':''}" onclick="domeSetTab('components')">Components</button>
-      <button class="dtab ${_domeTab==='truss'?'sel':''}" onclick="domeSetTab('truss')">Truss</button>
+      <button class="dtab ${_domeTab==='overview'?'sel':''}" data-pressec="overview" onclick="domeSetTab('overview')">Overview</button>
+      <button class="dtab ${_domeTab==='components'?'sel':''}" data-pressec="components" onclick="domeSetTab('components')">Components</button>
+      <button class="dtab ${_domeTab==='truss'?'sel':''}" data-pressec="truss" onclick="domeSetTab('truss')">Truss</button>
     </div>
     ${ _domeTab==='components' ? domeTabComponents(m) : _domeTab==='truss' ? domeTabTruss(m) : `<div class="card">${domeTabOverview(m)}</div>` }
   </div>`;
@@ -9935,6 +9986,105 @@ function goTo(hash){
   if(location.hash === hash){ route(); }   /* same hash fires no hashchange — rerender explicitly */
   else location.hash = hash;
 }
+/* ============================================================================
+   BUILD 15.45 — LIVE EDITING PRESENCE (Tier 1). Google-Sheets-style "who is editing what".
+   A SEPARATE Firestore collection `presence`, one doc per browser tab (id = sessionId), updated
+   in place as you move (no ghost docs). Heartbeat every 30s (serverTimestamp), hidden after 90s,
+   deleted on leave/close; expired docs are GC'd by any client + Firestore TTL. Scoped subscriptions
+   (project:<pid> / dome:<uid>, plus a dome: prefix listen for the Dome Library list). Presence is a
+   WARNING layer only — the 3-way merge / conflict protection is unchanged. Fail-safe: if the
+   `presence` rule is not deployed, writes are denied silently and the app behaves normally.
+   ============================================================================ */
+var _presSid=null, _presHbTimer=null, _presArea=null, _presSub=null, _presDomeSub=null, _presLive=[], _presDomeLive=[], _presStyled=false;
+var PRES_ROUTE_MOD = { '#/server-rack':'server','#/projectors':'projectors','#/speakers':'speakers','#/camera':'camera','#/network':'network','#/fan':'fan','#/cables':'cables','#/tools':'tools','#/shipping':'shipping','#/equipment':'shipping','#/create':'projectInfo','#/edit':'projectInfo','#/projects':'projectInfo' };
+function presFbUid(){ try{ return (firebase.auth().currentUser && firebase.auth().currentUser.uid) || null; }catch(_){ return null; } }
+function presReady(){ return (typeof domeFsReady==='function') && domeFsReady() && !!presFbUid(); }
+function presSid(){ if(_presSid) return _presSid; try{ _presSid = sessionStorage.getItem('psp_sid')||''; }catch(_){}
+  if(!_presSid){ _presSid='S'+Math.random().toString(36).slice(2)+Date.now().toString(36); try{ sessionStorage.setItem('psp_sid',_presSid); }catch(_){} } return _presSid; }
+function presColor(){ return presenceColor(_gUser||presFbUid()||'user'); }
+function presName(){ return (_gUser||'').split('@')[0] || 'User'; }
+function presInjectStyle(){ if(_presStyled) return; _presStyled=true; try{
+  const s=document.createElement('style'); s.textContent=
+   '.pres-on{position:relative!important;box-shadow:0 0 0 2px var(--pc,#2e9e5b)!important;border-radius:12px}'
+   +'tr.pres-on{box-shadow:inset 4px 0 0 var(--pc,#2e9e5b)!important}'
+   +'tr.pres-on td{background:color-mix(in srgb, var(--pc,#2e9e5b) 8%, #fff)}'
+   +'.pres-chip{position:absolute;top:8px;right:10px;z-index:6;display:inline-flex;align-items:center;gap:6px;color:#fff;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:20px;box-shadow:0 1px 4px rgba(0,0,0,.18);white-space:nowrap}'
+   +'.pres-chip.inl{position:static;margin-left:8px;vertical-align:middle}'
+   +'.pres-dot{width:7px;height:7px;border-radius:50%;background:#fff;opacity:.9;flex:none}'
+   +'.pres-banner{display:flex;align-items:center;gap:8px;font-size:12px;color:#5a4b00;background:#fff8e1;border:1px solid #ffe6a1;border-radius:8px;padding:7px 10px;margin:0 0 14px}'
+   +'.pres-banner b{color:var(--pc,#2e9e5b)}'
+   +'.dtab .pres-dot{display:inline-block;margin-left:7px;background:var(--pc,#2e9e5b);opacity:1;vertical-align:middle}';
+  document.head.appendChild(s);
+}catch(_){}}
+function presAreaDoc(area){
+  const FV=firebase.firestore.FieldValue;
+  return { uid:presFbUid()||'', email:_gUser||'', displayName:presName(), sessionId:presSid(),
+    scopeKey:area.scopeKey, moduleId:area.moduleId, sectionId:area.sectionId||null, color:presColor(),
+    startedAt:FV.serverTimestamp(), lastHeartbeat:FV.serverTimestamp(),
+    expiresAt: firebase.firestore.Timestamp.fromMillis(Date.now()+90000) };
+}
+function presWrite(area){ if(!presReady()) return; try{ _fsDb.collection('presence').doc(presSid()).set(presAreaDoc(area)); }catch(_){} }
+function presDeleteOwn(){ try{ if(_fsDb) _fsDb.collection('presence').doc(presSid()).delete(); }catch(_){} }
+function presStop(){ if(_presHbTimer){ clearInterval(_presHbTimer); _presHbTimer=null; } const had=_presArea; _presArea=null; if(had) presDeleteOwn(); }
+function presStart(area){ if(!presReady()||!area||!area.scopeKey) return; _presArea=area; presWrite(area);
+  if(!_presHbTimer){ _presHbTimer=setInterval(function(){ if(_presArea) presWrite(_presArea); }, 30000); } }
+function presLiveOnly(list){ const now=Date.now(); return (list||[]).filter(function(r){ if(!r) return false; const hb=(r.lastHeartbeat&&r.lastHeartbeat.toMillis)?r.lastHeartbeat.toMillis():0; return hb && (now-hb)<=90000; }); }
+function presGc(snap){ const now=Date.now(); snap.forEach(function(d){ const r=d.data()||{}; const exp=(r.expiresAt&&r.expiresAt.toMillis)?r.expiresAt.toMillis():0; if(exp && exp<now){ try{ d.ref.delete(); }catch(_){} } }); }
+function presSubScope(scopeKey){ if(_presSub){ try{_presSub();}catch(_){}_presSub=null; } _presLive=[];
+  if(!presReady()||!scopeKey) return;
+  _presSub=_fsDb.collection('presence').where('scopeKey','==',scopeKey).onSnapshot(function(snap){ const a=[]; snap.forEach(function(d){a.push(d.data());}); _presLive=a; presPaint(); presGc(snap); }, function(_){}); }
+function presSubDomeList(on){ if(_presDomeSub){ try{_presDomeSub();}catch(_){}_presDomeSub=null; } _presDomeLive=[];
+  if(!on||!presReady()) return;
+  _presDomeSub=_fsDb.collection('presence').where('scopeKey','>=','dome:').where('scopeKey','<=','dome:').onSnapshot(function(snap){ const a=[]; snap.forEach(function(d){a.push(d.data());}); _presDomeLive=a; presPaint(); presGc(snap); }, function(_){}); }
+function presLabel(r,isYou){ return isYou ? 'You editing' : ((r.displayName||(r.email||'').split('@')[0]||'Someone')+' editing'); }
+function presChip(r,isYou,inl){ return '<span class="pres-chip'+(inl?' inl':'')+'" style="background:'+(r.color||'#2e9e5b')+'"><span class="pres-dot"></span>'+esc(presLabel(r,isYou))+'</span>'; }
+function presPick(list,me){ return list.find(function(r){return r.sessionId!==me;}) || list.find(function(r){return r.sessionId===me;}) || null; }
+function presPaint(){ try{
+  presInjectStyle();
+  document.querySelectorAll('.pres-chip,.pres-banner').forEach(function(e){ e.remove(); });
+  document.querySelectorAll('.pres-on').forEach(function(e){ e.classList.remove('pres-on'); e.style.removeProperty('--pc'); });
+  document.querySelectorAll('.dtab .pres-dot').forEach(function(e){ e.remove(); });
+  const me=presSid(), scope=presLiveOnly(_presLive), domeL=presLiveOnly(_presDomeLive);
+  /* 1) dashboard module cards — map each card to its module via the "Open Module" href */
+  document.querySelectorAll('#content .modgrid .mod').forEach(function(card){
+    const a=card.querySelector('a.mod-btn[href^="#/"]'); if(!a) return; const mod=PRES_ROUTE_MOD[a.getAttribute('href')]; if(!mod) return;
+    const who=scope.filter(function(r){return r.moduleId===mod;}); const r=presPick(who,me); if(!r) return;
+    card.classList.add('pres-on'); card.style.setProperty('--pc', r.color||'#2e9e5b'); card.insertAdjacentHTML('afterbegin', presChip(r, r.sessionId===me, false));
+  });
+  /* 2) Dome Library list rows */
+  document.querySelectorAll('#content tr[data-presdome]').forEach(function(row){
+    const uid=row.getAttribute('data-presdome'); const who=domeL.filter(function(r){return String(r.scopeKey)==='dome:'+uid;}); const r=presPick(who,me); if(!r) return;
+    row.classList.add('pres-on'); row.style.setProperty('--pc', r.color||'#2e9e5b');
+    const last=row.querySelector('td:last-child'); if(last) last.insertAdjacentHTML('beforeend', ' '+presChip(r, r.sessionId===me, true));
+  });
+  /* 3) Dome card tabs (Overview / Components / Truss) — colored dot on the tab someone edits */
+  document.querySelectorAll('#content .dtab[data-pressec]').forEach(function(tab){
+    const sec=tab.getAttribute('data-pressec'); const who=scope.filter(function(r){return (r.sectionId||r.moduleId)===sec;}); const r=presPick(who,me); if(!r) return;
+    tab.style.setProperty('--pc', r.color||'#2e9e5b'); tab.insertAdjacentHTML('beforeend', '<span class="pres-dot" title="'+esc(presLabel(r, r.sessionId===me))+'"></span>');
+  });
+  /* 4) module page banner — someone ELSE editing the module you are on */
+  const h=location.hash, mod=PRES_ROUTE_MOD[h];
+  if(mod && state.project){ const other=scope.find(function(r){return r.moduleId===mod && r.sessionId!==me;});
+    if(other){ const ph=document.querySelector('#content .pagehead'); if(ph) ph.insertAdjacentHTML('afterend', '<div class="pres-banner" style="--pc:'+(other.color||'#2e9e5b')+'">⚠ <b>'+esc(other.displayName||(other.email||'').split('@')[0])+'</b> is editing this — your changes still merge on save.</div>'); } }
+}catch(_){}}
+/* decide the current editable area for this route, (un)subscribe, start/stop own presence, paint */
+function presenceOnRoute(){
+  if(!presReady()){ return; }
+  const h=location.hash||'#/dashboard';
+  const onDomeLib=(h==='#/dome-library');
+  const domeCard=(onDomeLib && _domeView==='card' && (typeof domeEditing==='function') && domeEditing()) ? domeEditing() : null;
+  presSubDomeList(onDomeLib && !domeCard);
+  let area=null;
+  if(domeCard){ const sec=(_domeTab||'overview'); area={ scopeKey:'dome:'+domeCard.domeUid, moduleId:sec, sectionId:sec }; presSubScope('dome:'+domeCard.domeUid); }
+  else if(PRES_ROUTE_MOD[h] && state.project){ const pid=(state.project.pid)||(activeEntry()&&activeEntry().id); area={ scopeKey:'project:'+pid, moduleId:PRES_ROUTE_MOD[h], sectionId:null }; presSubScope('project:'+pid); }
+  else if(h==='#/dashboard' && state.project){ const pid=(state.project.pid)||(activeEntry()&&activeEntry().id); presSubScope('project:'+pid); }
+  else { presSubScope(null); }
+  if(area) presStart(area); else presStop();
+  presPaint();
+}
+try{ window.addEventListener('beforeunload', function(){ presDeleteOwn(); }); }catch(_){}
+try{ document.addEventListener('visibilitychange', function(){ if(!document.hidden){ try{ presenceOnRoute(); }catch(_){} } }); }catch(_){}
+setTimeout(function(){ try{ presenceOnRoute(); }catch(_){} }, 4000);   /* start once Firestore/auth is up */
 var _lastMod = '';   /* the module page opened most recently — its dashboard card keeps the red frame (BUILD 12.43) */
 const MODULE_ROUTES = ['#/server-rack','#/projectors','#/speakers','#/camera','#/network','#/fan','#/cables','#/tools','#/shipping'];
 function route(){
@@ -9956,6 +10106,7 @@ function route(){
   if(h === '#/create' || h === '#/edit' || h === '#/projects') noAutofill();   /* BUILD 14.15/14.41: stop browser autofill in the project forms */
   renderHeader(); renderSideProject();
   polishPass();   /* BUILD 14.60: tooltips on truncated names + dim empty-link buttons */
+  try{ presenceOnRoute(); }catch(_){}   /* BUILD 15.45: live editing presence overlays */
 }
 /* BUILD 14.60 — after every render: show the full text of a truncated name on hover (title),
    and grey-out / disable the copy+open buttons of a link field that is empty. */
