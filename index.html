@@ -768,7 +768,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.67 · ADMIN CONSOLE (STAGE 1) — ROLES (ADMIN/SALES/PM/ENGINEER) + PER-USER PERMISSIONS, access_users SYNC, CLIENT GATING, bucket FIELD; RULES PROPOSED (NOT DEPLOYED)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.68 · ADMIN CONSOLE MENU NOW APPEARS RIGHT AFTER SIGN-IN (RE-RENDER NAV WHEN _gUser IS SET); STAGE 1 ADMIN CONSOLE</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -4921,6 +4921,8 @@ function driveWhoAmI(){
       _gUser = (j.user && (j.user.emailAddress || j.user.displayName)) || '';
       const el = document.getElementById('driveStat');
       if(el) el.textContent = _gUser ? ('Drive: ' + _gUser) : 'Drive: connected';
+      /* BUILD 15.68: refresh the left menu so the Admin Console item appears for admins right after sign-in */
+      try{ renderNav((ROUTES[location.hash]||{}).nav); renderSideProject(); }catch(_){}
     }).catch(()=>{});
 }
 async function gFetch(url, opts){
@@ -6470,7 +6472,7 @@ function accFsEnsureStarted(){
       const _sk = saveState._skipCloud; saveState._skipCloud = true; try{ saveState(); }finally{ saveState._skipCloud = _sk; }
       try{ renderNav((ROUTES[location.hash]||{}).nav); }catch(_){}
       try{ if(!isTypingInInput() && (location.hash==='#/admin')) route(); else renderSideProject(); }catch(_){}
-    }, function(_){});
+    }, function(_){ try{ renderNav((ROUTES[location.hash]||{}).nav); }catch(_){} });   /* read may be denied until rules deploy — still refresh the menu for root admins */
   }catch(_){}
 }
 function accFsWrite(u){ if(!fsReady()) return Promise.reject(new Error('offline')); u.email=String(u.email||'').toLowerCase(); return _fsDb.collection('access_users').doc(u.email).set(u); }
