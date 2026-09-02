@@ -124,14 +124,20 @@
   .preurow input{width:16px;height:16px;accent-color:#2f6fed;flex:none}
   .preav{width:24px;height:24px;border-radius:50%;color:#fff;font-weight:800;font-size:10px;display:inline-flex;align-items:center;justify-content:center;flex:none}
   .preem{font-size:12.5px;color:var(--ink)}
-  /* pre-project card: ALWAYS blue (the red selection/readiness frame never applies to pre-projects) */
-  .pj.pre, .pj.pre:hover, .pj.pre.sel, .pj.pre.rc-green, .pj.pre.rc-yellow{position:relative;border:2px solid #2f6fed !important;box-shadow:none !important;background:#f0f5ff !important}
-  .pj.pre.sel{background:#dfeaff !important}
-  .pj.pre::before, .pj.pre.sel::before{display:none !important}
-  .pj.pre .pjnum{color:#2f6fed}
-  .pj.pre .pjt, .pj.pre .pcv{color:#1b2b52}
-  .pjhead.pre-h{color:#2f6fed}
-  .pjhead.pre-h .n{background:#e7eefc;color:#2f6fed}
+  /* BUILD 15.63 — pre-project card: Midnight Blue. Uniform blue border, no red/pink, no grey fill,
+     no running beam. Applies ONLY to .pj.pre (in-progress / completed cards are untouched). */
+  .pj.pre, .pj.pre:hover, .pj.pre.sel, .pj.pre.rc-green, .pj.pre.rc-yellow{position:relative;border:1.5px solid #69A7FF !important;box-shadow:none !important;background:#14243D !important;border-radius:10px !important}
+  .pj.pre.sel{background:#14243D !important}
+  /* BUILD 15.64 — thicker blue LEFT edge, matching the left-accent weight of the other project cards */
+  .pj.pre::before, .pj.pre.sel::before{display:block !important;left:0;top:0;bottom:0;width:3px;background:#69A7FF !important}
+  .pj.pre::after, .pj.pre.sel::after{display:none !important}   /* BUILD 15.62: no running beam on pre-projects (in-progress / completed only) */
+  .pj.pre .pjnum, .pj.pre.sel .pjnum, .pj.pre .pjn, .pj.pre.sel .pjn, .pj.pre .pjt, .pj.pre.sel .pjt, .pj.pre .pcv, .pj.pre.sel .pcv{color:#F5F8FF !important}
+  .pj.pre .pjloc, .pj.pre.sel .pjloc, .pj.pre .pcl, .pj.pre.sel .pcl{color:#B8C7DC !important}
+  .pj.pre .pjcells, .pj.pre.sel .pjcells{border-top-color:#5779A8 !important}
+  .pj.pre .pc, .pj.pre.sel .pc{border-left-color:#5779A8 !important}
+  .pj.pre .presnow-tr{color:#91BDFF;background:#203C64;border-radius:8px;padding:4px;top:8px;right:8px}
+  .pjhead.pre-h{color:#69A7FF}
+  .pjhead.pre-h .n{background:#203C64;color:#91BDFF}
   .presnow-tr{position:absolute;top:8px;right:9px;color:#2f6fed;z-index:2;line-height:0}
   .fld-aud{position:absolute;top:0;right:0;width:18px;height:18px;border-radius:50%;color:#fff;font-size:8.5px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.25);z-index:2}
   .modgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
@@ -373,6 +379,24 @@
   .odot.o2{background:#43d17c}
   .fsec{grid-column:1 / -1;font-size:11px;letter-spacing:1.2px;color:var(--fdp-red);font-weight:700;text-transform:uppercase;border-bottom:2px solid var(--fdp-red);padding-bottom:6px;margin:8px 0 2px}
   .fsec:first-child{margin-top:0}
+  .fsec-h{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+  .fsec-h:hover{opacity:.82}
+  .fsec-tri{display:inline-block;width:14px;text-align:center;font-size:12px;color:var(--fdp-red)}
+  .condwrap{display:contents}
+  .fsub{grid-column:1 / -1;font-size:11px;letter-spacing:.9px;color:var(--ink2);font-weight:700;text-transform:uppercase;margin:16px 0 -2px}
+  .fhint{grid-column:1 / -1;font-size:11.5px;color:#9aa2ad;margin:-4px 0 0}
+  .unitfld{position:relative}
+  .unitfld input{padding-right:34px}
+  .unitfld .unit{position:absolute;right:11px;top:50%;transform:translateY(-50%);color:#9aa2ad;font-size:12px;pointer-events:none}
+  /* BUILD 15.56 — soft-tinted sub-group panels so related fields read as one group */
+  .fgroup{grid-column:1 / -1;border-radius:11px;padding:12px 14px 14px;margin:10px 0;border:1px solid #e3e6ea;background:#fafbfc}
+  .fgroup .fgrid{margin:0}
+  .fgroup-h{font-size:11px;letter-spacing:.9px;font-weight:700;text-transform:uppercase;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+  .fgroup-h::before{content:"";width:9px;height:9px;border-radius:3px;background:var(--gc,#c9ced6)}
+  .fg-proj{background:#eef4fb;border-color:#dbe8f6}    .fg-proj  .fgroup-h{color:#2f5c96;--gc:#3f7cc4}
+  .fg-srv{background:#eef6f0;border-color:#d7e9dd}     .fg-srv   .fgroup-h{color:#2f7a4d;--gc:#3fa35f}
+  .fg-audio{background:#f5f1fb;border-color:#e4dbf2}   .fg-audio .fgroup-h{color:#5d47a0;--gc:#7a5fce}
+  .fg-content{background:#faf5eb;border-color:#ecdfc8} .fg-content .fgroup-h{color:#8a6a25;--gc:#c19a3f}
   .fld label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ink2);margin-bottom:5px}
   .fld input,.fld select,.fld textarea{width:100%;font-family:inherit;font-size:14px;color:var(--ink);
     border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#fff}
@@ -721,7 +745,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.52 · PRE-PROJECT — EVERYONE SEES THE CARD, OPENING FROZEN UNLESS ON THE ACCESS LIST (EDIT); AN/GT/2F PROMOTE</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.64 · PRE-PROJECT CARDS — MIDNIGHT BLUE (BLUE BORDER + THICKER BLUE LEFT EDGE, BLUE HEADER + ICON BADGE); IN-PROGRESS UNCHANGED</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -2632,8 +2656,42 @@ function projectForm(P){
    adds a separate project with a fresh pid; Cancel returns to the selected project untouched. */
 var _projMode = 'edit';            /* 'edit' = bound to the active project · 'new' = blank draft */
 var _projTitleManual = false;      /* user typed a custom Deal Title → stop auto-composing it */
-function projNewMode(){ _projMode = 'new'; _projTitleManual = false; goTo('#/projects'); }
-function projNewPreMode(){ _projMode = 'newpre'; _projTitleManual = false; goTo('#/projects'); }   /* BUILD 15.50 */
+var _projSecState = {};            /* BUILD 15.53: per-section collapse state on the Projects form */
+/* BUILD 15.53 — collapse/expand a form section (pure DOM, no rerender → typed values are kept) */
+function projSecToggle(key){
+  const body = document.querySelector('#content .fsec-body[data-sec="'+key+'"]');
+  const tri  = document.querySelector('#content [data-tri="'+key+'"]');
+  if(!body) return;
+  const expand = (body.style.display==='none');
+  body.style.display = expand ? '' : 'none';
+  if(tri) tri.textContent = expand ? '▾' : '▸';
+  _projSecState[key] = expand ? false : true;
+}
+/* BUILD 15.54 — conditional fields in the Technical / AV section:
+   • Dome Server Location = Outside the Dome → reveal Distance to Dome (ft)
+   • Sound System != No (and not blank) → reveal Speaker/Subwoofer Model + Quantity */
+function projFormCond(){
+  try{
+    const cond=(document.getElementById('pj_conditions')||{}).value;
+    const bal=document.getElementById('pjBallastFld');
+    if(bal){ const show=(cond==='Outdoor'); bal.style.display=show?'':'none'; if(!show){ const bi=document.getElementById('pj_ballast'); if(bi) bi.value=''; } }
+    const loc=(document.getElementById('pj_serverLoc')||{}).value;
+    const dist=document.getElementById('pjDistFld');
+    if(dist){ const show=(loc==='Outside the Dome'); dist.style.display=show?'':'none'; if(!show){ const di=document.getElementById('pj_domeDist'); if(di) di.value=''; } }
+    const sound=(document.getElementById('pj_sound')||{}).value;
+    const extra=document.getElementById('pjSoundExtra');
+    if(extra) extra.style.display=(sound && sound!=='No')?'contents':'none';
+    /* BUILD 15.61 — nudge to fill Content Notes when the choice needs detail */
+    const ct=(document.getElementById('pj_contentType')||{}).value;
+    const enc=(document.getElementById('pj_encoding')||{}).value;
+    const promo=(document.getElementById('pj_promo')||{}).value;
+    const needNotes=(ct==='Client Content'||ct==='Specific Content'||enc==='Standard'||enc==='Studio'||(promo&&promo!=='Not Required'));
+    const chint=document.getElementById('pjContentHint'); if(chint) chint.style.display=needNotes?'':'none';
+  }catch(_){}
+}
+try{ window.projSecToggle=projSecToggle; window.projFormCond=projFormCond; }catch(_){}
+function projNewMode(){ _projMode = 'new'; _projTitleManual = false; _projSecState={}; goTo('#/projects'); }
+function projNewPreMode(){ _projMode = 'newpre'; _projTitleManual = false; _projSecState={}; goTo('#/projects'); }   /* BUILD 15.50 */
 try{ window.projNewPreMode = projNewPreMode; }catch(_){}
 function projCancelNew(){ _projMode = 'edit'; goTo('#/projects'); }
 /* Project Name auto-format (BUILD 14.43): "<R/S> <Dome Size>m + <Server> <Client> <Location>"
@@ -2674,14 +2732,22 @@ function readProjForm(){
     title:t('pj_projName'), domeDiameter:t('pj_domeSize'), domeType:t('pj_domeType'),
     indoorOutdoor:t('pj_conditions'), outerCover:t('pj_outerCover'), coverColorNote:t('pj_coverNote'),
     screenType:t('pj_screenType'), inflatableCover:t('pj_inflatable'),
+    /* BUILD 15.55 — Dome Ballast exists only when Conditions of Use = Outdoor */
+    domeBallast:(t('pj_conditions')==='Outdoor') ? t('pj_ballast') : '',
     /* Technical / AV — type/projectorModel/audioSystem/speakersModel/subwooferModel/screenFan/
        captureRequired/vjRequired are EXISTING keys shared with the old Create/Edit form */
     type:t('pj_type'), resolution:t('pj_resolution'),
     projectorModel:t('pj_projModel'), projectorQty:t('pj_projQty'),
-    audioSystem:t('pj_audio'), speakersModel:t('pj_speakers'), subwooferModel:t('pj_sub'),
+    /* BUILD 15.54 — Server & Signal: Dome Server Location + cable-route distance (Outside only) */
+    serverLocation:t('pj_serverLoc'),
+    domeDistance:(t('pj_serverLoc')==='Outside the Dome') ? t('pj_domeDist') : '',
+    /* BUILD 15.55 — AV: Speaker/Subwoofer Model exist only when Sound System != No (qty implied by the system) */
+    speakersModel: (t('pj_sound') && t('pj_sound')!=='No') ? t('pj_speakers') : '',
+    subwooferModel:(t('pj_sound') && t('pj_sound')!=='No') ? t('pj_sub') : '',
     screenFan:t('pj_fan'), captureRequired:yn('pj_capture'), vjRequired:yn('pj_vj'),
     soundSystem:t('pj_sound'), hvac:t('pj_hvac'), safetySigns:t('pj_safety'),
-    contentType:t('pj_contentType'), contentNotes:t('pj_contentNotes'), eventNotes:t('pj_eventNotes')
+    contentType:t('pj_contentType'), encoding:t('pj_encoding'), promoMaterials:t('pj_promo'),
+    contentNotes:t('pj_contentNotes'), eventNotes:t('pj_eventNotes')
   };
 }
 /* auto-add the Capture row / VJ rows exactly like the old Edit form (parity) */
@@ -2729,7 +2795,7 @@ function preCanPromote(){ return PROMOTE_EMAILS.indexOf(myEmail())>=0; }
 /* BUILD 15.49 — per-field audit for pre-projects: which teammate last changed each field.
    Stored in P._audit = { <key>:{by,at} }; rides in the project doc, so it syncs. Shown as a small
    initials avatar at the top-right of each field, only in the pre-project edit form. */
-var PROJ_ID2KEY = { pj_dealType:'dealType', pj_client:'client', pj_contactName:'contactName', pj_phone:'phone', pj_email:'email', pj_totalAmount:'totalAmount', pj_currency:'currency', pj_closeDate:'closeDate', pj_salesOffice:'salesOffice', pj_terms:'termsOfPayment', pj_pm:'projectManager', pj_location:'location', pj_address:'installAddress', pj_install:'installDateTime', pj_breakdown:'breakdownDateTime', pj_shipBudget:'shippingBudget', pj_travelBudget:'travelBudget', pj_labourQty:'localLabourQty', pj_labourBy:'localLabourBy', pj_projName:'title', pj_domeSize:'domeDiameter', pj_domeType:'domeType', pj_conditions:'indoorOutdoor', pj_outerCover:'outerCover', pj_coverNote:'coverColorNote', pj_screenType:'screenType', pj_inflatable:'inflatableCover', pj_type:'type', pj_resolution:'resolution', pj_projModel:'projectorModel', pj_projQty:'projectorQty', pj_audio:'audioSystem', pj_speakers:'speakersModel', pj_sub:'subwooferModel', pj_fan:'screenFan', pj_capture:'captureRequired', pj_vj:'vjRequired', pj_sound:'soundSystem', pj_hvac:'hvac', pj_safety:'safetySigns', pj_contentType:'contentType', pj_contentNotes:'contentNotes', pj_eventNotes:'eventNotes' };
+var PROJ_ID2KEY = { pj_dealType:'dealType', pj_client:'client', pj_contactName:'contactName', pj_phone:'phone', pj_email:'email', pj_totalAmount:'totalAmount', pj_currency:'currency', pj_closeDate:'closeDate', pj_salesOffice:'salesOffice', pj_terms:'termsOfPayment', pj_pm:'projectManager', pj_location:'location', pj_address:'installAddress', pj_install:'installDateTime', pj_breakdown:'breakdownDateTime', pj_shipBudget:'shippingBudget', pj_travelBudget:'travelBudget', pj_labourQty:'localLabourQty', pj_labourBy:'localLabourBy', pj_projName:'title', pj_domeSize:'domeDiameter', pj_domeType:'domeType', pj_conditions:'indoorOutdoor', pj_ballast:'domeBallast', pj_outerCover:'outerCover', pj_coverNote:'coverColorNote', pj_screenType:'screenType', pj_inflatable:'inflatableCover', pj_type:'type', pj_resolution:'resolution', pj_projModel:'projectorModel', pj_projQty:'projectorQty', pj_serverLoc:'serverLocation', pj_domeDist:'domeDistance', pj_speakers:'speakersModel', pj_sub:'subwooferModel', pj_fan:'screenFan', pj_capture:'captureRequired', pj_vj:'vjRequired', pj_sound:'soundSystem', pj_hvac:'hvac', pj_safety:'safetySigns', pj_contentType:'contentType', pj_encoding:'encoding', pj_promo:'promoMaterials', pj_contentNotes:'contentNotes', pj_eventNotes:'eventNotes' };
 function preAuditSet(P, keys, by){ if(!P) return; P._audit = P._audit || {}; const at=Date.now(); (keys||[]).forEach(function(k){ P._audit[k]={by:by, at:at}; }); }
 function preAuditDiffKeys(P, f){ const ch=[]; Object.keys(f||{}).forEach(function(k){ const nv=f[k], ov=P?P[k]:undefined; if(String(nv==null?'':nv)!==String(ov==null?'':ov)) ch.push(k); }); return ch; }
 function preAuditAva(meta){ if(!meta||!meta.by) return ''; const em=String(meta.by).toLowerCase(); const d=meta.at?(' · '+new Date(meta.at).toLocaleDateString()):''; return '<span class="fld-aud" title="Last edited by '+esc(em)+d+'" style="background:'+presenceColor(em)+'">'+esc(teamInitials(em))+'</span>'; }
@@ -2860,59 +2926,99 @@ function pageProjects(){
   const F  = (label, inner, full) => `<div class="fld${full?' full':''}"><label>${label}</label>${inner}</div>`;
   const YN = ['Yes','No'];
   const YNb = (id, val) => `<select id="${id}"><option value="No"${!val?' selected':''}>No</option><option value="Yes"${val?' selected':''}>Yes</option></select>`;
+  /* BUILD 15.53 — collapsible section wrapper. Default collapsed while CREATING (new / newpre);
+     open while editing an existing project. Per-user toggles override in _projSecState. */
+  const SEC = (key, label, inner) => {
+    /* BUILD 15.58 — on create, collapse ONLY the top two (Commercial + Site); Dome + AV stay open */
+    const defCollapsed = creating && (key==='comm' || key==='site');
+    const collapsed = (key in _projSecState) ? !!_projSecState[key] : defCollapsed;
+    return `<div class="fsec fsec-h" onclick="projSecToggle('${key}')"><span class="fsec-tri" data-tri="${key}">${collapsed?'▸':'▾'}</span> ${label}</div>`
+      + `<div class="fgrid fsec-body" data-sec="${key}"${collapsed?' style="display:none"':''}>${inner}</div>`;
+  };
+  /* BUILD 15.56 — soft-tinted sub-group panel (color = intuitive grouping cue) */
+  const GRP = (cls, title, inner) => `<div class="fgroup ${cls}"><div class="fgroup-h">${title}</div><div class="fgrid">${inner}</div></div>`;
+  /* BUILD 15.54 — Sound System (No / 2.0 / 5.1 / 5.2 / Custom); anything but No reveals speaker + subwoofer */
+  const soundVal = P.soundSystem || '';
+  const soundOn = soundVal && soundVal !== 'No';
+  const soundExtra =
+      F('Speaker Model', I('pj_speakers', P.speakersModel, '', 'placeholder="Manufacturer and model"'))
+    + F('Subwoofer Model', I('pj_sub', P.subwooferModel, '', 'placeholder="Manufacturer and model"'));
+  /* Dome Ballast — revealed only when Conditions of Use = Outdoor */
+  const ballastOut = (P.indoorOutdoor === 'Outdoor');
+  const ballastFld = `<div class="fld" id="pjBallastFld"${ballastOut?'':' style="display:none"'}><label>Dome Ballast</label>`
+    + _pjSel('pj_ballast', ballastOut?P.domeBallast:'', ['Ground Anchors','Concrete Ballast Blocks'], '— Select —') + `</div>`;
+  /* Dome Server Location + conditional cable-route distance */
+  const serverLoc = P.serverLocation || '';
+  const locOutside = (serverLoc === 'Outside the Dome');
+  const distFld = `<div class="fld" id="pjDistFld"${locOutside?'':' style="display:none"'}><label>Distance to Dome</label>`
+    + `<div class="unitfld">${I('pj_domeDist', locOutside?P.domeDistance:'', 'number', 'min="0" placeholder="0"')}<span class="unit">ft</span></div></div>`;
   const form = `
-    <div class="fgrid">
-      ${F('Project Name <span style="color:#9aa2ad;text-transform:none;font-weight:400">(auto — Deal Type · Dome Size · System Type · Client · Location)</span>', `<input id="pj_projName" readonly value="${esc(projName)}" style="background:#f1f2f4;font-weight:700;cursor:default" title="Built automatically — edit the fields below">`, true)}
+    <div>
+      <div class="fgrid">
+        ${F('Project Name <span style="color:#9aa2ad;text-transform:none;font-weight:400">(auto — Deal Type · Dome Size · System Type · Client · Location)</span>', `<input id="pj_projName" readonly value="${esc(projName)}" style="background:#f1f2f4;font-weight:700;cursor:default" title="Built automatically — edit the fields below">`, true)}
+      </div>
 
-      <div class="fsec">Commercial / Deal Basics</div>
-      ${F('Deal Type', _pjSel('pj_dealType', P.dealType, ['Rental','Sale'], '— Select —', 'projAutoTitle()'))}
-      ${F('Currency', _pjSel('pj_currency', P.currency, ['USD','EUR','THB','INR','CNY','RUB','AUD']))}
-      ${F('Company / Client', I('pj_client', P.client, '', 'oninput="projAutoTitle()"'))}
-      ${F('Contact Name', I('pj_contactName', P.contactName))}
-      ${F('Phone', I('pj_phone', P.phone))}
-      ${F('Email', I('pj_email', P.email, 'email'))}
-      ${F('Total Amount', I('pj_totalAmount', P.totalAmount))}
-      ${F('Close Date', I('pj_closeDate', P.closeDate, 'date'))}
-      ${F('Sales Office', _pjSel('pj_salesOffice', P.salesOffice, ['Thailand','India','USA','China','Russia','Australia']))}
-      ${F('Project Manager', I('pj_pm', P.projectManager))}
-      ${F('Terms of Payment', I('pj_terms', P.termsOfPayment), true)}
+      ${SEC('comm','Commercial / Deal Basics',
+        F('Deal Type', _pjSel('pj_dealType', P.dealType, ['Rental','Sale'], '— Select —', 'projAutoTitle()'))
+      + F('Currency', _pjSel('pj_currency', P.currency, ['USD','EUR','THB','INR','CNY','RUB','AUD']))
+      + F('Company / Client', I('pj_client', P.client, '', 'oninput="projAutoTitle()"'))
+      + F('Contact Name', I('pj_contactName', P.contactName))
+      + F('Phone', I('pj_phone', P.phone))
+      + F('Email', I('pj_email', P.email, 'email'))
+      + F('Total Amount', I('pj_totalAmount', P.totalAmount))
+      + F('Close Date', I('pj_closeDate', P.closeDate, 'date'))
+      + F('Sales Office', _pjSel('pj_salesOffice', P.salesOffice, ['Thailand','India','USA','China','Russia','Australia']))
+      + F('Project Manager', I('pj_pm', P.projectManager))
+      + F('Terms of Payment', I('pj_terms', P.termsOfPayment), true))}
 
-      <div class="fsec">Site &amp; Logistics</div>
-      ${F('Location <span style="color:#9aa2ad;text-transform:none;font-weight:400">(City / State / Country)</span>', I('pj_location', loc, '', 'oninput="projAutoTitle()"'), true)}
-      ${F('Full Installation Address', I('pj_address', P.installAddress), true)}
-      ${F('Installation Date &amp; Time', I('pj_install', P.installDateTime, 'datetime-local'))}
-      ${F('Breakdown Date &amp; Time', I('pj_breakdown', P.breakdownDateTime, 'datetime-local'))}
-      ${F('Shipping Budget', I('pj_shipBudget', P.shippingBudget))}
-      ${F('Travel Expenses Budget', I('pj_travelBudget', P.travelBudget))}
-      ${F('Local Labour / Union — Qty', I('pj_labourQty', P.localLabourQty))}
-      ${F('Hired by whom', I('pj_labourBy', P.localLabourBy))}
+      ${SEC('site','Site &amp; Logistics',
+        F('Location <span style="color:#9aa2ad;text-transform:none;font-weight:400">(City / State / Country)</span>', I('pj_location', loc, '', 'oninput="projAutoTitle()"'), true)
+      + F('Full Installation Address', I('pj_address', P.installAddress), true)
+      + F('Installation Date &amp; Time', I('pj_install', P.installDateTime, 'datetime-local'))
+      + F('Breakdown Date &amp; Time', I('pj_breakdown', P.breakdownDateTime, 'datetime-local'))
+      + F('Shipping Budget', I('pj_shipBudget', P.shippingBudget))
+      + F('Travel Expenses Budget', I('pj_travelBudget', P.travelBudget))
+      + F('Local Labour / Union — Qty', I('pj_labourQty', P.localLabourQty))
+      + F('Hired by whom', I('pj_labourBy', P.localLabourBy)))}
 
-      <div class="fsec">Dome Specification</div>
-      ${F('Dome Size (m)', I('pj_domeSize', P.domeDiameter, 'number', 'min="1" step="0.5" oninput="projAutoTitle()"'))}
-      ${F('Dome Type', _pjSel('pj_domeType', P.domeType, ['Standard','Tilt','SRD','VR','WD'], '— Select —'))}
-      ${F('Conditions of Use', _pjSel('pj_conditions', P.indoorOutdoor, ['Indoor','Outdoor']))}
-      ${F('Outer Cover Material', _pjSel('pj_outerCover', P.outerCover, ['Grey','PVC']))}
-      ${F('Cover Colour Note', I('pj_coverNote', P.coverColorNote))}
-      ${F('Screen Type', _pjSel('pj_screenType', P.screenType, ['Tilted','Horizontal','SRD']))}
-      ${F('Inflatable Cover', _pjSel('pj_inflatable', P.inflatableCover, YN))}
+      ${SEC('dome','Dome Specification',
+        F('Dome Size (m)', I('pj_domeSize', P.domeDiameter, 'number', 'min="1" step="0.5" oninput="projAutoTitle()"'))
+      + F('Dome Type', _pjSel('pj_domeType', P.domeType, ['Standard','Tilt','SRD','VR','WD'], '— Select —'))
+      + F('Conditions of Use', _pjSel('pj_conditions', P.indoorOutdoor, ['Indoor','Outdoor'], '— Select —', 'projFormCond()'))
+      + ballastFld
+      + F('Outer Cover Material', _pjSel('pj_outerCover', P.outerCover, ['Grey','PVC']))
+      + F('Cover Colour Note', I('pj_coverNote', P.coverColorNote))
+      + F('Screen Type', _pjSel('pj_screenType', P.screenType, ['Tilted','Horizontal','SRD']))
+      + F('Inflatable Cover', _pjSel('pj_inflatable', P.inflatableCover, YN)))}
 
-      <div class="fsec">Technical / AV</div>
-      ${F('Projection System Type', _pjSel('pj_type', P.type, TYPES, '— Select type —', 'projAutoTitle()'))}
-      ${F('Resolution', I('pj_resolution', P.resolution))}
-      ${F('Projector Model', I('pj_projModel', projModel))}
-      ${F('Projector Quantity', I('pj_projQty', P.projectorQty, 'number'))}
-      ${F('Audio System', I('pj_audio', P.audioSystem))}
-      ${F('Speakers Model', I('pj_speakers', P.speakersModel))}
-      ${F('Subwoofer Model', I('pj_sub', P.subwooferModel))}
-      ${F('Screen Fan System', I('pj_fan', P.screenFan))}
-      ${F('Capture Card', YNb('pj_capture', !!P.captureRequired))}
-      ${F('VJ Server (VJ Station)', YNb('pj_vj', !!P.vjRequired))}
-      ${F('Sound System', _pjSel('pj_sound', P.soundSystem, YN))}
-      ${F('HVAC', _pjSel('pj_hvac', P.hvac, YN))}
-      ${F('Safety Signs', _pjSel('pj_safety', P.safetySigns, YN))}
-      ${F('Content', _pjSel('pj_contentType', P.contentType, ['Standard Free Pack','Specific']))}
-      ${F('Content Notes', I('pj_contentNotes', P.contentNotes), true)}
-      ${F('Event / Rental Specifics', TA('pj_eventNotes', P.eventNotes), true)}
+      ${SEC('av','Technical / AV',
+        GRP('fg-srv','Servers &amp; Capture',
+          F('VJ Server / VJ Station', YNb('pj_vj', !!P.vjRequired))
+        + F('Capture Card', _pjSel('pj_capture', (P.captureRequired===true?'Yes':P.captureRequired===false&&('captureRequired' in P)?'No':''), YN))
+        + F('Dome Server Location', _pjSel('pj_serverLoc', P.serverLocation, ['Inside the Dome','Outside the Dome'], '— Select —', 'projFormCond()'))
+        + distFld
+        + `<div class="fhint">Enter the cable-route distance from the dome to the media server.</div>`)
+
+      + GRP('fg-proj','Projection System',
+          F('Projection System Type', _pjSel('pj_type', P.type, TYPES, '— Select —', 'projAutoTitle()'))
+        + F('Resolution', _pjSel('pj_resolution', P.resolution, ['2K','3K','4K','6K','8K']))
+        + F('Projector Model', I('pj_projModel', projModel, '', 'placeholder="e.g. Epson EB-PU2216B"'))
+        + F('Projector Quantity', I('pj_projQty', P.projectorQty, 'number', 'min="0" placeholder="0"')))
+
+      + GRP('fg-audio','Audio &amp; Environment',
+          F('Sound System', _pjSel('pj_sound', P.soundSystem, ['No','2.0','5.1','5.2','Custom'], '— Select —', 'projFormCond()'))
+        + `<div id="pjSoundExtra" class="condwrap">${soundExtra}</div>`
+        + F('Screen Fan System', I('pj_fan', P.screenFan, '', 'placeholder="Model and quantity"'))
+        + F('HVAC', _pjSel('pj_hvac', P.hvac, YN))
+        + F('Safety Signs', _pjSel('pj_safety', P.safetySigns, YN)))
+
+      + GRP('fg-content','Content &amp; Event',
+          F('Content', _pjSel('pj_contentType', P.contentType, ['Standard Free Pack','Client Content','Specific Content','Not Included'], '— Select —', 'projFormCond()'))
+        + F('Encoding Required', _pjSel('pj_encoding', P.encoding, ['No','Standard','Studio'], '— Select —', 'projFormCond()'))
+        + F('Promotional Materials', _pjSel('pj_promo', P.promoMaterials, ['Not Required','Client-Provided','Required from Fulldome.pro'], '— Select —', 'projFormCond()'))
+        + `<div class="fhint" id="pjContentHint" style="display:none;color:#8a6a25">Add the details in Content Notes below — content type, encoding or promotional materials.</div>`
+        + F('Content Notes', I('pj_contentNotes', P.contentNotes, '', 'placeholder="Format, delivery or special requirements"'), true)
+        + F('Event / Rental Specifics', `<textarea id="pj_eventNotes" rows="3" placeholder="Rental period, operating schedule, installation, breakdown and other technical conditions">${esc(P.eventNotes||'')}</textarea>`, true)))}
     </div>`;
   const isPre = editing && !!e && isPreP(P);
   const canEdit = !isPre || preCanAccess(P);   /* BUILD 15.52: access list + creator + AN/GT/2F may edit; others get a frozen view */
@@ -10311,7 +10417,7 @@ function route(){
   /* BUILD 14.20: entering the Equipment Library tab collapses every group (in-page
      rerenders keep the state — route._prevHash stays '#/library'). */
   if(h === '#/library' && route._prevHash !== '#/library'){ _libCollapsed = {}; LIB_GROUPS.forEach(g=>{ _libCollapsed[g.key] = true; }); _libGroupsEdit = false; }
-  if(h === '#/projects' && route._prevHash !== '#/projects'){ _projMode = 'edit'; _projTitleManual = false; }   /* BUILD 14.41: enter Projects showing the selected project */
+  if(h === '#/projects' && route._prevHash !== '#/projects'){ _projMode = 'edit'; _projTitleManual = false; _projSecState = {}; }   /* BUILD 14.41/15.53: enter Projects showing the selected project, reset section collapse */
   route._prevHash = h;
   renderNav(rr.nav);
   document.getElementById('content').innerHTML = rr.render();
@@ -10322,6 +10428,7 @@ function route(){
   polishPass();   /* BUILD 14.60: tooltips on truncated names + dim empty-link buttons */
   try{ presenceOnRoute(); }catch(_){}   /* BUILD 15.45: live editing presence overlays */
   try{ preAuditPaint(); }catch(_){}     /* BUILD 15.49: per-field "last edited by" avatars (pre-project only) */
+  try{ if(location.hash==='#/projects') projFormCond(); }catch(_){}   /* BUILD 15.53: apply Sound-System conditional fields */
 }
 /* BUILD 14.60 — after every render: show the full text of a truncated name on hover (title),
    and grey-out / disable the copy+open buttons of a link field that is empty. */
