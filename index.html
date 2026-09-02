@@ -121,7 +121,7 @@
   /* BUILD 15.48 — pre-project */
   .preurow{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:8px;cursor:pointer}
   .preurow:hover{background:#f4f5f7}
-  .preurow input{width:16px;height:16px;accent-color:#2f6fed;flex:none}
+  .preurow input{width:16px;height:16px;accent-color:#69A7FF;flex:none}
   .preav{width:24px;height:24px;border-radius:50%;color:#fff;font-weight:800;font-size:10px;display:inline-flex;align-items:center;justify-content:center;flex:none}
   .preem{font-size:12.5px;color:var(--ink)}
   /* BUILD 15.63 — pre-project card: Midnight Blue. Uniform blue border, no red/pink, no grey fill,
@@ -138,7 +138,7 @@
   .pj.pre .presnow-tr{color:#91BDFF;background:#203C64;border-radius:8px;padding:4px;top:8px;right:8px}
   .pjhead.pre-h{color:#69A7FF}
   .pjhead.pre-h .n{background:#203C64;color:#91BDFF}
-  .presnow-tr{position:absolute;top:8px;right:9px;color:#2f6fed;z-index:2;line-height:0}
+  .presnow-tr{position:absolute;top:8px;right:9px;color:#69A7FF;z-index:2;line-height:0}
   .fld-aud{position:absolute;top:0;right:0;width:18px;height:18px;border-radius:50%;color:#fff;font-size:8.5px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.25);z-index:2}
   .modgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
   .mod{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:11px;position:relative;transition:border-color .12s,box-shadow .12s}
@@ -397,6 +397,29 @@
   .fg-srv{background:#eef6f0;border-color:#d7e9dd}     .fg-srv   .fgroup-h{color:#2f7a4d;--gc:#3fa35f}
   .fg-audio{background:#f5f1fb;border-color:#e4dbf2}   .fg-audio .fgroup-h{color:#5d47a0;--gc:#7a5fce}
   .fg-content{background:#faf5eb;border-color:#ecdfc8} .fg-content .fgroup-h{color:#8a6a25;--gc:#c19a3f}
+  /* BUILD 15.67 — Admin Console */
+  .rfilter{display:flex;gap:6px;margin:10px 0 4px;flex-wrap:wrap}
+  .rfilter button{border:1px solid var(--line);background:#fff;color:var(--ink2);font:inherit;font-size:13px;padding:8px 16px;border-radius:8px;cursor:pointer}
+  .rfilter button.on{background:#69A7FF;border-color:#69A7FF;color:#fff;font-weight:700}
+  .subtabs{display:flex;gap:18px;border-bottom:1px solid var(--line);margin:8px 0 14px}
+  .subtabs a{padding:8px 2px;font-size:13px;color:var(--ink2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+  .subtabs a.on{color:#69A7FF;border-bottom-color:#69A7FF;font-weight:700}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .seg button{border:none;background:#fff;color:var(--ink2);font:inherit;font-size:12.5px;padding:6px 14px;cursor:pointer;border-left:1px solid var(--line)}
+  .seg button:first-child{border-left:none}
+  .seg button.on{background:#69A7FF;color:#fff;font-weight:700}
+  .seg button.on.warn{background:#c94b4b}
+  .acctbl{width:100%;border-collapse:collapse;font-size:13px}
+  .acctbl th{text-align:left;color:var(--ink2);font-weight:700;font-size:10.5px;letter-spacing:.4px;text-transform:uppercase;padding:8px 10px;border-bottom:1px solid var(--line)}
+  .acctbl td{padding:9px 10px;border-bottom:1px solid var(--line2,#eef0f3)}
+  .acctbl tr.grp td{background:#f6f7f9;color:var(--ink2);font-size:10.5px;letter-spacing:.5px;font-weight:700;text-transform:uppercase;padding:6px 10px}
+  .acctbl.perm td:last-child{width:280px}
+  .uav{display:inline-flex;width:22px;height:22px;border-radius:50%;color:#fff;font-size:10px;font-weight:700;align-items:center;justify-content:center;vertical-align:middle;margin-right:6px}
+  .vtag{font-size:10px;color:#8a6a25;background:#faf5eb;border:1px solid #ecdfc8;border-radius:10px;padding:1px 7px;margin-left:6px}
+  .accgrid{display:grid;grid-template-columns:1fr 300px;gap:18px}
+  @media(max-width:900px){.accgrid{grid-template-columns:1fr}}
+  .accbar{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+  .accsum{background:#f2f6fc;border:1px solid #dbe8f6;border-radius:10px;padding:14px}
   .fld label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ink2);margin-bottom:5px}
   .fld input,.fld select,.fld textarea{width:100%;font-family:inherit;font-size:14px;color:var(--ink);
     border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#fff}
@@ -745,7 +768,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.64 · PRE-PROJECT CARDS — MIDNIGHT BLUE (BLUE BORDER + THICKER BLUE LEFT EDGE, BLUE HEADER + ICON BADGE); IN-PROGRESS UNCHANGED</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.67 · ADMIN CONSOLE (STAGE 1) — ROLES (ADMIN/SALES/PM/ENGINEER) + PER-USER PERMISSIONS, access_users SYNC, CLIENT GATING, bucket FIELD; RULES PROPOSED (NOT DEPLOYED)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -855,7 +878,7 @@
 
 <div class="modal" id="preAdminModal">
   <div class="box" style="max-width:520px;width:92%">
-    <div class="mt" style="display:flex;align-items:center;gap:8px"><span style="color:#2f6fed">☆</span> Administration — access</div>
+    <div class="mt" style="display:flex;align-items:center;gap:8px"><span style="color:#69A7FF">☆</span> Administration — access</div>
     <div class="mm" style="margin-bottom:10px">Select who can open and edit this pre-project. Everyone else won't see it.</div>
     <div id="preAdminBody" style="max-height:46vh;overflow:auto;display:flex;flex-direction:column;gap:2px"></div>
     <div class="mb"><button class="no" onclick="preAdminCancel()">Cancel</button><button class="yes" onclick="preAdminSave()">Save</button></div>
@@ -1268,6 +1291,7 @@ const IC = {
   doc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h6"/></svg>',
   logs:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/><circle cx="19" cy="18" r="2"/></svg>',
   set:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.9 2.9l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.2a1.7 1.7 0 00-1-1.5 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.9-2.9l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.2a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.9-2.9l.1.1a1.7 1.7 0 001.9.3h.1a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.2a1.7 1.7 0 001 1.5h.1a1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.9 2.9l-.1.1a1.7 1.7 0 00-.3 1.9v.1a1.7 1.7 0 001.5 1h.2a2 2 0 110 4h-.2a1.7 1.7 0 00-1.5 1z"/></svg>',
+  shield:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9.5 12l1.8 1.8 3.4-3.6"/></svg>',
   server:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="7" rx="2"/><rect x="2" y="14" width="20" height="7" rx="2"/><path d="M6 6.5h.01M6 17.5h.01M10 6.5h4M10 17.5h4"/></svg>',
   rack:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M5 7h14M5 12h14M5 17h14M8.5 4.5h.01M8.5 9.5h.01M8.5 14.5h.01M8.5 19.5h.01"/></svg>',
   beam:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="15" height="10" rx="2"/><circle cx="9" cy="12" r="3"/><path d="M17 10l5-2v8l-5-2"/></svg>',
@@ -1306,10 +1330,11 @@ const NAV = [
   {id:'dome-library', label:'Dome Library', ic:IC.dome, route:'#/dome-library'},
   {id:'documentation', label:'Documentation', ic:IC.doc, route:'#/documentation'},
   {id:'logs', label:'System Logs', ic:IC.logs, route:'#/logs'},
-  {id:'settings', label:'Settings', ic:IC.set, route:'#/settings'}
+  {id:'settings', label:'Settings', ic:IC.set, route:'#/settings'},
+  {id:'admin', label:'Admin Console', ic:(IC.shield||IC.set), route:'#/admin', adminOnly:true}   /* BUILD 15.67 */
 ];
 function renderNav(active){
-  document.getElementById('nav').innerHTML = NAV.map(n =>
+  document.getElementById('nav').innerHTML = NAV.filter(n => !n.adminOnly || (typeof isAdminConsole==='function' && isAdminConsole())).map(n =>
     `<a class="nitem ${n.id===active?'sel':''}" href="${n.route}">${n.ic}<span>${n.label}</span></a>`).join('');
 }
 function toggleSide(){ document.getElementById('sidebar').classList.toggle('mini'); }
@@ -2185,11 +2210,14 @@ function renderSideProject(){
       +'<div class="pjt">'+esc(P.title||'—')+'</div>'+foot+'</div></div>';
   };
   const preList = db.projects.filter(e=>isPreEntry(e));   /* BUILD 15.52: everyone SEES the card; opening/editing is gated separately */
+  /* BUILD 15.67 — hide buckets the user has no view access to (e.g. Sales → Completed) */
+  const _seeProg = (typeof canView!=='function') || canView('inProgress');
+  const _seeDone = (typeof canView!=='function') || canView('completed');
   const cloudFolders = _cloudOn ? cloudUnlinkedFolders() : [];
-  const cloudProg = cloudFolders.filter(f => !(_cloudMeta[f.id] && _cloudMeta[f.id].done));
-  const cloudDone = cloudFolders.filter(f =>  (_cloudMeta[f.id] && _cloudMeta[f.id].done));
-  const inProg = db.projects.filter(e=>!e.done && !isPreEntry(e));
-  const done   = db.projects.filter(e=>e.done && !isPreEntry(e)).sort((a,b)=>(a.doneAt||0)-(b.doneAt||0));
+  const cloudProg = _seeProg ? cloudFolders.filter(f => !(_cloudMeta[f.id] && _cloudMeta[f.id].done)) : [];
+  const cloudDone = _seeDone ? cloudFolders.filter(f =>  (_cloudMeta[f.id] && _cloudMeta[f.id].done)) : [];
+  const inProg = _seeProg ? db.projects.filter(e=>!e.done && !isPreEntry(e)) : [];
+  const done   = _seeDone ? db.projects.filter(e=>e.done && !isPreEntry(e)).sort((a,b)=>(a.doneAt||0)-(b.doneAt||0)) : [];
   const progRows = cloudProg.map(cloudCard).join('') + inProg.map(cardHtml).join('');
   const doneRows = cloudDone.map(cloudCard).join('') + done.map(cardHtml).join('');
   const doneCount = done.length + cloudDone.length;
@@ -2761,6 +2789,8 @@ function _applyCapVj(data, f){
 function saveProjChanges(){
   try{
     const e = activeEntry(); if(!e || !e.data.project){ flashStat('No project selected'); return; }
+    const _res = isPreP(e.data.project) ? 'preProjects' : projResourceOf(e);   /* BUILD 15.67 */
+    if(!canEdit(_res)){ flashStat('View only — your role can\'t edit this project'); return; }
     const _oldName = projDriveFolderName(e.data.project);   /* BUILD 14.46: detect a name change → rename Drive folder */
     const f = readProjForm();
     if(isPreP(e.data.project)){ const ch = preAuditDiffKeys(e.data.project, f); if(ch.length) preAuditSet(e.data.project, ch, myEmail()); }   /* BUILD 15.49: per-field audit (pre only) */
@@ -2782,7 +2812,64 @@ function saveProjChanges(){
    AN/GT/2F) turns it into a normal project and THEN the Drive folder + backup are created.
    ============================================================================ */
 var TEAM_EMAILS = ['chernetsov.pgs@gmail.com','measurepoint.tm@gmail.com','gopageorge@gmail.com','vanhampton41@gmail.com','iris.shurkina@gmail.com','2e.fdpro@gmail.com'];
-var PROMOTE_EMAILS = ['chernetsov.pgs@gmail.com','gopageorge@gmail.com','2e.fdpro@gmail.com'];   /* AN / GT / 2F */
+var PROMOTE_EMAILS = ['chernetsov.pgs@gmail.com','gopageorge@gmail.com','2e.fdpro@gmail.com'];   /* AN / GT / 2F (legacy — superseded by changeStatus perm) */
+
+/* ============================================================================
+   BUILD 15.67 — ADMIN CONSOLE / ROLE-BASED ACCESS (Stage 1: model + UI + client gating).
+   Roles set standard permissions; Admin can override any single user. Per-resource access is a
+   3-way enum none|view|edit (mutually exclusive). Data lives in a separate Firestore collection
+   access_users/{email}. ROOT_ADMINS are baked in so an admin can never be locked out / for bootstrap.
+   Stage 2 (separate) = per-bucket onSnapshot so denied data never loads + deploy the Firestore rules.
+   ============================================================================ */
+var ROOT_ADMINS = ['chernetsov.pgs@gmail.com'];
+var ROLE_LABELS = { admin:'Admin', sales:'Sales', pm:'Project Manager', engineer:'Engineer' };
+var ROLE_ORDER  = ['admin','sales','pm','engineer'];
+var ROLE_DEFS = {
+  admin:    { preProjects:'edit', inProgress:'edit', completed:'edit', equipmentLibrary:'edit', domeLibrary:'edit', changeStatus:true,  drive:'manager', adminConsole:'manage' },
+  sales:    { preProjects:'edit', inProgress:'view', completed:'none', equipmentLibrary:'view', domeLibrary:'view', changeStatus:false, drive:'none',    adminConsole:'none' },
+  pm:       { preProjects:'edit', inProgress:'edit', completed:'view', equipmentLibrary:'view', domeLibrary:'view', changeStatus:true,  drive:'editor',  adminConsole:'none' },
+  engineer: { preProjects:'edit', inProgress:'edit', completed:'edit', equipmentLibrary:'edit', domeLibrary:'edit', changeStatus:true,  drive:'editor',  adminConsole:'none' }
+};
+var ACCESS_RESOURCES = [
+  { key:'preProjects',      label:'Pre-Projects',      group:'PROJECTS'  },
+  { key:'inProgress',       label:'In Progress',       group:'PROJECTS'  },
+  { key:'completed',        label:'Completed',         group:'PROJECTS'  },
+  { key:'equipmentLibrary', label:'Equipment Library', group:'LIBRARIES' },
+  { key:'domeLibrary',      label:'Dome Library',      group:'LIBRARIES' }
+];
+var DRIVE_LEVELS = ['none','viewer','editor','manager'];
+/* seed mapping for the current team (confirmed by the user) — used to bootstrap access_users */
+var SEED_ROLES = { 'chernetsov.pgs@gmail.com':'admin', 'measurepoint.tm@gmail.com':'sales',
+  'gopageorge@gmail.com':'engineer', '2e.fdpro@gmail.com':'engineer', 'vanhampton41@gmail.com':'engineer', 'iris.shurkina@gmail.com':'engineer' };
+function accUsersMap(){ if(!db.accessUsers) db.accessUsers={}; return db.accessUsers; }
+function accUserOf(email){ email=String(email||'').toLowerCase(); return accUsersMap()[email] || null; }
+function rolePerms(role){ return Object.assign({}, ROLE_DEFS[role] || ROLE_DEFS.engineer); }
+/* is this perms object identical to a role's defaults? (→ show plain role vs "Custom — based on X") */
+function permsEqualRole(perms, role){ const d=ROLE_DEFS[role]; if(!d||!perms) return false;
+  return Object.keys(d).every(function(k){ return perms[k]===d[k]; }); }
+function roleTagFor(u){ if(!u) return {role:'—', custom:false, base:''};
+  const base=u.baseRole||u.role||'engineer';
+  if(u.role && ROLE_DEFS[u.role] && permsEqualRole(u.perms, u.role)) return {role:u.role, custom:false, base:u.role};
+  const found=ROLE_ORDER.find(function(r){ return permsEqualRole(u.perms, r); });
+  if(found) return {role:found, custom:false, base:found};
+  return {role:'custom', custom:true, base:base}; }
+/* the CURRENT user's effective permissions */
+function myAccess(){ const em=myEmail();
+  const u=accUserOf(em); if(u && u.perms && u.active!==false) return u.perms;
+  if(ROOT_ADMINS.indexOf(em)>=0) return rolePerms('admin');
+  if(SEED_ROLES[em]) return rolePerms(SEED_ROLES[em]);
+  return rolePerms('engineer'); }               /* unknown signed-in team member → engineer default */
+function permVal(res){ return myAccess()[res]; }
+function canView(res){ if(ROOT_ADMINS.indexOf(myEmail())>=0) return true; const v=permVal(res); return v==='view'||v==='edit'; }
+function canEdit(res){ if(ROOT_ADMINS.indexOf(myEmail())>=0) return true; return permVal(res)==='edit'; }
+function canChangeStatus(){ return ROOT_ADMINS.indexOf(myEmail())>=0 || myAccess().changeStatus===true; }
+function isAdminConsole(){ return ROOT_ADMINS.indexOf(myEmail())>=0 || myAccess().adminConsole==='manage'; }
+/* which access resource governs a project entry (by stage / completion) */
+function projResourceOf(e){ if(!e||!e.data||!e.data.project) return 'inProgress';
+  if(isPreP(e.data.project)) return 'preProjects'; return e.done ? 'completed' : 'inProgress'; }
+function projBucketOf(e){ if(e&&e.data&&e.data.project&&isPreP(e.data.project)) return 'pre'; return (e&&e.done)?'completed':'inprogress'; }
+try{ ['myAccess','permVal','canView','canEdit','canChangeStatus','isAdminConsole','rolePerms','roleTagFor','projResourceOf','accUserOf'].forEach(function(n){ window[n]=eval(n); }); }catch(_){}
+
 function myEmail(){ return String(_gUser||'').toLowerCase(); }
 function teamInitials(em){ em=String(em||'').toLowerCase(); return presInitials({email:em}); }
 function isPreP(P){ return !!(P && P.stage==='pre'); }
@@ -2791,7 +2878,7 @@ function preAccessList(P){ return (P && Array.isArray(P.access)) ? P.access.map(
 /* who may SEE a pre-project: anyone on its access list, or its creator; non-pre → everyone */
 function preCanAccess(P){ if(!isPreP(P)) return true; const me=myEmail(); if(!me) return false;
   return preAccessList(P).indexOf(me)>=0 || String(P.createdBy||'').toLowerCase()===me || PROMOTE_EMAILS.indexOf(me)>=0; }   /* BUILD 15.51: AN/GT/2F always see pre-projects (they promote them) */
-function preCanPromote(){ return PROMOTE_EMAILS.indexOf(myEmail())>=0; }
+function preCanPromote(){ return canChangeStatus(); }   /* BUILD 15.67: promote = "Change Project Status" permission */
 /* BUILD 15.49 — per-field audit for pre-projects: which teammate last changed each field.
    Stored in P._audit = { <key>:{by,at} }; rides in the project doc, so it syncs. Shown as a small
    initials avatar at the top-right of each field, only in the pre-project edit form. */
@@ -2865,6 +2952,7 @@ function _buildProjectData(f){
 }
 function createProjFromForm(){
   try{
+    if(!canEdit('inProgress')){ flashStat('Your role can only create Pre-Projects'); return; }   /* BUILD 15.67 */
     const data = _buildProjectData(readProjForm());
     const entry = { id:newId(), frozen:false, data, _localNew:1 };
     db.projects.push(entry);
@@ -2898,7 +2986,7 @@ function createPreFromForm(f, access){
 }
 /* promote a pre-project to a normal In-Progress project → now the Drive folder + backup are made */
 function preMoveToInProgress(id){
-  if(!preCanPromote()){ alert('Only AN, GT or 2F can move a pre-project to In-Progress.'); return; }
+  if(!preCanPromote()){ alert('You need the "Change Project Status" permission to move a pre-project to In-Progress.'); return; }
   const e = db.projects.find(x=>x.id===(id||db.activeId)); if(!e) return;
   if(!isPreEntry(e)){ return; }
   if(!confirm('Move this pre-project to In-Progress? A Google Drive folder and a backup will be created.')) return;
@@ -3021,8 +3109,8 @@ function pageProjects(){
         + F('Event / Rental Specifics', `<textarea id="pj_eventNotes" rows="3" placeholder="Rental period, operating schedule, installation, breakdown and other technical conditions">${esc(P.eventNotes||'')}</textarea>`, true)))}
     </div>`;
   const isPre = editing && !!e && isPreP(P);
-  const canEdit = !isPre || preCanAccess(P);   /* BUILD 15.52: access list + creator + AN/GT/2F may edit; others get a frozen view */
-  const preBadge = '<span style="font-size:12px;color:#2f6fed;font-weight:700;border:1px solid #2f6fed;border-radius:20px;padding:2px 10px;vertical-align:middle;margin-left:6px">PRE</span>';
+  const canOpenPre = !isPre || preCanAccess(P);   /* BUILD 15.52/15.67: pre-project access (renamed from canEdit to free the global permission fn) */
+  const preBadge = '<span style="font-size:12px;color:#69A7FF;font-weight:700;border:1px solid #69A7FF;border-radius:20px;padding:2px 10px;vertical-align:middle;margin-left:6px">PRE</span>';
   /* Administration / Access panel — shown when editing a pre-project */
   const accEmails = preAccessList(P);
   const createdBy = String(P.createdBy||'').toLowerCase();
@@ -3043,32 +3131,36 @@ function pageProjects(){
     : (e ? (isPre ? 'Pre-project — visible only to its access list. No Drive folder or backup until it is moved to In-Progress.'
                   : ('Editing ' + (P.title ? esc(P.title) : ('#' + esc(P.number||'—'))) + ' — changes save only to this project.'))
          : 'Pick a project in the sidebar to edit it, or create one above.');
+  const _roNote = '<div class="sub" style="margin:0;color:#8a6a25">View only — your role can\'t edit this. Changes are disabled.</div>';   /* BUILD 15.67 */
   let actions;
   if(_projMode==='newpre'){
-    actions = `<button class="create-btn" style="margin:0;max-width:250px;background:#2f6fed" onclick="preOpenAdmin()">☆ Save as Pre-Project</button>
-      <button class="mod-btn" style="flex:none;padding:0 22px;font-size:13.5px" onclick="projCancelNew()">Cancel</button>`;
+    actions = canEdit('preProjects') ? `<button class="create-btn" style="margin:0;max-width:250px;background:#69A7FF" onclick="preOpenAdmin()">☆ Save as Pre-Project</button>
+      <button class="mod-btn" style="flex:none;padding:0 22px;font-size:13.5px" onclick="projCancelNew()">Cancel</button>` : _roNote;
   } else if(_projMode==='new'){
-    actions = `<button class="create-btn" style="margin:0;max-width:240px" onclick="createProjFromForm()">${IC.check} Create Project</button>
-      <button class="mod-btn" style="flex:none;padding:0 22px;font-size:13.5px" onclick="projCancelNew()">Cancel</button>`;
+    actions = canEdit('inProgress') ? `<button class="create-btn" style="margin:0;max-width:240px" onclick="createProjFromForm()">${IC.check} Create Project</button>
+      <button class="mod-btn" style="flex:none;padding:0 22px;font-size:13.5px" onclick="projCancelNew()">Cancel</button>`
+      : '<div class="sub" style="margin:0;color:#8a6a25">Your role can only create Pre-Projects, not In-Progress projects.</div>';
   } else if(isPre){
     const canP = preCanPromote();
-    actions = `<button class="create-btn" style="margin:0;max-width:240px" onclick="saveProjChanges()">${IC.check} Save Changes</button>
-      <button class="create-btn" style="margin:0;max-width:280px;background:${canP?'#2e9e5b':'#9aa2ad'};${canP?'':'cursor:not-allowed'}" ${canP?'onclick="preMoveToInProgress(\''+e.id+'\')"':'disabled title="Only AN, GT or 2F can promote"'}>→ Move to In-Progress</button>`;
+    actions = (canEdit('preProjects') ? `<button class="create-btn" style="margin:0;max-width:240px" onclick="saveProjChanges()">${IC.check} Save Changes</button>` : '')
+      + `<button class="create-btn" style="margin:0;max-width:280px;background:${canP?'#2e9e5b':'#9aa2ad'};${canP?'':'cursor:not-allowed'}" ${canP?'onclick="preMoveToInProgress(\''+e.id+'\')"':'disabled title="Requires Change Project Status permission"'}>→ Move to In-Progress</button>`;
   } else if(e){
-    actions = `<button class="create-btn" style="margin:0;max-width:260px" onclick="saveProjChanges()">${IC.check} Save Changes</button>`;
+    actions = canEdit(projResourceOf(e))
+      ? `<button class="create-btn" style="margin:0;max-width:260px" onclick="saveProjChanges()">${IC.check} Save Changes</button>`
+      : _roNote;
   } else { actions = ''; }
   /* frozen/locked view — a pre-project opened by someone NOT on its access list */
   const lockedBody = `
-    <div style="margin:2px 0 12px"><h2 style="margin:0;font-size:17px;font-weight:800">Pre-Project ${preBadge} <span style="font-size:12px;color:#2f6fed;font-weight:700;margin-left:4px">· locked</span></h2>
+    <div style="margin:2px 0 12px"><h2 style="margin:0;font-size:17px;font-weight:800">Pre-Project ${preBadge} <span style="font-size:12px;color:#69A7FF;font-weight:700;margin-left:4px">· locked</span></h2>
       <div class="sub" style="margin-top:3px">You can see this pre-project, but you're not on its access list — opening is frozen.</div></div>
-    <div class="card" style="text-align:center;padding:36px 24px;border:2px solid #2f6fed;background:#f0f5ff">
-      <div style="color:#2f6fed;margin-bottom:10px"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 2.5v19M3.8 7.25l16.4 9.5M20.2 7.25L3.8 16.75"/><path d="M12 5.7l-2.3 1.35M12 5.7l2.3 1.35M12 18.3l-2.3-1.35M12 18.3l2.3-1.35M4.9 9.1l2.3.15M4.9 9.1l.1 2.65M19.1 9.1l-2.3.15M19.1 9.1l-.1 2.65M4.9 14.9l2.3-.15M19.1 14.9l-2.3-.15"/></svg></div>
+    <div class="card" style="text-align:center;padding:36px 24px;border:2px solid #69A7FF;background:#f0f5ff">
+      <div style="color:#69A7FF;margin-bottom:10px"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 2.5v19M3.8 7.25l16.4 9.5M20.2 7.25L3.8 16.75"/><path d="M12 5.7l-2.3 1.35M12 5.7l2.3 1.35M12 18.3l-2.3-1.35M12 18.3l2.3-1.35M4.9 9.1l2.3.15M4.9 9.1l.1 2.65M19.1 9.1l-2.3.15M19.1 9.1l-.1 2.65M4.9 14.9l2.3-.15M19.1 14.9l-2.3-.15"/></svg></div>
       <div style="font-weight:800;font-size:17px;color:#1b2b52">${esc(P.title || ('#'+(P.number||'—')))}</div>
       <div class="sub" style="margin-top:8px">🔒 Frozen — only the access list can open and edit it${accEmails.length?(': '+accEmails.map(em=>esc(teamInitials(em))).join(' · ')):''}.${createdBy?(' Creator: '+esc(teamInitials(createdBy))+'.'):''}</div>
     </div>`;
   const body = (editing && !e)
     ? `<div class="card" style="text-align:center;padding:34px 24px"><p style="color:var(--ink2);margin:0">No project selected. Pick one in the sidebar, or create a new project / pre-project above.</p></div>`
-    : (isPre && !canEdit)
+    : (isPre && !canOpenPre)
       ? lockedBody
       : `<div style="margin:2px 0 12px"><h2 style="margin:0;font-size:17px;font-weight:800">${bodyTitle}</h2><div class="sub" style="margin-top:3px">${bodySub}</div></div>
        <div class="card">${form}${adminPanel}<div style="display:flex;gap:12px;margin-top:18px;align-items:center;flex-wrap:wrap">${actions}</div></div>`;
@@ -3080,8 +3172,8 @@ function pageProjects(){
         <h1 style="margin:0">Projects</h1>
         <div class="sub">Create a project or pre-project, or edit the one selected in the sidebar.</div></div>
       <div style="display:flex;gap:10px;flex:none;flex-wrap:wrap">
-        <button class="mod-btn primary" style="flex:none" onclick="projNewMode()">+ New Project</button>
-        <button class="mod-btn" style="flex:none;border-color:#2f6fed;color:#2f6fed" onclick="projNewPreMode()">+ New Pre-Project</button>
+        ${canEdit('inProgress') ? '<button class="mod-btn primary" style="flex:none" onclick="projNewMode()">+ New Project</button>' : ''}
+        ${canEdit('preProjects') ? '<button class="mod-btn" style="flex:none;border-color:#69A7FF;color:#69A7FF" onclick="projNewPreMode()">+ New Pre-Project</button>' : ''}
       </div>
     </div>
     <div style="border-top:2px solid var(--fdp-red);margin:8px 0 18px"></div>
@@ -3203,6 +3295,132 @@ function constructDstRow(active, m){
     <span class="chip ${n?'c-ok':'c-mut'}"><span class="cd"></span>${n ? (n + ' items') : 'Empty'}</span>
   </div>`;
 }
+/* ============================================================================
+   BUILD 15.67 — ADMIN CONSOLE page (#/admin). Manage users, roles & per-user permissions.
+   Visible in the left menu only to users with adminConsole = manage. UI-only enforcement here;
+   Firestore Rules (proposed in firestore.rules) are the real gate — deploy them in Stage 2.
+   ============================================================================ */
+var _adminTab = 'users';        /* users | perms | drive */
+var _adminSel = '';             /* selected user email (Permissions tab) */
+var _adminRoleFilter = '';      /* '' = all, else a role key */
+var _adminDraft = null;         /* {email,name,role,baseRole,perms,active} being edited */
+/* merged team list: real access_users docs + any seed-team emails not yet saved (shown as their role default) */
+function adminUserList(){
+  const map = accUsersMap(); const out = []; const seen = {};
+  Object.keys(map).forEach(function(em){ const u=map[em]; out.push(Object.assign({ email:em, active:true }, u)); seen[em]=1; });
+  Object.keys(SEED_ROLES).forEach(function(em){ if(seen[em]) return; out.push({ email:em, role:SEED_ROLES[em], perms:rolePerms(SEED_ROLES[em]), active:true, _virtual:true }); });
+  out.sort(function(a,b){ return String(a.email).localeCompare(String(b.email)); });
+  return out;
+}
+function adminFindUser(email){ email=String(email||'').toLowerCase();
+  const u=accUserOf(email); if(u) return Object.assign({email:email, active:true}, u);
+  if(SEED_ROLES[email]) return { email:email, role:SEED_ROLES[email], perms:rolePerms(SEED_ROLES[email]), active:true, _virtual:true };
+  return null; }
+function adminGo(tab){ _adminTab=tab; goTo('#/admin'); }
+function adminPick(email){ const u=adminFindUser(email); if(!u) return;
+  _adminSel=String(email).toLowerCase();
+  _adminDraft={ email:_adminSel, name:u.name||'', initials:u.initials||teamInitials(_adminSel), role:(u.role||'engineer'), baseRole:(u.baseRole||u.role||'engineer'), perms:Object.assign(rolePerms(u.role||'engineer'), u.perms||{}), active:u.active!==false };
+  _adminTab='perms'; goTo('#/admin'); }
+function adminSetRole(role){ if(!_adminDraft) return; _adminDraft.role=role; _adminDraft.baseRole=role; _adminDraft.perms=rolePerms(role); rerenderKeepScroll(); }
+function adminSetPerm(res,val){ if(!_adminDraft) return; _adminDraft.perms[res]=val; rerenderKeepScroll(); }
+function adminSetFlag(key,val){ if(!_adminDraft) return; _adminDraft.perms[key]=val; rerenderKeepScroll(); }
+function adminReset(){ if(!_adminDraft) return; _adminDraft.perms=rolePerms(_adminDraft.baseRole||_adminDraft.role||'engineer'); rerenderKeepScroll(); }
+function adminAddUser(){ let em=prompt('New user email (Google account):',''); if(em===null) return; em=String(em).trim().toLowerCase(); if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){ alert('Enter a valid email.'); return; }
+  if(accUserOf(em)){ adminPick(em); return; }
+  _adminSel=em; _adminDraft={ email:em, name:'', initials:teamInitials(em), role:'engineer', baseRole:'engineer', perms:rolePerms('engineer'), active:true }; _adminTab='perms'; goTo('#/admin'); }
+function adminSave(){ if(!_adminDraft){ return; }
+  if(!fsReady()){ alert('Not connected — sign in to save permissions to the shared database.'); return; }
+  const tag=roleTagFor({ role:_adminDraft.role, baseRole:_adminDraft.baseRole, perms:_adminDraft.perms });
+  const now=Date.now(); const existing=accUserOf(_adminDraft.email);
+  const u={ email:_adminDraft.email, name:_adminDraft.name||'', initials:_adminDraft.initials||teamInitials(_adminDraft.email),
+    role: tag.custom ? 'custom' : tag.role, baseRole: _adminDraft.baseRole||tag.base||'engineer', perms:_adminDraft.perms, active:_adminDraft.active!==false,
+    updatedBy: myEmail(), updatedAt: now, createdBy:(existing&&existing.createdBy)||myEmail(), createdAt:(existing&&existing.createdAt)||now };
+  accFsWrite(u).then(function(){ flashStat('Permissions saved ✓'); }).catch(function(e){ alert('Could not save: '+(e&&e.message||e)); });
+}
+function adminToggleActive(email){ const u=adminFindUser(email); if(!u){ return; } const nu=Object.assign({}, u); delete nu._virtual; nu.perms=nu.perms||rolePerms(nu.role||'engineer'); nu.active=!(u.active!==false)?true:false; nu.active=(u.active===false); nu.updatedBy=myEmail(); nu.updatedAt=Date.now();
+  accFsWrite(nu).then(function(){ flashStat(nu.active?'User enabled':'User disabled'); }).catch(function(e){ alert('Could not update: '+(e&&e.message||e)); }); }
+function adminSeedTeam(){ if(!fsReady()){ alert('Sign in first.'); return; } if(!confirm('Create access records for the current team ('+Object.keys(SEED_ROLES).length+' users) with their default roles?')) return;
+  const now=Date.now(); Promise.all(Object.keys(SEED_ROLES).map(function(em){ if(accUserOf(em)) return null; const role=SEED_ROLES[em];
+    return accFsWrite({ email:em, name:'', initials:teamInitials(em), role:role, baseRole:role, perms:rolePerms(role), active:true, createdBy:myEmail(), createdAt:now, updatedBy:myEmail(), updatedAt:now }); }))
+    .then(function(){ flashStat('Team imported ✓'); }).catch(function(e){ alert('Seed failed: '+(e&&e.message||e)); }); }
+try{ ['adminGo','adminPick','adminSetRole','adminSetPerm','adminSetFlag','adminReset','adminAddUser','adminSave','adminToggleActive','adminSeedTeam'].forEach(function(n){ window[n]=eval(n); }); }catch(_){}
+
+/* one 3-position segmented control (None | View | Edit) */
+function accSeg(res, cur){ const opt=[['none','No Access'],['view','View'],['edit','Edit']];
+  return '<span class="seg">'+opt.map(function(o){ return '<button class="'+(cur===o[0]?'on'+(o[0]==='none'?' warn':''):'')+'" onclick="adminSetPerm(\''+res+'\',\''+o[0]+'\')">'+o[1]+'</button>'; }).join('')+'</span>'; }
+function accSegVals(key, cur, opts){ return '<span class="seg">'+opts.map(function(o){ return '<button class="'+(String(cur)===String(o[0])?'on':'')+'" onclick="adminSetFlag(\''+key+'\','+(typeof o[0]==='boolean'?o[0]:('\''+o[0]+'\''))+')">'+o[1]+'</button>'; }).join('')+'</span>'; }
+function adminSummary(d){ const p=d.perms; const can=[]; const cant=[];
+  if(p.preProjects==='edit') can.push('create pre-projects'); else if(p.preProjects==='view') can.push('view pre-projects');
+  if(p.inProgress!=='none') (p.inProgress==='edit'?can:can).push((p.inProgress==='edit'?'edit':'view')+' In Progress');
+  if(p.completed==='none') cant.push('Completed'); else can.push((p.completed==='edit'?'edit':'view')+' Completed');
+  if(p.equipmentLibrary!=='none'||p.domeLibrary!=='none') can.push('view libraries');
+  if(p.drive==='none') cant.push('Google Drive');
+  const nm=ROLE_LABELS[roleTagFor(d).role]||'Custom';
+  return nm+' can '+ (can.length?can.join(', '):'do little') + (cant.length?(', and cannot access '+cant.join(' or ')):'') + '.'; }
+
+function pageAdmin(){
+  if(!isAdminConsole()){
+    return '<div class="page" style="max-width:760px"><div class="crumbs"><a href="#/dashboard">Dashboard</a> › <span class="cur">Admin Console</span></div>'
+      + '<div class="pagehead"><h1 style="margin:0">Admin Console</h1></div>'
+      + '<div class="card" style="text-align:center;padding:40px 24px;border:1px solid var(--line)"><div style="font-weight:800;font-size:16px;color:var(--ink)">Access Restricted</div>'
+      + '<div class="sub" style="margin-top:8px">Only users with Admin Console = Manage can open this page.</div></div></div>';
+  }
+  const users=adminUserList();
+  const filt=_adminRoleFilter ? users.filter(function(u){ return roleTagFor(u).base===_adminRoleFilter || u.role===_adminRoleFilter; }) : users;
+  /* header + role filter + subtabs */
+  const roleTabs='<div class="rfilter">'+[''].concat(ROLE_ORDER).map(function(r){ const lbl=r?ROLE_LABELS[r]:'All'; return '<button class="'+(_adminRoleFilter===r?'on':'')+'" onclick="_adminRoleFilter=\''+r+'\';rerenderKeepScroll()">'+lbl+'</button>'; }).join('')+'</div>';
+  const subTabs='<div class="subtabs">'+[['users','Users'],['perms','Permissions'],['drive','Google Drive']].map(function(t){ return '<a class="'+(_adminTab===t[0]?'on':'')+'" onclick="adminGo(\''+t[0]+'\')">'+t[1]+'</a>'; }).join('')+'</div>';
+  let body='';
+  if(_adminTab==='users'){
+    const seedBtn = Object.keys(accUsersMap()).length ? '' : '<button class="mod-btn" style="flex:none;padding:0 14px" onclick="adminSeedTeam()">Import current team</button>';
+    body='<div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:10px">'+seedBtn+'</div>'
+      + '<table class="acctbl"><thead><tr><th>User</th><th>Role</th><th>Status</th><th></th></tr></thead><tbody>'
+      + filt.map(function(u){ const tag=roleTagFor(u); const rl=tag.custom?('Custom · '+ROLE_LABELS[tag.base]):ROLE_LABELS[tag.role]||'—';
+          return '<tr><td><span class="uav" style="background:'+presenceColor(u.email)+'">'+esc(teamInitials(u.email))+'</span> '+esc(u.email)+(u._virtual?' <span class="vtag">not saved</span>':'')+'</td>'
+            +'<td>'+esc(rl)+'</td><td>'+(u.active===false?'<span style="color:#b02525">Disabled</span>':'<span style="color:#1f7a45">Active</span>')+'</td>'
+            +'<td style="text-align:right"><button class="mod-btn" style="flex:none;padding:0 12px;height:30px" onclick="adminPick(\''+esc(u.email)+'\')">Permissions</button></td></tr>'; }).join('')
+      + '</tbody></table>';
+  } else if(_adminTab==='drive'){
+    body='<div class="sub" style="margin:0 0 10px">Google Drive access is managed separately from PSP. This is a reference view — sharing the Drive folder is done manually for now.</div>'
+      + '<table class="acctbl"><thead><tr><th>User</th><th>Drive access</th><th>Note</th></tr></thead><tbody>'
+      + filt.map(function(u){ const dv=(u.perms&&u.perms.drive)||'none'; const lbl={none:'No Access',viewer:'Viewer',editor:'Editor',manager:'Manager'}[dv];
+          return '<tr><td>'+esc(u.email)+'</td><td>'+esc(lbl)+'</td><td>'+(dv==='none'?'<span style="color:#8a6a25">⚠ Folder not shared with this user</span>':'Share the PSP folder as '+esc(lbl))+'</td></tr>'; }).join('')
+      + '</tbody></table>';
+  } else {
+    /* Permissions */
+    if(!_adminDraft){ body='<div class="card" style="text-align:center;padding:30px"><div class="sub" style="margin:0">Pick a user in the <b>Users</b> tab to edit permissions.</div></div>'; }
+    else{ const d=_adminDraft; const tag=roleTagFor(d); const roleLbl=tag.custom?('Custom — based on '+ROLE_LABELS[tag.base]):ROLE_LABELS[tag.role];
+      const roleSel='<select onchange="adminSetRole(this.value)" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px">'+ROLE_ORDER.map(function(r){ return '<option value="'+r+'"'+((!tag.custom&&tag.role===r)||(tag.custom&&tag.base===r)?' selected':'')+'>'+ROLE_LABELS[r]+'</option>'; }).join('')+'</select>';
+      let rows=''; let lastGrp='';
+      ACCESS_RESOURCES.forEach(function(r){ if(r.group!==lastGrp){ rows+='<tr class="grp"><td colspan="2">'+r.group+'</td></tr>'; lastGrp=r.group; }
+        rows+='<tr><td>'+r.label+'</td><td style="text-align:right">'+accSeg(r.key, d.perms[r.key])+'</td></tr>'; });
+      const other='<tr class="grp"><td colspan="2">OTHER</td></tr>'
+        +'<tr><td>Change Project Status</td><td style="text-align:right">'+accSegVals('changeStatus', d.perms.changeStatus, [[false,'No'],[true,'Yes']])+'</td></tr>'
+        +'<tr><td>Google Drive</td><td style="text-align:right">'+accSegVals('drive', d.perms.drive||'none', [['none','No Access'],['viewer','Viewer'],['editor','Editor'],['manager','Manager']])+'</td></tr>'
+        +'<tr><td>Admin Console</td><td style="text-align:right">'+accSegVals('adminConsole', d.perms.adminConsole||'none', [['none','No Access'],['manage','Manage']])+'</td></tr>';
+      body='<div class="accgrid">'
+        + '<div>'
+        + '<div class="accbar"><span>User <b>'+esc(d.email)+'</b></span><span style="margin-left:auto">Role '+roleSel+'</span><button class="mod-btn" style="flex:none;padding:0 12px;height:32px" onclick="adminReset()">Role defaults</button></div>'
+        + (tag.custom?'<div class="sub" style="margin:0 0 8px;color:#8a6a25">'+esc(roleLbl)+'</div>':'')
+        + '<table class="acctbl perm"><tbody>'+rows+other+'</tbody></table>'
+        + '<div style="display:flex;gap:10px;margin-top:14px"><button class="create-btn" style="margin:0;max-width:210px" onclick="adminSave()">Save Permissions</button>'
+        + '<button class="mod-btn" style="flex:none;padding:0 16px" onclick="adminReset()">Reset to Role Defaults</button></div>'
+        + '</div>'
+        + '<div class="accsum"><div style="font-weight:700;margin-bottom:6px">Summary</div><div class="sub" style="margin:0">'+esc(adminSummary(d))+'</div></div>'
+        + '</div>';
+    }
+  }
+  return '<div class="page" style="max-width:1080px">'
+    + '<div class="crumbs"><a href="#/dashboard">Dashboard</a> › <span class="cur">Admin Console</span></div>'
+    + '<div class="pagehead" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap"><div>'
+    + '<div class="eyebrow">Fulldome Projection SP</div><h1 style="margin:0">Admin Console</h1>'
+    + '<div class="sub">Manage PSP users, permissions and Google Drive access.</div></div>'
+    + '<button class="mod-btn primary" style="flex:none" onclick="adminAddUser()">+ Add User</button></div>'
+    + roleTabs + subTabs
+    + '<div class="card" style="padding:16px">'+body+'</div>'
+    + '</div>';
+}
+
 function pageSettings(){
   const active = activeEntry();
   const P = active ? (active.data.project || {}) : {};
@@ -5862,7 +6080,7 @@ async function fsSignIn(){
 /* the full document for a NEW project (all sections + per-section revisions) */
 function fsFullDoc(e){
   const sl = fsSlice(e.data), now = (e.data.project._rev || Date.now());
-  const doc = { pid: fbpPid(e), done: !!e.done, doneAt: e.doneAt || 0, updatedBy: _gUser || '', msig: fbpMediaSig(e), revs: {} };
+  const doc = { pid: fbpPid(e), done: !!e.done, doneAt: e.doneAt || 0, bucket: projBucketOf(e), updatedBy: _gUser || '', msig: fbpMediaSig(e), revs: {} };   /* BUILD 15.67: bucket = pre|inprogress|completed (for role-based rules/queries) */
   FS_SECTIONS.forEach(s => { doc[s] = fsClean(sl[s] || {}); doc.revs[s] = now; });
   if(e._browseFid) doc.browseFid = e._browseFid;
   return fsClean(doc);
@@ -5912,6 +6130,7 @@ async function fsPushNow(entry){
       const now = Date.now(), sl = fsSlice(e.data), upd = { updatedBy: _gUser || '', pid };
       changed.forEach(s => { upd[s] = fsClean(sl[s] || {}); upd['revs.' + s] = now; });   /* per-section: only changed fields, others untouched */
       if(doneChanged){ upd.done = !!e.done; upd.doneAt = e.doneAt || 0; }
+      upd.bucket = projBucketOf(e);   /* BUILD 15.67: keep the role-routing bucket current */
       if(msigChanged) upd.msig = msig;
       try{ await ref.update(upd); }
       catch(err){ await ref.set(fsFullDoc(e)); }             /* doc vanished → recreate */
@@ -6236,9 +6455,27 @@ async function fsStart(){
      media check makes B converge on its own — cheap: a no-op in-memory loop unless a msig differs. */
   if(_fsMediaTimer){ clearInterval(_fsMediaTimer); }
   _fsMediaTimer = setInterval(function(){ if(_FS && _cloudOn && _gTok) fbpMediaSync().catch(function(){}); }, 12000);
+  try{ accFsEnsureStarted(); }catch(_){}   /* BUILD 15.67: live access_users (roles/permissions) */
   setCloudStat('Firestore ✓ ' + (_gUser || ''));
 }
 var _fsMediaTimer = null;
+/* ============ BUILD 15.67 — access_users live sync (separate collection, additive) ============ */
+var _accFsUnsub = null;
+function accFsEnsureStarted(){
+  if(!fsReady() || _accFsUnsub) return;
+  try{
+    _accFsUnsub = _fsDb.collection('access_users').onSnapshot(function(snap){
+      const m = {}; snap.forEach(function(d){ const x = d.data()||{}; const em = String(x.email||d.id||'').toLowerCase(); if(em) m[em] = x; });
+      db.accessUsers = m;
+      const _sk = saveState._skipCloud; saveState._skipCloud = true; try{ saveState(); }finally{ saveState._skipCloud = _sk; }
+      try{ renderNav((ROUTES[location.hash]||{}).nav); }catch(_){}
+      try{ if(!isTypingInInput() && (location.hash==='#/admin')) route(); else renderSideProject(); }catch(_){}
+    }, function(_){});
+  }catch(_){}
+}
+function accFsWrite(u){ if(!fsReady()) return Promise.reject(new Error('offline')); u.email=String(u.email||'').toLowerCase(); return _fsDb.collection('access_users').doc(u.email).set(u); }
+function accFsDelete(email){ if(!fsReady()) return Promise.reject(new Error('offline')); return _fsDb.collection('access_users').doc(String(email||'').toLowerCase()).delete(); }
+function accStop(){ if(_accFsUnsub){ try{ _accFsUnsub(); }catch(_){} _accFsUnsub=null; } }
 function fsStop(){
   if(_fsUnsub){ try{ _fsUnsub(); }catch(_){} _fsUnsub = null; }
   if(_fsMediaTimer){ clearInterval(_fsMediaTimer); _fsMediaTimer = null; }
@@ -9293,13 +9530,13 @@ function pageLibrary(){
     const frozen = libGroupFrozen(g.key);
     const collapsed = editing ? true : (frozen ? true : !!_libCollapsed[g.key]);
     /* frozen section: dark shade + thin blue border, cannot expand (BUILD 14.26) */
-    const cardStyle = frozen ? 'background:#d9dee7;border:1px solid #2f6fed' : '';
+    const cardStyle = frozen ? 'background:#d9dee7;border:1px solid #69A7FF' : '';
     const headCtrls = editing
       ? `<span style="flex:1"></span>
          <button title="Move section up" style="${secBtn}" ${gi===0?'disabled':''} onclick="event.stopPropagation();moveLibGroup('${g.key}',-1)">▲</button>
          <button title="Move section down" style="${secBtn}" ${gi===ordered.length-1?'disabled':''} onclick="event.stopPropagation();moveLibGroup('${g.key}',1)">▼</button>
-         <button title="${frozen?'Frozen — click to unfreeze':'Freeze this section (locked shut)'}" style="${secBtn};background:${frozen?'#2f6fed':'#eef0f3'};color:${frozen?'#fff':'var(--ink2)'};width:34px" onclick="event.stopPropagation();toggleLibGroupFreeze('${g.key}')">${SNOW}</button>`
-      : `${frozen ? `<span title="Frozen section" style="color:#2f6fed;display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;flex:none">${SNOW} FROZEN</span>` : ''}`;
+         <button title="${frozen?'Frozen — click to unfreeze':'Freeze this section (locked shut)'}" style="${secBtn};background:${frozen?'#69A7FF':'#eef0f3'};color:${frozen?'#fff':'var(--ink2)'};width:34px" onclick="event.stopPropagation();toggleLibGroupFreeze('${g.key}')">${SNOW}</button>`
+      : `${frozen ? `<span title="Frozen section" style="color:#69A7FF;display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;flex:none">${SNOW} FROZEN</span>` : ''}`;
     /* body: Tools & Installation Hardware is ONE section that expands into FOUR sub-tables
        (Ropes/Slings/Rigging · Hand Tools · Power Tools · Fasteners), each with its OWN
        categories + items (BUILD 14.39). Every other group is one table as before. */
@@ -10293,7 +10530,8 @@ const ROUTES = {
   '#/network':       {nav:'dashboard', render:()=>pagePlaceholder('Network', IC.net, 'Switches, VLANs, IP plan and connectivity for the dome system — planned module.', 'Coming Soon')},
   '#/fan':           {nav:'dashboard', render:pageFan},
   '#/tools':         {nav:'dashboard', render:pageTools},
-  '#/shipping':      {nav:'dashboard', render:pageShipping}
+  '#/shipping':      {nav:'dashboard', render:pageShipping},
+  '#/admin':         {nav:'admin', render:pageAdmin, noProject:true}   /* BUILD 15.67 */
 };
 
 function goTo(hash){
@@ -10407,6 +10645,50 @@ try{ document.addEventListener('visibilitychange', function(){ if(!document.hidd
 setTimeout(function(){ try{ presenceOnRoute(); }catch(_){} }, 4000);   /* start once Firestore/auth is up */
 var _lastMod = '';   /* the module page opened most recently — its dashboard card keeps the red frame (BUILD 12.43) */
 const MODULE_ROUTES = ['#/server-rack','#/projectors','#/speakers','#/camera','#/network','#/fan','#/cables','#/tools','#/shipping'];
+/* BUILD 15.66 — while the SELECTED project is a PRE-PROJECT, only its info (Projects) and the two
+   shared libraries are open; every module / dashboard / documentation etc. is LOCKED until it's moved
+   to In-Progress. Stage-based — applies to everyone, including access-list (edit) members. */
+var PRE_OPEN_HASH = { '#/projects':1, '#/library':1, '#/dome-library':1, '#/create':1 };
+function preLockActive(h){ try{ return !!(state && state.project && isPreP(state.project) && !PRE_OPEN_HASH[h]); }catch(_){ return false; } }
+function pagePreLocked(h){
+  const P = (state && state.project) || {};
+  const nm = P.title ? esc(P.title) : ('#'+esc(P.number||'—'));
+  return `
+  <div class="page" style="max-width:760px">
+    <div class="crumbs"><a href="#/projects">Projects</a> › <span class="cur">Locked</span></div>
+    <div class="pagehead"><div class="eyebrow">Fulldome Projection SP</div>
+      <h1 style="margin:0">Locked</h1>
+      <div class="sub">This project is still a pre-project — modules open only after it is moved to In-Progress.</div></div>
+    <div class="card" style="text-align:center;padding:40px 26px;border:1.5px solid #69A7FF;background:#14243D;border-radius:10px;color:#F5F8FF">
+      <div style="color:#91BDFF;margin-bottom:12px"><svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div>
+      <div style="font-weight:800;font-size:18px">${nm}</div>
+      <div style="color:#B8C7DC;margin-top:8px;line-height:1.5">This section is locked for a pre-project.<br>Open it in <b style="color:#69A7FF">Projects</b> to edit its info, or browse the <b style="color:#69A7FF">Equipment</b> &amp; <b style="color:#69A7FF">Dome</b> libraries.</div>
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:20px;flex-wrap:wrap">
+        <button class="create-btn" style="margin:0;max-width:230px;background:#69A7FF" onclick="goTo('#/projects')">Open Pre-Project info</button>
+      </div>
+    </div>
+  </div>`;
+}
+/* BUILD 15.67 — role-based access lock. Returns replacement HTML when the current route is not
+   viewable for this user (pre-project stage lock, library view perm, or the active project's bucket),
+   else null. Client-side reflection of the permissions; Firestore Rules are the real gate (Stage 2). */
+var PROJ_PAGE_HASH = {'#/dashboard':1,'#/edit':1,'#/server-rack':1,'#/projectors':1,'#/camera':1,'#/cables':1,'#/speakers':1,'#/fan':1,'#/tools':1,'#/shipping':1,'#/equipment':1,'#/documentation':1};
+function pageAccessRestricted(what){
+  return '<div class="page" style="max-width:720px"><div class="pagehead"><div class="eyebrow">Fulldome Projection SP</div><h1 style="margin:0">Access Restricted</h1></div>'
+    +'<div class="card" style="text-align:center;padding:40px 24px;border:1px solid var(--line)"><div style="color:var(--ink2);margin-bottom:10px"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div>'
+    +'<div style="font-weight:800;font-size:17px">No access to '+esc(what)+'</div>'
+    +'<div class="sub" style="margin-top:8px">Your role doesn\'t include access to this section. Contact an administrator if you need it.</div></div></div>';
+}
+function accLockedHtml(h){
+  try{
+    if(preLockActive(h)) return pagePreLocked(h);
+    if(h==='#/library' && !canView('equipmentLibrary')) return pageAccessRestricted('the Equipment Library');
+    if(h==='#/dome-library' && !canView('domeLibrary')) return pageAccessRestricted('the Dome Library');
+    if(PROJ_PAGE_HASH[h] && state && state.project){ const e=activeEntry(); if(e){ const res=projResourceOf(e);
+      if(!canView(res)) return pageAccessRestricted(res==='completed'?'Completed projects':(res==='inProgress'?'In-Progress projects':'this project')); } }
+  }catch(_){}
+  return null;
+}
 function route(){
   let h = location.hash || (state.project ? '#/dashboard' : '#/create');
   if(!ROUTES[h]) h = state.project ? '#/dashboard' : '#/create';
@@ -10419,14 +10701,16 @@ function route(){
   if(h === '#/library' && route._prevHash !== '#/library'){ _libCollapsed = {}; LIB_GROUPS.forEach(g=>{ _libCollapsed[g.key] = true; }); _libGroupsEdit = false; }
   if(h === '#/projects' && route._prevHash !== '#/projects'){ _projMode = 'edit'; _projTitleManual = false; _projSecState = {}; }   /* BUILD 14.41/15.53: enter Projects showing the selected project, reset section collapse */
   route._prevHash = h;
+  const _lockHtml = accLockedHtml(h);   /* BUILD 15.66/15.67 */
+  const _preLock = _lockHtml != null;
   renderNav(rr.nav);
-  document.getElementById('content').innerHTML = rr.render();
+  document.getElementById('content').innerHTML = _lockHtml != null ? _lockHtml : rr.render();
   /* normal navigation resets to top; an in-place rerender (rerenderKeepScroll) preserves the offset */
   document.getElementById('content').scrollTop = (_keepScrollTop != null ? _keepScrollTop : 0);
   if(h === '#/create' || h === '#/edit' || h === '#/projects') noAutofill();   /* BUILD 14.15/14.41: stop browser autofill in the project forms */
   renderHeader(); renderSideProject();
   polishPass();   /* BUILD 14.60: tooltips on truncated names + dim empty-link buttons */
-  try{ presenceOnRoute(); }catch(_){}   /* BUILD 15.45: live editing presence overlays */
+  try{ if(!_preLock) presenceOnRoute(); }catch(_){}   /* BUILD 15.45/15.66: presence overlays (skipped on a locked pre-project page) */
   try{ preAuditPaint(); }catch(_){}     /* BUILD 15.49: per-field "last edited by" avatars (pre-project only) */
   try{ if(location.hash==='#/projects') projFormCond(); }catch(_){}   /* BUILD 15.53: apply Sound-System conditional fields */
 }
