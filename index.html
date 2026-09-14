@@ -770,7 +770,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.70 · ONLINE ROSTER — FRESHNESS BY DRIVE SERVER TIME (CLOCK-SKEW-PROOF) + 150s WINDOW, ONE AVATAR PER EMAIL; SHOWS EVERYONE SIGNED IN INCL. VIEWERS</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.71 · CLEAR ON-SCREEN REASON WHEN A USER CAN'T SEE PROJECTS (FIRESTORE PERMISSION-DENIED); DRIVE STATUS NO LONGER HIDES THE FIRESTORE ERROR</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -4922,7 +4922,10 @@ function driveWhoAmI(){
     .then(r=>r.json()).then(j=>{
       _gUser = (j.user && (j.user.emailAddress || j.user.displayName)) || '';
       const el = document.getElementById('driveStat');
-      if(el) el.textContent = _gUser ? ('Drive: ' + _gUser) : 'Drive: connected';
+      /* BUILD 15.71: under Firestore-primary, don't clobber the Firestore status (✓ or ⚠) with the Drive line —
+         that hid the real "no access to projects" error behind a harmless "Drive: <email>". */
+      if(el && !(_FS && (_fsFatal || (typeof fsReady==='function' && fsReady()))))
+        el.textContent = _gUser ? ('Drive: ' + _gUser) : 'Drive: connected';
       /* BUILD 15.68: refresh the left menu so the Admin Console item appears for admins right after sign-in */
       try{ renderNav((ROUTES[location.hash]||{}).nav); renderSideProject(); }catch(_){}
     }).catch(()=>{});
@@ -6448,7 +6451,16 @@ async function fsStart(){
   db.projects.forEach(e => { if(e.data && e.data.project && !e.data.project.pid) e.data.project.pid = newId(); });
   if(_fsUnsub){ try{ _fsUnsub(); }catch(_){} }
   fsDiag('attaching onSnapshot to projects…');
-  _fsUnsub = _fsCol.onSnapshot(function(snap){ fsDiag('snapshot: ' + snap.size + ' docs, ' + snap.docChanges().length + ' changes'); fsOnSnapshot(snap); }, function(err){ _fsFatal = 'Firestore stream error: ' + (err.message||''); fsDiag('SNAPSHOT ERROR: ' + (err.code||'') + ' ' + (err.message||''), true); setCloudStat('⚠ ' + _fsFatal + ' — click to retry'); });
+  _fsUnsub = _fsCol.onSnapshot(function(snap){ fsDiag('snapshot: ' + snap.size + ' docs, ' + snap.docChanges().length + ' changes'); fsOnSnapshot(snap); }, function(err){
+    /* BUILD 15.71: plain-language, on-screen reason (no F12 needed) — permission-denied = email not in the published Rules */
+    const denied = (err && (err.code === 'permission-denied' || /permission|insufficient/i.test(err.message||'')));
+    _fsFatal = denied
+      ? ('⛔ No access to projects for ' + (_gUser||'this account') + ' — ask the admin to add this email to Firestore Rules and Publish')
+      : ('Firestore stream error: ' + (err.message||''));
+    fsDiag('SNAPSHOT ERROR: ' + (err.code||'') + ' ' + (err.message||''), true);
+    setCloudStat('⚠ ' + _fsFatal + ' — click to retry');
+    if(denied && !fsStart._deniedAlerted){ fsStart._deniedAlerted = true; try{ alert('This account ('+(_gUser||'?')+') has no access to the projects database yet.\n\nAsk the workspace owner to add this email in Firebase → Firestore → Rules and press Publish.\n\n(Google Drive works; only the project database is blocked.)'); }catch(_){} }
+  });
   fsDiag('start ok — listening');
   /* BUILD 14.34: shortly after connect, seed/publish our library only if the server has none yet or
      we hold genuine local changes — a plain reconnect never force-bumps the transaction counter. */
