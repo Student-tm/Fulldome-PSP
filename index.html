@@ -420,6 +420,8 @@
   @media(max-width:900px){.accgrid{grid-template-columns:1fr}}
   .accbar{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
   .accsum{background:#f2f6fc;border:1px solid #dbe8f6;border-radius:10px;padding:14px}
+  .ro-banner{display:flex;align-items:center;gap:8px;background:#faf5eb;border:1px solid #ecdfc8;color:#8a6a25;border-radius:8px;padding:8px 12px;margin:0 0 14px;font-size:12.5px;font-weight:600}
+  .ro-dis{opacity:.55 !important;cursor:not-allowed !important}
   .fld label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--ink2);margin-bottom:5px}
   .fld input,.fld select,.fld textarea{width:100%;font-family:inherit;font-size:14px;color:var(--ink);
     border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#fff}
@@ -768,7 +770,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.68 · ADMIN CONSOLE MENU NOW APPEARS RIGHT AFTER SIGN-IN (RE-RENDER NAV WHEN _gUser IS SET); STAGE 1 ADMIN CONSOLE</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.70 · ONLINE ROSTER — FRESHNESS BY DRIVE SERVER TIME (CLOCK-SKEW-PROOF) + 150s WINDOW, ONE AVATAR PER EMAIL; SHOWS EVERYONE SIGNED IN INCL. VIEWERS</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -6662,7 +6664,7 @@ async function backupFindFile(name, parentId){
 }
 async function backupList(parentId){
   const q = encodeURIComponent("'" + parentId + "' in parents and trashed=false");
-  const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name,mimeType)&pageSize=1000');
+  const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name,mimeType,modifiedTime)&pageSize=1000');
   const j = await r.json(); return j.files || [];
 }
 async function backupCreateFolder(name, parentId){
@@ -6946,17 +6948,26 @@ async function presenceBeat(){
   const content = JSON.stringify({ email:me.email, name:me.name, picture:me.picture, color:me.color, at:Date.now() });
   _presMyFileId = await backupPutInPlace(presenceKey(me.email)+'.json', fid, content, _presMyFileId);   /* one file per user, updated in place */
 }
+var ONLINE_WINDOW_MS = 150000;   /* BUILD 15.70: online = heartbeat younger than this (was 60s) */
 async function presenceRead(){
   if(!_cloudOn || !_gTok) return;
   const fid = await presenceFolderId();
   const files = await backupList(fid);
-  const now = Date.now(), out = [];
+  const now = Date.now(), out = [], seen = {};
   await Promise.all(files.map(async f => {
     if(f.mimeType === 'application/vnd.google-apps.folder') return;
+    if(!/\.json$/i.test(f.name||'') || f.name === 'hidden.json') return;      /* only presence files */
     try{
       const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + f.id + '?alt=media');
       const j = JSON.parse(await r.text());
-      if(j && j.email && (now - (j.at||0)) < 60000) out.push(j);              /* online = heartbeat < 60s old */
+      /* BUILD 15.70: freshness by Drive SERVER time (modifiedTime) — immune to a teammate's skewed clock;
+         fall back to the JSON `at` only if the server field is missing */
+      const srv = f.modifiedTime ? Date.parse(f.modifiedTime) : 0;
+      const age = srv ? (now - srv) : (now - (j && j.at || 0));
+      if(j && j.email && age < ONLINE_WINDOW_MS){
+        const k = String(j.email).toLowerCase(); if(seen[k]) return; seen[k] = 1;   /* one avatar per email */
+        out.push(j);
+      }
     }catch(_){}
   }));
   out.sort((a,b)=> (a.email===((_meInfo&&_meInfo.email)||_gUser)?1:0) - (b.email===((_meInfo&&_meInfo.email)||_gUser)?1:0));  /* me last */
@@ -10681,6 +10692,41 @@ function pageAccessRestricted(what){
     +'<div style="font-weight:800;font-size:17px">No access to '+esc(what)+'</div>'
     +'<div class="sub" style="margin-top:8px">Your role doesn\'t include access to this section. Contact an administrator if you need it.</div></div></div>';
 }
+/* BUILD 15.69 — is the CURRENT page view-only for this user? (has View but not Edit for the resource) */
+function pageReadOnlyRes(h){
+  try{
+    if(h==='#/library')      return canView('equipmentLibrary') && !canEdit('equipmentLibrary');
+    if(h==='#/dome-library') return canView('domeLibrary') && !canEdit('domeLibrary');
+    if(h==='#/projects'){
+      if(_projMode==='new')    return !canEdit('inProgress');
+      if(_projMode==='newpre') return !canEdit('preProjects');
+      const e=activeEntry(); if(!e) return false; const res=projResourceOf(e);
+      return canView(res) && !canEdit(res);
+    }
+    if(PROJ_PAGE_HASH[h] && state && state.project){ const e=activeEntry(); if(e){ const res=projResourceOf(e); return canView(res) && !canEdit(res); } }
+  }catch(_){}
+  return false;
+}
+/* after render: when the page is view-only, disable every edit control + neutralize mutating onclicks,
+   keeping search/navigation/lightbox/collapse usable. Data stays visible; changes are impossible. */
+function applyAccessReadonly(h){
+  try{
+    const c=document.getElementById('content'); if(!c) return;
+    if(!pageReadOnlyRes(h)) return;
+    const page=c.querySelector('.page')||c;
+    if(!c.querySelector('.ro-banner')){
+      const bn=document.createElement('div'); bn.className='ro-banner';
+      bn.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex:none"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg> View only — your role can’t edit here. Adding, deleting, editing and saving are disabled.';
+      page.insertBefore(bn, page.firstChild);
+    }
+    c.querySelectorAll('input,select,textarea').forEach(function(el){ const ph=(el.getAttribute('placeholder')||'').toLowerCase(); if(el.type==='search' || /search|filter/.test(ph)) return; el.disabled=true; el.classList.add('ro-dis'); });
+    c.querySelectorAll('button').forEach(function(b){ if(b.closest('.ro-banner')) return; const t=(b.textContent||'').toLowerCase().trim(); if(/search|filter/.test(t)) return; b.disabled=true; b.classList.add('ro-dis'); });
+    c.querySelectorAll('[onclick]').forEach(function(el){ if(el.tagName==='A') return; const oc=el.getAttribute('onclick')||'';
+      if(/goTo|location\.|route\(|openLightbox|lpShow|lpHide|toggleLibGroup|toggleShipGroup|toggleShipAllGroups|projSecToggle|copyRowLink|openRowLink|toggleDocGalEdit/.test(oc)) return;   /* keep view / navigation */
+      if(/add|rm|del|save|set|upd|cyc|toggle|move|archive|create|remove|pick|assign|promote|preOpen|preMove|newMode|Constructor|constructTransfer/i.test(oc)){ el.style.pointerEvents='none'; el.classList.add('ro-dis'); }
+    });
+  }catch(_){}
+}
 function accLockedHtml(h){
   try{
     if(preLockActive(h)) return pagePreLocked(h);
@@ -10712,6 +10758,7 @@ function route(){
   if(h === '#/create' || h === '#/edit' || h === '#/projects') noAutofill();   /* BUILD 14.15/14.41: stop browser autofill in the project forms */
   renderHeader(); renderSideProject();
   polishPass();   /* BUILD 14.60: tooltips on truncated names + dim empty-link buttons */
+  try{ if(!_preLock) applyAccessReadonly(h); }catch(_){}   /* BUILD 15.69: View = read-only lockdown */
   try{ if(!_preLock) presenceOnRoute(); }catch(_){}   /* BUILD 15.45/15.66: presence overlays (skipped on a locked pre-project page) */
   try{ preAuditPaint(); }catch(_){}     /* BUILD 15.49: per-field "last edited by" avatars (pre-project only) */
   try{ if(location.hash==='#/projects') projFormCond(); }catch(_){}   /* BUILD 15.53: apply Sound-System conditional fields */
