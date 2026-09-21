@@ -770,7 +770,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.71 · CLEAR ON-SCREEN REASON WHEN A USER CAN'T SEE PROJECTS (FIRESTORE PERMISSION-DENIED); DRIVE STATUS NO LONGER HIDES THE FIRESTORE ERROR</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.72 · PROJECT FORMS — PICK A DOME FROM DOME LIBRARY (AUTOFILLS SIZE + SCREEN TYPE, LINKS SERIAL); “MANUAL ENTRY” KEEPS HAND INPUT; BOTH CREATE FORMS</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -939,6 +939,7 @@ const PROJ_FIELDS = {
   installAddress:'', installDateTime:'', breakdownDateTime:'',
   shippingBudget:'', travelBudget:'', localLabourQty:'', localLabourBy:'',
   indoorOutdoor:'', outerCover:'', coverColorNote:'', screenType:'', inflatableCover:'',
+  domeUid:'', domeSerial:'',   /* BUILD 15.72: link to a Dome Library card (optional) */
   resolution:'', projectorQty:'',
   soundSystem:'', hvac:'', safetySigns:'', contentType:'', contentNotes:'', eventNotes:''
 };
@@ -2642,6 +2643,9 @@ function projectForm(P){
           <input id="fLocation" autocomplete="off" value="${esc(P.location && P.location!=='—' ? P.location : '')}"></div>
 
         <div class="fsec">System Configuration</div>
+        <div class="fld full"><label>Dome (from Dome Library) <span style="color:#9aa2ad;text-transform:none;font-weight:400">— or “Manual entry” to type below</span></label>
+          ${domeLibPickHTML('fDomePick', P.domeUid, 'createDomePick()')}
+          <input type="hidden" id="fDomeUid" value="${esc(P.domeUid||'')}"><input type="hidden" id="fDomeSerial" value="${esc(P.domeSerial||'')}"></div>
         <div class="fld"><label>Dome Size (m)</label>
           <input id="fDome" type="number" min="1" step="0.5" value="${esc(P.domeDiameter||'')}"></div>
         <div class="fld"><label>Dome Type</label>
@@ -2762,6 +2766,7 @@ function readProjForm(){
     title:t('pj_projName'), domeDiameter:t('pj_domeSize'), domeType:t('pj_domeType'),
     indoorOutdoor:t('pj_conditions'), outerCover:t('pj_outerCover'), coverColorNote:t('pj_coverNote'),
     screenType:t('pj_screenType'), inflatableCover:t('pj_inflatable'),
+    domeUid:t('pj_domeUid'), domeSerial:t('pj_domeSerial'),   /* BUILD 15.72: link to the chosen Dome Library card */
     /* BUILD 15.55 — Dome Ballast exists only when Conditions of Use = Outdoor */
     domeBallast:(t('pj_conditions')==='Outdoor') ? t('pj_ballast') : '',
     /* Technical / AV — type/projectorModel/audioSystem/speakersModel/subwooferModel/screenFan/
@@ -3072,7 +3077,9 @@ function pageProjects(){
       + F('Hired by whom', I('pj_labourBy', P.localLabourBy)))}
 
       ${SEC('dome','Dome Specification',
-        F('Dome Size (m)', I('pj_domeSize', P.domeDiameter, 'number', 'min="1" step="0.5" oninput="projAutoTitle()"'))
+        F('Dome (from Dome Library) <span style="color:#9aa2ad;text-transform:none;font-weight:400">— or “Manual entry” to type below</span>', domeLibPickHTML('pj_domePick', P.domeUid, 'projDomePick()'), true)
+      + `<input type="hidden" id="pj_domeUid" value="${esc(P.domeUid||'')}"><input type="hidden" id="pj_domeSerial" value="${esc(P.domeSerial||'')}">`
+      + F('Dome Size (m)', I('pj_domeSize', P.domeDiameter, 'number', 'min="1" step="0.5" oninput="projAutoTitle()"'))
       + F('Dome Type', _pjSel('pj_domeType', P.domeType, ['Standard','Tilt','SRD','VR','WD'], '— Select —'))
       + F('Conditions of Use', _pjSel('pj_conditions', P.indoorOutdoor, ['Indoor','Outdoor'], '— Select —', 'projFormCond()'))
       + ballastFld
@@ -3540,6 +3547,8 @@ function readForm(){
     type: g('fType').value.trim(),
     domeDiameter: g('fDome').value.trim(),
     domeType: g('fDomeType').value,
+    domeUid: g('fDomeUid') ? g('fDomeUid').value : '',            /* BUILD 15.72: linked Dome Library card */
+    domeSerial: g('fDomeSerial') ? g('fDomeSerial').value : '',
     captureRequired: _capChoice,
     vjRequired: _vjChoice
   };
@@ -9777,6 +9786,35 @@ function domeFeetInches(mStr){ const v=parseFloat(String(mStr==null?'':mStr).rep
   const totalIn=v*39.3700787; let ft=Math.floor(totalIn/12); let inch=Math.round(totalIn-ft*12); if(inch===12){ ft+=1; inch=0; } return ft+"' "+inch+'"'; }
 function domeTitle(m){ return [domeSizeM(m), m.type, m.serial].filter(Boolean).join(' · ') || 'New Dome'; }
 function domeScreenLabel(m){ return m.screenType==='Other' ? ('Other' + (m.screenTypeOther?(' · '+m.screenTypeOther):'')) : (m.screenType||'—'); }
+/* ============================================================================
+   BUILD 15.72 — pick a dome from the Dome Library on the project forms. Fills Dome Size (+ Screen Type
+   on the new form) and records the linked dome (domeUid/serial). "— Manual entry —" keeps hand input.
+   Dome Type (Standard/Tilt/…) stays manual: the library's Open/Blackout is a different taxonomy.
+   ============================================================================ */
+function domeLibPickHTML(id, selUid, onchange){
+  const saved = (db.domeLib||[]).filter(m => m && m._saved && !m.archived);
+  let opts = '<option value="">— Manual entry —</option>';
+  opts += saved.map(m => '<option value="'+esc(m.domeUid)+'"'+(selUid&&selUid===m.domeUid?' selected':'')+'>'+esc(domeTitle(m))+'</option>').join('');
+  if(selUid && !saved.some(m=>m.domeUid===selUid)) opts += '<option value="'+esc(selUid)+'" selected>(linked dome — not in library)</option>';
+  return '<select id="'+esc(id)+'" onchange="'+esc(onchange)+'">'+opts+'</select>';
+}
+/* map a Dome Library screenType to the project form's Screen Type list; inject unknowns */
+function domeSetSelectInject(sel, val){ if(!sel) return; val=val||'';
+  if(val && !Array.prototype.some.call(sel.options, function(o){return o.value===val;})){ const o=document.createElement('option'); o.value=val; o.textContent=val; sel.appendChild(o); }
+  sel.value=val; }
+function domeMapScreen(s){ s=String(s||''); if(s==='SRD Screen') return 'SRD'; return s; }   /* Tilted→Tilted, SRD Screen→SRD, others kept verbatim */
+function domeApplyPick(sel, ids){   /* ids = { size, screen(optional), uid, serial } element ids */
+  if(!sel) return; const uid=sel.value;
+  const hu=document.getElementById(ids.uid), hs=document.getElementById(ids.serial);
+  if(!uid){ if(hu) hu.value=''; if(hs) hs.value=''; return; }        /* manual — leave typed values as-is */
+  const m=domeFind(uid); if(!m) return;
+  if(hu) hu.value=m.domeUid||''; if(hs) hs.value=m.serial||'';
+  const sz=document.getElementById(ids.size); if(sz){ const n=String(m.size||'').replace(/\s*m$/i,'').replace(',','.').trim(); if(n) sz.value=n; }
+  if(ids.screen){ domeSetSelectInject(document.getElementById(ids.screen), domeMapScreen(m.screenType)); }
+}
+function projDomePick(){ domeApplyPick(document.getElementById('pj_domePick'), {size:'pj_domeSize',screen:'pj_screenType',uid:'pj_domeUid',serial:'pj_domeSerial'}); try{ projAutoTitle(); }catch(_){} }
+function createDomePick(){ domeApplyPick(document.getElementById('fDomePick'), {size:'fDome',uid:'fDomeUid',serial:'fDomeSerial'}); }
+try{ window.projDomePick=projDomePick; window.createDomePick=createDomePick; }catch(_){}
 function domeDoorsLabel(m){ if(!m.doors) return '—'; return m.doors==='Custom' ? ('Custom' + (m.doorsCustom?(' · '+m.doorsCustom):'')) : (DOME_DOOR_LABELS[m.doors]||m.doors); }
 function domeSearchBlob(m){ return [m.serial,m.size,m.type,m.screenType,m.screenTypeOther].filter(Boolean).join(' ').toLowerCase(); }
 function saveDomeLib(){ saveState._skipCloud = true; try{ saveState(); }finally{ saveState._skipCloud = false; } }
