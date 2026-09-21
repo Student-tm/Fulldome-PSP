@@ -737,6 +737,7 @@
   <div class="top-actions">
     <button class="top-btn" onclick="openTT()" title="Create a Technical Task"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M9.5 13h5M9.5 17h5"/></svg>Technical Task</button>
     <button class="top-btn" onclick="location.hash='#/create'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New Project</button>
+    <button class="top-btn" onclick="projNewPreMode()" title="Create a pre-project" style="border-color:#69A7FF;color:#9cc4ff"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New Pre-Project</button>
     <span class="build-chip" id="topBuild" title="App build — every machine must be on the SAME build (mixed builds can corrupt sync)">b—</span>
     <div class="online-users" id="onlineUsers" title="Online now"></div>
     <button class="icon-btn" onclick="openMediaVault()" title="Drive media files (code protected)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 018 0v3.5"/><circle cx="12" cy="15.5" r="1.4" fill="currentColor" stroke="none"/></svg></button>
@@ -770,7 +771,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.73 · DOME PICKER LISTS DOMES BY SERIAL NUMBER (e.g. 2.5-1.5-10-WD); AUTOFILLS SIZE + SCREEN TYPE, LINKS THE DOME; “MANUAL ENTRY” KEEPS HAND INPUT</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.75 · TOP BAR — “+ New Pre-Project” BUTTON NEXT TO “+ New Project” (OPENS THE PRE-PROJECT CREATE FORM)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1038,8 +1039,12 @@ function readyModuleGreen(key, d){
   if(key==='vj')     return !!(d.vj && d.vj.ready);
   return false;
 }
+/* BUILD 15.74 — is the audio system engaged for a project? Off = the "Audio System" toggle is No
+   (old form, project.audioRequired===false) OR Sound System = No (new form). Default ON. */
+function audioActive(P){ P = P || {}; if(P.audioRequired===false) return false; if(P.soundSystem==='No') return false; return true; }
 function readyColor(key, d){
   d = d || state;
+  if(key==='speakers' && !audioActive(d.project)) return 'frozen';   /* BUILD 15.74: audio off → module frozen, not counted */
   if(readyModuleGreen(key, d)) return 'green';        /* its "Mark as Ready" pressed */
   if(readyModuleHasData(key, d)) return 'yellow';     /* some data present */
   return 'red';                                       /* nothing yet */
@@ -1052,8 +1057,8 @@ function readyColor(key, d){
    Network, Cables, Tools) can't reach green yet, so the card can't be green until they do. */
 function readyCardColor(d){
   d = d || state;
-  const cols = READY_MODULES.map(([k]) => readyColor(k, d));
-  if(cols.every(c => c === 'green')) return 'green';
+  const cols = READY_MODULES.map(([k]) => readyColor(k, d)).filter(c => c !== 'frozen');   /* BUILD 15.74: a frozen module isn't counted */
+  if(cols.length && cols.every(c => c === 'green')) return 'green';
   if(cols.some(c => c !== 'red')) return 'yellow';   /* any progress anywhere */
   return '';
 }
@@ -1066,8 +1071,8 @@ function modActiveBadge(hasData){
   return '<span class="mod-badge" title="Active — nothing added yet" style="color:var(--fdp-red);background:#fdecec;border:1px solid #f2b8b8"><span class="bd" style="background:var(--fdp-red)"></span>Active</span>';
 }
 const _named = rows => (rows||[]).some(r=>(r.name||'').trim());
-const READY_LABEL = { red:'Not started', yellow:'In progress', green:'Ready' };
-const READY_CHIP  = { red:'c-off', yellow:'c-warn', green:'c-ok' };
+const READY_LABEL = { red:'Not started', yellow:'In progress', green:'Ready', frozen:'Frozen — no audio system' };
+const READY_CHIP  = { red:'c-off', yellow:'c-warn', green:'c-ok', frozen:'c-mut' };
 /* Projectors migration — old saves get an empty projectors box */
 function ensureProjectors(d){
   if(!d.projectors || typeof d.projectors!=='object') d.projectors = { list: [], selId: null };
@@ -2660,12 +2665,18 @@ function projectForm(P){
           </select></div>
         <div class="fld"><label>Projector Model</label>
           <input id="fProjModel" autocomplete="off" value="${esc(P.projectorModel||'')}"></div>
-        <div class="fld"><label>Audio System</label>
-          <input id="fAudio" autocomplete="off" value="${esc(P.audioSystem||'')}"></div>
+        <div class="fld full"><label>Audio System</label>
+          <div class="yn" id="ynAud">
+            <button type="button" id="audYes" class="${P.audioRequired!==false?'on':''}" onclick="setAudio(true)">Yes</button>
+            <button type="button" id="audNo" class="${P.audioRequired===false?'on':''}" onclick="setAudio(false)">No</button>
+          </div>
+          <div class="hint">No — the Speakers module is frozen on the dashboard and the audio fields below are disabled.</div></div>
+        <div class="fld"><label>Audio System — Model / Notes</label>
+          <input id="fAudio" autocomplete="off" value="${esc(P.audioSystem||'')}"${P.audioRequired===false?' disabled style="opacity:.5"':''}></div>
         <div class="fld"><label>Speakers Model</label>
-          <input id="fSpeakers" autocomplete="off" value="${esc(P.speakersModel||'')}"></div>
+          <input id="fSpeakers" autocomplete="off" value="${esc(P.speakersModel||'')}"${P.audioRequired===false?' disabled style="opacity:.5"':''}></div>
         <div class="fld"><label>Subwoofer Model</label>
-          <input id="fSub" autocomplete="off" value="${esc(P.subwooferModel||'')}"></div>
+          <input id="fSub" autocomplete="off" value="${esc(P.subwooferModel||'')}"${P.audioRequired===false?' disabled style="opacity:.5"':''}></div>
         <div class="fld full"><label>Screen Fan System</label>
           <input id="fFan" autocomplete="off" value="${esc(P.screenFan||'')}"></div>
         <div class="fld full"><label>Capture Card</label>
@@ -2780,7 +2791,8 @@ function readProjForm(){
     speakersModel: (t('pj_sound') && t('pj_sound')!=='No') ? t('pj_speakers') : '',
     subwooferModel:(t('pj_sound') && t('pj_sound')!=='No') ? t('pj_sub') : '',
     screenFan:t('pj_fan'), captureRequired:yn('pj_capture'), vjRequired:yn('pj_vj'),
-    soundSystem:t('pj_sound'), hvac:t('pj_hvac'), safetySigns:t('pj_safety'),
+    soundSystem:t('pj_sound'), audioRequired:(t('pj_sound')!=='No'),   /* BUILD 15.74: Sound System = No freezes the Speakers module */
+    hvac:t('pj_hvac'), safetySigns:t('pj_safety'),
     contentType:t('pj_contentType'), encoding:t('pj_encoding'), promoMaterials:t('pj_promo'),
     contentNotes:t('pj_contentNotes'), eventNotes:t('pj_eventNotes')
   };
@@ -3482,7 +3494,7 @@ function settingsDriveCard(active){
 }
 
 function pageCreate(){
-  _capChoice = false; _vjChoice = false;
+  _capChoice = false; _vjChoice = false; _audioChoice = true;
   return `
   <div class="create-wrap">
     <div class="create-hero">
@@ -3500,7 +3512,7 @@ function pageCreate(){
 
 function pageEdit(){
   const P = state.project;
-  _capChoice = !!P.captureRequired; _vjChoice = !!P.vjRequired;
+  _capChoice = !!P.captureRequired; _vjChoice = !!P.vjRequired; _audioChoice = (P.audioRequired!==false);
   return `
   <div class="create-wrap">
     <div class="create-hero">
@@ -3518,6 +3530,13 @@ function pageEdit(){
 
 var _capChoice = false;
 var _vjChoice = false;
+var _audioChoice = true;   /* BUILD 15.74: Audio System toggle (default Yes) */
+function setAudio(v){
+  _audioChoice = v;
+  const y=document.getElementById('audYes'), n=document.getElementById('audNo');
+  if(y&&n){ y.classList.toggle('on', v); n.classList.toggle('on', !v); }
+  ['fAudio','fSpeakers','fSub'].forEach(function(id){ const el=document.getElementById(id); if(el){ el.disabled=!v; el.style.opacity=v?'':'.5'; if(!v) el.value=''; } });
+}
 function setVj(v){
   _vjChoice = v;
   const y=document.getElementById('vjYes'), n=document.getElementById('vjNo');
@@ -3539,9 +3558,10 @@ function readForm(){
     domeCode: g('fDomeCode').value.trim(),
     ttDate: g('fDate').value.trim(),
     projectorModel: g('fProjModel').value.trim(),
-    audioSystem: g('fAudio').value.trim(),
-    speakersModel: g('fSpeakers').value.trim(),
-    subwooferModel: g('fSub').value.trim(),
+    audioRequired: _audioChoice,   /* BUILD 15.74 */
+    audioSystem: _audioChoice ? g('fAudio').value.trim() : '',
+    speakersModel: _audioChoice ? g('fSpeakers').value.trim() : '',
+    subwooferModel: _audioChoice ? g('fSub').value.trim() : '',
     screenFan: g('fFan').value.trim(),
     location: g('fLocation').value.trim() || '—',
     type: g('fType').value.trim(),
@@ -3754,6 +3774,7 @@ function pageDashboard(){
         <a class="mod-btn primary" href="#/projectors">Open Module ${IC.open}</a>
       </div>
 
+      ${audioActive(state.project) ? `
       <div class="mod active${_lastMod==='#/speakers'?' lastmod':''}">
         <div class="mod-top"><div class="mod-ic">${IC.spk}</div>
           <div><div class="mod-name">Speakers</div>${modActiveBadge(_named(state.speakers.rows))}</div></div>
@@ -3765,7 +3786,14 @@ function pageDashboard(){
           <div class="ms"><span class="k">Audio Build</span><span class="v" style="display:inline-flex;align-items:center;gap:6px"><span class="led sm ${state.speakers.ready?'on':''}"></span>${state.speakers.ready?'Ready':'Not Ready'}</span></div>
         </div>
         <a class="mod-btn primary" href="#/speakers">Open Module ${IC.open}</a>
-      </div>
+      </div>` : `
+      <div class="mod" style="opacity:.65">
+        <div class="mod-top"><div class="mod-ic">${IC.spk}</div>
+          <div><div class="mod-name">Speakers</div><span class="mod-badge" title="Frozen — Audio System is set to No" style="color:#5a6573;background:#f4f5f7;border:1px solid #e3e6ea"><span class="bd" style="background:#9aa2ad"></span>Frozen</span></div></div>
+        <div class="mod-desc">Audio System is set to <b>No</b> for this project — the Speakers module is frozen. Set Audio System = Yes in the project to enable it.</div>
+        <div class="mod-stats"><div class="ms"><span class="k">Status</span><span class="v">No audio system</span></div></div>
+        <span class="mod-btn" style="opacity:.5;cursor:not-allowed" title="Frozen">Frozen</span>
+      </div>`}
 
       <div class="mod active${_lastMod==='#/camera'?' lastmod':''}">
         <div class="mod-top"><div class="mod-ic">${IC.cam}</div>
