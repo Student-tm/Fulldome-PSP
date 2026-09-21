@@ -770,7 +770,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.72 · PROJECT FORMS — PICK A DOME FROM DOME LIBRARY (AUTOFILLS SIZE + SCREEN TYPE, LINKS SERIAL); “MANUAL ENTRY” KEEPS HAND INPUT; BOTH CREATE FORMS</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.73 · DOME PICKER LISTS DOMES BY SERIAL NUMBER (e.g. 2.5-1.5-10-WD); AUTOFILLS SIZE + SCREEN TYPE, LINKS THE DOME; “MANUAL ENTRY” KEEPS HAND INPUT</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -2643,7 +2643,7 @@ function projectForm(P){
           <input id="fLocation" autocomplete="off" value="${esc(P.location && P.location!=='—' ? P.location : '')}"></div>
 
         <div class="fsec">System Configuration</div>
-        <div class="fld full"><label>Dome (from Dome Library) <span style="color:#9aa2ad;text-transform:none;font-weight:400">— or “Manual entry” to type below</span></label>
+        <div class="fld full"><label>Dome Serial (from Dome Library) <span style="color:#9aa2ad;text-transform:none;font-weight:400">— or “Manual entry” to type below</span></label>
           ${domeLibPickHTML('fDomePick', P.domeUid, 'createDomePick()')}
           <input type="hidden" id="fDomeUid" value="${esc(P.domeUid||'')}"><input type="hidden" id="fDomeSerial" value="${esc(P.domeSerial||'')}"></div>
         <div class="fld"><label>Dome Size (m)</label>
@@ -3077,7 +3077,7 @@ function pageProjects(){
       + F('Hired by whom', I('pj_labourBy', P.localLabourBy)))}
 
       ${SEC('dome','Dome Specification',
-        F('Dome (from Dome Library) <span style="color:#9aa2ad;text-transform:none;font-weight:400">— or “Manual entry” to type below</span>', domeLibPickHTML('pj_domePick', P.domeUid, 'projDomePick()'), true)
+        F('Dome Serial (from Dome Library) <span style="color:#9aa2ad;text-transform:none;font-weight:400">— or “Manual entry” to type below</span>', domeLibPickHTML('pj_domePick', P.domeUid, 'projDomePick()'), true)
       + `<input type="hidden" id="pj_domeUid" value="${esc(P.domeUid||'')}"><input type="hidden" id="pj_domeSerial" value="${esc(P.domeSerial||'')}">`
       + F('Dome Size (m)', I('pj_domeSize', P.domeDiameter, 'number', 'min="1" step="0.5" oninput="projAutoTitle()"'))
       + F('Dome Type', _pjSel('pj_domeType', P.domeType, ['Standard','Tilt','SRD','VR','WD'], '— Select —'))
@@ -9794,7 +9794,8 @@ function domeScreenLabel(m){ return m.screenType==='Other' ? ('Other' + (m.scree
 function domeLibPickHTML(id, selUid, onchange){
   const saved = (db.domeLib||[]).filter(m => m && m._saved && !m.archived);
   let opts = '<option value="">— Manual entry —</option>';
-  opts += saved.map(m => '<option value="'+esc(m.domeUid)+'"'+(selUid&&selUid===m.domeUid?' selected':'')+'>'+esc(domeTitle(m))+'</option>').join('');
+  /* BUILD 15.73: list domes BY THEIR SERIAL NUMBER (e.g. 2.5-1.5-10-WD); fall back to the composite title only when a card has no serial yet */
+  opts += saved.map(m => '<option value="'+esc(m.domeUid)+'"'+(selUid&&selUid===m.domeUid?' selected':'')+'>'+esc(m.serial || domeTitle(m))+'</option>').join('');
   if(selUid && !saved.some(m=>m.domeUid===selUid)) opts += '<option value="'+esc(selUid)+'" selected>(linked dome — not in library)</option>';
   return '<select id="'+esc(id)+'" onchange="'+esc(onchange)+'">'+opts+'</select>';
 }
