@@ -802,7 +802,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.95 · ONLINE ROSTER — "WHO'S ONLINE" NOW COMES FROM THE SHARED FIRESTORE DB (EVERYONE ON THE SHARED DATABASE APPEARS, NO GOOGLE DRIVE FOLDER SHARING REQUIRED)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.96 · ONLINE ROSTER FIX — USE A PLAIN CLIENT TIMESTAMP (SERVER TIME WAS NULL ON THE LOCAL ECHO, HIDING EVEN YOUR OWN AVATAR); FALL BACK TO THE DRIVE ROSTER IF FIRESTORE IS EMPTY/BLOCKED</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -10947,6 +10947,7 @@ function presSubDomeList(on){ if(_presDomeSub){ try{_presDomeSub();}catch(_){}_p
 var _presOnlineSub=null, _presOnlineHb=null, _presOnlineLive=[];
 function presOnlineDoc(){ const FV=firebase.firestore.FieldValue;
   return { uid:presFbUid()||'', email:_gUser||'', displayName:presName(), sessionId:presSid(), scopeKey:'__online__', color:presColor(),
+    at:Date.now(),   /* BUILD 15.95a — plain client timestamp for freshness (serverTimestamp is null on the local echo, which hid your own avatar) */
     startedAt:FV.serverTimestamp(), lastHeartbeat:FV.serverTimestamp(), expiresAt: firebase.firestore.Timestamp.fromMillis(Date.now()+180000) }; }
 function presOnlineWrite(){ if(!presReady()) return; try{ _fsDb.collection('presence').doc(presSid()+':online').set(presOnlineDoc()); }catch(_){} }
 function presOnlineDelete(){ try{ if(_fsDb) _fsDb.collection('presence').doc(presSid()+':online').delete(); }catch(_){} }
@@ -10958,9 +10959,14 @@ function presOnlineStart(){ if(!presReady()) return;
 }
 function renderOnlineFS(){
   const el=document.getElementById('onlineUsers'); if(!el) return;
-  const meEmail=String(_gUser||'').toLowerCase(); const seen={}; const list=[];
-  presLiveOnly(_presOnlineLive).forEach(function(r){ const k=String(r.email||'').toLowerCase(); if(!k||seen[k]) return; seen[k]=1; list.push(r); });
+  const now=Date.now(), WIN=150000, meEmail=String(_gUser||'').toLowerCase(); const seen={}; const list=[];
+  (_presOnlineLive||[]).forEach(function(r){ if(!r||!r.email) return;
+    /* freshness by the plain client `at` (fall back to lastHeartbeat's server time if present) */
+    const hb=(r.lastHeartbeat&&r.lastHeartbeat.toMillis)?r.lastHeartbeat.toMillis():0;
+    const t=Math.max(r.at||0, hb); if(!(now-t < WIN)) return;
+    const k=String(r.email).toLowerCase(); if(seen[k]) return; seen[k]=1; list.push(r); });
   list.sort(function(a,b){ return (String(a.email||'').toLowerCase()===meEmail?1:0)-(String(b.email||'').toLowerCase()===meEmail?1:0); });   /* me last */
+  if(!list.length){ _fsPresActive=false; try{ renderOnline(); }catch(_){} return; }   /* Firestore empty/blocked → fall back to the Drive roster (shows at least me) */
   _fsPresActive=true;
   el.innerHTML=list.map(function(u){ const isMe=String(u.email||'').toLowerCase()===meEmail;
     return '<div class="ou'+(isMe?' me':'')+'" title="'+esc(((u.displayName||u.email||'User'))+(isMe?' (you)':'')+' · online')+'">'
