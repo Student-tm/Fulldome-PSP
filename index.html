@@ -771,7 +771,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.77 · BACKUP/MEDIA NEVER SHRINK — A PARTIALLY-PULLED COPY IS BLOCKED FROM WRITING UNTIL LOCAL MEDIA MATCHES DRIVE (FIXES 0.5MB BACKUP OF A 3MB PROJECT)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.78 · DRIVE MEDIA FILES WINDOW — COMPARE WORKING MEDIA vs BACKUP .json SIZE PER PROJECT (✓ OK / ⚠ SMALLER / NO BACKUP) SO YOU CAN VERIFY BACKUPS ARE COMPLETE</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -5787,6 +5787,7 @@ async function mvScan(){
   if(!(_cloudOn && _gTok)){ sum.textContent='Sign in to Google first — the media files live on Drive.'; return; }
   let files;
   try{ files = await mediaVaultList(); }catch(e){ sum.textContent='⚠ Could not read Drive: '+(e&&e.message||e); return; }
+  let bmap={}; try{ bmap = await backupSizeMap(); }catch(_){}   /* BUILD 15.78: backup sizes for the compare column */
   /* group by pid (name without .media.json) */
   const groups={};
   files.forEach(f=>{ const pid=(f.name||'').replace(/\.media\.json$/,''); (groups[pid]=groups[pid]||[]).push({id:f.id,size:Number(f.size)||0}); });
@@ -5810,20 +5811,42 @@ async function mvScan(){
     : s==='duplicate' ? '<span style="color:#c07800;font-weight:700">DUPLICATE</span>'
     : '<span style="color:var(--fdp-red);font-weight:700">ORPHAN</span>';
   let html='<table style="width:100%;border-collapse:collapse;font-size:12.5px">'
-    +'<thead><tr style="text-align:left;background:#f4f5f7"><th style="padding:7px 9px">Project</th><th style="padding:7px 9px">Media file</th><th style="padding:7px 9px;text-align:right">Size</th><th style="padding:7px 9px">Status</th></tr></thead><tbody>';
+    +'<thead><tr style="text-align:left;background:#f4f5f7">'
+    +'<th style="padding:7px 9px">Project</th>'
+    +'<th style="padding:7px 9px;text-align:right">Working media</th>'
+    +'<th style="padding:7px 9px;text-align:right">Backup .json</th>'
+    +'<th style="padding:7px 9px">Backup check</th>'
+    +'<th style="padding:7px 9px">Status</th></tr></thead><tbody>';
+  let missing=0, small=0;
   rows.forEach(r=>{
     const proj = r.status==='orphan' ? '<span style="color:var(--ink2)">— not in app —</span>'
       : (r.name? esc(r.name) : esc(r.pid)) + (r.status==='duplicate'?' <span style="color:var(--ink2)">(extra copy)</span>':'');
+    /* backup compare — only for LIVE project rows (matched by the project folder name) */
+    let bkCell='<span style="color:var(--ink2)">—</span>', chkCell='<span style="color:var(--ink2)">—</span>';
+    if(r.status==='live'){
+      const be = bmap[String(r.name||'').toLowerCase()];
+      if(!be){ bkCell='<span style="color:var(--fdp-red)">missing</span>'; chkCell='<span style="color:var(--fdp-red);font-weight:700">⚠ NO BACKUP</span>'; missing++; }
+      else {
+        bkCell = mvBytes(be.size);
+        if(be.size >= r.size*0.95){ chkCell='<span style="color:#2fa35a;font-weight:700">✓ OK</span>'; }   /* backup ⊇ media → complete */
+        else { chkCell='<span style="color:var(--fdp-red);font-weight:700">⚠ SMALLER</span>'; small++; }
+      }
+    }
     html+='<tr style="border-top:1px solid var(--line)">'
       +'<td style="padding:7px 9px">'+proj+'</td>'
-      +'<td style="padding:7px 9px;font-family:monospace;color:var(--ink2)">'+esc(r.pid)+'.media.json</td>'
       +'<td style="padding:7px 9px;text-align:right">'+mvBytes(r.size)+'</td>'
+      +'<td style="padding:7px 9px;text-align:right">'+bkCell+'</td>'
+      +'<td style="padding:7px 9px">'+chkCell+'</td>'
       +'<td style="padding:7px 9px">'+badge(r.status)+'</td></tr>';
   });
   html+='</tbody></table>';
+  html+='<div style="padding:8px 10px;font-size:11.5px;color:var(--ink2);border-top:1px solid var(--line)">“Backup check” compares the backup .json against the working media file. A full backup is the whole project (structure + library + photos/docs), so it is normally <b>bigger</b> than the working media file → <b style="color:#2fa35a">✓ OK</b>. <b style="color:var(--fdp-red)">⚠ SMALLER</b> or <b style="color:var(--fdp-red)">NO BACKUP</b> means that project needs a fresh backup (open it fully, then run <code>backupNow()</code>).</div>';
   body.innerHTML=html;
   const live=rows.filter(r=>r.status==='live').length, junk=_mvJunk.length;
-  sum.innerHTML = live+' live project file'+(live===1?'':'s')+' · <b style="color:var(--fdp-red)">'+junk+' junk</b> (duplicates + orphans). Live files are always kept.';
+  const bkIssues = missing+small;
+  sum.innerHTML = live+' live project file'+(live===1?'':'s')+' · <b style="color:var(--fdp-red)">'+junk+' junk</b> (duplicates + orphans)'
+    + (bkIssues ? ' · <b style="color:var(--fdp-red)">'+bkIssues+' backup issue'+(bkIssues===1?'':'s')+'</b>' : ' · <b style="color:#2fa35a">backups OK</b>')
+    + '. Live files are always kept.';
   const btn=document.getElementById('mvCleanBtn'); if(btn){ btn.disabled = junk===0; btn.style.opacity = junk===0?'0.4':'1'; btn.textContent = junk? ('Remove junk ('+junk+')') : 'No junk'; }
 }
 async function mvClean(){
@@ -6721,7 +6744,7 @@ async function backupFindFile(name, parentId){
 }
 async function backupList(parentId){
   const q = encodeURIComponent("'" + parentId + "' in parents and trashed=false");
-  const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name,mimeType,modifiedTime)&pageSize=1000');
+  const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name,mimeType,modifiedTime,size)&pageSize=1000');
   const j = await r.json(); return j.files || [];
 }
 async function backupCreateFolder(name, parentId){
@@ -6732,6 +6755,24 @@ async function backupCreateFolder(name, parentId){
 }
 async function backupCopyFile(srcId, dstParentId, name){
   await gFetch('https://www.googleapis.com/drive/v3/files/' + srcId + '/copy?fields=id', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name: name, parents: [dstParentId] }) });
+}
+/* BUILD 15.78 — map each backup subfolder (Fulldome PSP — BACKUPS/<name>/) to the size of its .json,
+   so the Drive Media Files window can compare the working project vs its backup and confirm it wrote fully. */
+async function backupSizeMap(){
+  const map = {};
+  try{
+    const root = await backupRootId(); if(!root) return map;
+    const subs = await backupList(root);
+    for(const sf of subs){
+      if(sf.mimeType !== 'application/vnd.google-apps.folder') continue;
+      let size = 0;
+      try{ const files = await backupList(sf.id);
+        files.filter(f=>/\.json$/i.test(f.name||'')).forEach(f=>{ const s=Number(f.size)||0; if(s>size) size=s; });
+      }catch(_){}
+      map[String(sf.name||'').toLowerCase()] = { size:size, name:sf.name };
+    }
+  }catch(_){}
+  return map;
 }
 async function backupRootId(){
   if(db.backupRootId && await driveAlive(db.backupRootId)) return db.backupRootId;
