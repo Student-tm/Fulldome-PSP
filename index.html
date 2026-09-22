@@ -44,6 +44,12 @@
   .nitem svg{width:17px;height:17px;flex:0 0 auto}
   .nitem:hover{background:var(--side2);color:#fff}
   .nitem.sel{background:var(--side2);color:#fff;box-shadow:inset 0 0 0 1px var(--fdp-red)}
+  /* BUILD 15.93 — frozen / coming-soon nav item */
+  .nitem.soon{opacity:.5;cursor:not-allowed}
+  .nitem.soon:hover{background:transparent;color:var(--dim)}
+  .nitem .soon-badge{margin-left:auto;font-size:8.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
+    color:#e6b84d;border:1px solid rgba(230,184,77,.45);border-radius:99px;padding:1px 7px;white-space:nowrap}
+  .side.mini .nitem .soon-badge{display:none}
   .side.mini .nitem span{display:none}
   .side.mini .nitem{justify-content:center;padding:10px 0}
   .side-foot{padding:10px;border-top:1px solid var(--line-d)}
@@ -657,18 +663,18 @@
   .pj{padding-top:10px;padding-bottom:10px}
   .pj .pjled{position:static;display:inline-block;margin-right:6px;vertical-align:1px;flex:none}
   .pj .pjmeta{flex:1;min-width:0}
-  .pj .pjn{font-size:13px;color:#9aa2ad;font-weight:500;letter-spacing:.3px;line-height:1.25;display:flex;align-items:center;flex-wrap:nowrap;overflow:hidden}
+  .pj .pjn{font-size:13px;color:#c6ccd4;font-weight:500;letter-spacing:.3px;line-height:1.25;display:flex;align-items:center;flex-wrap:nowrap;overflow:hidden}   /* BUILD 15.94 — brighter card text */
   .pj .pjnum{flex:0 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .pj .pjloc{margin-left:auto;flex:0 1 auto;padding-left:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52%}
   .pj.sel .pjn{color:#F0E4C9}
   .pj.sel .pjled.on{background:#43d17c}
-  .pj .pjt{font-size:11.5px;font-weight:400;color:#cfd4da;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;margin-top:1px}
+  .pj .pjt{font-size:11.5px;font-weight:400;color:#eceff3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;margin-top:1px}
   .pj .pjs{font-size:10px;color:var(--dim);line-height:1.3}
   .pj .pjcells{display:flex;margin-top:6px;border-top:1px solid #2c313a;padding-top:6px}
   .pj .pc{flex:1;min-width:0;padding:0 9px;border-left:1px solid #2c313a}
   .pj .pc:first-child{padding-left:0;border-left:none}
-  .pj .pcl{font-size:8.5px;letter-spacing:.6px;text-transform:uppercase;color:#6b7480;line-height:1.4}
-  .pj .pcv{font-size:10.5px;color:#cfd4da;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35}
+  .pj .pcl{font-size:8.5px;letter-spacing:.6px;text-transform:uppercase;color:#909aa6;line-height:1.4}
+  .pj .pcv{font-size:10.5px;color:#e4e8ec;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35}
   .pj .pjbtns{display:flex;flex-direction:column;gap:2px;flex:0 0 auto}
   .pj .pjb{border:none;background:transparent;color:var(--dim);cursor:pointer;padding:3px;border-radius:5px;
     display:flex;align-items:center;justify-content:center}
@@ -796,7 +802,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.91 · SELECTED PROJECT CARD — LUMINOUS GOLD FILL (BRIGHT AMBER RADIAL SURFACE, GOLD BORDER, SUBTLE GLOW); 2× LARGER GAP BETWEEN IN-PROGRESS CARDS</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.94 · PROJECT CARDS — BRIGHTER (WHITER) TEXT: TITLE, NUMBER LINE, CELL LABELS & VALUES LIFTED FOR BETTER READABILITY ON THE DARK SIDEBAR</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1407,7 +1413,7 @@ function libGroupIcon(key, collapsed){
 /* ---------- navigation ---------- */
 const NAV = [
   {id:'dashboard', label:'Dashboard', ic:IC.dash, route:'#/dashboard'},
-  {id:'projects', label:'Projects', ic:IC.proj, route:'#/projects'},
+  {id:'projects', label:'Projects', ic:IC.proj, route:'#/projects', soon:true},   /* BUILD 15.93 — frozen: Coming soon */
   {id:'library', label:'Equipment Library', ic:IC.lib, route:'#/library'},
   {id:'dome-library', label:'Dome Library', ic:IC.dome, route:'#/dome-library'},
   {id:'documentation', label:'Documentation', ic:IC.doc, route:'#/documentation'},
@@ -1417,7 +1423,9 @@ const NAV = [
 ];
 function renderNav(active){
   document.getElementById('nav').innerHTML = NAV.filter(n => !n.adminOnly || (typeof isAdminConsole==='function' && isAdminConsole())).map(n =>
-    `<a class="nitem ${n.id===active?'sel':''}" href="${n.route}">${n.ic}<span>${n.label}</span></a>`).join('');
+    n.soon
+      ? `<span class="nitem soon" title="Coming soon — not available yet" onclick="flashStat('Projects — coming soon')">${n.ic}<span>${n.label}</span><span class="soon-badge">Coming soon</span></span>`
+      : `<a class="nitem ${n.id===active?'sel':''}" href="${n.route}">${n.ic}<span>${n.label}</span></a>`).join('');
 }
 function toggleSide(){ document.getElementById('sidebar').classList.toggle('mini'); }
 
@@ -3450,7 +3458,18 @@ function adminSave(){ if(!_adminDraft){ return; }
   const u={ email:_adminDraft.email, name:_adminDraft.name||'', initials:_adminDraft.initials||teamInitials(_adminDraft.email),
     role: tag.custom ? 'custom' : tag.role, baseRole: _adminDraft.baseRole||tag.base||'engineer', perms:_adminDraft.perms, active:_adminDraft.active!==false,
     updatedBy: myEmail(), updatedAt: now, createdBy:(existing&&existing.createdBy)||myEmail(), createdAt:(existing&&existing.createdAt)||now };
-  accFsWrite(u).then(function(){ flashStat('Permissions saved ✓'); }).catch(function(e){ alert('Could not save: '+(e&&e.message||e)); });
+  /* BUILD 15.92 — clear visible confirmation on the button, then return to the Users tab so the saved user is obviously there */
+  const btn=document.querySelector('#content button[onclick="adminSave()"]');
+  const isNew=!existing;
+  if(btn){ btn.disabled=true; btn.dataset._orig=btn.textContent; btn.textContent='Saving…'; }
+  accFsWrite(u).then(function(){
+    flashStat((isNew?'User added':'Permissions saved')+' — '+u.email+' ✓');
+    if(btn){ btn.textContent='✓ Saved'; btn.style.background='#1f7a45'; btn.style.borderColor='#1f7a45'; }
+    setTimeout(function(){ _adminTab='users'; if(location.hash==='#/admin') route(); }, 750);
+  }).catch(function(e){
+    if(btn){ btn.disabled=false; btn.textContent=btn.dataset._orig||'Save Permissions'; }
+    alert('Could not save: '+(e&&e.message||e));
+  });
 }
 function adminToggleActive(email){ const u=adminFindUser(email); if(!u){ return; } const nu=Object.assign({}, u); delete nu._virtual; nu.perms=nu.perms||rolePerms(nu.role||'engineer'); nu.active=!(u.active!==false)?true:false; nu.active=(u.active===false); nu.updatedBy=myEmail(); nu.updatedAt=Date.now();
   accFsWrite(nu).then(function(){ flashStat(nu.active?'User enabled':'User disabled'); }).catch(function(e){ alert('Could not update: '+(e&&e.message||e)); }); }
