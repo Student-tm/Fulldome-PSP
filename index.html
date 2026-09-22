@@ -606,6 +606,7 @@
   .pjpane{display:flex;flex-direction:column;flex:0 0 auto;min-height:0}
   .pjpane.bottom{margin-top:auto;border-top:1px solid #363b44;padding-top:12px}
   .pjpane .pjrows{display:flex;flex-direction:column;gap:5px;padding-right:2px}
+  .pjpane.top .pjrows{gap:10px}   /* BUILD 15.91 — larger spacing between In-Progress cards only */
   .pjhead{display:flex;align-items:center;gap:7px;font-size:9px;letter-spacing:1.2px;text-transform:uppercase;
     color:#ffffff;font-weight:700;padding:2px 4px 7px;flex:none}
   .pjhead .n{background:#2c313a;color:#e8ebef;border-radius:99px;padding:1px 7px;font-size:8.5px;letter-spacing:.3px}
@@ -620,11 +621,11 @@
   .pj.rc-green{background:rgba(67,209,124,.10);border-color:#3e7a55}
   .pj.rc-green::before{background:#43d17c}
   .pj:hover{background:#20242b;border-color:#c9c9c9}
-  /* BUILD 15.90 — selected card: warm premium gold instead of the flat grey fill */
-  .pj.sel{background:linear-gradient(180deg,#3B3124 0%,#2F281E 100%);border-color:#D4A63A;
-    box-shadow:inset 0 0 0 1px rgba(212,166,58,.30), 0 0 0 1px rgba(212,166,58,.22), 0 8px 24px rgba(212,166,58,.14)}
-  .pj.sel:hover{background:linear-gradient(180deg,#40372A 0%,#332B20 100%);border-color:#E4BC55;
-    box-shadow:inset 0 0 0 1px rgba(212,166,58,.40), 0 0 0 1px rgba(228,188,85,.32), 0 10px 28px rgba(212,166,58,.20)}
+  /* BUILD 15.91 — selected card: LUMINOUS warm gold fill (bright amber surface, gold border, subtle glow) */
+  .pj.sel{background:radial-gradient(circle at 35% 20%,#9A6B22 0%,#76501D 38%,#513817 72%,#3A2A18 100%);border-color:#FFC43D;
+    box-shadow:0 0 0 1px rgba(255,196,61,.30), 0 0 14px rgba(255,180,40,.25), inset 0 1px 0 rgba(255,225,150,.18)}
+  .pj.sel:hover{background:radial-gradient(circle at 35% 20%,#B07D28 0%,#875F21 38%,#5C4019 72%,#43301B 100%);border-color:#FFD066;
+    box-shadow:0 0 0 1px rgba(255,208,102,.40), 0 0 18px rgba(255,190,50,.34), inset 0 1px 0 rgba(255,230,165,.24)}
   /* selected card sits on a dark warm-gold fill — light text for readability */
   .pj.sel .pjt{color:#F1E6CF}
   .pj.sel .pcl{color:#C7B489}
@@ -795,7 +796,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.90 · SELECTED PROJECT CARD — WARM PREMIUM GOLD (DARK GOLD-BEIGE GRADIENT, GOLD BORDER + SOFT GOLD GLOW, LIGHT TEXT) REPLACES THE FLAT GREY FILL; BRIGHTER GOLD BORDER ON HOVER</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.91 · SELECTED PROJECT CARD — LUMINOUS GOLD FILL (BRIGHT AMBER RADIAL SURFACE, GOLD BORDER, SUBTLE GLOW); 2× LARGER GAP BETWEEN IN-PROGRESS CARDS</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
