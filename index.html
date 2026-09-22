@@ -779,7 +779,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.82 · DOME CARD OVERVIEW — "ASSEMBLY SCHEMATICS": DOME ASSEMBLY / LEGO / DOORS SCHEME ROWS, EACH ACCEPTS PDF UPLOADS (STORED WITH CARD + BACKED UP TO DRIVE)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.84 · PROJECT CARDS — "COPY PROJECT LINK" ICON ABOVE THE PENCIL (SHAREABLE DEEP LINK FOR THE TELEGRAM GROUP; OPENING IT SELECTS THAT PROJECT ON THE DASHBOARD)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1159,6 +1159,51 @@ function editProject(id, ev){
   if(!e || e.frozen) return;
   if(db.activeId !== id){ db.activeId = id; syncActive(); saveState._skipCloud = true; saveState(); saveState._skipCloud = false; }   /* selecting a project is NOT an edit — must not bump its _rev (BUILD 12.72) */
   location.hash = '#/edit'; route();
+}
+/* BUILD 15.84 — copy a shareable deep link to this project (paste into the project's Telegram group).
+   Opening the link selects that project (via ?p=<id> in the hash) and lands on its dashboard. */
+function projectLinkFor(id){ return location.origin + location.pathname + '#/dashboard?p=' + encodeURIComponent(id); }
+function copyProjectLink(id, ev){
+  if(ev) ev.stopPropagation();
+  const url = projectLinkFor(id);
+  const btn = ev && ev.currentTarget;
+  const done = ()=>{ flashStat('Project link copied ✓'); if(btn){ const o=btn.innerHTML; btn.innerHTML='<span style="font-size:12px">✓</span>'; setTimeout(()=>{ btn.innerHTML=o; }, 1000); } };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(done).catch(()=>{ legacyCopy(url); done(); });
+  } else { legacyCopy(url); done(); }
+}
+/* Pending project id from a ?p=<id> deep link, applied once its project has loaded (local cache or cloud sync). */
+var _openProjOnLoad = null;
+function consumeProjectDeepLink(){
+  try{
+    const h = location.hash || '';
+    const mm = h.match(/[?&]p=([^&]+)/);
+    if(!mm) return;
+    _openProjOnLoad = decodeURIComponent(mm[1]);
+    /* strip the ?p=… param, keep the route (default to dashboard) so the router stays happy */
+    let base = h.replace(/[?&]p=[^&]+/,'').replace(/[?&]$/,'');
+    if(!base || base==='#' || base==='#/') base = '#/dashboard';
+    try{ history.replaceState(null,'', location.pathname + location.search + base); }catch(_){ location.hash = base; }
+  }catch(_){}
+}
+function tryOpenPendingProject(){
+  if(!_openProjOnLoad) return false;
+  try{
+    const e = db.projects.find(p => p.id === _openProjOnLoad && !p.frozen);
+    if(!e) return false;                              /* not loaded yet — the boot watcher retries */
+    _openProjOnLoad = null;
+    if(db.activeId !== e.id){ db.activeId = e.id; syncActive(); saveState._skipCloud = true; saveState(); saveState._skipCloud = false; }
+    if((location.hash||'').indexOf('#/dashboard')!==0){ location.hash = '#/dashboard'; }
+    route();
+    flashStat('Opened project from link ✓');
+    return true;
+  }catch(_){ return false; }
+}
+/* Retry selecting the deep-linked project until it arrives (local cache first, then a cloud sync). */
+function startPendingProjectWatch(){
+  if(!_openProjOnLoad) return;
+  if(tryOpenPendingProject()) return;
+  let tries=0; const iv=setInterval(function(){ tries++; if(tryOpenPendingProject() || tries>25 || !_openProjOnLoad){ clearInterval(iv); } }, 800);
 }
 /* BUILD 15.48 — open a PRE-project in the Projects form (which carries the Admin panel + Move-to-In-Progress) */
 function openPreProject(id, ev){
@@ -2156,6 +2201,7 @@ function flashStat(msg){
 const IC_EDIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 013 3L12 15l-4 1 1-4z"/></svg>';
 const IC_DONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6L9 17l-5-5"/></svg>';
 const IC_UNDO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 109-9 9 9 0 00-6.36 2.64L3 8"/><path d="M3 3v5h5"/></svg>';
+const IC_LINK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007 0l2-2a5 5 0 00-7-7l-1 1"/><path d="M14 11a5 5 0 00-7 0l-2 2a5 5 0 007 7l1-1"/></svg>';   /* BUILD 15.84: copy project link */
 const IC_FRZ  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M4 6l16 12M20 6L4 18M12 2l-2.5 2.5M12 2l2.5 2.5M12 22l-2.5-2.5M12 22l2.5-2.5M4 6l.5 3.4M4 6l3.4-.5M20 18l-.5-3.4M20 18l-3.4.5M20 6l-3.4-.5M20 6l-.5 3.4M4 18l3.4.5M4 18l.5-3.4"/></svg>';
 function renderSideProject(){
   const w = document.getElementById('sprojWrap');
@@ -2208,6 +2254,7 @@ function renderSideProject(){
         ${foot}
       </div>
       <div class="pjbtns">
+        <button class="pjb" title="Copy project link (for the Telegram group)" onclick="copyProjectLink('${e.id}',event)">${IC_LINK}</button>
         <button class="pjb" title="Edit project setup" onclick="editProject('${e.id}',event)">${IC_EDIT}</button>
         <button class="pjb" title="${e.done?'Reopen project':'Mark project completed'}" onclick="toggleDone('${e.id}',event)">${e.done?IC_UNDO:IC_DONE}</button>
       </div>
@@ -2646,11 +2693,9 @@ function projectForm(P){
           <input id="fSysNumber" autocomplete="off" value="${esc(P.sysNumber||'')}"></div></div>
         <div class="fld full"><label>Project Name</label>
           <input id="fTitle" autocomplete="off" value="${esc(P.title||'')}"></div>
-        <div class="fld"><label>Dome Technical Code</label>
-          <input id="fDomeCode" autocomplete="off" value="${esc(P.domeCode||'')}"></div>
         <div class="fld"><label>TT Number</label>
           <input id="fTtNumber" autocomplete="off" value="${esc(P.ttNumber||'')}"></div>
-        <div class="fld"><label>Date</label>
+        <div class="fld"><label>Event Day</label>
           <input id="fDate" autocomplete="off" value="${esc(P.ttDate||'')}"></div>
         <div class="fld"><label>Location</label>
           <input id="fLocation" autocomplete="off" value="${esc(P.location && P.location!=='—' ? P.location : '')}"></div>
@@ -3568,7 +3613,7 @@ function readForm(){
     number: g('fNumber').value.trim().replace(/^#/,'').replace(/^FDPSN#?/i,''),
     sysNumber: g('fSysNumber').value.trim().replace(/^#/,'').replace(/^FDPSN#?/i,''),
     ttNumber: g('fTtNumber').value.trim(),
-    domeCode: g('fDomeCode').value.trim(),
+    domeCode: (g('fDomeCode') ? g('fDomeCode').value.trim() : ''),   /* BUILD 15.83: field removed from form; kept in data model */
     ttDate: g('fDate').value.trim(),
     projectorModel: g('fProjModel').value.trim(),
     audioRequired: _audioChoice,   /* BUILD 15.74 */
@@ -3889,6 +3934,7 @@ function pageDashboard(){
         <div class="srow"><span class="k">Dome Type</span><span class="v">${esc(P.domeType)||'—'}</span></div>
         <div class="srow"><span class="k">Capture Card</span><span class="v">${P.captureRequired?'<span class="chip c-ok"><span class="cd"></span>Yes</span>':'<span class="chip c-mut"><span class="cd"></span>No</span>'}</span></div>
         <div class="srow"><span class="k">VJ Server</span><span class="v">${P.vjRequired?'<span class="chip c-ok"><span class="cd"></span>Yes</span>':'<span class="chip c-mut"><span class="cd"></span>No</span>'}</span></div>
+        <div class="srow"><span class="k">Event Day</span><span class="v">${esc(P.ttDate)||'—'}</span></div>
         <div class="srow"><span class="k">Created</span><span class="v">${esc(P.created)}</span></div>
       </div>
 
@@ -11028,12 +11074,15 @@ window.addEventListener('hashchange', route);
   if(tb && num) tb.textContent = 'b' + num;
   if(tag) document.title = 'Fulldome Projection SP — ' + tag.replace('BUILD ','b').split(' · ')[0];
 })();
-loadState(()=>{ restoreHandles(); renderHeader(); renderSideProject();
+loadState(()=>{ restoreHandles();
+  try{ consumeProjectDeepLink(); }catch(_){}   /* BUILD 15.84: capture ?p=<id> from a shared project link before the boot hash is forced */
+  renderHeader(); renderSideProject();
   /* BUILD 12.56: always open on the Dashboard at launch — never the last-open module
      (the leftover URL hash, e.g. #/shipping, used to reopen that module). The active
      project is the last-edited one and stays selected. */
   { const boot = activeEntry() ? '#/dashboard' : '#/create'; if(location.hash !== boot) location.hash = boot; }
   route();
+  try{ startPendingProjectWatch(); }catch(_){}   /* BUILD 15.84: select the deep-linked project once it has loaded */
   _booting = false;   /* boot render done — from here genuine edits bump _rev (BUILD 12.72) */
   /* BUILD 12.13: no blocking sign-in gate. Try a silent Google reconnect at boot
      (connects with zero clicks if the session is alive); if it can't, the app is
