@@ -791,7 +791,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.88 · PROJECT INFORMATION — TWO MORE DATES AFTER INSTALLATION DAY: CLIENT WALK-THROUGH TIME + EVENT BREAK-DOWN TIME (STORED WITH PROJECT; NOT SHOWN ON THE DASHBOARD PROJECT SETUP CARD)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.89 · PROJECT INFORMATION — "LOCATION" LABELLED "LOCATION (STATE)" WITH A STATE PLACEHOLDER (e.g. LA, TX, NY, CA)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -2726,7 +2726,7 @@ function projectForm(P){
         ${PIrow('On-site Contact names', `<textarea id="fOnsite" rows="2" placeholder="One person per line — name · phone · role">${esc(P.onsite||'')}</textarea>`)}
         ${PIrow('Address', `<input id="fAddress" autocomplete="off" placeholder="Venue / street address" value="${esc(P.address||'')}">`)}
         ${PIrow('City', `<input id="fCity" autocomplete="off" style="max-width:280px" value="${esc(P.city||'')}">`)}
-        ${PIrow('Location', `<input id="fLocation" autocomplete="off" style="max-width:240px" value="${esc(P.location && P.location!=='—' ? P.location : '')}">`)}
+        ${PIrow('Location (State)', `<input id="fLocation" autocomplete="off" style="max-width:240px" placeholder="State — e.g. LA, TX, NY, CA" value="${esc(P.location && P.location!=='—' ? P.location : '')}">`)}
         ${PIrow('Project Number', `<input id="fNumber" autocomplete="off" style="max-width:240px" value="${esc(P.number||'')}">`)}
         ${PIrow('System Number', `<div class="pfx" style="max-width:300px"><span class="pfx-l">FDPSN#</span><input id="fSysNumber" autocomplete="off" value="${esc(P.sysNumber||'')}"></div>`)}
         ${PIrow('TT Number', `<input id="fTtNumber" autocomplete="off" style="max-width:240px" value="${esc(P.ttNumber||'')}">`)}
