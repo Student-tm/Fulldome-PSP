@@ -771,7 +771,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.75 · TOP BAR — “+ New Pre-Project” BUTTON NEXT TO “+ New Project” (OPENS THE PRE-PROJECT CREATE FORM)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.77 · BACKUP/MEDIA NEVER SHRINK — A PARTIALLY-PULLED COPY IS BLOCKED FROM WRITING UNTIL LOCAL MEDIA MATCHES DRIVE (FIXES 0.5MB BACKUP OF A 3MB PROJECT)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -2670,13 +2670,13 @@ function projectForm(P){
             <button type="button" id="audYes" class="${P.audioRequired!==false?'on':''}" onclick="setAudio(true)">Yes</button>
             <button type="button" id="audNo" class="${P.audioRequired===false?'on':''}" onclick="setAudio(false)">No</button>
           </div>
-          <div class="hint">No — the Speakers module is frozen on the dashboard and the audio fields below are disabled.</div></div>
-        <div class="fld"><label>Audio System — Model / Notes</label>
-          <input id="fAudio" autocomplete="off" value="${esc(P.audioSystem||'')}"${P.audioRequired===false?' disabled style="opacity:.5"':''}></div>
-        <div class="fld"><label>Speakers Model</label>
-          <input id="fSpeakers" autocomplete="off" value="${esc(P.speakersModel||'')}"${P.audioRequired===false?' disabled style="opacity:.5"':''}></div>
-        <div class="fld"><label>Subwoofer Model</label>
-          <input id="fSub" autocomplete="off" value="${esc(P.subwooferModel||'')}"${P.audioRequired===false?' disabled style="opacity:.5"':''}></div>
+          <div class="hint">No — the Speakers module is frozen on the dashboard and the audio fields below are hidden.</div></div>
+        <div class="fld" id="fAudioFld"${P.audioRequired===false?' style="display:none"':''}><label>Audio System — Model / Notes</label>
+          <input id="fAudio" autocomplete="off" value="${esc(P.audioSystem||'')}"></div>
+        <div class="fld" id="fSpeakersFld"${P.audioRequired===false?' style="display:none"':''}><label>Speakers Model</label>
+          <input id="fSpeakers" autocomplete="off" value="${esc(P.speakersModel||'')}"></div>
+        <div class="fld" id="fSubFld"${P.audioRequired===false?' style="display:none"':''}><label>Subwoofer Model</label>
+          <input id="fSub" autocomplete="off" value="${esc(P.subwooferModel||'')}"></div>
         <div class="fld full"><label>Screen Fan System</label>
           <input id="fFan" autocomplete="off" value="${esc(P.screenFan||'')}"></div>
         <div class="fld full"><label>Capture Card</label>
@@ -3535,7 +3535,12 @@ function setAudio(v){
   _audioChoice = v;
   const y=document.getElementById('audYes'), n=document.getElementById('audNo');
   if(y&&n){ y.classList.toggle('on', v); n.classList.toggle('on', !v); }
-  ['fAudio','fSpeakers','fSub'].forEach(function(id){ const el=document.getElementById(id); if(el){ el.disabled=!v; el.style.opacity=v?'':'.5'; if(!v) el.value=''; } });
+  /* BUILD 15.76: No → HIDE the audio fields entirely (and clear them), not just disable */
+  [['fAudioFld','fAudio'],['fSpeakersFld','fSpeakers'],['fSubFld','fSub']].forEach(function(pair){
+    const wrap=document.getElementById(pair[0]), el=document.getElementById(pair[1]);
+    if(wrap) wrap.style.display = v ? '' : 'none';
+    if(el && !v) el.value='';
+  });
 }
 function setVj(v){
   _vjChoice = v;
@@ -5680,8 +5685,11 @@ async function fbpMediaUpload(e){
   /* BUILD 15.38/15.40 — Замок 2: never upload an EMPTY still-pending copy (a cloud-materialized project
      whose real photos/docs have NOT been pulled) — it would overwrite the full Drive file. Once it holds
      real media (pull or manual restore) it may upload normally. */
-  if(e._mediaPending && fbpMediaIsEmpty(e)) return false;
-  if(!fbpMediaIsEmpty(e)) e._mediaPending = false;
+  /* BUILD 15.77 — never upload while this copy is BEHIND the authoritative Drive media. Block ALL uploads
+     while _mediaPending until the local media signature MATCHES the remote one (a project materialized from
+     Firestore whose photos/docs are only partially pulled must not overwrite/shrink the full Drive file).
+     Both-empty counts as caught up, so a genuinely media-less project isn't blocked forever. */
+  if(e._mediaPending){ if(fbpMediaSig(e) === (e._remoteMsig||'')) e._mediaPending = false; else return false; }
   const sig = fbpMediaSig(e);
   const rec = mediaMap()[pid] || {};
   if(rec.msig === sig && rec.fileId) return false;         /* media unchanged since our last upload */
@@ -6789,8 +6797,9 @@ async function backupMirrorProject(e, forced){
      backup got shrunk to a half-empty 2.6 MB copy. 15.40: only block when the copy is BOTH pending
      AND actually empty; once it has real media locally (a pull or a manual restore), a normal save
      re-backs it up. */
-  if(e._mediaPending && fbpMediaIsEmpty(e)){ return false; }
-  if(!fbpMediaIsEmpty(e)) e._mediaPending = false;   /* the entry has real media → it's no longer pending */
+  /* BUILD 15.77 — same rule for the backup json: don't shrink it with a partially-pulled copy.
+     Only back up once the local media matches the authoritative Drive media (or both are empty). */
+  if(e._mediaPending){ if(fbpMediaSig(e) === (e._remoteMsig||'')) e._mediaPending = false; else return false; }
   const P = e.data.project;
   const pid = P.pid || e.id;
   const rev = P._rev || 0;
