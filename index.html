@@ -245,6 +245,14 @@
   .dexp{border:none;background:transparent;color:var(--ink2);cursor:pointer;padding:2px 4px;display:inline-flex;align-items:center;border-radius:6px}
   .dexp:hover{background:#e7e9ee;color:var(--fdp-red)}
   .dexp svg{width:15px;height:15px;transition:transform .15s}
+  /* BUILD 15.81 — Ready to Ship checkbox */
+  .rts-box{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border:2px solid #b9bec8;border-radius:6px;cursor:pointer;background:#fff;transition:background .12s,border-color .12s;position:relative}
+  .rts-box input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+  .rts-box .rts-tick{display:flex;align-items:center;justify-content:center;color:#fff;opacity:0;transition:opacity .12s}
+  .rts-box .rts-tick svg{width:15px;height:15px}
+  .rts-box:hover{border-color:#2e9e58}
+  .rts-box.on{background:#2e9e58;border-color:#2e9e58}
+  .rts-box.on .rts-tick{opacity:1}
   .dpass{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 6px 20px rgba(20,25,35,.07)}
   .dpass-top{padding:16px 18px 14px;border-top:3px solid var(--fdp-red);background:linear-gradient(180deg,#ffffff,#fbfbfd)}
   .dpass-top .hrow{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap}
@@ -771,7 +779,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.78 · DRIVE MEDIA FILES WINDOW — COMPARE WORKING MEDIA vs BACKUP .json SIZE PER PROJECT (✓ OK / ⚠ SMALLER / NO BACKUP) SO YOU CAN VERIFY BACKUPS ARE COMPLETE</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.82 · DOME CARD OVERVIEW — "ASSEMBLY SCHEMATICS": DOME ASSEMBLY / LEGO / DOORS SCHEME ROWS, EACH ACCEPTS PDF UPLOADS (STORED WITH CARD + BACKED UP TO DRIVE)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1205,7 +1213,7 @@ function adoptDb(s){
     db.library = Object.assign(emptyLibrary(), db.library || {});
     if(!db.customCats || typeof db.customCats!=='object') db.customCats = {};
     if(!Array.isArray(db.domeLib)) db.domeLib = [];   /* BUILD 15.0: Dome Library local cache (additive) */
-    db.domeLib.forEach(function(m){ if(m && typeof m==='object'){ if(!m.domeUid) m.domeUid = m.domeId || newId(); if(m.serial===undefined) m.serial = m.domeId || ''; if(typeof m.hvacOpenings==='undefined') m.hvacOpenings=''; if(typeof m.fanOpenings==='undefined') m.fanOpenings=''; try{ domeEnsureComponents(m); }catch(_){} } });   /* BUILD 15.02: normalise older dome cards (domeId→serial + stable domeUid); 15.08: components */
+    db.domeLib.forEach(function(m){ if(m && typeof m==='object'){ if(!m.domeUid) m.domeUid = m.domeId || newId(); if(m.serial===undefined) m.serial = m.domeId || ''; if(typeof m.hvacOpenings==='undefined') m.hvacOpenings=''; if(typeof m.fanOpenings==='undefined') m.fanOpenings=''; if(m.screenType==='Straight') m.screenType='Horizontal'; try{ if(m.components && Array.isArray(m.components.covers)) m.components.covers.forEach(function(c){ if(c && c.screenType==='Straight') c.screenType='Horizontal'; }); }catch(_){} try{ domeEnsureComponents(m); }catch(_){} try{ domeEnsureSchem(m); }catch(_){} } });   /* BUILD 15.02: normalise older dome cards (domeId→serial + stable domeUid); 15.08: components; 15.79: Straight→Horizontal */
     return true;
   }
   if(s && typeof s === 'object' && 'server' in s && s.project){
@@ -9718,7 +9726,7 @@ function pageLibrary(){
    Files/History deferred). Does NOT touch Projects / Equipment Library / Auth / Drive / F6-F7.
    ============================================================================ */
 const DOME_TYPES = ['Open','Blackout'];
-const DOME_SCREEN = ['Tilted','Vertical','Straight','SRD Screen','Other'];
+const DOME_SCREEN = ['Tilted','Vertical','Horizontal','SRD Screen','Other'];
 const DOME_DOORS = ['WD','1D','2D','3D','Custom'];
 const DOME_DOOR_LABELS = { 'WD':'WD — Without Doors','1D':'1D — 1 Door','2D':'2D — 2 Doors','3D':'3D — 3 Doors','Custom':'Custom' };
 /* BUILD 15.08 — Components tab.  BUILD 15.09 — per-connector materials + Frame material + serial mirror */
@@ -9727,6 +9735,18 @@ const DOME_FRAME_MATERIALS = ['Aluminum','Steel'];
 /* BUILD 15.10 — Doors block (Components): quantity 0..3, type Rectangular/Hexagonal (+ H×W when Rectangular) */
 const DOME_DOOR_QTY = ['0','1','2','3'];
 const DOME_DOOR_TYPES = ['Rectangular','Hexagonal'];
+/* BUILD 15.82 — Dome assembly schematics (Overview): three named buckets, each holds PDF drawings */
+const DOME_SCHEM = [
+  { key:'assembly', label:'Dome Assembly Scheme', hint:'How the dome frame is assembled' },
+  { key:'lego',     label:'LEGO Scheme',          hint:'Numbered step-by-step (LEGO-style) build scheme' },
+  { key:'doors',    label:'Doors Scheme',         hint:'Door assembly / installation drawing' }
+];
+function domeEmptySchem(){ return { assembly:[], lego:[], doors:[] }; }
+function domeEnsureSchem(m){ if(!m) return null; if(!m.schematics || typeof m.schematics!=='object') m.schematics=domeEmptySchem();
+  DOME_SCHEM.forEach(s=>{ if(!Array.isArray(m.schematics[s.key])) m.schematics[s.key]=[]; }); return m.schematics; }
+function domeSchemDoc(s){ s=s||{}; const out={}; DOME_SCHEM.forEach(b=>{ out[b.key]=(Array.isArray(s[b.key])?s[b.key]:[]).map(f=>({
+    id:String(f.id||''), name:String(f.name||''), type:String(f.type||''), size:(typeof f.size==='number'?f.size:parseInt(f.size,10)||0),
+    driveFileId:String(f.driveFileId||''), added:String(f.added||''), archived:!!f.archived })); }); return out; }   /* metadata only — bytes live locally + on Drive, never in Firestore */
 /* BUILD 15.14 — Truss tab */
 const TRUSS_COLORS = ['Black','Aluminum (unpainted)'];
 function domeEmptyTruss(){ return { sn:'', color:'', bags:'', parts:'', couplers:'', elements:[], files:[], kits:[] }; }   /* elements = components that ship WITH the truss (from library); kits = numbered ready configs */
@@ -9808,7 +9828,7 @@ function domeEmptyComponents(){
 }
 function domeEmptyModel(){
   return { domeUid:newId(), serial:'', size:'', type:'', screenType:'', screenTypeOther:'',
-    doors:'', doorsCustom:'', hvacOpenings:'', fanOpenings:'', components:domeEmptyComponents(), truss:domeEmptyTruss(), archived:false, rev:0, _saved:false };
+    doors:'', doorsCustom:'', hvacOpenings:'', fanOpenings:'', readyToShip:false, components:domeEmptyComponents(), truss:domeEmptyTruss(), schematics:domeEmptySchem(), archived:false, rev:0, _saved:false };
 }
 /* Normalise a model's components to the current shape (lazy migration for older dome cards). */
 function domeEnsureComponents(m){
@@ -9902,6 +9922,8 @@ function saveDomeLib(){ saveState._skipCloud = true; try{ saveState(); }finally{
 var _domeView = 'list', _domeEditId = null, _domeSearch = '', _domeFilterType = '', _domeFilterScreen = '', _domeTab = 'overview';
 var _domeExpanded = {};   /* BUILD 15.33: expanded dome passports in the list, keyed by domeUid */
 function domeToggleExpand(uid){ _domeExpanded[uid] = !_domeExpanded[uid]; rerenderKeepScroll(); }
+/* BUILD 15.81 — Ready to Ship flag per dome (library list checkbox → green box) */
+function domeToggleReady(uid, val){ const m=domeFind(uid); if(!m) return; m.readyToShip = !!val; saveDomeLib(); rerenderKeepScroll(); }
 var _domeFsStarted = false, _domeFsUnsub = null;
 function domeFsReady(){ return (typeof fsReady==='function') && fsReady() && !!_fsDb; }
 var _domePushedOnce = false;
@@ -10023,8 +10045,8 @@ try{ window.domePushAll = domePushAll; }catch(_){}
 function domeFsModelDoc(m){
   return { domeUid:m.domeUid, serial:m.serial||'', size:String(m.size||''), type:m.type||'', screenType:m.screenType||'',
     screenTypeOther:m.screenTypeOther||'', doors:m.doors||'', doorsCustom:m.doorsCustom||'',
-    hvacOpenings:String(m.hvacOpenings||''), fanOpenings:String(m.fanOpenings||''),
-    components:domeComponentsDoc(m.components), truss:domeTrussDoc(m.truss), archived:!!m.archived, updatedBy:_gUser||'', rev:(m.rev||0) };
+    hvacOpenings:String(m.hvacOpenings||''), fanOpenings:String(m.fanOpenings||''), readyToShip:!!m.readyToShip,
+    components:domeComponentsDoc(m.components), truss:domeTrussDoc(m.truss), schematics:domeSchemDoc(m.schematics), archived:!!m.archived, updatedBy:_gUser||'', rev:(m.rev||0) };
 }
 
 /* ---- Google Drive backup (BUILD 15.06): on Save, and every 15 min if changed, write the dome card
@@ -10096,6 +10118,7 @@ async function domeBackupWrite(m, force){
     domeDriveMap()[m.domeUid]=Object.assign(domeDriveMap()[m.domeUid]||{}, { jsonId, sig, jsonName });
     saveDomeLib();
     try{ await domeTrussUploadFiles(m, fid); }catch(_){}   /* BUILD 15.14: upload attached truss PDFs/DWGs (best-effort) */
+    try{ await domeSchemUploadFiles(m, fid); }catch(_){}   /* BUILD 15.82: upload attached assembly schematics (best-effort) */
     try{ await domeBackupToBackupRoot(m); }catch(_){}      /* BUILD 15.36: mirror JSON into Fulldome PSP — BACKUPS / Dome Library */
     if(force) setCloudStat('Dome card backed up to Drive ✓ · ' + hhmm());
   }catch(e){ setCloudStat('⚠ Dome backup failed: ' + (e && e.message || e)); }
@@ -10165,6 +10188,34 @@ function domeTrussFileDownload(id){ const m=domeEditing(); if(!m) return; const 
 async function domeTrussUploadFiles(m, fid){ if(!m||!m.truss||!(_cloudOn && _gTok)) return; const pending=(m.truss.files||[]).filter(f=>!f.archived && f.data && !f.driveFileId); if(!pending.length) return;
   try{ const docFolder=await driveEnsureFolder('Documentation', fid); const trussFolder=await driveEnsureFolder('Truss', docFolder);
     for(const f of pending){ try{ const id=await driveUpload(f.name||'truss-file', trussFolder, dataUrlToBytes(f.data), f.type||'application/octet-stream'); if(id){ f.driveFileId=id; } }catch(_){} }
+    saveDomeLib();
+  }catch(_){}
+}
+/* ---- Assembly schematics (BUILD 15.82): PDF drawings per bucket (assembly / lego / doors) ---- */
+function domeSchemKeyOk(key){ return DOME_SCHEM.some(s=>s.key===key); }
+function domeSchemAddFile(key, input){ if(!domeSchemKeyOk(key)) return; const m=domeEditing(); if(!m||!input||!input.files||!input.files[0]) return; const f=input.files[0];
+  const MAX=25*1024*1024; if(f.size>MAX){ alert('File too large (max 25 MB). Please attach a smaller PDF.'); input.value=''; return; }
+  const rd=new FileReader();
+  rd.onload=function(){ domeEnsureSchem(m); m.schematics[key].push({ id:newId(), name:f.name, type:f.type||'', size:f.size,
+    data:String(rd.result||''), driveFileId:'', added:new Date().toISOString(), archived:false }); saveDomeLib();
+    try{ domeBackupWrite(m, true); }catch(_){}   /* backs up card JSON + uploads the new file to Drive (best-effort) */
+    rerenderKeepScroll(); };
+  rd.onerror=function(){ alert('Could not read the file.'); };
+  rd.readAsDataURL(f); input.value=''; }
+function domeSchemFileDownload(key, id){ const m=domeEditing(); if(!m) return; domeEnsureSchem(m); const f=(m.schematics[key]||[]).find(x=>x.id===id); if(!f) return;
+  if(f.data){ const a=document.createElement('a'); a.href=f.data; a.download=f.name||'scheme.pdf'; document.body.appendChild(a); a.click(); a.remove(); }
+  else if(f.driveFileId){ window.open('https://drive.google.com/file/d/'+f.driveFileId+'/view','_blank'); }
+  else { alert('This file was added on another device and is not stored locally yet.'); } }
+function domeArchiveSchemFile(key, id){ const m=domeEditing(); if(!m) return; domeEnsureSchem(m); const f=(m.schematics[key]||[]).find(x=>x.id===id); if(!f) return;
+  if(!confirm('Remove this drawing from the dome card? (metadata only — the Google Drive copy is not deleted)')) return; f.archived=true; saveDomeLib(); rerenderKeepScroll(); }
+/* Best-effort: upload schematic files with local bytes but no driveFileId into Documentation → Schematics → <bucket>. */
+async function domeSchemUploadFiles(m, fid){ if(!m||!m.schematics||!(_cloudOn && _gTok)) return;
+  try{ let docFolder=null, schemFolder=null;
+    for(const b of DOME_SCHEM){ const pending=(m.schematics[b.key]||[]).filter(f=>!f.archived && f.data && !f.driveFileId); if(!pending.length) continue;
+      if(!docFolder) docFolder=await driveEnsureFolder('Documentation', fid);
+      if(!schemFolder) schemFolder=await driveEnsureFolder('Schematics', docFolder);
+      const sub=await driveEnsureFolder(b.label, schemFolder);
+      for(const f of pending){ try{ const id=await driveUpload(f.name||'scheme.pdf', sub, dataUrlToBytes(f.data), f.type||'application/pdf'); if(id){ f.driveFileId=id; } }catch(_){} } }
     saveDomeLib();
   }catch(_){}
 }
@@ -10313,6 +10364,9 @@ function pageDomeLibrary(){
     if(q && domeSearchBlob(m).indexOf(q)<0) return false;
     return true;
   });
+  /* BUILD 15.80: sort by diameter ascending (2.5 m → up); domes without a size go last, then by serial */
+  const _domeNum = m => { const v=parseFloat(String(m.size||'').replace(/\s*m$/i,'').replace(',','.').trim()); return isFinite(v)?v:Infinity; };
+  list.sort((a,b)=>{ const d=_domeNum(a)-_domeNum(b); if(d) return d; return String(a.serial||'').localeCompare(String(b.serial||''), undefined, {numeric:true}); });
   const opt=(arr,cur,all)=>[`<option value="">${all}</option>`].concat(arr.map(x=>`<option value="${esc(x)}" ${cur===x?'selected':''}>${esc(x)}</option>`)).join('');
   const rows = list.map(m=>{ const exp=!!_domeExpanded[m.domeUid];
     return `
@@ -10326,13 +10380,14 @@ function pageDomeLibrary(){
       <td>${esc(domeDoorsLabel(m))}</td>
       <td style="text-align:center">${(String(m.fanOpenings||'').trim()!=='')?esc(m.fanOpenings):'—'}</td>
       <td style="text-align:center">${(String(m.hvacOpenings||'').trim()!=='')?esc(m.hvacOpenings):'—'}</td>
+      <td style="text-align:center"><label class="rts-box${m.readyToShip?' on':''}" title="${m.readyToShip?'Ready to ship':'Mark as ready to ship'}" onclick="event.stopPropagation()"><input type="checkbox" ${m.readyToShip?'checked':''} onchange="domeToggleReady('${m.domeUid}',this.checked)"><span class="rts-tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5 9-11"/></svg></span></label></td>
       <td style="text-align:right"><button class="mod-btn primary" style="padding:5px 12px" onclick="domeOpenCard('${m.domeUid}')">Open / Edit</button></td>
-    </tr>${exp?`<tr class="dpass-row"><td colspan="8">${domePassport(m)}</td></tr>`:''}`; }).join('');
+    </tr>${exp?`<tr class="dpass-row"><td colspan="9">${domePassport(m)}</td></tr>`:''}`; }).join('');
   const totalActive = db.domeLib.filter(m=>!m.archived).length;
   const filtered = (q!=='' || _domeFilterType || _domeFilterScreen);
   const emptyRow = totalActive===0
-    ? `<tr><td colspan="8" style="text-align:center;color:var(--ink2);padding:26px">No domes yet — click “Create Dome Card”.</td></tr>`
-    : `<tr><td colspan="8" style="text-align:center;color:var(--ink2);padding:26px">No domes match the current search / filters (${totalActive} in the library). <button class="mod-btn" style="padding:5px 12px;margin-left:8px" onclick="domeClearSearch()">Clear</button></td></tr>`;
+    ? `<tr><td colspan="9" style="text-align:center;color:var(--ink2);padding:26px">No domes yet — click “Create Dome Card”.</td></tr>`
+    : `<tr><td colspan="9" style="text-align:center;color:var(--ink2);padding:26px">No domes match the current search / filters (${totalActive} in the library). <button class="mod-btn" style="padding:5px 12px;margin-left:8px" onclick="domeClearSearch()">Clear</button></td></tr>`;
   const tbody = rows || emptyRow;
   return `
   <div class="page">
@@ -10355,7 +10410,7 @@ function pageDomeLibrary(){
     </div>
     <div class="card">
       <table class="eq wide">
-        <thead><tr><th>Dome ID / Serial</th><th>Diameter</th><th>Dome Type</th><th>Screen Type</th><th>Doors</th><th style="text-align:center">Fan (in)</th><th style="text-align:center">HVAC (in)</th><th></th></tr></thead>
+        <thead><tr><th>Dome ID / Serial</th><th>Diameter</th><th>Dome Type</th><th>Screen Type</th><th>Doors</th><th style="text-align:center">Fan (in)</th><th style="text-align:center">HVAC (in)</th><th style="text-align:center">Ready to Ship</th><th></th></tr></thead>
         <tbody>${tbody}</tbody>
       </table>
     </div>
@@ -10380,7 +10435,7 @@ function pageDomeCard(){
       <button class="dtab ${_domeTab==='components'?'sel':''}" data-pressec="components" onclick="domeSetTab('components')">Components</button>
       <button class="dtab ${_domeTab==='truss'?'sel':''}" data-pressec="truss" onclick="domeSetTab('truss')">Truss</button>
     </div>
-    ${ _domeTab==='components' ? domeTabComponents(m) : _domeTab==='truss' ? domeTabTruss(m) : `<div class="card">${domeTabOverview(m)}</div>` }
+    ${ _domeTab==='components' ? domeTabComponents(m) : _domeTab==='truss' ? domeTabTruss(m) : `<div class="card">${domeTabOverview(m)}</div>${domeSchematicsCard(m)}` }
   </div>`;
 }
 function _dfld(label,inner){ return `<div class="fld"><label>${label}</label>${inner}</div>`; }
@@ -10406,6 +10461,40 @@ function domeTabOverview(m){
   </div>
   <div style="margin-top:12px;color:var(--dim);font-size:11.5px">Serial, Screen Type and Doors are filled in the <b>Components</b> tab and shown here read-only (Screen Type appears once a screen is added). Size, Dome Type, HVAC and Fan Openings are edited here. Card title: “&lt;size&gt; · &lt;dome type&gt; · &lt;serial&gt;”. Internal id ${esc(m.domeUid)}. Removal is Archive only (never physical delete).</div>`;
 }
+/* BUILD 15.82 — Assembly Schematics card (Overview): three rows, each accepts one or more PDF drawings. */
+function domeSchematicsCard(m){
+  domeEnsureSchem(m);
+  const row = (b)=>{
+    const files=(m.schematics[b.key]||[]).filter(f=>!f.archived);
+    const chips = files.map(f=>`<div style="display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;padding:6px 10px;background:#fbfbfc">
+        <span style="font-size:16px;line-height:1">📄</span>
+        <span style="min-width:0"><span style="font-weight:600;font-size:12.5px;word-break:break-all">${esc(f.name||'file')}</span>
+          <span style="color:var(--dim);font-size:11px;margin-left:6px">${esc(domeFileKind(f))}${f.size?(' · '+esc(domeFileSize(f.size))):''}${f.driveFileId?' · on Drive':''}</span></span>
+        <button class="mod-btn" style="padding:3px 10px;flex:none" onclick="domeSchemFileDownload('${b.key}','${f.id}')">Download</button>
+        <button class="mod-btn" style="padding:3px 10px;flex:none;color:var(--fdp-red)" onclick="domeArchiveSchemFile('${b.key}','${f.id}')">Remove</button>
+      </div>`).join('') || `<div style="color:var(--dim);font-size:12px;padding:2px 0">No files yet.</div>`;
+    const inpId='schemFile_'+b.key;
+    return `<div style="border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:0 0 12px;background:#fff">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+        <div style="min-width:0"><div style="font-weight:700;font-size:13px">${esc(b.label)}</div>
+          <div style="color:var(--dim);font-size:11.5px">${esc(b.hint)}</div></div>
+        <div style="flex:none">
+          <input type="file" id="${inpId}" accept=".pdf,application/pdf" multiple style="display:none" onchange="domeSchemAddFilesMulti('${b.key}',this)">
+          <button class="mod-btn" style="padding:6px 12px" onclick="document.getElementById('${inpId}').click()">+ Add PDF</button>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">${chips}</div>
+    </div>`;
+  };
+  return `<div class="card">
+    <div class="card-head"><h3>Assembly Schematics</h3></div>
+    <div class="hint" style="margin:-6px 0 12px;color:var(--dim);font-size:11.5px">Assembly drawings for this dome. Attach PDF files to each scheme — they are stored with the dome card and backed up to Google Drive (Dome Library → this dome → Documentation → Schematics).</div>
+    ${DOME_SCHEM.map(row).join('')}
+  </div>`;
+}
+/* Add several PDFs at once to a schematic bucket (multiple file input). */
+function domeSchemAddFilesMulti(key, input){ if(!input||!input.files) return; const files=Array.from(input.files); input.value='';
+  files.forEach(f=>{ const fake={ files:[f], value:'' }; domeSchemAddFile(key, fake); }); }
 
 /* ---------- Components tab (BUILD 15.08) ---------- */
 function domeMatSelect(key, cur, opts){
