@@ -802,7 +802,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.94 · PROJECT CARDS — BRIGHTER (WHITER) TEXT: TITLE, NUMBER LINE, CELL LABELS & VALUES LIFTED FOR BETTER READABILITY ON THE DARK SIDEBAR</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.95 · ONLINE ROSTER — "WHO'S ONLINE" NOW COMES FROM THE SHARED FIRESTORE DB (EVERYONE ON THE SHARED DATABASE APPEARS, NO GOOGLE DRIVE FOLDER SHARING REQUIRED)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -7132,6 +7132,7 @@ try{ window.markDeletedFolder = markDeletedFolder; }catch(_){}
    avatars (Google account photo, or coloured initials) of everyone whose heartbeat is < 60s
    old, in the top-right. Purely cosmetic — never touches project data. ============= */
 var _presTimer = null, _meInfo = null, _presFid = null, _presMyFileId = null, _onlineUsers = [];
+var _fsPresActive = false;   /* BUILD 15.95 — once the Firestore online roster renders, it owns the top-bar avatars */
 function presenceColor(s){ let h=0; s=s||'user'; for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return 'hsl(' + (h%360) + ',52%,42%)'; }
 function presenceKey(email){ return (email||'user').replace(/[^a-z0-9]/gi,'_').toLowerCase(); }
 function presenceInitials(u){ const s=(u.name||u.email||'?').trim(); const parts=s.split(/[\s@._-]+/).filter(Boolean); return ((parts[0]||'?')[0] + (parts[1]?parts[1][0]:'')).toUpperCase(); }
@@ -7196,6 +7197,7 @@ async function presenceRead(){
   renderOnline();
 }
 function renderOnline(){
+  if(_fsPresActive) return;   /* BUILD 15.95 — Firestore roster is live; don't let the Drive one overwrite it */
   const el = document.getElementById('onlineUsers'); if(!el) return;
   const meEmail = (_meInfo && _meInfo.email) || _gUser || '';
   el.innerHTML = (_onlineUsers||[]).map(u => {
@@ -7210,7 +7212,8 @@ async function presenceTickAll(){ try{ await presenceBeat(); await presenceRead(
 function presenceStart(){
   if(_presTimer) return;
   presenceTickAll();                                     /* immediate */
-  _presTimer = setInterval(function(){ if(_cloudOn && _gTok) presenceTickAll(); }, 20000);   /* heartbeat + read every 20s */
+  try{ presOnlineStart(); }catch(_){}                    /* BUILD 15.95 — Firestore online roster */
+  _presTimer = setInterval(function(){ if(_cloudOn && _gTok){ presenceTickAll(); try{ presOnlineStart(); }catch(_){} } }, 20000);   /* heartbeat + read every 20s */
 }
 function presenceStop(){ if(_presTimer){ clearInterval(_presTimer); _presTimer = null; } const el=document.getElementById('onlineUsers'); if(el) el.innerHTML=''; }
 var _refreshing = false;   /* BUILD 12.66b: re-entrancy guard — overlapping polls + push-back refreshes must not stack (they multiply Drive API calls and hit the per-user rate limit) */
@@ -10934,6 +10937,36 @@ function presSubScope(scopeKey){ if(_presSub){ try{_presSub();}catch(_){}_presSu
 function presSubDomeList(on){ if(_presDomeSub){ try{_presDomeSub();}catch(_){}_presDomeSub=null; } _presDomeLive=[];
   if(!on||!presReady()) return;
   _presDomeSub=_fsDb.collection('presence').where('scopeKey','>=','dome:').where('scopeKey','<=','dome:').onSnapshot(function(snap){ const a=[]; snap.forEach(function(d){a.push(d.data());}); _presDomeLive=a; presPaint(); presGc(snap); }, function(_){}); }
+/* ============ BUILD 15.95 — ONLINE ROSTER via the shared Firestore `presence` collection ============
+   The top-bar "who's online" avatars used to come only from Google Drive (_system/*.json). A teammate
+   showed up there only if the OWNER's Drive folder was shared with their account AND they were signed into
+   Drive — otherwise each person wrote to their own Drive and saw only themselves. Project data, however,
+   syncs through the shared Firestore DB (no Drive sharing needed). So we broadcast a lightweight online
+   heartbeat into that SAME shared `presence` collection: everyone connected to the shared database now
+   appears, regardless of Drive sharing. Kept in a separate doc id + scopeKey so module presence is untouched. */
+var _presOnlineSub=null, _presOnlineHb=null, _presOnlineLive=[];
+function presOnlineDoc(){ const FV=firebase.firestore.FieldValue;
+  return { uid:presFbUid()||'', email:_gUser||'', displayName:presName(), sessionId:presSid(), scopeKey:'__online__', color:presColor(),
+    startedAt:FV.serverTimestamp(), lastHeartbeat:FV.serverTimestamp(), expiresAt: firebase.firestore.Timestamp.fromMillis(Date.now()+180000) }; }
+function presOnlineWrite(){ if(!presReady()) return; try{ _fsDb.collection('presence').doc(presSid()+':online').set(presOnlineDoc()); }catch(_){} }
+function presOnlineDelete(){ try{ if(_fsDb) _fsDb.collection('presence').doc(presSid()+':online').delete(); }catch(_){} }
+function presOnlineStart(){ if(!presReady()) return;
+  presOnlineWrite();
+  if(!_presOnlineHb){ _presOnlineHb=setInterval(function(){ presOnlineWrite(); renderOnlineFS(); }, 25000); }
+  if(!_presOnlineSub){ try{ _presOnlineSub=_fsDb.collection('presence').where('scopeKey','==','__online__')
+      .onSnapshot(function(snap){ const a=[]; snap.forEach(function(d){ a.push(d.data()); }); _presOnlineLive=a; renderOnlineFS(); try{ presGc(snap); }catch(_){} }, function(_){}); }catch(_){} }
+}
+function renderOnlineFS(){
+  const el=document.getElementById('onlineUsers'); if(!el) return;
+  const meEmail=String(_gUser||'').toLowerCase(); const seen={}; const list=[];
+  presLiveOnly(_presOnlineLive).forEach(function(r){ const k=String(r.email||'').toLowerCase(); if(!k||seen[k]) return; seen[k]=1; list.push(r); });
+  list.sort(function(a,b){ return (String(a.email||'').toLowerCase()===meEmail?1:0)-(String(b.email||'').toLowerCase()===meEmail?1:0); });   /* me last */
+  _fsPresActive=true;
+  el.innerHTML=list.map(function(u){ const isMe=String(u.email||'').toLowerCase()===meEmail;
+    return '<div class="ou'+(isMe?' me':'')+'" title="'+esc(((u.displayName||u.email||'User'))+(isMe?' (you)':'')+' · online')+'">'
+      +'<span class="oui" style="background:'+esc(u.color||'#666')+'">'+esc(presInitials(u))+'</span>'
+      +'<span class="oudot"></span></div>'; }).join('');
+}
 function presLabel(r,isYou){ return isYou ? 'You editing' : ((r.displayName||(r.email||'').split('@')[0]||'Someone')+' editing'); }
 /* BUILD 15.47 — fixed 2-letter initials per team member (email → initials); auto fallback for others */
 var PRES_INITIALS = { 'chernetsov.pgs@gmail.com':'AN','measurepoint.tm@gmail.com':'MT','gopageorge@gmail.com':'GT','vanhampton41@gmail.com':'VH','iris.shurkina@gmail.com':'IS','2e.fdpro@gmail.com':'2F' };
@@ -10983,9 +11016,10 @@ function presenceOnRoute(){
   else if(h==='#/dashboard' && state.project){ const pid=(state.project.pid)||(activeEntry()&&activeEntry().id); presSubScope('project:'+pid); }
   else { presSubScope(null); }
   if(area) presStart(area); else presStop();
+  try{ presOnlineStart(); }catch(_){}   /* BUILD 15.95 — global online roster (independent of the editable area) */
   presPaint();
 }
-try{ window.addEventListener('beforeunload', function(){ presDeleteOwn(); }); }catch(_){}
+try{ window.addEventListener('beforeunload', function(){ presDeleteOwn(); try{ presOnlineDelete(); }catch(_){} }); }catch(_){}
 try{ document.addEventListener('visibilitychange', function(){ if(!document.hidden){ try{ presenceOnRoute(); }catch(_){} } }); }catch(_){}
 setTimeout(function(){ try{ presenceOnRoute(); }catch(_){} }, 4000);   /* start once Firestore/auth is up */
 var _lastMod = '';   /* the module page opened most recently — its dashboard card keeps the red frame (BUILD 12.43) */
