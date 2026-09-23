@@ -802,7 +802,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.01 · LENS SUMMARY TIDY — PROJECT EQUIPMENT SHOWS ONLY THE DISTINCT LENS MODEL; DASHBOARD CARD SHOWS LENS AS "MODEL × QTY" (LIKE PROJECTORS), NOT A LONG PER-ITEM LIST</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.02 · AUTO-UPDATE — WHEN A NEWER BUILD IS DEPLOYED, AN "UPDATE" BANNER APPEARS IN OPEN TABS; CLICKING IT HARD-RELOADS (CACHE-BUSTED) TO THE LATEST VERSION</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -11270,6 +11270,52 @@ loadState(()=>{ restoreHandles();
       + 'padding:9px 16px;border-radius:8px;white-space:nowrap">Open the real app →</a>';
     var mount = function(){ if(document.body){ document.body.appendChild(bar); document.body.style.paddingTop='58px'; } };
     if(document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
+  }catch(_){}
+})();
+
+/* BUILD 16.02 — auto update check: poll the deployed index.html; if its BUILD number is newer than the
+   one this tab is running, show an "Update" banner. Clicking it hard-reloads (cache-busted) to the new version. */
+(function(){
+  try{
+    if(location.protocol === 'file:') return;   /* the file:// guard already handles that case */
+    function cmpBuild(a,b){ var A=String(a).split('.').map(Number), B=String(b).split('.').map(Number);
+      for(var i=0;i<Math.max(A.length,B.length);i++){ var x=A[i]||0, y=B[i]||0; if(x!==y) return x-y; } return 0; }
+    function maxBuild(txt){ var out=null, m, re=/BUILD\s+([0-9]+(?:\.[0-9]+)+)/g;
+      while((m=re.exec(String(txt||'')))){ if(out===null || cmpBuild(m[1],out)>0) out=m[1]; } return out; }
+    /* this tab's running build = the highest BUILD tag in the live document (the footer) */
+    var running = maxBuild((document.querySelector('.side-foot')||document.body||{}).textContent||'');
+    if(!running) return;
+    var _shown=false, _timer=null;
+    function hardReload(){
+      try{ var base=location.pathname + '?u=' + Date.now(); location.replace(base + (location.hash||'#/dashboard')); }
+      catch(_){ location.reload(); }
+    }
+    function showBanner(newv){
+      if(_shown) return; _shown=true; if(_timer){ clearInterval(_timer); _timer=null; }
+      var bar=document.createElement('div'); bar.setAttribute('role','alert');
+      bar.style.cssText='position:fixed;left:0;right:0;top:0;z-index:2147483646;background:#0f5c39;color:#fff;'
+        +'font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:14px;line-height:1.45;'
+        +'padding:11px 16px;box-shadow:0 2px 12px rgba(0,0,0,.4);display:flex;gap:12px;align-items:center;flex-wrap:wrap';
+      bar.innerHTML='<span style="font-size:17px">⬆️</span>'
+        +'<span style="flex:1;min-width:220px"><b>New version available (b'+newv+').</b> You are on b'+running+' — update to get the latest changes.</span>'
+        +'<button id="_updNow" style="background:#fff;color:#0f5c39;font-weight:800;border:none;cursor:pointer;'
+        +'padding:9px 18px;border-radius:8px;white-space:nowrap">Update</button>'
+        +'<button id="_updLater" style="background:transparent;color:#cfeede;border:1px solid rgba(255,255,255,.35);'
+        +'cursor:pointer;padding:9px 14px;border-radius:8px;white-space:nowrap">Later</button>';
+      var mount=function(){ if(!document.body) return; document.body.appendChild(bar); document.body.style.paddingTop='56px';
+        var n=document.getElementById('_updNow'); if(n) n.onclick=hardReload;
+        var l=document.getElementById('_updLater'); if(l) l.onclick=function(){ bar.remove(); document.body.style.paddingTop=''; }; };
+      if(document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
+    }
+    function check(){
+      fetch(location.pathname + '?_ck=' + Date.now(), { cache:'no-store' })
+        .then(function(r){ return r.ok ? r.text() : ''; })
+        .then(function(t){ var nv=maxBuild(t); if(nv && cmpBuild(nv, running) > 0) showBanner(nv); })
+        .catch(function(){});
+    }
+    setTimeout(check, 30000);                     /* first check 30s after load */
+    _timer=setInterval(check, 180000);            /* then every 3 min */
+    document.addEventListener('visibilitychange', function(){ if(!document.hidden) check(); });   /* and whenever the tab is refocused */
   }catch(_){}
 })();
 </script>
