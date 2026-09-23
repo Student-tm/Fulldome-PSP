@@ -802,7 +802,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.00 · PROJECTORS — "REMOVABLE LENS" TOGGLE: ON HIDES THROW RATIO IN THE PROJECTOR TABLE AND SHOWS A LENSES TABLE (MODEL · RATIO · SERIAL · QTY); LENSES ALSO APPEAR IN THE DASHBOARD PROJECTORS CARD & PROJECT EQUIPMENT</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.01 · LENS SUMMARY TIDY — PROJECT EQUIPMENT SHOWS ONLY THE DISTINCT LENS MODEL; DASHBOARD CARD SHOWS LENS AS "MODEL × QTY" (LIKE PROJECTORS), NOT A LONG PER-ITEM LIST</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -3904,7 +3904,7 @@ function pageDashboard(){
           <div class="ms"><span class="k">Brand &amp; Model</span><span class="v ${projList().length?'ok':''}">${projList().length ? esc([...new Set(projList().map(p=>((p.mfr||'')+' '+(p.model||'')).trim()).filter(Boolean))].join(', ') || '—') + (projList().length>1 ? ' × '+projList().length : '') : 'None'}</span></div>
           <div class="ms"><span class="k">Brightness</span><span class="v">${esc((projList().find(p=>(p.bright||'').trim())||{}).bright || '—')}</span></div>
           ${ensureProjectors(state).removableLens
-            ? `<div class="ms"><span class="k">Lens</span><span class="v ${projLenses().length?'ok':''}">${projLenses().length ? esc([...new Set(projLenses().map(l=>(l.model||'').trim()).filter(Boolean))].join(', ') || '—') : '—'}</span></div>
+            ? `<div class="ms"><span class="k">Lens</span><span class="v ${projLenses().length?'ok':''}">${(function(){ const ls=projLenses(); const models=[...new Set(ls.map(l=>(l.model||'').trim()).filter(Boolean))]; if(!models.length) return '—'; const tot=ls.reduce((s,l)=>s+(parseInt(l.qty,10)||1),0); return esc(models.join(', ')) + (tot>1?' × '+tot:''); })()}</span></div>
                <div class="ms"><span class="k">Lens Ratio</span><span class="v">${esc((projLenses().find(l=>(l.ratio||'').trim())||{}).ratio || '—')}</span></div>`
             : `<div class="ms"><span class="k">Throw Ratio</span><span class="v">${esc((projList().find(p=>(p.throw||'').trim())||{}).throw || '—')}</span></div>`}
           <div class="ms"><span class="k">Configured</span><span class="v">${projList().filter(p=>p.conf==='Configured').length} / ${projList().length}</span></div>
@@ -4024,7 +4024,7 @@ function pageDashboard(){
         <div class="srow"><span class="k">Main Server ID</span><span class="v">${P.sysNumber ? 'FDPSN#'+esc(P.sysNumber) : 'FDPSN# ****'}</span></div>
         <div class="srow"><span class="k">Backup Server ID</span><span class="v">${(state.backup && state.backup.enabled && (state.backup.name||'').trim()) ? esc(state.backup.name) : '—'}</span></div>
         <div class="srow"><span class="k">Projector Model</span><span class="v">${(function(){ const ms=[...new Set(projList().map(p=>((p.mfr||'')+' '+(p.model||'')).trim()).filter(Boolean))]; return ms.length ? esc(ms.join(', ')) : (P.projectorModel ? esc(P.projectorModel) : '—'); })()}</span></div>
-        ${ensureProjectors(state).removableLens ? `<div class="srow"><span class="k">Lens Model</span><span class="v">${(function(){ const ls=projLenses().filter(l=>(l.model||'').trim()||(l.ratio||'').trim()); return ls.length ? esc(ls.map(l=>[(l.model||'').trim(),(l.ratio||'').trim()?('('+l.ratio.trim()+')'):'',(l.qty||'').toString().trim()?('× '+l.qty.trim()):''].filter(Boolean).join(' ')).join(', ')) : '—'; })()}</span></div>` : ''}
+        ${ensureProjectors(state).removableLens ? `<div class="srow"><span class="k">Lens Model</span><span class="v">${(function(){ const models=[...new Set(projLenses().map(l=>(l.model||'').trim()).filter(Boolean))]; return models.length ? esc(models.join(', ')) : '—'; })()}</span></div>` : ''}
         <div class="srow"><span class="k">Speaker Model</span><span class="v">${(P.speakersModel && String(P.speakersModel).trim()) ? esc(P.speakersModel) : '—'}</span></div>
         <div class="srow"><span class="k">Subwoofer Model</span><span class="v">${(P.subwooferModel && String(P.subwooferModel).trim()) ? esc(P.subwooferModel) : '—'}</span></div>
         <div class="srow"><span class="k">Camera Model</span><span class="v">${(function(){ const rows=(state.camera.rows||[]).filter(r=>(r.name||'').trim()); const cam=rows.find(r=>/camera/i.test(r.cat||'')); const lens=rows.find(r=>/lens/i.test(r.cat||'')); const parts=[]; if(cam) parts.push(cam.name.trim()); if(lens) parts.push(lens.name.trim()); return parts.length ? esc(parts.join('  |  ')) : '—'; })()}</span></div>
