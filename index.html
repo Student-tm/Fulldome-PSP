@@ -802,7 +802,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 15.99 · PROJECT LINK FIX — SHARE LINKS NOW USE THE STABLE CROSS-DEVICE PROJECT ID (pid) INSTEAD OF THE PER-BROWSER LOCAL ID, SO A LINK OPENS THE RIGHT PROJECT ON ANY MACHINE</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.00 · PROJECTORS — "REMOVABLE LENS" TOGGLE: ON HIDES THROW RATIO IN THE PROJECTOR TABLE AND SHOWS A LENSES TABLE (MODEL · RATIO · SERIAL · QTY); LENSES ALSO APPEAR IN THE DASHBOARD PROJECTORS CARD & PROJECT EQUIPMENT</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1109,6 +1109,9 @@ function ensureProjectors(d){
   if(!d.projectors || typeof d.projectors!=='object') d.projectors = { list: [], selId: null };
   if(!Array.isArray(d.projectors.list)) d.projectors.list = [];
   d.projectors.list.forEach(p=>{ if(!Array.isArray(p.web)) p.web = []; if(p.bright==null) p.bright=''; if(p.throw==null) p.throw=''; });
+  if(typeof d.projectors.removableLens!=='boolean') d.projectors.removableLens = false;   /* BUILD 16.00 — Removable lens toggle */
+  if(!Array.isArray(d.projectors.lenses)) d.projectors.lenses = [];
+  d.projectors.lenses.forEach(l=>{ if(l.model==null) l.model=''; if(l.ratio==null) l.ratio=''; if(l.serial==null) l.serial=''; if(l.qty==null) l.qty=''; if(!l.id) l.id='ln'+Date.now()+Math.floor(Math.random()*1e4); });
   if(d.projectors.selModel==null) d.projectors.selModel = '';
   if(!d.projectors.models || typeof d.projectors.models!=='object') d.projectors.models = {};
   /* project-level model data (photos, specs) RIDES IN THE PROJECT FILE.
@@ -3895,12 +3898,15 @@ function pageDashboard(){
 
       <div class="mod active${_lastMod==='#/projectors'?' lastmod':''}">
         <div class="mod-top"><div class="mod-ic">${IC.beam}</div>
-          <div><div class="mod-name">Projectors</div>${modActiveBadge(projList().length>0)}</div></div>
+          <div><div class="mod-name">${ensureProjectors(state).removableLens?'Projectors &amp; Lenses':'Projectors'}</div>${modActiveBadge(projList().length>0)}</div></div>
         <div class="mod-desc">Projector inventory, installation and configuration status, live web interfaces and saved web settings per projector.</div>
         <div class="mod-stats">
           <div class="ms"><span class="k">Brand &amp; Model</span><span class="v ${projList().length?'ok':''}">${projList().length ? esc([...new Set(projList().map(p=>((p.mfr||'')+' '+(p.model||'')).trim()).filter(Boolean))].join(', ') || '—') + (projList().length>1 ? ' × '+projList().length : '') : 'None'}</span></div>
           <div class="ms"><span class="k">Brightness</span><span class="v">${esc((projList().find(p=>(p.bright||'').trim())||{}).bright || '—')}</span></div>
-          <div class="ms"><span class="k">Throw Ratio</span><span class="v">${esc((projList().find(p=>(p.throw||'').trim())||{}).throw || '—')}</span></div>
+          ${ensureProjectors(state).removableLens
+            ? `<div class="ms"><span class="k">Lens</span><span class="v ${projLenses().length?'ok':''}">${projLenses().length ? esc([...new Set(projLenses().map(l=>(l.model||'').trim()).filter(Boolean))].join(', ') || '—') : '—'}</span></div>
+               <div class="ms"><span class="k">Lens Ratio</span><span class="v">${esc((projLenses().find(l=>(l.ratio||'').trim())||{}).ratio || '—')}</span></div>`
+            : `<div class="ms"><span class="k">Throw Ratio</span><span class="v">${esc((projList().find(p=>(p.throw||'').trim())||{}).throw || '—')}</span></div>`}
           <div class="ms"><span class="k">Configured</span><span class="v">${projList().filter(p=>p.conf==='Configured').length} / ${projList().length}</span></div>
         </div>
         <a class="mod-btn primary" href="#/projectors">Open Module ${IC.open}</a>
@@ -4018,6 +4024,7 @@ function pageDashboard(){
         <div class="srow"><span class="k">Main Server ID</span><span class="v">${P.sysNumber ? 'FDPSN#'+esc(P.sysNumber) : 'FDPSN# ****'}</span></div>
         <div class="srow"><span class="k">Backup Server ID</span><span class="v">${(state.backup && state.backup.enabled && (state.backup.name||'').trim()) ? esc(state.backup.name) : '—'}</span></div>
         <div class="srow"><span class="k">Projector Model</span><span class="v">${(function(){ const ms=[...new Set(projList().map(p=>((p.mfr||'')+' '+(p.model||'')).trim()).filter(Boolean))]; return ms.length ? esc(ms.join(', ')) : (P.projectorModel ? esc(P.projectorModel) : '—'); })()}</span></div>
+        ${ensureProjectors(state).removableLens ? `<div class="srow"><span class="k">Lens Model</span><span class="v">${(function(){ const ls=projLenses().filter(l=>(l.model||'').trim()||(l.ratio||'').trim()); return ls.length ? esc(ls.map(l=>[(l.model||'').trim(),(l.ratio||'').trim()?('('+l.ratio.trim()+')'):'',(l.qty||'').toString().trim()?('× '+l.qty.trim()):''].filter(Boolean).join(' ')).join(', ')) : '—'; })()}</span></div>` : ''}
         <div class="srow"><span class="k">Speaker Model</span><span class="v">${(P.speakersModel && String(P.speakersModel).trim()) ? esc(P.speakersModel) : '—'}</span></div>
         <div class="srow"><span class="k">Subwoofer Model</span><span class="v">${(P.subwooferModel && String(P.subwooferModel).trim()) ? esc(P.subwooferModel) : '—'}</span></div>
         <div class="srow"><span class="k">Camera Model</span><span class="v">${(function(){ const rows=(state.camera.rows||[]).filter(r=>(r.name||'').trim()); const cam=rows.find(r=>/camera/i.test(r.cat||'')); const lens=rows.find(r=>/lens/i.test(r.cat||'')); const parts=[]; if(cam) parts.push(cam.name.trim()); if(lens) parts.push(lens.name.trim()); return parts.length ? esc(parts.join('  |  ')) : '—'; })()}</span></div>
@@ -5313,7 +5320,7 @@ function liveSlice(d){
     fan:     { rows: (d.fan && d.fan.rows) || [], ready: !!(d.fan && d.fan.ready) },
     cables:  { rows: (d.cables && d.cables.rows) || [], ready: !!(d.cables && d.cables.ready) },
     tools:   { rows: (d.tools && d.tools.rows) || [], ready: !!(d.tools && d.tools.ready) },
-    projectors: { list: (d.projectors && d.projectors.list) || [], selId: (d.projectors && d.projectors.selId) || null },
+    projectors: { list: (d.projectors && d.projectors.list) || [], selId: (d.projectors && d.projectors.selId) || null, removableLens: !!(d.projectors && d.projectors.removableLens), lenses: (d.projectors && d.projectors.lenses) || [] },
     validation:   d.validation || {},                 /* dashboard test chips — live now (BUILD 12.7) */
     vjValidation: d.vjValidation || {},
     shipping: { date:(d.shipping&&d.shipping.date)||'', pallets:(d.shipping&&d.shipping.pallets)||[], assign:(d.shipping&&d.shipping.assign)||{}, meta:(d.shipping&&d.shipping.meta)||{}, packed:(d.shipping&&d.shipping.packed)||{} }   /* pallets + date + comments + loaded flags sync; docs ride in the heavy json only (BUILD 12.54) */
@@ -5354,7 +5361,7 @@ function liveApply(d, live){
   if(live.fan){ d.fan = d.fan || {rows:[],ready:false,photos:[]}; setIf(d.fan, 'rows', live.fan.rows || []); setIf(d.fan, 'ready', !!live.fan.ready); }
   if(live.cables){ d.cables = d.cables || {rows:[],ready:false,photos:[]}; setIf(d.cables, 'rows', live.cables.rows || []); setIf(d.cables, 'ready', !!live.cables.ready); }
   if(live.tools){ d.tools = d.tools || {rows:[],ready:false,photos:[]}; setIf(d.tools, 'rows', live.tools.rows || []); setIf(d.tools, 'ready', !!live.tools.ready); }
-  if(live.projectors){ d.projectors = d.projectors || {list:[],selId:null,models:{}}; setIf(d.projectors, 'list', live.projectors.list || []); setIf(d.projectors, 'selId', live.projectors.selId || null); }
+  if(live.projectors){ d.projectors = d.projectors || {list:[],selId:null,models:{}}; setIf(d.projectors, 'list', live.projectors.list || []); setIf(d.projectors, 'selId', live.projectors.selId || null); if('removableLens' in live.projectors) setIf(d.projectors, 'removableLens', !!live.projectors.removableLens); if('lenses' in live.projectors) setIf(d.projectors, 'lenses', live.projectors.lenses || []); }
   if(live.validation)   setIf(d, 'validation',   live.validation);      /* dashboard test chips (BUILD 12.7) */
   if(live.vjValidation) setIf(d, 'vjValidation', live.vjValidation);
   if(live.shipping){ d.shipping = d.shipping || {date:'',pallets:[],assign:{},docs:[],meta:{},packed:{}}; setIf(d.shipping,'date',live.shipping.date||''); setIf(d.shipping,'pallets',live.shipping.pallets||[]); setIf(d.shipping,'assign',live.shipping.assign||{}); if('meta' in live.shipping) setIf(d.shipping,'meta',live.shipping.meta||{}); if('packed' in live.shipping) setIf(d.shipping,'packed',live.shipping.packed||{}); }
@@ -9045,6 +9052,16 @@ function updProjStatus(i,k,v){   /* selects: update KPI counters in place */
   const a=document.getElementById('kPrInst'); if(a) a.textContent = inst+' / '+projList().length;
   const b=document.getElementById('kPrConf'); if(b) b.textContent = conf+' / '+projList().length;
 }
+/* ---- Removable lens (BUILD 16.00) ---- */
+function projLenses(){ return ensureProjectors(state).lenses; }
+function projToggleLens(v){ const pr=ensureProjectors(state); pr.removableLens=!!v;
+  if(pr.removableLens && !pr.lenses.length) addLens(true);   /* start with one empty lens row */
+  saveState(); rerenderKeepScroll(); }
+function addLens(silent){ const pr=ensureProjectors(state);
+  pr.lenses.push({ id:'ln'+Date.now()+Math.floor(Math.random()*1e4), model:'', ratio:'', serial:'', qty:'' });
+  if(!silent){ saveState(); rerenderKeepScroll(); } }
+function rmLens(i){ const pr=ensureProjectors(state); if(!pr.lenses[i]) return; pr.lenses.splice(i,1); saveState(); rerenderKeepScroll(); }
+function updLens(i,k,v){ const l=projLenses()[i]; if(!l) return; l[k]=v; saveState(); }
 function setSelProjector(id){ ensureProjectors(state).selId = id; saveState(); rerenderKeepScroll(); }
 function openProjectorWeb(){
   const p = selProjector();
@@ -9292,6 +9309,7 @@ function pageProjectors(){
   const sel = selProjector();
   const inst = list.filter(p=>p.inst==='Installed').length;
   const conf = list.filter(p=>p.conf==='Configured').length;
+  const lensOn = ensureProjectors(state).removableLens;   /* BUILD 16.00 — Throw Ratio moves to the Lenses table when ON */
 
   const invRows = list.map((p,i)=>`
     <tr>
@@ -9299,11 +9317,33 @@ function pageProjectors(){
       <td class="tight" style="width:18%"><input class="cell" value="${esc(p.mfr)}" placeholder="Manufacturer" oninput="updProj(${i},'mfr',this.value)"></td>
       <td class="tight"><input class="cell b" value="${esc(p.model)}" placeholder="Model" oninput="updProj(${i},'model',this.value)"></td>
       <td class="tight" style="width:13%"><input class="cell" value="${esc(p.bright)}" placeholder="Brightness" oninput="updProj(${i},'bright',this.value)"></td>
-      <td class="tight" style="width:10%"><input class="cell" value="${esc(p.throw)}" placeholder="Throw Ratio" oninput="updProj(${i},'throw',this.value)"></td>
+      ${lensOn ? '' : `<td class="tight" style="width:10%"><input class="cell" value="${esc(p.throw)}" placeholder="Throw Ratio" oninput="updProj(${i},'throw',this.value)"></td>`}
       <td class="tight" style="width:15%"><input class="cell" value="${esc(p.serial)}" placeholder="Serial Number" oninput="updProj(${i},'serial',this.value)"></td>
       <td class="tight" style="width:13%"><input class="cell num" value="${esc(p.ip)}" placeholder="192.168.10.__" oninput="updProj(${i},'ip',this.value)"></td>
       <td class="rm"><button title="Remove" onclick="rmProjector(${i})">×</button></td>
     </tr>`).join('');
+
+  /* BUILD 16.00 — Lenses table (shown only when Removable lens is ON): Model · Ratio · Serial · Qty */
+  const lensRows = projLenses().map((l,i)=>`
+    <tr>
+      <td class="tight" style="width:6%;text-align:center;color:var(--dim)">${i+1}</td>
+      <td class="tight"><input class="cell b" value="${esc(l.model)}" placeholder="Lens model" oninput="updLens(${i},'model',this.value)"></td>
+      <td class="tight" style="width:16%"><input class="cell" value="${esc(l.ratio)}" placeholder="Ratio (e.g. 1.2–1.8)" oninput="updLens(${i},'ratio',this.value)"></td>
+      <td class="tight" style="width:22%"><input class="cell" value="${esc(l.serial)}" placeholder="Serial Number" oninput="updLens(${i},'serial',this.value)"></td>
+      <td class="tight" style="width:10%"><input class="cell num" value="${esc(l.qty)}" placeholder="Qty" oninput="updLens(${i},'qty',this.value)"></td>
+      <td class="rm"><button title="Remove" onclick="rmLens(${i})">×</button></td>
+    </tr>`).join('');
+  const lensCard = lensOn ? `
+    <div class="card" style="margin:16px 0 0">
+      <div class="card-head"><h3>Lenses</h3><span class="chip c-mut"><span class="cd"></span>${projLenses().length}</span></div>
+      <div class="hint" style="margin:-6px 0 12px;color:var(--dim);font-size:11.5px">Removable lenses for this project — the Throw Ratio lives here instead of the projector table.</div>
+      ${projLenses().length ? `
+      <table class="eq">
+        <thead><tr><th style="width:6%">#</th><th>Lens Model</th><th>Ratio</th><th>Serial Number</th><th>Qty</th><th></th></tr></thead>
+        <tbody>${lensRows}</tbody>
+      </table>` : `<div style="font-size:12.5px;color:#9aa2ad;padding:4px 2px">No lenses yet — add the first one.</div>`}
+      <button class="add-line" onclick="addLens()">+ Add lens</button>
+    </div>` : '';
 
   const setupRows = list.map((p,i)=>`
     <tr>
@@ -9371,6 +9411,9 @@ function pageProjectors(){
       <div class="card" style="margin-bottom:0">
         <div class="card-head"><h3>Projector inventory</h3>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <label style="display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--ink2);cursor:pointer;user-select:none" title="When ON, the Throw Ratio column moves to a separate Lenses table">
+            <input type="checkbox" ${lensOn?'checked':''} onchange="projToggleLens(this.checked)" style="width:15px;height:15px;cursor:pointer">
+            <span style="font-weight:700">Removable lens</span></label>
           ${projLib().length ? `
           <select class="cell" id="projDbSel" style="max-width:230px">
             ${projLib().map((it,i)=>`<option value="${i}">${esc((it.brand+' '+it.model).trim())}</option>`).join('')}
@@ -9382,10 +9425,11 @@ function pageProjectors(){
         </div></div>
         ${list.length ? `
       <table class="eq">
-        <thead><tr><th>Number</th><th>Manufacturer</th><th>Model</th><th>Brightness</th><th>Throw Ratio</th><th>Serial Number</th><th>Network IP</th><th></th></tr></thead>
+        <thead><tr><th>Number</th><th>Manufacturer</th><th>Model</th><th>Brightness</th>${lensOn?'':'<th>Throw Ratio</th>'}<th>Serial Number</th><th>Network IP</th><th></th></tr></thead>
         <tbody>${invRows}</tbody>
       </table>` : `<div style="font-size:12.5px;color:#9aa2ad;padding:4px 2px">No projectors yet — add the first one.</div>`}
       <button class="add-line" onclick="addProjector()">+ Add projector</button>
+      ${lensCard}
       </div>
     </div>
     <div style="margin-top:18px"></div>
