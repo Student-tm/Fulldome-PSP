@@ -802,7 +802,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.06 · LIVE-SYNC HOTFIX (V1: serialized push + no-drop snapshot) · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.07 · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · UPDATE BUTTON · SHIPPING LABEL PDFs · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -4981,12 +4981,17 @@ function pageShipping(){
     </div>
     <div class="card">
       <div class="card-head"><h3>Shipping details</h3>
-        <button class="mod-btn primary" style="padding:7px 14px;font-size:12px" onclick="genShipPDF()">${IC.doc2 || ''} Generate Shipping PDF</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="mod-btn" style="padding:7px 12px;font-size:12px" title="Upload the pallet labels PDF" onclick="pickDocFile('shipLabelPallet','.pdf')">⬆ Pallet Labels PDF</button>
+          <button class="mod-btn" style="padding:7px 12px;font-size:12px" title="Upload the driver documents PDF" onclick="pickDocFile('shipLabelDriver','.pdf')">⬆ Driver Docs PDF</button>
+          <button class="mod-btn primary" style="padding:7px 14px;font-size:12px" onclick="genShipPDF()">${IC.doc2 || ''} Generate Shipping PDF</button>
+        </div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:2px 2px 4px">
         <span style="font-size:12.5px;font-weight:600;color:var(--ink2)">Shipping Date</span>
         <input type="date" class="cell" style="width:auto;padding:6px 9px" value="${esc(S.date||'')}" onchange="setShipDate(this.value)">
       </div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;padding:6px 2px 2px;border-top:1px solid var(--line);margin-top:6px">${shipLabelFilesHtml()}</div>
     </div>
 
     <div class="card">
@@ -6236,6 +6241,7 @@ var _fsQ = {};            /* pid -> {running,again} — serialized per-pid push 
 var _fsRetryT = {};       /* pid -> timer — retry after a transient/permission failure */
 var _fsPendingSnap = {};  /* pid -> {section:{val,rrev}} — incoming values deferred while the user was typing */
 var _fsRerenderPending = false;  /* a snapshot arrived while typing → refresh the open module on blur */
+var _fsRerenderT = null, _fsRerendering = false;   /* BUILD 16.07: coalesce snapshot re-renders; ignore blur caused by our own re-render */
 var _fsLastSent = 0, _fsLastRecv = 0;   /* visible last-sent / last-received clocks */
 var _mediaPushLock = {};   /* pid -> true while a media/browse-folder push is in flight (no duplicate folders) — BUILD 14.53 */
 function fsReady(){ return _FS && _fsReady && !!_fsCol; }
@@ -6370,12 +6376,13 @@ async function _fsPushPass(e, pid){
      NOT marked as sent, so the drain loop re-sends them (fixes "second row silently marked pushed"). */
   const sentSig = {}; changed.forEach(function(s){ sentSig[s] = JSON.stringify(sl[s] || {}); });
   const sentDone = e.done ? 1 : 0;
+  const sentAt = Date.now();                                       /* our revision stamp for this send */
   let sentAll = false;
   try{
     if(!e._fbSeen){
       await ref.set(fsFullDoc(e)); sentAll = true;                 /* brand-new project → create the whole document */
     } else {
-      const now = Date.now(), upd = { updatedBy: _gUser || '', pid };
+      const now = sentAt, upd = { updatedBy: _gUser || '', pid };
       changed.forEach(function(s){ upd[s] = fsClean(sl[s] || {}); upd['revs.' + s] = now; });
       if(doneChanged){ upd.done = !!e.done; upd.doneAt = e.doneAt || 0; }
       upd.bucket = projBucketOf(e);
@@ -6391,6 +6398,8 @@ async function _fsPushPass(e, pid){
     if(sentAll){ const sl2 = fsSlice(e.data); FS_SECTIONS.forEach(function(s){ rec[s] = JSON.stringify(sl2[s] || {}); }); }
     else { Object.keys(sentSig).forEach(function(s){ rec[s] = sentSig[s]; }); }
     rec._seen = true; rec._done = sentDone;
+    rec._pushedRev = rec._pushedRev || {};                         /* BUILD 16.07: remember our own send stamp per section */
+    (sentAll ? FS_SECTIONS : Object.keys(sentSig)).forEach(function(s){ rec._pushedRev[s] = sentAt; });
     e._fbSeen = true; delete e._localNew;
     _fsStampSent();
     if(msigChanged && !_mediaPushLock[pid]){                       /* media: unchanged behaviour, own retry */
@@ -6418,23 +6427,46 @@ function _fsApplyPendingSnap(){
   const pid = fbpPid(e); if(!pid) return false;
   const snap = _fsPendingSnap[pid]; if(!snap) return false;
   const pend = _F7_GUARD ? fsPendingSections(e) : [];        /* keep the user's still-unpushed edits */
+  const rec = _fsLocal[pid] || (_fsLocal[pid] = { _seen:true });
   let ch = false, conflict = false;
   Object.keys(snap).forEach(function(s){
     if(pend.indexOf(s) >= 0){ conflict = true; return; }      /* section changed locally too → keep local, flag conflict */
+    if(rec._pushedRev && rec._pushedRev[s] && snap[s].rrev < rec._pushedRev[s]) return;   /* BUILD 16.07: stale echo older than our own later push — never roll back; its successor is on the way */
     if(fsApplySection(e.data, s, snap[s].val)) ch = true;
     e._fsRev = e._fsRev || {}; e._fsRev[s] = snap[s].rrev;
+    try{ rec[s] = JSON.stringify(fsSlice(e.data)[s] || {}); }catch(_){}   /* received ≠ our unsent change */
   });
   delete _fsPendingSnap[pid];
   if(ch){ saveState._skipCloud = true; saveState(); saveState._skipCloud = false; }
   if(conflict) setCloudStat('⚠ Team update on a field you edited — your unsaved change kept; review');
   return ch;
 }
-function _fsFlushOnBlur(){
+/* BUILD 16.07: one coalesced re-render per burst of snapshots (no flicker); defers again if the user
+   started typing in the meantime; never touches the create/edit forms. */
+function _fsRerenderSoon(){
+  clearTimeout(_fsRerenderT);
+  _fsRerenderT = setTimeout(function(){
+    _fsRerenderT = null;
+    if(isTypingInInput()){ _fsRerenderPending = true; return; }
+    if(onProjectFormPage()) return;
+    _fsRerendering = true;
+    try{ rerenderKeepScroll(); }catch(_){}
+    _fsRerendering = false;
+  }, 250);
+}
+function _fsFlushOnBlur(ev){
+  /* ignore blur events produced by our OWN re-render (element detached) — otherwise render→blur→push→render loops */
+  try{ if(_fsRerendering) return; if(ev && ev.target && ev.target.nodeType === 1 && !document.contains(ev.target)) return; }catch(_){}
   setTimeout(function(){
     if(isTypingInInput()) return;                             /* moved to another input → keep deferring */
     const ch = _fsApplyPendingSnap();
-    if(_fsRerenderPending || ch){ _fsRerenderPending = false; try{ if(typeof rerenderKeepScroll==='function' && !onProjectFormPage()) rerenderKeepScroll(); if(typeof renderHeader==='function') renderHeader(); if(typeof renderSideProject==='function') renderSideProject(); }catch(_){} _fsStampRecv(); }
-    try{ if(typeof fsTouch==='function') fsTouch(); }catch(_){}   /* push the just-finished edit promptly */
+    if(_fsRerenderPending || ch){
+      _fsRerenderPending = false; _fsRerendering = true;
+      try{ if(typeof rerenderKeepScroll==='function' && !onProjectFormPage()) rerenderKeepScroll(); if(typeof renderHeader==='function') renderHeader(); if(typeof renderSideProject==='function') renderSideProject(); }catch(_){}
+      _fsRerendering = false; _fsStampRecv();
+    }
+    /* push promptly ONLY if there is a genuine local change (never a phantom re-send of received data) */
+    try{ const e = activeEntry(); if(e && typeof fsChangedSections==='function' && fsChangedSections(e).length && typeof fsTouch==='function') fsTouch(); }catch(_){}
   }, 60);
 }
 try{ document.addEventListener('focusout', _fsFlushOnBlur, true); }catch(_){}
@@ -6514,6 +6546,9 @@ function fsApplyDoc(data){
       _fsRerenderPending = true; return;
     }
     if(fsApplySection(e.data, s, data[s])) ch = true; e._fsRev[s] = rrev;
+    /* BUILD 16.07: data we just RECEIVED is not our unsent change — refresh the push baseline so a later
+       push never re-sends this stale copy and wipes another machine's newer rows (root of "row vanished"). */
+    try{ (_fsLocal[pid] = _fsLocal[pid] || { _seen:true })[s] = JSON.stringify(fsSlice(e.data)[s] || {}); }catch(_){}
   });
   /* BUILD 16.03 — make sure this existing project has a push-baseline, so its first edit this session
      updates only the changed section instead of overwriting the whole cloud document. */
@@ -6653,12 +6688,29 @@ function fsApplyLibrary(data){
   LIB_GROUPS.forEach(g => { const inc = inLib[g.key]; nextLib[g.key] = Array.isArray(inc) ? inc.map(it => ({cat:(it&&it.cat)||'', name:(it&&it.name)||'', price:(it&&it.price)||'', link:(it&&it.link)||'', grp:(it&&it.grp)||''})) : []; });
   const before = libSig();
   db.library = nextLib;
+  /* BUILD 16.07: adopting a remote library must NEVER destroy a category the user just added locally
+     and that the server has not confirmed yet (it is absent from our merge base). Remote deletions
+     (present in base, absent remotely) are still honoured. Anything local-only is re-published. */
+  let remoteCats = null, localExtra = false;
   if(data.cats && typeof data.cats === 'object'){
-    db.cats = {};
-    Object.keys(data.cats).forEach(k => { if(Array.isArray(data.cats[k])) db.cats[k] = data.cats[k].map(c => String(c)); });
+    remoteCats = {};
+    Object.keys(data.cats).forEach(k => { if(Array.isArray(data.cats[k])) remoteCats[k] = data.cats[k].map(c => String(c)); });
+    const baseCats = (db.libBase && db.libBase.cats) || {}, prevCats = (db.cats && typeof db.cats==='object') ? db.cats : {};
+    const low = x => String(x).toLowerCase();
+    const next = {};
+    const keys = {}; Object.keys(remoteCats).forEach(k => keys[k]=1); Object.keys(prevCats).forEach(k => keys[k]=1);
+    Object.keys(keys).forEach(k => {
+      const remote = remoteCats[k], local = Array.isArray(prevCats[k]) ? prevCats[k].map(String) : [], base = Array.isArray(baseCats[k]) ? baseCats[k].map(String) : [];
+      if(!remote){ next[k] = local.slice(); if(local.length) localExtra = true; return; }   /* key missing remotely → keep ours */
+      const res = remote.slice();
+      local.forEach(c => { const cl = low(c); if(!res.some(x => low(x)===cl) && !base.some(x => low(x)===cl)){ res.push(c); localExtra = true; } });   /* unconfirmed local add survives */
+      next[k] = res;
+    });
+    db.cats = next;
   }
   db.libRev = rrev;
-  db.libBase = _libSnapshot({library:db.library, cats:db.cats});   /* this adopted state is our new merge base */
+  db.libBase = _libSnapshot({library:db.library, cats: remoteCats || db.cats});   /* base = what the SERVER holds; our unconfirmed adds stay "pending" until published */
+  if(localExtra){ setTimeout(function(){ try{ _libDirty = true; fsPushLibrary(); }catch(_){} }, 300); }   /* publish the local-only categories now */
   _libSigLast = libSig();
   try{ normalizeSort(); }catch(_){}
   return before !== _libSigLast;
@@ -6714,7 +6766,7 @@ function fsOnSnapshot(snap){
   if(touched){
     saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
     if(isTypingInInput()){ _fsRerenderPending = true; }              /* BUILD 16.06: refresh the open module on blur (don't yank the caret) */
-    else if(!onProjectFormPage()){ rerenderKeepScroll(); }          /* LIVE: refresh the open module now (keeps scroll; never wipes a create/edit form) */
+    else if(!onProjectFormPage()){ _fsRerenderSoon(); }             /* LIVE: refresh the open module (coalesced — no flicker on bursts) */
     renderHeader(); renderSideProject();
     _fsStampRecv();
   }
@@ -9575,6 +9627,8 @@ const DOC_FILE_SECTIONS = [
   { key:'projdocs', label:'Project Documents', cats:[
     ['docEquip','Equipment List','.pdf,.xlsx,.xls,.csv,.docx,.txt'],
     ['docShip','Shipping Documents','.pdf,.xlsx,.xls,.docx,.jpg,.jpeg,.png'],
+    ['shipLabelPallet','Shipping Labels — Pallets (PDF)','.pdf'],      /* BUILD 16.07: uploaded from Shipping */
+    ['shipLabelDriver','Shipping Documents — Driver (PDF)','.pdf'],    /* BUILD 16.07: uploaded from Shipping */
     ['docClient','Client Documents','.pdf,.xlsx,.xls,.docx,.txt'] ]},
   /* TOOL DATABASES (BUILD 12.85): source JSON/PDF from the Fulldome tools; these ride in
      the project AND mirror into a SEPARATE Drive subfolder "Documentation/TOOL DATABASES/" */
@@ -9598,6 +9652,23 @@ function docFilesOf(catKey){
 function entryDocFiles(e, catKey){
   const d = e && e.data;
   return (d && d.docs && d.docs.files && Array.isArray(d.docs.files[catKey])) ? d.docs.files[catKey] : [];
+}
+/* BUILD 16.07: Shipping — uploaded label/driver PDFs (stored like all project documents, synced via Drive) */
+function shipLabelFilesHtml(){
+  const e = activeEntry(); if(!e) return '';
+  const cats = [['shipLabelPallet','Pallet labels (PDF)'],['shipLabelDriver','Driver documents (PDF)']];
+  return cats.map(function(c){
+    const k = c[0], lab = c[1], files = entryDocFiles(e, k);
+    const rows = files.length ? files.map(function(f, i){
+      return '<div style="display:flex;align-items:center;gap:8px;font-size:12.5px;padding:3px 0">'
+        + '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(f.name)+'">'+esc(f.name)+'</span>'
+        + '<span style="color:var(--dim);font-size:11px">'+fmtSize(f.size)+'</span>'
+        + '<button class="mod-btn primary" style="padding:3px 9px;font-size:11px" onclick="downloadDocFileEntry(\''+e.id+'\',\''+k+'\','+i+')">Download</button>'
+        + '<button class="mod-btn" style="padding:3px 9px;font-size:11px" title="Remove" onclick="rmDocFileEntry(\''+e.id+'\',\''+k+'\','+i+')">×</button>'
+        + '</div>';
+    }).join('') : '<div style="font-size:12px;color:var(--dim)">No file uploaded yet</div>';
+    return '<div style="flex:1;min-width:240px"><div style="font-size:10.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--dim);margin-bottom:4px">'+lab+'</div>'+rows+'</div>';
+  }).join('');
 }
 function docFileCount(){
   return docScope().reduce((s,e)=> s + DOC_FILE_SECTIONS.reduce((x,sec)=> x + sec.cats.reduce((y,c)=> y + entryDocFiles(e,c[0]).length, 0), 0), 0);
@@ -11399,8 +11470,13 @@ loadState(()=>{ restoreHandles();
         +'padding:11px 16px;box-shadow:0 2px 12px rgba(0,0,0,.4);display:flex;gap:10px;align-items:center';
       var ic=document.createElement('span'); ic.textContent='⏳'; ic.style.fontSize='17px';
       var msg=document.createElement('span'); msg.style.flex='1';
-      msg.textContent='Update waiting — finish your work. The app will update after synchronization.';
+      msg.textContent='New version ready — it will apply after synchronization, or press Update now.';
       bar.appendChild(ic); bar.appendChild(msg);
+      /* BUILD 16.07: manual "Update" button — press → reloads to the new build immediately */
+      var btn=document.createElement('button'); btn.type='button'; btn.textContent='Update';
+      btn.style.cssText='flex:none;background:#fff;color:#0f5c39;border:none;border-radius:6px;padding:7px 14px;font:600 13px -apple-system,Segoe UI,Roboto,Arial,sans-serif;cursor:pointer';
+      btn.onclick=function(){ try{ if(!pending) return; hideWaiting(); reloadTo(pending); }catch(_){} };
+      bar.appendChild(btn);
       var m=function(){ if(document.body){ document.body.appendChild(bar); document.body.style.paddingTop='56px'; } };
       if(document.body) m(); else document.addEventListener('DOMContentLoaded', m);
     }
