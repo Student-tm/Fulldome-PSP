@@ -802,7 +802,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.04 · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.05 · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · LIVE-SYNC V2 STAGED (OFF)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -11381,6 +11381,808 @@ loadState(()=>{ restoreHandles();
     document.addEventListener('visibilitychange', function(){ if(!document.hidden){ check(); } });   // and on tab refocus
   }catch(_){}
 })();
+</script>
+
+<!-- ================= Sync V2.2 live-sync integration (BUILD 16.05) — DORMANT while SYNC_V2===false ================= -->
+<script>
+/* Sync V2.2 — BUILD 16.05. Flag OFF by default; see SYNC_V2 / SYNC_V2_PIDS below. */
+/* =====================================================================
+   Fulldome PSP — Sync V2.2 engine (universal field/row sync)
+   Integrated build. Talks to storage ONLY via an injected `adapter`.
+   Fixes in 2.2 (per review for real integration):
+    #1  conflicts are SEPARATE documents keyed by opId (no serverTimestamp
+        inside arrays — that is illegal in real Firestore). A conflicts
+        subcollection is listened to and surfaced.
+    #8  open() reads PARENT META first (pid, schema:2, migrationStatus:
+        'complete', optional rowCount/checksum). An un-migrated/empty project
+        is a BLOCKING error, never a confirmed empty form.
+    #10 nested tables (shipping.pallets) are their own synced rows.
+    #11 safe Firestore document IDs (slash/@/__/space/unicode handled).
+   Storage model (split docs):
+     projects_v2/<pid>                          meta { pid, schema, migrationStatus, rowCount, checksum }
+     projects_v2/<pid>/rows/<safeDocId>         one row/singleton doc
+        { moduleId, rowId, kind, ord?, fields:{<f>:{v,rev,by,at,op}}, deleted? }
+     projects_v2/<pid>/conflicts/<opId>         one conflict { moduleId,rowId,field,v,by,at,baseRev,over }
+   Media/base64 never enter Firestore (declared mediaKeys -> Drive manifest).
+   ===================================================================== */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  if (typeof window !== 'undefined') window.SyncV2 = api;
+})(this, function () {
+  'use strict';
+
+  function SyncError(message, code) { const e = new Error(message); e.name = 'SyncError'; e.code = code || 'sync/error'; return e; }
+  const STATUS = {
+    LOCAL_SAVED: 'local-saved', CLOUD_SAVING: 'cloud-saving', CLOUD_SAVED: 'cloud-saved',
+    CLOUD_SAVE_FAILED: 'cloud-save-failed', CLOUD_UPDATE_RECEIVED: 'cloud-update-received',
+    OFFLINE: 'offline', CONFLICT: 'conflict', BLOCKED: 'blocked'
+  };
+  const SINGLE = '@';
+  const SEP = '\u0002';
+  const CONFLICT_CAP = 100;
+
+  /* ---------- safe Firestore document ids (#11) ----------
+     Firestore ids: must be non-empty, <=1500 bytes, cannot be "." or "..",
+     cannot contain "/", cannot match /^__.*__$/. We percent-encode "/" and
+     control chars, map unsafe edge cases, and keep everything else (incl.
+     unicode, @, spaces, single underscores) which Firestore allows. */
+  function safeId(raw) {
+    let s = String(raw == null ? '' : raw);
+    s = s.replace(/%/g, '%25').replace(/\//g, '%2F').replace(/[\u0000-\u001f\u007f]/g, function (c) { return '%' + c.charCodeAt(0).toString(16).padStart(2, '0').toUpperCase(); });
+    if (s === '') s = '%E'; if (s === '.') s = '%2E'; if (s === '..') s = '%2E%2E';
+    if (/^__.*__$/.test(s)) s = 'u' + s;   // avoid the reserved __.*__ pattern
+    return s;
+  }
+  const DOCSEP = '__';
+  function docIdFor(moduleId, rowId) { return safeId(moduleId) + DOCSEP + safeId(rowId == null ? SINGLE : rowId); }
+  function cid(moduleId, rowId, field) { return moduleId + SEP + (rowId == null ? SINGLE : String(rowId)) + SEP + field; }
+
+  /* ---------- central registry ---------- */
+  const MODULE_REGISTRY = Object.create(null);
+  function registerModule(id, spec) {
+    if (!id || typeof id !== 'string') throw SyncError('registerModule: id required', 'sync/bad-registration');
+    if (!spec || ['table', 'singleton', 'list'].indexOf(spec.kind) < 0) throw SyncError('registerModule: bad kind for ' + id, 'sync/bad-registration');
+    MODULE_REGISTRY[id] = {
+      id: id, title: spec.title || id, kind: spec.kind,
+      rowsKey: spec.rowsKey || 'rows', idKey: spec.idKey || 'id',
+      containerKey: spec.containerKey || 'list', flags: spec.flags || [], mediaKeys: spec.mediaKeys || [],
+      // for a nested table lifted out of a parent singleton (e.g. shipping.pallets):
+      parent: spec.parent || null, parentArrayKey: spec.parentArrayKey || null
+    };
+    return MODULE_REGISTRY[id];
+  }
+  function getModuleSpec(id) { const m = MODULE_REGISTRY[id]; if (!m) throw SyncError('Module "' + id + '" is not registered', 'sync/unregistered-module'); return m; }
+  function isRegistered(id) { return !!MODULE_REGISTRY[id]; }
+
+  registerModule('project',      { kind: 'singleton', title: 'Project Information' });
+  registerModule('server',       { kind: 'table', title: 'Server',       flags: ['ready', 'caseSize'] });
+  registerModule('backup',       { kind: 'table', title: 'Backup Server', flags: ['ready', 'caseSize', 'name', 'enabled'] });
+  registerModule('vj',           { kind: 'table', title: 'VJ',            flags: ['ready'] });
+  registerModule('rack',         { kind: 'table', title: 'Rack',          flags: ['ready', 'heightU', 'rackId', 'slots'] });
+  registerModule('camera',       { kind: 'table', title: 'Camera',        flags: ['ready'], mediaKeys: ['photos'] });
+  registerModule('speakers',     { kind: 'table', title: 'Speakers',      flags: ['ready'] });
+  registerModule('fan',          { kind: 'table', title: 'Fan / HVAC',    flags: ['ready'] });
+  registerModule('cables',       { kind: 'table', title: 'Cables',        flags: ['ready'] });
+  registerModule('tools',        { kind: 'table', title: 'Tools',         flags: ['ready'] });
+  registerModule('projectors',   { kind: 'list',  title: 'Projectors', containerKey: 'list', idKey: 'id', flags: ['selId', 'selModel', 'removableLens', 'lenses', 'models'], mediaKeys: ['web'] });
+  registerModule('validation',   { kind: 'singleton', title: 'Validation' });
+  registerModule('vjValidation', { kind: 'singleton', title: 'VJ Validation' });
+  registerModule('shipping',     { kind: 'singleton', title: 'Shipping', mediaKeys: ['palletPhotos', 'docs'] });
+  registerModule('shippingPallets', { kind: 'table', title: 'Shipping Pallets', idKey: 'id', parent: 'shipping', parentArrayKey: 'pallets' });  // #10
+  registerModule('docs',         { kind: 'singleton', title: 'Docs (refs only)', mediaKeys: ['files', 'sitePh'] });
+  registerModule('contentList',  { kind: 'singleton', title: 'Content List', mediaKeys: ['data'] });
+
+  let _opSeq = 0;
+  function newOpId(who) { return (who || 'op') + '-' + Date.now().toString(36) + '-' + (++_opSeq).toString(36); }
+  function newRowId() { return 'r_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8); }
+  function jeq(a, b) { return JSON.stringify(a === undefined ? null : a) === JSON.stringify(b === undefined ? null : b); }
+  function clone(x) { return x == null ? x : JSON.parse(JSON.stringify(x)); }
+
+  /* ---------- migration (pure, idempotent, lossless for non-media) ---------- */
+  function dryRunMigrate(legacyState, opts) {
+    opts = opts || {};
+    const by = opts.by || 'migration';
+    const pid = opts.pid || (legacyState.project && legacyState.project.pid) || null;
+    const op = 'migrate:' + pid;
+    const rows = [], media = [];
+    function fieldsFrom(obj, moduleId, mediaKeys, rowId) {
+      const fields = {};
+      Object.keys(obj).forEach(function (k) {
+        if (mediaKeys.indexOf(k) >= 0) { media.push({ moduleId: moduleId, rowId: rowId, field: k }); return; }
+        fields[k] = { v: clone(obj[k]), rev: 1, by: by, at: 0, op: op };
+      });
+      return fields;
+    }
+    Object.keys(MODULE_REGISTRY).forEach(function (moduleId) {
+      const spec = MODULE_REGISTRY[moduleId];
+      // resolve source: nested table reads parent[parentArrayKey]; others read state[moduleId]
+      let src = spec.parent ? (legacyState[spec.parent] || {})[spec.parentArrayKey] : legacyState[moduleId];
+      if (spec.parent) {
+        const arr = Array.isArray(src) ? src : [];
+        arr.forEach(function (row, index) {
+          row = row || {};
+          const hasId = row[spec.idKey] != null && row[spec.idKey] !== '';
+          const rowId = hasId ? String(row[spec.idKey]) : (moduleId + '#' + index);
+          const body = {}; Object.keys(row).forEach(function (k) { if (k !== spec.idKey) body[k] = row[k]; });
+          rows.push({ moduleId: moduleId, rowId: rowId, kind: 'table', ord: index, fields: fieldsFrom(body, moduleId, spec.mediaKeys, rowId), synthId: !hasId });
+        });
+        return;
+      }
+      if (src === undefined || src === null) return;
+      if (spec.kind === 'singleton') {
+        // for a singleton that also has a nested table (shipping.pallets), drop that array (it migrates as its own module)
+        const obj = {}; Object.keys(src).forEach(function (k) { obj[k] = src[k]; });
+        Object.keys(MODULE_REGISTRY).forEach(function (mm) { const s2 = MODULE_REGISTRY[mm]; if (s2.parent === moduleId) delete obj[s2.parentArrayKey]; });
+        rows.push({ moduleId: moduleId, rowId: SINGLE, kind: 'singleton', fields: fieldsFrom(obj, moduleId, spec.mediaKeys, SINGLE) });
+        return;
+      }
+      const arrKey = spec.kind === 'list' ? spec.containerKey : spec.rowsKey;
+      const arr = Array.isArray(src[arrKey]) ? src[arrKey] : [];
+      arr.forEach(function (row, index) {
+        row = row || {};
+        const hasId = spec.idKey && row[spec.idKey] != null && row[spec.idKey] !== '';
+        const rowId = hasId ? String(row[spec.idKey]) : (moduleId + '#' + index);
+        const body = {}; Object.keys(row).forEach(function (k) { if (k !== spec.idKey) body[k] = row[k]; });
+        rows.push({ moduleId: moduleId, rowId: rowId, kind: spec.kind, ord: index, fields: fieldsFrom(body, moduleId, spec.mediaKeys, rowId), synthId: !hasId });
+      });
+      const flagFields = {};
+      (spec.flags || []).forEach(function (f) { if (Object.prototype.hasOwnProperty.call(src, f)) flagFields[f] = { v: clone(src[f]), rev: 1, by: by, at: 0, op: op }; });
+      if (Object.keys(flagFields).length) rows.push({ moduleId: moduleId, rowId: SINGLE, kind: 'flags', fields: flagFields });
+    });
+    const doc = { meta: { pid: pid, schema: 2, migrationStatus: 'complete', migratedBy: by, rowCount: rows.length }, rows: rows, media: media };
+    return doc;
+  }
+
+  function reconstructLegacy(v2) {
+    const out = {};
+    const byModule = {};
+    v2.rows.forEach(function (rd) { (byModule[rd.moduleId] || (byModule[rd.moduleId] = [])).push(rd); });
+    // first pass: non-nested modules
+    Object.keys(MODULE_REGISTRY).forEach(function (moduleId) {
+      const spec = MODULE_REGISTRY[moduleId]; if (spec.parent) return;
+      const docs = byModule[moduleId]; if (!docs) return;
+      if (spec.kind === 'singleton') {
+        const d = docs.find(function (x) { return x.rowId === SINGLE; }) || { fields: {} };
+        const obj = {}; Object.keys(d.fields).forEach(function (f) { obj[f] = clone(d.fields[f].v); });
+        out[moduleId] = obj; return;
+      }
+      const arrKey = spec.kind === 'list' ? spec.containerKey : spec.rowsKey;
+      const rowDocs = docs.filter(function (x) { return x.rowId !== SINGLE && !x.deleted; }).sort(function (a, b) { return (a.ord - b.ord) || (a.rowId < b.rowId ? -1 : 1); });
+      out[moduleId] = {}; out[moduleId][arrKey] = rowDocs.map(function (rd) { const row = {}; if (!rd.synthId) row[spec.idKey] = rd.rowId; Object.keys(rd.fields).forEach(function (f) { row[f] = clone(rd.fields[f].v); }); return row; });
+      const flagsDoc = docs.find(function (x) { return x.rowId === SINGLE; });
+      if (flagsDoc) Object.keys(flagsDoc.fields).forEach(function (f) { out[moduleId][f] = clone(flagsDoc.fields[f].v); });
+    });
+    // second pass: nested tables back into their parent
+    Object.keys(MODULE_REGISTRY).forEach(function (moduleId) {
+      const spec = MODULE_REGISTRY[moduleId]; if (!spec.parent) return;
+      const docs = byModule[moduleId] || [];
+      const rowDocs = docs.filter(function (x) { return x.rowId !== SINGLE && !x.deleted; }).sort(function (a, b) { return (a.ord - b.ord) || (a.rowId < b.rowId ? -1 : 1); });
+      out[spec.parent] = out[spec.parent] || {};
+      out[spec.parent][spec.parentArrayKey] = rowDocs.map(function (rd) { const row = {}; if (!rd.synthId) row[spec.idKey] = rd.rowId; Object.keys(rd.fields).forEach(function (f) { row[f] = clone(rd.fields[f].v); }); return row; });
+    });
+    return out;
+  }
+
+  function buildLocalModel(rowDocsMap) {
+    const docs = Array.isArray(rowDocsMap) ? rowDocsMap : Object.keys(rowDocsMap).map(function (k) { return rowDocsMap[k]; });
+    const model = {};
+    Object.keys(MODULE_REGISTRY).forEach(function (m) { model[m] = {}; });
+    const byModule = {};
+    docs.forEach(function (rd) { if (rd && isRegistered(rd.moduleId)) (byModule[rd.moduleId] || (byModule[rd.moduleId] = [])).push(rd); });
+    Object.keys(byModule).forEach(function (moduleId) {
+      const spec = MODULE_REGISTRY[moduleId], list = byModule[moduleId];
+      if (spec.kind === 'singleton') { const d = list.find(function (x) { return x.rowId === SINGLE; }) || { fields: {} }; Object.keys(d.fields).forEach(function (f) { model[moduleId][f] = clone(d.fields[f].v); }); return; }
+      const flagsDoc = list.find(function (x) { return x.rowId === SINGLE; });
+      if (flagsDoc) Object.keys(flagsDoc.fields).forEach(function (f) { model[moduleId][f] = clone(flagsDoc.fields[f].v); });
+      const rowDocs = list.filter(function (x) { return x.rowId !== SINGLE && !x.deleted; }).sort(function (a, b) { return ((a.ord || 0) - (b.ord || 0)) || (a.rowId < b.rowId ? -1 : 1); });
+      const arrKey = spec.kind === 'list' ? spec.containerKey : spec.rowsKey;
+      model[moduleId][arrKey] = rowDocs.map(function (rd) { const row = { __id: rd.rowId }; Object.keys(rd.fields).forEach(function (f) { row[f] = clone(rd.fields[f].v); }); return row; });
+    });
+    return model;
+  }
+
+  /* =====================================================================
+     SyncClient
+     ===================================================================== */
+  function SyncClient(opts) {
+    if (!(this instanceof SyncClient)) return new SyncClient(opts);
+    this.adapter = opts.adapter; this.user = opts.user || 'anon'; this.outbox = opts.outbox || null;
+    this.onStatus = opts.onStatus || function () {}; this.onModel = opts.onModel || function () {};
+    this.onConflicts = opts.onConflicts || function () {};
+    this.debounceMs = opts.debounceMs == null ? 250 : opts.debounceMs;
+    this.pid = null; this.gen = 0;                 // #3 generation token
+    this._rowDocs = {}; this._conflicts = {};      // opId -> conflict
+    this._localRev = {}; this._activeEdits = {}; this._pendingRemote = {}; this._lastLocal = {};
+    this._cellState = {}; this._applying = false;
+    this._unsub = null; this._unsubConf = null; this._confirmed = false; this._writes = 0;
+    if (this.outbox) this.outbox.bind(this);
+  }
+  SyncClient.prototype._emit = function (phase, extra) { this.onStatus(Object.assign({ phase: phase, at: Date.now() }, extra || {})); };
+  function _isOffline(err) { return err && (err.code === 'unavailable' || err.code === 'offline'); }
+
+  /* #8 meta gate: read parent meta first; block unless migrated+complete */
+  SyncClient.prototype.open = async function (pid, opts) {
+    opts = opts || {};
+    this.pid = pid; this.gen++; const myGen = this.gen;   // #3 bump generation; late callbacks check it
+    this._confirmed = false; this._rowDocs = {}; this._localRev = {}; this._conflicts = {};
+    let meta;
+    try { meta = await this.adapter.getDocServer(this.adapter.metaDocRef(pid)); }
+    catch (err) { this._emit(STATUS.OFFLINE, { reason: err.code || err.message, pid: pid }); return { confirmed: false, offline: true }; }
+    if (this.gen !== myGen) return { stale: true };        // a newer open() started; abandon
+    if (meta.fromCache) { this._emit(STATUS.OFFLINE, { reason: 'meta-fromCache', pid: pid }); return { confirmed: false, offline: true }; }
+    const m = meta.exists ? meta.data() : null;
+    if (!m || m.schema !== 2 || m.migrationStatus !== 'complete') {
+      this._emit(STATUS.BLOCKED, { pid: pid, reason: !m ? 'no-meta' : (m.schema !== 2 ? 'bad-schema' : 'migration-' + (m.migrationStatus || 'missing')) });
+      return { confirmed: false, blocked: true, reason: !m ? 'no-meta' : 'not-migrated' };   // never a confirmed empty form
+    }
+    let snap;
+    try { snap = await this.adapter.getColServer(this.adapter.rowsColRef(pid)); }
+    catch (err) { this._emit(STATUS.OFFLINE, { reason: err.code || err.message, pid: pid }); return { confirmed: false, offline: true }; }
+    if (this.gen !== myGen) return { stale: true };
+    if (snap.fromCache) { this._emit(STATUS.OFFLINE, { reason: 'rows-fromCache', pid: pid }); return { confirmed: false, offline: true }; }
+    // optional integrity check
+    if (m.rowCount != null && snap.docs.length < m.rowCount) {
+      this._emit(STATUS.BLOCKED, { pid: pid, reason: 'rowcount-mismatch', expected: m.rowCount, got: snap.docs.length });
+      return { confirmed: false, blocked: true, reason: 'rowcount-mismatch' };
+    }
+    snap.docs.forEach((d) => { this._rowDocs[d.id] = d.data; this._seedRevFromDoc(d.data); });
+    // conflicts
+    try { const cs = await this.adapter.getColServer(this.adapter.conflictColRef(pid)); cs.docs.forEach((d) => { this._conflicts[d.id] = d.data; }); } catch (e) {}
+    this._confirmed = true; this._meta = m;
+    this._startLive(myGen);
+    const model = this._overlayActive(buildLocalModel(this._rowDocs));
+    this.onModel(model, { confirmed: true, source: 'server', changedCells: null });
+    this.onConflicts(this._conflicts);
+    this._emit(STATUS.CLOUD_UPDATE_RECEIVED, { pid: pid, confirmed: true });
+    if (this.outbox) this.outbox.resume().catch(() => {});
+    return { confirmed: true, offline: false, model: model };
+  };
+
+  SyncClient.prototype._seedRevFromDoc = function (rd) { if (!rd || !rd.fields) return; Object.keys(rd.fields).forEach((f) => { this._localRev[cid(rd.moduleId, rd.rowId, f)] = rd.fields[f].rev; }); };
+
+  SyncClient.prototype._startLive = function (myGen) {
+    if (this._unsub) { try { this._unsub(); } catch (e) {} }
+    if (this._unsubConf) { try { this._unsubConf(); } catch (e) {} }
+    const self = this;
+    this._unsub = this.adapter.onSnapshotCol(this.adapter.rowsColRef(this.pid), function (changes, meta) {
+      if (self.gen !== myGen) return;                 // #3 reject late snapshots of an old project
+      self._applyRemote(changes, meta || {});
+    }, function (err) { self._emit(STATUS.OFFLINE, { reason: (err && (err.code || err.message)) || 'stream' }); });
+    this._unsubConf = this.adapter.onSnapshotCol(this.adapter.conflictColRef(this.pid), function (changes) {
+      if (self.gen !== myGen) return;
+      changes.forEach(function (ch) { if (ch.type === 'removed') delete self._conflicts[ch.id]; else self._conflicts[ch.id] = ch.data; });
+      self.onConflicts(self._conflicts);
+      if (Object.keys(self._conflicts).length) self._emit(STATUS.CONFLICT, { pid: self.pid, count: Object.keys(self._conflicts).length });
+    }, function () {});
+  };
+
+  SyncClient.prototype._applyRemote = function (changes, meta) {
+    this._applying = true; const changedCells = [];
+    try {
+      changes.forEach((ch) => {
+        const docId = ch.id;
+        if (ch.type === 'removed') { delete this._rowDocs[docId]; changedCells.push({ docId: docId, removed: true }); return; }
+        const rd = ch.data; this._rowDocs[docId] = rd;
+        if (rd.deleted) changedCells.push({ docId: docId, moduleId: rd.moduleId, rowId: rd.rowId, deleted: true });
+        const fields = rd.fields || {};
+        Object.keys(fields).forEach((f) => {
+          const c = cid(rd.moduleId, rd.rowId, f);
+          if (this._localRev[c] === fields[f].rev) return;
+          if (this._activeEdits[c]) { this._pendingRemote[c] = fields[f]; return; }   // #5 keep active field
+          this._localRev[c] = fields[f].rev;
+          changedCells.push({ docId: docId, moduleId: rd.moduleId, rowId: rd.rowId, field: f });
+        });
+      });
+    } finally { this._applying = false; }
+    if (changedCells.length) {
+      const model = this._overlayActive(buildLocalModel(this._rowDocs));   // #5 active local values kept in the model
+      this.onModel(model, { confirmed: true, source: 'snapshot', changedCells: changedCells, activeEdits: Object.keys(this._activeEdits) });
+      this._emit(STATUS.CLOUD_UPDATE_RECEIVED, { pid: this.pid, changed: changedCells.length });
+    }
+  };
+
+  SyncClient.prototype.beginEdit = function (m, r, f) { getModuleSpec(m); this._activeEdits[cid(m, r, f)] = true; };
+  SyncClient.prototype.endEdit = function (m, r, f) {
+    const c = cid(m, r, f); delete this._activeEdits[c];
+    const stashed = this._pendingRemote[c];
+    if (stashed) { delete this._pendingRemote[c]; this._emit(STATUS.CONFLICT, { cellId: c, remote: stashed, note: 'remote-changed-while-editing' }); }
+  };
+  // #5 the currently-edited local value the UI should keep in the model
+  SyncClient.prototype.activeValue = function (m, r, f) { const c = cid(m, r, f); return this._activeEdits[c] ? this._lastLocal[c] : undefined; };
+  // overlay active local values onto a model so onModel carries them (not the stale remote)
+  SyncClient.prototype._overlayActive = function (model) {
+    Object.keys(this._activeEdits).forEach((c) => {
+      const p = c.split(SEP); const m = p[0], r = p[1], f = p[2];
+      if (!isRegistered(m) || !model[m] || !(c in this._lastLocal)) return;
+      const spec = MODULE_REGISTRY[m];
+      if (spec.kind === 'singleton' || r === SINGLE) { model[m][f] = this._lastLocal[c]; return; }
+      const arrKey = spec.kind === 'list' ? spec.containerKey : spec.rowsKey;
+      const row = (model[m][arrKey] || []).find((x) => x.__id === r); if (row) row[f] = this._lastLocal[c];
+    });
+    return model;
+  };
+
+  SyncClient.prototype.setField = function (moduleId, rowId, field, value) {
+    getModuleSpec(moduleId);
+    const c = cid(moduleId, rowId, field);
+    this._lastLocal[c] = value;                         // #5 remember the local value for active-field overlay
+    this._emit(STATUS.LOCAL_SAVED, { moduleId, rowId, field });
+    const st = this._cellState[c] || (this._cellState[c] = { inflight: false, pending: undefined, timer: null });
+    st.pending = { moduleId, rowId, field, value };
+    if (st.inflight) return Promise.resolve({ status: 'coalesced' });
+    return this._scheduleFlush(c);
+  };
+  SyncClient.prototype._scheduleFlush = function (c) { const st = this._cellState[c], self = this; if (st.timer) clearTimeout(st.timer); return new Promise((res) => { st.timer = setTimeout(() => { self._flushCell(c).then(res, res); }, self.debounceMs); }); };
+  SyncClient.prototype._flushCell = async function (c) {
+    const st = this._cellState[c]; if (!st || st.inflight || st.pending === undefined) return { status: 'idle' };
+    const job = st.pending; st.pending = undefined; st.inflight = true;
+    const baseRev = this._localRev[c] || 0;
+    let res;
+    try { res = await this._writeCellTxn(job.moduleId, job.rowId, job.field, job.value, baseRev); }
+    catch (err) { st.inflight = false; if (err.code === 'offline') { await this._enqueueOffline({ type: 'setField', moduleId: job.moduleId, rowId: job.rowId, field: job.field, value: job.value, baseRev: baseRev }); return { status: 'queued' }; } throw err; }
+    st.inflight = false;
+    if (res.status === 'ok' || res.status === 'noop') this._localRev[c] = res.rev;
+    if (st.pending !== undefined) return this._flushCell(c);
+    return res;
+  };
+
+  /* one field write = transaction on ONE row doc; conflict -> a conflict DOC (#1) */
+  SyncClient.prototype._writeCellTxn = async function (moduleId, rowId, field, value, baseRev) {
+    const spec = getModuleSpec(moduleId);
+    const ref = this.adapter.rowDocRef(this.pid, docIdFor(moduleId, rowId));
+    const self = this, op = newOpId(this.user);
+    this._emit(STATUS.CLOUD_SAVING, { moduleId, rowId, field });
+    let result;
+    try {
+      result = await this.adapter.runTransaction(async function (tx) {
+        const snap = await tx.get(ref);
+        const doc = snap.exists ? snap.data() : { moduleId, rowId, kind: spec.kind, fields: {}, deleted: null };
+        const at = self.adapter.serverTimestamp();
+        const cur = doc.fields && doc.fields[field]; const curRev = cur ? cur.rev : 0;
+        if (cur && jeq(cur.v, value)) return { status: 'noop', rev: curRev };
+        if (cur && baseRev !== curRev && !jeq(cur.v, value)) {
+          // #1 write a SEPARATE conflict doc keyed by opId (serverTimestamp is a top-level field -> legal)
+          const cref = self.adapter.conflictDocRef(self.pid, op);
+          tx.set(cref, { moduleId, rowId, field, v: clone(value), by: self.user, at: at, baseRev: baseRev, over: { v: clone(cur.v), by: cur.by, rev: cur.rev }, resolved: false }, { merge: false });
+          return { status: 'conflict', rev: curRev, op: op };
+        }
+        const newRev = curRev + 1;
+        const patch = { moduleId, rowId, kind: spec.kind, fields: {} };
+        patch.fields[field] = { v: clone(value), rev: newRev, by: self.user, at: at, op: op };
+        tx.set(ref, patch, { merge: true });
+        return { status: 'ok', rev: newRev };
+      });
+    } catch (err) {
+      if (_isOffline(err)) { this._emit(STATUS.OFFLINE, { moduleId, rowId, field }); throw SyncError('offline', 'offline'); }
+      this._emit(STATUS.CLOUD_SAVE_FAILED, { moduleId, rowId, field, code: err.code || 'error', message: err.message }); throw err;
+    }
+    this._writes++;
+    if (result.status === 'ok' || result.status === 'noop') this._emit(STATUS.CLOUD_SAVED, { moduleId, rowId, field, rev: result.rev });
+    else if (result.status === 'conflict') this._emit(STATUS.CONFLICT, { moduleId, rowId, field, op: result.op, note: 'concurrent-same-field' });
+    return result;
+  };
+
+  SyncClient.prototype.setFlag = function (m, f, v) { return this.setField(m, SINGLE, f, v); };
+  SyncClient.prototype.setSingleton = function (m, f, v) { const s = getModuleSpec(m); if (s.kind !== 'singleton') throw SyncError('setSingleton on non-singleton ' + m, 'sync/kind'); return this.setField(m, SINGLE, f, v); };
+
+  SyncClient.prototype._addRowCore = async function (moduleId, rowId, rowObj, ord) {
+    const spec = getModuleSpec(moduleId);
+    const ref = this.adapter.rowDocRef(this.pid, docIdFor(moduleId, rowId));
+    const self = this, op = newOpId(this.user);
+    this._emit(STATUS.CLOUD_SAVING, { moduleId, rowId, add: true });
+    const out = await this.adapter.runTransaction(async function (tx) {
+      const snap = await tx.get(ref);
+      if (snap.exists && !snap.data().deleted) return { status: 'exists', rowId: rowId };
+      const at = self.adapter.serverTimestamp(); const fields = {};
+      Object.keys(rowObj || {}).forEach(function (k) { if (k === spec.idKey) return; if (spec.mediaKeys.indexOf(k) >= 0) return; fields[k] = { v: clone(rowObj[k]), rev: 1, by: self.user, at: at, op: op }; });
+      tx.set(ref, { moduleId, rowId, kind: spec.kind, ord: ord, fields: fields, deleted: null }, { merge: false });
+      return { status: 'ok', rowId: rowId };
+    });
+    this._writes++; this._emit(STATUS.CLOUD_SAVED, { moduleId, rowId, add: true });
+    Object.keys(rowObj || {}).forEach((k) => { if (k !== spec.idKey && spec.mediaKeys.indexOf(k) < 0) this._localRev[cid(moduleId, rowId, k)] = 1; });
+    return out;
+  };
+  SyncClient.prototype.addRow = async function (moduleId, rowObj) {
+    const spec = getModuleSpec(moduleId);
+    if (spec.kind === 'singleton') throw SyncError('addRow on singleton ' + moduleId, 'sync/kind');
+    const rowId = (spec.idKey && rowObj && rowObj[spec.idKey] != null && rowObj[spec.idKey] !== '') ? String(rowObj[spec.idKey]) : newRowId();
+    const ord = Date.now() + Math.random();
+    try { const out = await this._addRowCore(moduleId, rowId, rowObj, ord); return { rowId: rowId, result: out }; }
+    catch (err) { if (_isOffline(err)) { await this._enqueueOffline({ type: 'addRow', moduleId, rowId, rowObj: clone(rowObj), ord: ord }); return { status: 'queued', rowId: rowId }; } this._emit(STATUS.CLOUD_SAVE_FAILED, { moduleId, rowId, code: err.code || 'error', message: err.message }); throw err; }
+  };
+
+  /* #7 delete carries a base revision snapshot; if a newer edit exists it is surfaced as a conflict, not silently hidden */
+  SyncClient.prototype._deleteRowCore = async function (moduleId, rowId, baseRevs) {
+    getModuleSpec(moduleId);
+    const ref = this.adapter.rowDocRef(this.pid, docIdFor(moduleId, rowId));
+    const self = this, op = newOpId(this.user);
+    this._emit(STATUS.CLOUD_SAVING, { moduleId, rowId, delete: true });
+    const out = await this.adapter.runTransaction(async function (tx) {
+      const snap = await tx.get(ref); const at = self.adapter.serverTimestamp();
+      if (snap.exists && baseRevs) {                 // #7 newer field than the delete was based on?
+        const cur = snap.data().fields || {}; let newer = false;
+        Object.keys(cur).forEach(function (f) { if (baseRevs[f] != null && cur[f].rev > baseRevs[f]) newer = true; });
+        if (newer) {
+          const cref = self.adapter.conflictDocRef(self.pid, op);
+          tx.set(cref, { moduleId, rowId, field: '(row)', kind: 'delete-vs-edit', by: self.user, at: at, baseRevs: baseRevs, resolved: false }, { merge: false });
+          return { status: 'conflict', op: op };
+        }
+      }
+      tx.set(ref, { moduleId, rowId, deleted: { at: at, by: self.user, op: op } }, { merge: true });
+      return { status: 'ok' };
+    });
+    this._writes++;
+    if (out.status === 'conflict') this._emit(STATUS.CONFLICT, { moduleId, rowId, op: out.op, note: 'delete-vs-edit' });
+    else this._emit(STATUS.CLOUD_SAVED, { moduleId, rowId, delete: true });
+    return out;
+  };
+  SyncClient.prototype.deleteRow = async function (moduleId, rowId, baseRevs) {
+    try { return await this._deleteRowCore(moduleId, rowId, baseRevs || null); }
+    catch (err) { if (_isOffline(err)) { await this._enqueueOffline({ type: 'deleteRow', moduleId, rowId, baseRevs: baseRevs || null }); return { status: 'queued' }; } this._emit(STATUS.CLOUD_SAVE_FAILED, { moduleId, rowId, code: err.code || 'error', message: err.message }); throw err; }
+  };
+
+  /* resolveConflict requires conflictOpId + expectedRevision (#6) */
+  SyncClient.prototype._resolveCore = async function (moduleId, rowId, field, chosenValue, guard) {
+    getModuleSpec(moduleId); guard = guard || {};
+    if (!guard.conflictOpId || guard.expectedRevision == null) throw SyncError('resolveConflict requires conflictOpId and expectedRevision', 'sync/bad-resolve');
+    const ref = this.adapter.rowDocRef(this.pid, docIdFor(moduleId, rowId));
+    const cref = this.adapter.conflictDocRef(this.pid, guard.conflictOpId);
+    const self = this, op = newOpId(this.user);
+    const out = await this.adapter.runTransaction(async function (tx) {
+      const snap = await tx.get(ref); if (!snap.exists) throw SyncError('row gone', 'sync/stale-resolve');
+      const doc = snap.data(); const cur = doc.fields && doc.fields[field]; const curRev = cur ? cur.rev : 0;
+      if (curRev !== guard.expectedRevision) throw SyncError('stale resolve: rev ' + guard.expectedRevision + '->' + curRev, 'sync/stale-resolve');
+      const at = self.adapter.serverTimestamp();
+      const patch = { moduleId, rowId, fields: {} };
+      patch.fields[field] = { v: clone(chosenValue), rev: curRev + 1, by: self.user, at: at, op: op };
+      tx.set(ref, patch, { merge: true });
+      tx.delete(cref);                               // remove the resolved conflict doc
+      return { status: 'resolved', rev: curRev + 1 };
+    });
+    this._localRev[cid(moduleId, rowId, field)] = out.rev; this._emit(STATUS.CLOUD_SAVED, { moduleId, rowId, field, resolved: true }); return out;
+  };
+  SyncClient.prototype.resolveConflict = async function (moduleId, rowId, field, chosenValue, guard) {
+    try { return await this._resolveCore(moduleId, rowId, field, chosenValue, guard); }
+    catch (err) { if (err.code === 'sync/stale-resolve') { this._emit(STATUS.CONFLICT, { moduleId, rowId, field, note: 'resolve-rejected-stale' }); throw err; } if (_isOffline(err)) { await this._enqueueOffline({ type: 'resolveConflict', moduleId, rowId, field, value: chosenValue, guard: guard }); return { status: 'queued' }; } throw err; }
+  };
+
+  SyncClient.prototype._enqueueOffline = async function (op) { this._emit(STATUS.OFFLINE, { queued: op.type }); if (this.outbox) await this.outbox.enqueue(this.pid, op); };
+  SyncClient.prototype._replayOp = async function (op) {
+    if (op.type === 'setField') return this._writeCellTxn(op.moduleId, op.rowId, op.field, op.value, op.baseRev);
+    if (op.type === 'addRow') return this._addRowCore(op.moduleId, op.rowId, op.rowObj || {}, op.ord);
+    if (op.type === 'deleteRow') return this._deleteRowCore(op.moduleId, op.rowId, op.baseRevs || null);
+    if (op.type === 'resolveConflict') return this._resolveCore(op.moduleId, op.rowId, op.field, op.value, op.guard);
+    throw SyncError('unknown op ' + op.type, 'sync/bad-op');
+  };
+  SyncClient.prototype.close = function () { this.gen++; if (this._unsub) { try { this._unsub(); } catch (e) {} this._unsub = null; } if (this._unsubConf) { try { this._unsubConf(); } catch (e) {} this._unsubConf = null; } };
+
+  return {
+    SyncError, STATUS, SINGLE, SEP, DOCSEP, CONFLICT_CAP, MODULE_REGISTRY,
+    registerModule, getModuleSpec, isRegistered, safeId, docIdFor, cid,
+    dryRunMigrate, reconstructLegacy, buildLocalModel, SyncClient, newRowId
+  };
+});
+/* REAL Firebase adapter (Firestore compat SDK). Ships. Maps the engine's
+   adapter interface to real Firestore. Server time = FieldValue.serverTimestamp();
+   field delete = FieldValue.delete(). Conflicts and meta are their own docs
+   (no serverTimestamp inside arrays). */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  if (typeof window !== 'undefined') window.createFirestoreAdapter = api.createFirestoreAdapter;
+})(this, function () {
+  'use strict';
+  function createFirestoreAdapter(firebase, db) {
+    const FieldValue = firebase.firestore.FieldValue;
+    const ROOT = 'projects_v2';
+    const proj = function (pid) { return db.collection(ROOT).doc(pid); };
+    return {
+      _firebase: firebase, _db: db,
+      serverTimestamp: function () { return FieldValue.serverTimestamp(); },
+      deleteField: function () { return FieldValue.delete(); },
+      metaDocRef: function (pid) { return proj(pid); },
+      rowsColRef: function (pid) { return proj(pid).collection('rows'); },
+      rowDocRef: function (pid, docId) { return proj(pid).collection('rows').doc(docId); },
+      conflictColRef: function (pid) { return proj(pid).collection('conflicts'); },
+      conflictDocRef: function (pid, opId) { return proj(pid).collection('conflicts').doc(opId); },
+      getDocServer: function (ref) { return ref.get({ source: 'server' }).then(function (s) { return { exists: s.exists, id: s.id, data: function () { return s.data(); }, fromCache: s.metadata.fromCache }; }); },
+      getColServer: function (colRef) { return colRef.get({ source: 'server' }).then(function (snap) { return { fromCache: snap.metadata.fromCache, docs: snap.docs.map(function (d) { return { id: d.id, data: d.data() }; }) }; }); },
+      onSnapshotCol: function (colRef, cb, errCb) {
+        return colRef.onSnapshot({ includeMetadataChanges: false }, function (snap) {
+          const changes = snap.docChanges().map(function (c) { return { type: c.type, id: c.doc.id, data: c.doc.data() }; });
+          cb(changes, { fromCache: snap.metadata.fromCache });
+        }, errCb);
+      },
+      runTransaction: function (fn) {
+        return db.runTransaction(function (t) {
+          const tx = {
+            get: function (ref) { return t.get(ref).then(function (s) { return { exists: s.exists, id: s.id, data: function () { return s.data(); } }; }); },
+            set: function (ref, data, o) { return t.set(ref, data, o || {}); },
+            delete: function (ref) { return t.delete(ref); }
+          };
+          return fn(tx);
+        });
+      }
+    };
+  }
+  return { createFirestoreAdapter: createFirestoreAdapter };
+});
+/* =====================================================================
+   Durable offline OUTBOX (IndexedDB).
+   - Every op persists BEFORE it is confirmed: pid, type, moduleId, rowId,
+     field, value, baseRev, opId, and (for addRow) rowId+ord, (for resolve)
+     guard. baseRev is frozen at edit time and NEVER recomputed on flush.
+   - An op is removed ONLY after the server confirms it.
+   - A failed flush does NOT clear the queue.
+   - resume() replays in FIFO order; stops on the first still-offline op.
+   - Auto-resumes on 'online' (browser) and on startup/reload (open() reads
+     whatever is persisted).
+   - setField edits to the same cell are COALESCED (latest value, original
+     frozen baseRev + opId), so a burst offline doesn't self-overwrite.
+   Works in Node tests via an injected idb factory (fake-indexeddb) and in
+   the browser via global indexedDB.
+   ===================================================================== */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  if (typeof window !== 'undefined') window.SyncV2Outbox = api;
+})(this, function () {
+  'use strict';
+
+  function Outbox(opts) {
+    opts = opts || {};
+    this.dbName = opts.dbName || 'fdp_syncv2_outbox';
+    this.idb = opts.indexedDB || (typeof indexedDB !== 'undefined' ? indexedDB : null);
+    if (!this.idb) throw new Error('Outbox: no IndexedDB available (inject opts.indexedDB in Node)');
+    this.client = null; this._db = null; this._resuming = false; this._seq = 0;
+    const self = this;
+    if (opts.autoResumeOnOnline !== false && typeof addEventListener === 'function') {
+      try { addEventListener('online', function () { if (self.client) self.resume().catch(function () {}); }); } catch (e) {}
+    }
+  }
+
+  Outbox.prototype.bind = function (client) { this.client = client; };
+
+  Outbox.prototype._open = function () {
+    const self = this;
+    if (this._db) return Promise.resolve(this._db);
+    return new Promise(function (resolve, reject) {
+      const req = self.idb.open(self.dbName, 1);
+      req.onupgradeneeded = function () {
+        const db = req.result;
+        if (!db.objectStoreNames.contains('ops')) {
+          const os = db.createObjectStore('ops', { keyPath: 'id', autoIncrement: true });
+          os.createIndex('byPid', 'pid', { unique: false });
+        }
+      };
+      req.onsuccess = function () { self._db = req.result; resolve(self._db); };
+      req.onerror = function () { reject(req.error); };
+    });
+  };
+
+  Outbox.prototype._tx = function (mode) { return this._open().then((db) => db.transaction('ops', mode).objectStore('ops')); };
+  function _req(r) { return new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+
+  Outbox.prototype._allForPid = async function (pid) {
+    const os = await this._tx('readonly');
+    const all = await _req(os.getAll());
+    return all.filter((o) => o.pid === pid).sort((a, b) => a.id - b.id);
+  };
+
+  Outbox.prototype.pendingCount = async function (pid) { return (await this._allForPid(pid)).length; };
+
+  // cellKey used to coalesce setField bursts to the same field
+  function cellKey(op) { return op.type === 'setField' ? ['setField', op.moduleId, op.rowId, op.field].join('\u0001') : null; }
+
+  Outbox.prototype.enqueue = async function (pid, op) {
+    const os = await this._tx('readwrite');
+    if (op.type === 'setField') {
+      // coalesce: if a pending setField for the same cell exists, update its value only
+      const all = await _req(os.getAll());
+      const existing = all.filter((o) => o.pid === pid && cellKey(o) === cellKey(op)).sort((a, b) => a.id - b.id)[0];
+      if (existing) { existing.value = op.value; await _req(os.put(existing)); return existing.id; }  // keep original baseRev + opId
+    }
+    const rec = Object.assign({ pid: pid, enqueuedAt: Date.now(), opId: op.opId || (op.type + '-' + Date.now() + '-' + (++this._seq)) }, op);
+    return _req(os.add(rec));
+  };
+
+  Outbox.prototype._remove = async function (id) { const os = await this._tx('readwrite'); return _req(os.delete(id)); };
+
+  // Replay FIFO. Delete an op ONLY on server confirmation. Stop on first
+  // still-offline op (keep the queue). A hard failure keeps the op too.
+  Outbox.prototype.resume = async function () {
+    if (!this.client || this._resuming) return { flushed: 0, remaining: await this.pendingCount(this.client ? this.client.pid : null) };
+    this._resuming = true;
+    let flushed = 0;
+    try {
+      const pid = this.client.pid;
+      const ops = await this._allForPid(pid);
+      for (const rec of ops) {
+        let res;
+        try { res = await this.client._replayOp(rec); }
+        catch (err) {
+          if (err && err.code === 'offline') break;         // still offline -> stop, keep queue
+          break;                                            // hard failure -> keep queue, stop (no silent clear)
+        }
+        if (res && res.status === 'queued') break;          // adapter still offline
+        await this._remove(rec.id); flushed++;              // confirmed -> remove
+      }
+    } finally { this._resuming = false; }
+    return { flushed: flushed, remaining: await this.pendingCount(this.client.pid) };
+  };
+
+  Outbox.prototype.clearAll = async function () { const os = await this._tx('readwrite'); return _req(os.clear()); };
+
+  return { Outbox: Outbox };
+});
+/* =====================================================================
+   Sync V2 <-> Fulldome PSP bridge (integration layer).
+   Inlined into index.html. 100% DORMANT when SYNC_V2 === false — it only
+   DEFINES functions; it installs no hooks and changes no behavior until the
+   flag is turned on per-pid. This is the single central sync path for ALL
+   modules (fields, tables, add/delete/reorder, ready-flags, Projectors,
+   Shipping incl. pallets, Validation, Tools, and any FUTURE module) — it is
+   registry-driven, so there is NO module-specific code and no Tools special
+   case. Certified for flag-ON only after the emulator suite + a 2-device test.
+   ===================================================================== */
+(function () {
+  'use strict';
+  /* ---- MASTER FLAG (off) + per-pid cutover allowlist (#12) ---- */
+  var SYNC_V2 = false;
+  var SYNC_V2_PIDS = Object.create(null);     // e.g. SYNC_V2_PIDS['PID123'] = true
+  if (typeof window === 'undefined') return;  // in Node (tests) define nothing active
+  window.SYNC_V2 = SYNC_V2; window.SYNC_V2_PIDS = SYNC_V2_PIDS;
+  function on(pid) { return SYNC_V2 && (pid ? !!SYNC_V2_PIDS[pid] : true); }
+  window.syncV2On = on;
+  if (!SYNC_V2) { window.syncV2Boot = function () {}; return; }   // hard short-circuit: OFF ⇒ nothing else defined/installed
+
+  /* ================= everything below runs ONLY when SYNC_V2 === true ================= */
+  var S = window.SyncV2;
+  var _client = null, _outbox = null, _baseline = {}, _blockedBanner = null;
+
+  function curEntry() { return (typeof activeEntry === 'function') ? activeEntry() : null; }
+  function curPid() { var e = curEntry(); return e && typeof fbpPid === 'function' ? fbpPid(e) : (e && e.data && e.data.project && e.data.project.pid); }
+  function stat(t) { try { if (typeof setCloudStat === 'function') setCloudStat(t); } catch (e) {} }
+
+  /* honest status mapping (#13 UI) */
+  function onStatus(s) {
+    switch (s.phase) {
+      case S.STATUS.LOCAL_SAVED: stat('Local saved'); break;
+      case S.STATUS.CLOUD_SAVING: stat('Cloud saving…'); break;
+      case S.STATUS.CLOUD_SAVED: stat('Cloud saved ✓ ' + (window._gUser || '')); break;
+      case S.STATUS.CLOUD_SAVE_FAILED: stat('⚠ Cloud save failed — ' + (s.message || s.code || '')); break;
+      case S.STATUS.OFFLINE: stat('⚠ Offline — will retry'); break;
+      case S.STATUS.CONFLICT: stat('⚠ Conflict — review'); break;
+      case S.STATUS.BLOCKED: showBlocked(s.reason); break;
+      case S.STATUS.CLOUD_UPDATE_RECEIVED: /* keep last own-save status; peers arriving is not "saved" */ break;
+    }
+  }
+  function showBlocked(reason) {
+    stat('⛔ Project not ready (' + reason + ')');
+    if (_blockedBanner) return;
+    _blockedBanner = document.createElement('div');
+    _blockedBanner.setAttribute('role', 'alert');
+    _blockedBanner.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:2147483645;background:#7a1f1f;color:#fff;font:14px -apple-system,Segoe UI,Roboto,Arial;padding:11px 16px;text-align:center';
+    _blockedBanner.textContent = 'This project is not fully migrated to live-sync yet (' + reason + '). It is not shown to avoid data loss. Contact the admin.';
+    if (document.body) document.body.appendChild(_blockedBanner);
+  }
+  function clearBlocked() { if (_blockedBanner) { try { _blockedBanner.remove(); } catch (e) {} _blockedBanner = null; } }
+
+  /* ---- in-memory migration: give every table/list/pallet row a stable id so
+     the diff is stable across inserts/removes (#4 rowId, #10 pallets) ---- */
+  function ensureRowIds(state) {
+    Object.keys(S.MODULE_REGISTRY).forEach(function (moduleId) {
+      var spec = S.MODULE_REGISTRY[moduleId];
+      var arr = null;
+      if (spec.parent) { var p = state[spec.parent]; arr = p && p[spec.parentArrayKey]; }
+      else if (spec.kind === 'table') { arr = state[moduleId] && state[moduleId][spec.rowsKey]; }
+      else if (spec.kind === 'list') { arr = state[moduleId] && state[moduleId][spec.containerKey]; }
+      if (!Array.isArray(arr)) return;
+      arr.forEach(function (row) { if (row && (row[spec.idKey] == null || row[spec.idKey] === '')) row[spec.idKey] = S.newRowId(); });
+    });
+  }
+
+  /* current field snapshot as { cid: value } and { rowKey: {moduleId,rowId,ord,obj} } */
+  function snapshot(state, pid) {
+    ensureRowIds(state);
+    var mig = S.dryRunMigrate(state, { pid: pid });   // registry-driven; media excluded to mig.media
+    var cells = {}, rowsMeta = {};
+    mig.rows.forEach(function (rd) {
+      var isRowLevel = rd.rowId !== S.SINGLE;
+      if (isRowLevel) rowsMeta[rd.moduleId + '\u0001' + rd.rowId] = { moduleId: rd.moduleId, rowId: rd.rowId, ord: rd.ord, fields: rd.fields };
+      Object.keys(rd.fields).forEach(function (f) { cells[S.cid(rd.moduleId, rd.rowId, f)] = rd.fields[f].v; });
+    });
+    return { cells: cells, rowsMeta: rowsMeta, mig: mig };
+  }
+
+  /* diff current state vs baseline → emit the minimal set of sync ops */
+  function diffAndPush(state) {
+    var pid = curPid(); if (!pid || !_client || _client.pid !== pid) return;
+    var now = snapshot(state, pid);
+    var base = _baseline[pid] || { cells: {}, rowsMeta: {} };
+    // new rows (present now, absent in baseline) -> addRow (atomic, all fields)
+    Object.keys(now.rowsMeta).forEach(function (k) {
+      if (!base.rowsMeta[k]) {
+        var rm = now.rowsMeta[k]; var obj = {}; Object.keys(rm.fields).forEach(function (f) { obj[f] = rm.fields[f].v; });
+        var spec = S.MODULE_REGISTRY[rm.moduleId]; if (spec && spec.idKey) obj[spec.idKey] = rm.rowId;
+        _client.addRow(rm.moduleId, obj);
+      }
+    });
+    // removed rows (in baseline, gone now) -> deleteRow with base revisions (#7)
+    Object.keys(base.rowsMeta).forEach(function (k) {
+      if (!now.rowsMeta[k]) { var rm = base.rowsMeta[k]; var brev = {}; Object.keys(rm.fields || {}).forEach(function (f) { brev[f] = (_client._localRev[S.cid(rm.moduleId, rm.rowId, f)] || 0); }); _client.deleteRow(rm.moduleId, rm.rowId, brev); }
+    });
+    // changed fields -> setField (serialized+debounced per cell inside the client)
+    Object.keys(now.cells).forEach(function (c) {
+      if (JSON.stringify(now.cells[c]) !== JSON.stringify(base.cells[c])) {
+        var p = c.split(S.SEP); _client.setField(p[0], p[1], p[2], now.cells[c]);
+      }
+    });
+    _baseline[pid] = now;   // advance baseline
+  }
+
+  /* apply a V2 model back into the app state + rerender (never clobber active input) */
+  function applyModel(model, meta) {
+    var e = curEntry(); if (!e) return; var state = e.data;
+    // map model back into the app's state shape (registry-driven)
+    Object.keys(S.MODULE_REGISTRY).forEach(function (moduleId) {
+      var spec = S.MODULE_REGISTRY[moduleId]; var mm = model[moduleId]; if (mm === undefined) return;
+      if (spec.parent) { state[spec.parent] = state[spec.parent] || {}; state[spec.parent][spec.parentArrayKey] = (mm[spec.rowsKey] || []).map(stripId); return; }
+      if (spec.kind === 'singleton') { state[moduleId] = Object.assign(state[moduleId] || {}, mm); return; }
+      var arrKey = spec.kind === 'list' ? spec.containerKey : spec.rowsKey;
+      state[moduleId] = state[moduleId] || {};
+      if (mm[arrKey]) state[moduleId][arrKey] = mm[arrKey].map(stripId);
+      (spec.flags || []).forEach(function (f) { if (f in mm) state[moduleId][f] = mm[f]; });
+    });
+    _baseline[curPid()] = snapshot(state, curPid());   // keep baseline in sync with applied remote
+    try { if (typeof isTypingInInput !== 'function' || !isTypingInInput()) { if (typeof rerenderKeepScroll === 'function') rerenderKeepScroll(); } } catch (e2) {}
+    try { if (typeof renderHeader === 'function') renderHeader(); if (typeof renderSideProject === 'function') renderSideProject(); } catch (e3) {}
+  }
+  function stripId(row) { var r = Object.assign({}, row); delete r.__id; return r; }
+
+  /* ---- boot + open with generation-token lifecycle (#3) ---- */
+  window.syncV2Boot = function () {
+    if (!SYNC_V2 || _client) return;
+    if (!(window.firebase && window._fsDb && typeof createFirestoreAdapter === 'function')) { setTimeout(window.syncV2Boot, 800); return; }
+    var adapter = createFirestoreAdapter(window.firebase, window._fsDb);
+    try { _outbox = new window.SyncV2Outbox.Outbox({ dbName: 'fdp_syncv2_outbox' }); } catch (e) { _outbox = null; }
+    _client = new S.SyncClient({ adapter: adapter, user: window._gUser || '', outbox: _outbox, onStatus: onStatus, onModel: applyModel, onConflicts: function (c) { window.__syncV2Conflicts = c; } });
+    window._syncV2Client = _client;
+    window.syncV2OpenActive();
+  };
+
+  var _switchTimer = null;
+  window.syncV2OpenActive = function () {
+    if (!_client) return; var pid = curPid();
+    if (!on(pid)) return;                    // this project not cut over yet -> V1 path stays in charge
+    clearBlocked();
+    if (_switchTimer) { clearTimeout(_switchTimer); _switchTimer = null; }
+    _client.close();                          // stop old listeners + bump generation (rejects late snapshots) (#3)
+    _client.open(pid).then(function (r) {
+      if (r && r.blocked) return;             // banner already shown by BLOCKED status (#8)
+      if (r && r.confirmed) _baseline[pid] = snapshot(curEntry().data, pid);   // baseline from confirmed server state
+    }).catch(function () {});
+  };
+
+  /* hook the app's save path so local edits diff-push through the ONE sync API (#14).
+     Installed only when the flag is on; wraps saveState without altering its behavior. */
+  (function installSaveHook() {
+    if (typeof window.saveState !== 'function') { setTimeout(installSaveHook, 500); return; }
+    var orig = window.saveState;
+    window.saveState = function () {
+      var r = orig.apply(this, arguments);
+      try { if (on(curPid()) && !orig._skipCloud) diffAndPush(curEntry().data); } catch (e) {}
+      return r;
+    };
+    window.saveState._skipCloud = orig._skipCloud;
+  })();
+
+  /* open live-sync once the app + Firestore are ready */
+  if (document.readyState === 'complete' || document.readyState === 'interactive') setTimeout(window.syncV2Boot, 1200);
+  else document.addEventListener('DOMContentLoaded', function () { setTimeout(window.syncV2Boot, 1200); });
+})();
+
 </script>
 </body>
 </html>
