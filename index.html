@@ -802,7 +802,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.05 · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · LIVE-SYNC V2 STAGED (OFF)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.06 · LIVE-SYNC HOTFIX (V1: serialized push + no-drop snapshot) · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -6231,6 +6231,12 @@ const FS_SECTIONS = ['project','server','backup','vj','rack','camera','speakers'
 var _fsApp = null, _fsDb = null, _fsAuthObj = null, _fsCol = null, _fsUnsub = null, _fsSdkP = null;
 var _fsReady = false, _fsStarted = false, _fsApplying = false, _fsPushT = null, _fsSeededPush = false;
 var _fsLocal = {};   /* pid -> {section: sig, _seen, _done, _msig} — skip no-op section writes */
+/* ===== BUILD 16.06 LIVE hotfix state (V1 sync; Sync V2 stays OFF) ===== */
+var _fsQ = {};            /* pid -> {running,again} — serialized per-pid push queue */
+var _fsRetryT = {};       /* pid -> timer — retry after a transient/permission failure */
+var _fsPendingSnap = {};  /* pid -> {section:{val,rrev}} — incoming values deferred while the user was typing */
+var _fsRerenderPending = false;  /* a snapshot arrived while typing → refresh the open module on blur */
+var _fsLastSent = 0, _fsLastRecv = 0;   /* visible last-sent / last-received clocks */
 var _mediaPushLock = {};   /* pid -> true while a media/browse-folder push is in flight (no duplicate folders) — BUILD 14.53 */
 function fsReady(){ return _FS && _fsReady && !!_fsCol; }
 /* strip `undefined` (Firestore rejects it) */
@@ -6321,48 +6327,118 @@ function fsRememberPushed(e){
      being silently skipped forever. */
   _fsLocal[pid] = rec;
 }
+function hhmmss(t){ const d=new Date(t||Date.now()); const p=n=>('0'+n).slice(-2); return p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds()); }
+function _fsShowStat(){ var a=[]; if(_fsLastSent) a.push('Sent ↑ '+hhmmss(_fsLastSent)); if(_fsLastRecv) a.push('Recv ↓ '+hhmmss(_fsLastRecv)); if(a.length) setCloudStat(a.join('  ·  ')+'  ·  '+(_gUser||'')); }
+function _fsStampSent(){ _fsLastSent=Date.now(); _fsShowStat(); }
+function _fsStampRecv(){ _fsLastRecv=Date.now(); _fsShowStat(); }
+function _fsHasUnsent(e, pid){ const rec=_fsLocal[pid]||{}; return fsChangedSections(e).length>0 || rec._done!==(e.done?1:0); }
+function _fsScheduleRetry(pid){ clearTimeout(_fsRetryT[pid]); _fsRetryT[pid]=setTimeout(function(){ const e=(typeof fbpEntryByPid==='function'&&fbpEntryByPid(pid))||activeEntry(); if(e) fsPushNow(e).catch(function(){}); }, 4000); }
+
+/* BUILD 16.06 LIVE hotfix (Defect 1): serialized per-pid push that DRAINS until the confirmed
+   signatures match local state, remembers ONLY the exact payload it actually sent, and never
+   falls back to a full-document set on a transient/permission error (only on a confirmed
+   not-found). Universal for every FS section — no per-section special cases. */
 async function fsPushNow(entry){
   if(!fsReady()) return;
   const e = (entry && entry.data && entry.data.project) ? entry : activeEntry();
   if(!e || !e.data.project) return;
   const pid = fbpPid(e); if(!pid) return;
-  const rec = _fsLocal[pid] || {};
+  const q = _fsQ[pid] || (_fsQ[pid] = { running:false, again:false });
+  if(q.running){ q.again = true; return; }          /* a push is in flight → just request another pass */
+  q.running = true;
+  try{
+    let guard = 0, res = { ok:true };
+    do{
+      q.again = false;
+      res = await _fsPushPass(e, pid);
+      if(!res.ok) break;                             /* transient/permission → keep queued, retry scheduled */
+    } while((q.again || _fsHasUnsent(e, pid)) && (++guard) < 30);
+    if(res.ok && !_fsHasUnsent(e, pid)) _fsStampSent();
+  } finally { q.running = false; }
+  if(_fsHasUnsent(e, pid)) _fsScheduleRetry(pid);    /* leftover after a stop → retry later, never lost */
+}
+async function _fsPushPass(e, pid){
+  const sl = fsSlice(e.data);
+  const rec = _fsLocal[pid] || (_fsLocal[pid] = {});
   const changed = fsChangedSections(e);
   const msig = fbpMediaSig(e);
   const doneChanged = rec._done !== (e.done ? 1 : 0);
   const msigChanged = rec._msig !== msig;
-  if(rec._seen && !changed.length && !doneChanged && !msigChanged) return;   /* nothing to write */
+  if(rec._seen && !changed.length && !doneChanged && !msigChanged) return { ok:true };
   const ref = _fsCol.doc(pid);
+  /* capture the EXACT signatures being sent BEFORE any await — edits that land during the await are
+     NOT marked as sent, so the drain loop re-sends them (fixes "second row silently marked pushed"). */
+  const sentSig = {}; changed.forEach(function(s){ sentSig[s] = JSON.stringify(sl[s] || {}); });
+  const sentDone = e.done ? 1 : 0;
+  let sentAll = false;
   try{
-    /* BUILD 16.03 — only a project that is NOT yet in the cloud is written whole. An EXISTING doc
-       (already seen in Firestore) is ONLY ever updated per changed section, so a session holding a
-       stale/empty section can never overwrite another machine's filled data. */
     if(!e._fbSeen){
-      await ref.set(fsFullDoc(e));                          /* brand-new project → create the whole document */
+      await ref.set(fsFullDoc(e)); sentAll = true;                 /* brand-new project → create the whole document */
     } else {
-      const now = Date.now(), sl = fsSlice(e.data), upd = { updatedBy: _gUser || '', pid };
-      changed.forEach(s => { upd[s] = fsClean(sl[s] || {}); upd['revs.' + s] = now; });   /* per-section: only changed fields, others untouched */
+      const now = Date.now(), upd = { updatedBy: _gUser || '', pid };
+      changed.forEach(function(s){ upd[s] = fsClean(sl[s] || {}); upd['revs.' + s] = now; });
       if(doneChanged){ upd.done = !!e.done; upd.doneAt = e.doneAt || 0; }
-      upd.bucket = projBucketOf(e);   /* BUILD 15.67: keep the role-routing bucket current */
+      upd.bucket = projBucketOf(e);
       if(msigChanged) upd.msig = msig;
       try{ await ref.update(upd); }
-      catch(err){ await ref.set(fsFullDoc(e)); }             /* doc vanished → recreate */
+      catch(err){
+        if(err && (err.code === 'not-found' || /not[- ]?found|No document to update/i.test(err.message || ''))){
+          await ref.set(fsFullDoc(e)); sentAll = true;             /* ONLY a confirmed missing doc justifies a full set */
+        } else { throw err; }                                      /* transient/permission → keep queued, DO NOT full-set */
+      }
     }
-    fsRememberPushed(e); e._fbSeen = true; delete e._localNew;   /* BUILD 14.13: it's in Firestore now — no longer a pending local addition */
-    setCloudStat('Synced ✓ ' + (_gUser || '') + ' · ' + hhmm());
-    if(msigChanged && !_mediaPushLock[pid]){                    /* BUILD 14.53: serialize per-project so a retry can't create a DUPLICATE Drive folder */
+    /* ACK — remember exactly what was sent (all sections on a full-doc set, else the captured ones) */
+    if(sentAll){ const sl2 = fsSlice(e.data); FS_SECTIONS.forEach(function(s){ rec[s] = JSON.stringify(sl2[s] || {}); }); }
+    else { Object.keys(sentSig).forEach(function(s){ rec[s] = sentSig[s]; }); }
+    rec._seen = true; rec._done = sentDone;
+    e._fbSeen = true; delete e._localNew;
+    _fsStampSent();
+    if(msigChanged && !_mediaPushLock[pid]){                       /* media: unchanged behaviour, own retry */
       _mediaPushLock[pid] = true;
       try{
-        await fbpMediaUpload(e);                                /* compact sync file _media/<pid>.media.json (crosses machines) */
-        await fbpBrowseMirror(e);                               /* ALWAYS mirror to the browsable folder — BUILD 14.58: no longer gated behind the media upload's return, so a mirror that failed once RETRIES (was: browse folder stayed empty forever) */
-        (_fsLocal[pid] = _fsLocal[pid] || {})._msig = msig;     /* BUILD 14.51: mark pushed ONLY on success */
+        await fbpMediaUpload(e);
+        await fbpBrowseMirror(e);
+        (_fsLocal[pid] = _fsLocal[pid] || {})._msig = msig;
       }catch(_){
         setCloudStat('⚠ Photos/docs upload failed (Drive) — will retry');
-        setTimeout(function(){ try{ fsPushNow(e); }catch(_){ } }, 8000);   /* retry (rate limit / transient) — _msig stays unset so it re-fires */
+        setTimeout(function(){ try{ fsPushNow(e); }catch(_){ } }, 8000);
       } finally { _mediaPushLock[pid] = false; }
     }
-  }catch(err){ setCloudStat('⚠ Sync error: ' + (err.message || '') + ' — click to retry'); }
+    return { ok:true };
+  }catch(err){
+    setCloudStat('⚠ Sync error: ' + (err.message || '') + ' — will retry');
+    _fsScheduleRetry(pid);
+    return { ok:false };                                           /* nothing marked sent → next pass/retry re-sends */
+  }
 }
+/* BUILD 16.06 LIVE hotfix (Defect 2, cont.): when the user finishes editing (blur), apply the
+   incoming values that were deferred while typing, refresh the open module, and push promptly. */
+function _fsApplyPendingSnap(){
+  const e = activeEntry(); if(!e) return false;
+  const pid = fbpPid(e); if(!pid) return false;
+  const snap = _fsPendingSnap[pid]; if(!snap) return false;
+  const pend = _F7_GUARD ? fsPendingSections(e) : [];        /* keep the user's still-unpushed edits */
+  let ch = false, conflict = false;
+  Object.keys(snap).forEach(function(s){
+    if(pend.indexOf(s) >= 0){ conflict = true; return; }      /* section changed locally too → keep local, flag conflict */
+    if(fsApplySection(e.data, s, snap[s].val)) ch = true;
+    e._fsRev = e._fsRev || {}; e._fsRev[s] = snap[s].rrev;
+  });
+  delete _fsPendingSnap[pid];
+  if(ch){ saveState._skipCloud = true; saveState(); saveState._skipCloud = false; }
+  if(conflict) setCloudStat('⚠ Team update on a field you edited — your unsaved change kept; review');
+  return ch;
+}
+function _fsFlushOnBlur(){
+  setTimeout(function(){
+    if(isTypingInInput()) return;                             /* moved to another input → keep deferring */
+    const ch = _fsApplyPendingSnap();
+    if(_fsRerenderPending || ch){ _fsRerenderPending = false; try{ if(typeof rerenderKeepScroll==='function' && !onProjectFormPage()) rerenderKeepScroll(); if(typeof renderHeader==='function') renderHeader(); if(typeof renderSideProject==='function') renderSideProject(); }catch(_){} _fsStampRecv(); }
+    try{ if(typeof fsTouch==='function') fsTouch(); }catch(_){}   /* push the just-finished edit promptly */
+  }, 60);
+}
+try{ document.addEventListener('focusout', _fsFlushOnBlur, true); }catch(_){}
+
 async function fsDelete(e){
   const pid = fbpPid(e); if(!pid || !fsReady()) return;
   /* BUILD 14.63: mark/clean the Drive folder FIRST — while the doc still exists, so the browse folder
@@ -6421,22 +6497,22 @@ function fsApplyDoc(data){
   }
   e._fbSeen = true; e._remoteMsig = data.msig || ''; if(data.browseFid) e._browseFid = data.browseFid;
   e._fsRev = e._fsRev || {};
-  if(e === activeEntry() && isTypingInInput()) return false;   /* don't disturb active typing; next snapshot re-applies */
-  /* BUILD 14.61 (F7): for the ACTIVE project, never overwrite a section that has UNPUSHED local edits.
-     Skip it this round and leave _fsRev[s] stale so the snapshot AFTER our own push re-syncs it. */
-  const pending = (_F7_GUARD && e === activeEntry()) ? fsPendingSections(e) : [];
+  /* BUILD 16.06 LIVE hotfix (Defect 2): never DROP an incoming snapshot because the user is typing.
+     While an input is focused, DEFER each incoming section into _fsPendingSnap (applied on blur),
+     leaving _fsRev stale so nothing is lost; when not typing, apply live so the open module refreshes.
+     Applies a section when its remote revision DIFFERS from what we last applied (clock-independent). */
+  const isActive = (e === activeEntry());
+  const typing = isActive && isTypingInInput();
+  const pending = (_F7_GUARD && isActive) ? fsPendingSections(e) : [];
   let ch = false;
   FS_SECTIONS.forEach(s => {
-    /* BUILD 14.32: apply a section whenever its remote revision DIFFERS from what we last applied —
-       NOT strictly-greater. The Firestore snapshot is the authoritative latest state, so "differs"
-       means someone changed it → adopt it. The old `rrev > lrev` gate broke sync between two users
-       whose machine CLOCKS were skewed: once the faster clock's timestamp was stored, every later
-       edit from the slower machine (smaller timestamp) was permanently ignored ("synced 1-2 times
-       then stopped"). Comparing by inequality is clock-independent. Applying our own echo is a no-op
-       (identical data → liveApply reports no change) and never loops (applies use _skipCloud). */
     const rrev = revs[s] || 0, lrev = e._fsRev[s];
     if(data[s] === undefined || rrev === lrev) return;
-    if(pending.indexOf(s) >= 0) return;   /* BUILD 14.61: unpushed local edit → don't clobber; re-applies after our push */
+    if(pending.indexOf(s) >= 0) return;              /* unpushed local edit → don't clobber; re-applies after our push */
+    if(typing){                                      /* defer instead of dropping the whole snapshot */
+      (_fsPendingSnap[pid] = _fsPendingSnap[pid] || {})[s] = { val: data[s], rrev: rrev };
+      _fsRerenderPending = true; return;
+    }
     if(fsApplySection(e.data, s, data[s])) ch = true; e._fsRev[s] = rrev;
   });
   /* BUILD 16.03 — make sure this existing project has a push-baseline, so its first edit this session
@@ -6637,12 +6713,14 @@ function fsOnSnapshot(snap){
   }catch(err){ /* keep going */ }
   if(touched){
     saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
-    if(!isTypingInInput() && !onProjectFormPage()) rerenderKeepScroll();   /* BUILD 14.46/14.47: refresh but keep scroll (no jump-to-top on Library etc.); never wipe a form */
+    if(isTypingInInput()){ _fsRerenderPending = true; }              /* BUILD 16.06: refresh the open module on blur (don't yank the caret) */
+    else if(!onProjectFormPage()){ rerenderKeepScroll(); }          /* LIVE: refresh the open module now (keeps scroll; never wipes a create/edit form) */
     renderHeader(); renderSideProject();
+    _fsStampRecv();
   }
   _fsApplying = false;
   fbpMediaSync().catch(function(){});                        /* pull changed photos/docs from Drive */
-  setCloudStat('Synced ✓ ' + (_gUser || '') + ' · ' + hhmm());
+  _fsShowStat();
 }
 async function fsStart(){
   if(!_FS) return;
@@ -6733,7 +6811,7 @@ async function fsWipeAll(){
     }
     db.projects = []; db.activeId = null;
     db.mediaMap = {}; db.backupMap = {}; db.driveMap = {};
-    _fsLocal = {}; try{ _fbpLocal = {}; }catch(_){}
+    _fsLocal = {}; _fsQ = {}; _fsRetryT = {}; _fsPendingSnap = {}; _fsRerenderPending = false; try{ _fbpLocal = {}; }catch(_){}
     syncActive(); saveState(); renderHeader(); renderSideProject();
     goTo('#/create');
     setCloudStat('Clean slate ✓ — load your .json projects now');
@@ -6750,7 +6828,7 @@ async function fsResyncLocal(){
   try{
     setCloudStat('Re-syncing this computer…');
     _fsSeededPush = true;                                   /* receive only — never re-push the dropped locals */
-    db.projects = []; db.activeId = null; _fsLocal = {}; db.mediaMap = {}; db.driveMap = {};
+    db.projects = []; db.activeId = null; _fsLocal = {}; _fsQ = {}; _fsRetryT = {}; _fsPendingSnap = {}; db.mediaMap = {}; db.driveMap = {};
     const snap = await _fsCol.get();
     _fsApplying = true;
     snap.forEach(doc => { const d = doc.data(); if(d && d.pid) fsApplyDoc(d); });
