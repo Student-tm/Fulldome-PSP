@@ -802,7 +802,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.02 · AUTO-UPDATE — WHEN A NEWER BUILD IS DEPLOYED, AN "UPDATE" BANNER APPEARS IN OPEN TABS; CLICKING IT HARD-RELOADS (CACHE-BUSTED) TO THE LATEST VERSION</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.16 · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -941,7 +941,7 @@ const emptyState = () => ({
   vjValidation: { cpu:false, mem:false, gpu:false },
   docs: { sitePh: [], files: {} },   /* Documentation archive: site photos + files per DOC category */
   projectors: { list: [], selId: null },   /* Projectors module: inventory, setup, web settings */
-  camera: { rows: [], ready: false, photos: [] },   /* Calibration Camera module (mirrors server builder) */
+  camera: { rows: [], ready: false, photos: [], cases: [] },   /* Calibration Camera module (mirrors server builder); cases = flight cases (BUILD 16.16) */
   speakers: { rows: [], ready: false, photos: [] },   /* Speaker / Audio System module (mirrors camera builder) — BUILD 14.20 */
   fan: { rows: [], ready: false, photos: [] },   /* Screen Fan / Ventilation module (mirrors speakers) — BUILD 14.27 */
   cables: { rows: [], ready: false, photos: [] },   /* Cables & Adapters module (mirrors fan) — BUILD 14.31 */
@@ -1770,7 +1770,57 @@ function dlBlur(el){
     if(!el.value.trim()) el.value = el.dataset.dlprev;
     delete el.dataset.dlprev;
   }
+  /* BUILD 16.08: a typed search fragment (e.g. `12"` or `16'`) must never be saved as the item name.
+     On blur, snap it to the ONE library item it matches in this field's list (exact → prefix →
+     contains), write the FULL name back and fire `input` so the row saves it (+ price/link auto-fill).
+     Generic: every module's name field that uses the library datalist. */
+  try{
+    const v = (el.value || '').trim();
+    if(!v || libFind(v)) return;                                   /* empty, or already an exact library item */
+    const dl = el.list; if(!dl) return;
+    const opts = Array.from(dl.options || []).map(o => o.value).filter(Boolean);
+    const lv = v.toLowerCase();
+    let m = opts.filter(o => o.toLowerCase() === lv);
+    if(m.length !== 1) m = opts.filter(o => o.toLowerCase().startsWith(lv));
+    if(m.length !== 1) m = opts.filter(o => o.toLowerCase().includes(lv));
+    if(m.length === 1 && m[0] !== v){
+      el.value = m[0];
+      el.dispatchEvent(new Event('input', { bubbles:true }));      /* → updX(i,'name',fullName) → saveState */
+      try{ flashStat('Matched from Library: ' + m[0]); }catch(_){}
+    }
+  }catch(_){}
 }
+/* BUILD 16.10: complete "half names" already SAVED in a project (a typed search fragment such as `12"`
+   that was stored as the item name) from the Library — a row name that is not a library item but
+   uniquely matches one in its category (exact → prefix → contains) becomes that full name, and the
+   library price/link are filled if empty. Runs after load and whenever the shared library arrives. */
+function _snapNameFromLib(name, items){
+  const v = (name || '').trim(); if(!v || libFind(v)) return null;
+  const lv = v.toLowerCase(); const opts = (items || []).map(it => (it.name || '').trim()).filter(Boolean);
+  let m = opts.filter(o => o.toLowerCase() === lv);
+  if(m.length !== 1) m = opts.filter(o => o.toLowerCase().startsWith(lv));
+  if(m.length !== 1) m = opts.filter(o => o.toLowerCase().includes(lv));
+  return (m.length === 1 && m[0] !== v) ? m[0] : null;
+}
+function fixHalfNamesFromLibrary(){
+  try{
+    const e = activeEntry(); if(!e || !e.data) return 0; const d = e.data; let n = 0;
+    const groups = [['server','server'],['backup','server'],['vj','server'],['rack','rack'],['camera','camera'],['speakers','speakers'],['fan','fan'],['cables','cables'],['tools','tools']];
+    groups.forEach(function(g){ const mod = g[0], grp = g[1]; const rows = (d[mod] && d[mod].rows) || [];
+      rows.forEach(function(r){
+        if(!r || !(r.name || '').trim()) return;
+        const items = (r.cat || '').trim() ? libByGroupCat(grp, r.cat) : libAllItems();
+        const full = _snapNameFromLib(r.name, items); if(!full) return;
+        r.name = full; const it = libFind(full);
+        if(it){ if(!String(r.price||'').trim() && String(it.price||'').trim()) r.price = it.price; if(!String(r.link||'').trim() && (it.link||'').trim()) r.link = it.link; }
+        n++;
+      });
+    });
+    if(n){ saveState(); try{ if(!isTypingInInput()) rerenderKeepScroll(); }catch(_){} try{ flashStat(n + ' name' + (n === 1 ? '' : 's') + ' completed from Library'); }catch(_){} }
+    return n;
+  }catch(_){ return 0; }
+}
+try{ setTimeout(function(){ try{ fixHalfNamesFromLibrary(); }catch(_){} }, 4000); }catch(_){}   /* once after load (local library) */
 const catListId  = cat => 'dlLibCat'  + Math.max(0, ciIndexOf(srvCats(), cat));
 const rackListId = cat => 'dlRackCat' + Math.max(0, ciIndexOf(rackCatList(), cat));
 function libFind(name){
@@ -4048,7 +4098,7 @@ function pageDashboard(){
       </div>
 
       <div class="card sum"><h3>Shipping Info</h3>
-        <div class="srow"><span class="k">Total Equipment</span><span class="v">${totalItems()} items</span></div>
+        <div class="srow"><span class="k">Total Equipment</span><span class="v">${shipItems().length} items</span></div>   <!-- BUILD 16.15: same basis as the packing list (all modules), was Server+Rack only -->
         ${(function(){ const ps=(state.shipping&&state.shipping.pallets)||[];
           let rows=`<div class="srow"><span class="k">Number of Pallets</span><span class="v ${ps.length?'ok':'mut'}">${ps.length||'—'}</span></div>`;
           let totWt=0;
@@ -4729,8 +4779,16 @@ function shipPlaces(){
   if(toolCombined.length) places.push({key:'pl|tool', name:'Tools', module:'Tools', items:toolCombined});
   toolSeparate.forEach((it,i)=> places.push({key:'pl|tool-sep|'+i, name:it.name, module:'Tools', items:[it]}));
   /* ---- Camera ---- */
-  const camCombined = [], camSeparate = [];
-  ((state.camera&&state.camera.rows)||[]).forEach((r,idx)=>{ if(!(r.name||'').trim()) return; (isCombined(r)?camCombined:camSeparate).push(mkItem(r,'i|cam|'+idx)); });
+  const camCombined = [], camSeparate = [], camByCase = {};
+  const camCasesL = (state.camera&&state.camera.cases)||[];
+  ((state.camera&&state.camera.rows)||[]).forEach((r,idx)=>{
+    if(!(r.name||'').trim()) return;
+    const it = mkItem(r,'i|cam|'+idx);
+    const cs = r.caseId && camCasesL.find(c=>c.id===r.caseId);
+    if(cs){ (camByCase[cs.id] = camByCase[cs.id] || []).push(it); return; }   /* BUILD 16.16: a flight case ships as ONE place */
+    (isCombined(r)?camCombined:camSeparate).push(it);
+  });
+  camCasesL.forEach((c,ci)=>{ const its = camByCase[c.id]; if(its && its.length) places.push({key:'pl|cam-case|'+c.id, name:camCaseLabel(c, ci), module:'Calibration Camera', items:its, sub:camCaseLabel(c, ci)}); });   /* sub = sub-section heading in the packing list / PDF */
   if(camCombined.length) places.push({key:'pl|cam', name:'Camera', module:'Calibration Camera', items:camCombined});
   camSeparate.forEach((it,i)=> places.push({key:'pl|cam-sep|'+i, name:it.name, module:'Calibration Camera', items:[it]}));
   return places;
@@ -4807,6 +4865,20 @@ function genShipPDF(){
     else nl('STATUS: NOT COMPLETE — ' + loadedPl.length + ' of ' + places.length + ' places loaded', 12, true, '#b00');
     y += 6;
     const cmtOf = it => (S.meta && S.meta[it.key] && S.meta[it.key].cmt) ? ('   [' + S.meta[it.key].cmt + ']') : '';
+    /* BUILD 16.12: items are listed UNDER their module heading (Server, Backup Server, Rack, Projectors, …)
+       in the same order as the on-screen table — not one flat pile per pallet. */
+    const listByModule = (pls) => {
+      const order = [], byMod = {};
+      /* BUILD 16.16: a place with a sub-section label (camera flight case) is listed under its own sub-heading */
+      pls.forEach(pl => { const m = pl.module || 'Other'; if(!byMod[m]){ byMod[m] = []; order.push(m); } if(pl.sub) byMod[m].push({ _sub: pl.sub, _n: pl.items.length, items: pl.items }); else byMod[m] = byMod[m].concat(pl.items); });
+      order.forEach(m => {
+        const its = byMod[m]; if(!its.length) return;
+        y += 3; nl('    ' + String(m).toUpperCase(), 10, true, '#333');
+        const line = it => nl('        - ' + it.name + (it.qty>1 ? ('  x' + it.qty) : '') + cmtOf(it), 10, false, '#222');
+        its.filter(x => !x._sub).forEach(line);
+        its.filter(x => x._sub).forEach(x => { nl('      ' + String(x._sub).toUpperCase() + '  (' + x._n + ' items, one place)', 10, true, '#555'); x.items.forEach(line); });
+      });
+    };
     let totalWt = 0;
     S.pallets.forEach(p => {
       const pls = places.filter(pl => S.assign[pl.key] === p.id);
@@ -4817,12 +4889,12 @@ function genShipPDF(){
       const wt = (p.wt||'').trim(); if(wt) totalWt += parseFloat(wt) || 0;
       y += 6;
       nl('Pallet ' + (p.num||'?') + (p.name ? ('  —  ' + p.name) : '') + (pls.length ? (anyLoaded ? '   [LOADED]' : '   [NOT LOADED]') : ''), 12, true, pls.length ? (anyLoaded ? '#1a7f37' : '#b00') : '#111');
-      nl('    ' + dimStr + '     weight: ' + (wt ? wt + ' lb' : '—'), 10, false, '#555');
-      if(its.length) its.forEach(it => nl('    - ' + it.name + (it.qty>1 ? ('  x' + it.qty) : '') + cmtOf(it), 10, false, '#222'));
+      nl('    ' + dimStr + '     weight: ' + (wt ? wt + ' lb' : '—') + '     items: ' + its.reduce((s,it)=>s+(it.qty||1),0), 10, false, '#555');
+      if(its.length) listByModule(pls);
       else nl('    (empty)', 10, false, '#999');
     });
     const un = places.filter(pl => !S.assign[pl.key]);
-    if(un.length){ y += 8; nl('NOT ON ANY PALLET (' + un.length + ')', 12, true, '#b00'); un.forEach(pl => pl.items.forEach(it => nl('    - ' + it.name + (it.qty>1 ? ('  x' + it.qty) : '') + cmtOf(it), 10, false, '#222'))); }
+    if(un.length){ y += 8; nl('NOT ON ANY PALLET (' + un.length + ')', 12, true, '#b00'); listByModule(un); }
     y += 14;
     nl('Total pallets: ' + S.pallets.length + '        Total weight: ' + (totalWt ? (Math.round(totalWt*10)/10) + ' lb' : '—'), 11, true);
     nl('Places loaded: ' + loadedPl.length + ' / ' + places.length + (complete ? '   — COMPLETE' : '   — INCOMPLETE'), 11, true, complete ? '#1a7f37' : '#b00');
@@ -4915,7 +4987,11 @@ function pageShipping(){
     const body = modPlaces.map(pl => {
       const plIdx = places.indexOf(pl); const pid = S.assign[pl.key]||'';
       const packed = !!(S.packed && S.packed[pl.key]);
-      return pl.items.map((it, ii)=>{
+      /* BUILD 16.16: a place with a sub-section label (e.g. a camera flight case) gets its own heading row —
+         so it is visible that these items travel together as ONE place (one pallet cell / one loaded box) */
+      const subHdr = pl.sub ? `<tr class="subhdr"><td colspan="7" style="padding:6px 10px 6px 34px;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--ink2);background:rgba(0,0,0,.035);border-top:1px solid var(--line)">
+          <span class="chip c-mut" style="font-size:9.5px;margin-right:8px;text-transform:none;letter-spacing:0">${pl.items.length} item${pl.items.length===1?'':'s'} · ONE PLACE</span>${esc(pl.sub)}</td></tr>` : '';
+      return subHdr + pl.items.map((it, ii)=>{
         n++;
         const href = shipLinkHref(it.link);
         const link = href
@@ -4981,12 +5057,17 @@ function pageShipping(){
     </div>
     <div class="card">
       <div class="card-head"><h3>Shipping details</h3>
-        <button class="mod-btn primary" style="padding:7px 14px;font-size:12px" onclick="genShipPDF()">${IC.doc2 || ''} Generate Shipping PDF</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="mod-btn" style="padding:7px 12px;font-size:12px" title="Upload the pallet labels PDF" onclick="pickDocFile('shipLabelPallet','.pdf')">⬆ Pallet Labels PDF</button>
+          <button class="mod-btn" style="padding:7px 12px;font-size:12px" title="Upload the driver documents PDF" onclick="pickDocFile('shipLabelDriver','.pdf')">⬆ Driver Docs PDF</button>
+          <button class="mod-btn primary" style="padding:7px 14px;font-size:12px" onclick="genShipPDF()">${IC.doc2 || ''} Generate Shipping PDF</button>
+        </div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:2px 2px 4px">
         <span style="font-size:12.5px;font-weight:600;color:var(--ink2)">Shipping Date</span>
         <input type="date" class="cell" style="width:auto;padding:6px 9px" value="${esc(S.date||'')}" onchange="setShipDate(this.value)">
       </div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;padding:6px 2px 2px;border-top:1px solid var(--line);margin-top:6px">${shipLabelFilesHtml()}</div>
     </div>
 
     <div class="card">
@@ -5006,10 +5087,7 @@ function pageShipping(){
         <tbody>${eqRows}</tbody>
       </table>
     </div>
-    <div class="card" style="margin-top:16px">
-      <div class="card-head"><h3>Shipping Documents</h3><button class="mod-btn primary" style="padding:6px 12px;font-size:12px" onclick="pickShipDoc()">+ Add Document</button></div>
-      ${docRows}
-    </div>
+    ${'' /* BUILD 16.14: legacy Shipping Documents card removed from the page (files stay in the project data) */}
 
     <div class="card" style="margin-top:16px">
       <div class="card-head"><h3>Pallet Photos</h3><span class="chip c-mut"><span class="cd"></span>${S.pallets.length} pallet${S.pallets.length===1?'':'s'}</span></div>
@@ -5315,7 +5393,7 @@ function liveSlice(d){
     backup:  { rows: (d.backup && d.backup.rows) || [], ready: !!(d.backup && d.backup.ready), caseSize: (d.backup && d.backup.caseSize) || '', name: (d.backup && d.backup.name) || '', enabled: !!(d.backup && d.backup.enabled) },
     vj:      { rows: (d.vj && d.vj.rows) || [], ready: !!(d.vj && d.vj.ready) },
     rack:    { rows: d.rack.rows || [], heightU: d.rack.heightU || 12, slots: d.rack.slots || {}, rackId: d.rack.rackId || '', ready: !!d.rack.ready },
-    camera:  { rows: (d.camera && d.camera.rows) || [], ready: !!(d.camera && d.camera.ready) },
+    camera:  { rows: (d.camera && d.camera.rows) || [], ready: !!(d.camera && d.camera.ready), cases: (d.camera && d.camera.cases) || [] },   /* BUILD 16.16: flight cases sync with the rows */
     speakers:{ rows: (d.speakers && d.speakers.rows) || [], ready: !!(d.speakers && d.speakers.ready) },
     fan:     { rows: (d.fan && d.fan.rows) || [], ready: !!(d.fan && d.fan.ready) },
     cables:  { rows: (d.cables && d.cables.rows) || [], ready: !!(d.cables && d.cables.ready) },
@@ -5356,7 +5434,7 @@ function liveApply(d, live){
   if(live.backup){ d.backup = d.backup || {rows:[],ready:false,photos:[],caseSize:'',name:'',enabled:false}; setIf(d.backup, 'rows', live.backup.rows || []); setIf(d.backup, 'ready', !!live.backup.ready); if('caseSize' in live.backup) setIf(d.backup, 'caseSize', live.backup.caseSize || ''); if('name' in live.backup) setIf(d.backup, 'name', live.backup.name || ''); if('enabled' in live.backup) setIf(d.backup, 'enabled', !!live.backup.enabled); }
   if(live.vj){ d.vj = d.vj || {rows:[],ready:false,photos:[]}; setIf(d.vj, 'rows', live.vj.rows || []); setIf(d.vj, 'ready', !!live.vj.ready); }
   if(live.rack){ setIf(d.rack, 'rows', live.rack.rows || []); setIf(d.rack, 'heightU', live.rack.heightU || 12); setIf(d.rack, 'slots', live.rack.slots || {}); if('rackId' in live.rack) setIf(d.rack, 'rackId', live.rack.rackId || ''); if('ready' in live.rack) setIf(d.rack, 'ready', !!live.rack.ready); }
-  if(live.camera){ d.camera = d.camera || {rows:[],ready:false,photos:[]}; setIf(d.camera, 'rows', live.camera.rows || []); setIf(d.camera, 'ready', !!live.camera.ready); }
+  if(live.camera){ d.camera = d.camera || {rows:[],ready:false,photos:[]}; setIf(d.camera, 'rows', live.camera.rows || []); setIf(d.camera, 'ready', !!live.camera.ready); if('cases' in live.camera) setIf(d.camera, 'cases', live.camera.cases || []); }   /* BUILD 16.16: a pre-16.16 sender has no 'cases' key → keep ours */
   if(live.speakers){ d.speakers = d.speakers || {rows:[],ready:false,photos:[]}; setIf(d.speakers, 'rows', live.speakers.rows || []); setIf(d.speakers, 'ready', !!live.speakers.ready); }
   if(live.fan){ d.fan = d.fan || {rows:[],ready:false,photos:[]}; setIf(d.fan, 'rows', live.fan.rows || []); setIf(d.fan, 'ready', !!live.fan.ready); }
   if(live.cables){ d.cables = d.cables || {rows:[],ready:false,photos:[]}; setIf(d.cables, 'rows', live.cables.rows || []); setIf(d.cables, 'ready', !!live.cables.ready); }
@@ -5756,6 +5834,19 @@ function applyProjWebFrom(d, media){
   return ch;
 }
 function fbpMediaSig(e){ try{ return photoSigStr(e) + '|' + docsSigStr(e) + '|' + projWebSigStr(e); }catch(_){ return ''; } }
+/* BUILD 16.11: are we BEHIND the cloud's media? The cloud record carries a media version (msig) that we
+   have neither applied (mediaMap msig = last version pulled/pushed by us) nor produced (our local sig).
+   A client that is behind must PULL first and must never publish — otherwise its stale copy overwrites
+   the fresh shared media file and photos/documents vanish for everyone. */
+function fbpMediaBehind(e){
+  try{
+    const pid = fbpPid(e); if(!pid) return false;
+    const remote = e._remoteMsig || ''; if(!remote) return false;
+    const local = fbpMediaSig(e);
+    const known = (((typeof mediaMap === 'function') ? mediaMap() : (db.mediaMap || {}))[pid] || {}).msig || '';
+    return remote !== local && remote !== known;
+  }catch(_){ return false; }
+}
 function fbpMediaPayload(e){
   const d = e.data || {};
   return {
@@ -5767,7 +5858,7 @@ function fbpMediaPayload(e){
     docs:{ sitePh:(d.docs&&d.docs.sitePh)||[], files:(d.docs&&d.docs.files)||{} },
     projectors:{ models:(d.projectors&&d.projectors.models)||{} },
     projectorsWeb: projWebPayload(d),                       /* BUILD 14.5: projector Web-settings files travel here, not in the DB doc */
-    shipping:{ palletPhotos:(d.shipping&&d.shipping.palletPhotos)||{} },
+    shipping:{ palletPhotos:(d.shipping&&d.shipping.palletPhotos)||{}, docs:(d.shipping&&Array.isArray(d.shipping.docs))?d.shipping.docs:[] },   /* BUILD 16.09: shipping docs travel in the media file */
     contentList: d.contentList || null
   };
 }
@@ -5782,6 +5873,7 @@ function fbpMediaIsEmpty(e){
   if(photoSets.some(anyArr)) return false;
   if(m.projectors && m.projectors.models && Object.keys(m.projectors.models).length) return false;
   if(m.shipping && m.shipping.palletPhotos && Object.keys(m.shipping.palletPhotos).some(k=>anyArr(m.shipping.palletPhotos[k]))) return false;
+  if(m.shipping && anyArr(m.shipping.docs)) return false;   /* BUILD 16.09: shipping documents count as media */
   if(m.projectorsWeb && Object.keys(m.projectorsWeb).some(k=>anyArr(m.projectorsWeb[k]))) return false;
   if(m.docs && m.docs.files && Object.keys(m.docs.files).some(k=>anyArr(m.docs.files[k]))) return false;
   if(m.contentList) return false;
@@ -5792,8 +5884,19 @@ async function fbpMediaRoot(){
      (both accounts converge on it via driveRootId's shared-folder preference), NOT in a
      per-account "My Drive" root — else account A's media folder is invisible to account B
      and photos never cross. `_media` is a service subfolder (hidden from the team list). */
-  if(db.mediaRootId2 && await driveAlive(db.mediaRootId2)) return db.mediaRootId2;
+  /* BUILD 16.13: a cached `_media` id is trusted ONLY if it still lives inside the CURRENT team root.
+     An account that ran the app before the team folder was shared with it cached a PRIVATE `_media`
+     and kept using it forever — it never saw the team's photos/documents and the team never saw its.
+     Now the cache is re-validated against the shared root and dropped if it points elsewhere. */
   const teamRoot = await driveRootId();
+  if(db.mediaRootId2 && await driveAlive(db.mediaRootId2)){
+    let ok = false;
+    try{ const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + db.mediaRootId2 + '?fields=parents&supportsAllDrives=true'); const j = await r.json(); ok = Array.isArray(j.parents) && j.parents.indexOf(teamRoot) >= 0; }catch(_){ ok = true; }   /* network glitch → keep cache */
+    if(ok) return db.mediaRootId2;
+    db.mediaRootId2 = null;                                   /* stale/private folder → re-resolve under the shared root */
+    try{ if(db.mediaMap) db.mediaMap = {}; }catch(_){}        /* file ids from the wrong folder are useless now */
+    try{ db.projects.forEach(function(e){ if(e && e._fbSeen) e._mediaPending = true; }); }catch(_){}   /* pull (never push) until caught up with the shared media */
+  }
   let id = await backupFindChildFolder('_media', teamRoot);
   if(!id) id = await backupCreateFolder('_media', teamRoot);
   db.mediaRootId2 = id; return id;
@@ -5825,6 +5928,8 @@ async function fbpMediaUpload(e){
      Firestore whose photos/docs are only partially pulled must not overwrite/shrink the full Drive file).
      Both-empty counts as caught up, so a genuinely media-less project isn't blocked forever. */
   if(e._mediaPending){ if(fbpMediaSig(e) === (e._remoteMsig||'')) e._mediaPending = false; else return false; }
+  /* BUILD 16.11 — Замок 6: never overwrite the shared media file while this copy is BEHIND it. Pull first. */
+  if(fbpMediaBehind(e)){ try{ fbpMediaSync().catch(function(){}); }catch(_){} return false; }
   const sig = fbpMediaSig(e);
   const rec = mediaMap()[pid] || {};
   if(rec.msig === sig && rec.fileId) return false;         /* media unchanged since our last upload */
@@ -5859,6 +5964,9 @@ async function fbpMediaDownloadApply(e, wantSig){
   mediaMap()[pid] = { fileId, msig: wantSig || fbpMediaSig(e) };
   e._mediaPending = false;                                    /* BUILD 15.38: real media is now local → safe to upload/backup again */
   if(ch){ saveState._skipCloud = true; saveState(); saveState._skipCloud = false; }
+  /* BUILD 16.11: we are now caught up; if we still hold never-synced local additions (kept by the merge),
+     publish them — now as a SUPERSET of the cloud's files, never a stale replacement. */
+  try{ if(fbpMediaSig(e) !== (wantSig || '')) setTimeout(function(){ try{ fsPushNow(e).catch(function(){}); }catch(_){} }, 1500); }catch(_){}
   return ch;
 }
 /* BUILD 15.38: force-restore the ACTIVE project's photos + documents from its Drive media file,
@@ -6231,6 +6339,13 @@ const FS_SECTIONS = ['project','server','backup','vj','rack','camera','speakers'
 var _fsApp = null, _fsDb = null, _fsAuthObj = null, _fsCol = null, _fsUnsub = null, _fsSdkP = null;
 var _fsReady = false, _fsStarted = false, _fsApplying = false, _fsPushT = null, _fsSeededPush = false;
 var _fsLocal = {};   /* pid -> {section: sig, _seen, _done, _msig} — skip no-op section writes */
+/* ===== BUILD 16.06 LIVE hotfix state (V1 sync; Sync V2 stays OFF) ===== */
+var _fsQ = {};            /* pid -> {running,again} — serialized per-pid push queue */
+var _fsRetryT = {};       /* pid -> timer — retry after a transient/permission failure */
+var _fsPendingSnap = {};  /* pid -> {section:{val,rrev}} — incoming values deferred while the user was typing */
+var _fsRerenderPending = false;  /* a snapshot arrived while typing → refresh the open module on blur */
+var _fsRerenderT = null, _fsRerendering = false;   /* BUILD 16.07: coalesce snapshot re-renders; ignore blur caused by our own re-render */
+var _fsLastSent = 0, _fsLastRecv = 0;   /* visible last-sent / last-received clocks */
 var _mediaPushLock = {};   /* pid -> true while a media/browse-folder push is in flight (no duplicate folders) — BUILD 14.53 */
 function fsReady(){ return _FS && _fsReady && !!_fsCol; }
 /* strip `undefined` (Firestore rejects it) */
@@ -6321,45 +6436,148 @@ function fsRememberPushed(e){
      being silently skipped forever. */
   _fsLocal[pid] = rec;
 }
+function hhmmss(t){ const d=new Date(t||Date.now()); const p=n=>('0'+n).slice(-2); return p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds()); }
+function _fsShowStat(){ var a=[]; if(_fsLastSent) a.push('Sent ↑ '+hhmmss(_fsLastSent)); if(_fsLastRecv) a.push('Recv ↓ '+hhmmss(_fsLastRecv)); if(a.length) setCloudStat(a.join('  ·  ')+'  ·  '+(_gUser||'')); }
+function _fsStampSent(){ _fsLastSent=Date.now(); _fsShowStat(); }
+function _fsStampRecv(){ _fsLastRecv=Date.now(); _fsShowStat(); }
+function _fsHasUnsent(e, pid){ const rec=_fsLocal[pid]||{}; return fsChangedSections(e).length>0 || rec._done!==(e.done?1:0); }
+function _fsScheduleRetry(pid){ clearTimeout(_fsRetryT[pid]); _fsRetryT[pid]=setTimeout(function(){ const e=(typeof fbpEntryByPid==='function'&&fbpEntryByPid(pid))||activeEntry(); if(e) fsPushNow(e).catch(function(){}); }, 4000); }
+
+/* BUILD 16.06 LIVE hotfix (Defect 1): serialized per-pid push that DRAINS until the confirmed
+   signatures match local state, remembers ONLY the exact payload it actually sent, and never
+   falls back to a full-document set on a transient/permission error (only on a confirmed
+   not-found). Universal for every FS section — no per-section special cases. */
 async function fsPushNow(entry){
   if(!fsReady()) return;
   const e = (entry && entry.data && entry.data.project) ? entry : activeEntry();
   if(!e || !e.data.project) return;
   const pid = fbpPid(e); if(!pid) return;
-  const rec = _fsLocal[pid] || {};
+  const q = _fsQ[pid] || (_fsQ[pid] = { running:false, again:false });
+  if(q.running){ q.again = true; return; }          /* a push is in flight → just request another pass */
+  q.running = true;
+  try{
+    let guard = 0, res = { ok:true };
+    do{
+      q.again = false;
+      res = await _fsPushPass(e, pid);
+      if(!res.ok) break;                             /* transient/permission → keep queued, retry scheduled */
+    } while((q.again || _fsHasUnsent(e, pid)) && (++guard) < 30);
+    if(res.ok && !_fsHasUnsent(e, pid)) _fsStampSent();
+  } finally { q.running = false; }
+  if(_fsHasUnsent(e, pid)) _fsScheduleRetry(pid);    /* leftover after a stop → retry later, never lost */
+}
+async function _fsPushPass(e, pid){
+  const sl = fsSlice(e.data);
+  const rec = _fsLocal[pid] || (_fsLocal[pid] = {});
   const changed = fsChangedSections(e);
   const msig = fbpMediaSig(e);
   const doneChanged = rec._done !== (e.done ? 1 : 0);
-  const msigChanged = rec._msig !== msig;
-  if(rec._seen && !changed.length && !doneChanged && !msigChanged) return;   /* nothing to write */
+  /* BUILD 16.11: while BEHIND the cloud's media, never advertise our (stale) msig — pull instead. */
+  const behind = fbpMediaBehind(e);
+  if(behind){ try{ fbpMediaSync().catch(function(){}); }catch(_){} }
+  const msigChanged = !behind && rec._msig !== msig;
+  if(rec._seen && !changed.length && !doneChanged && !msigChanged) return { ok:true };
   const ref = _fsCol.doc(pid);
+  /* capture the EXACT signatures being sent BEFORE any await — edits that land during the await are
+     NOT marked as sent, so the drain loop re-sends them (fixes "second row silently marked pushed"). */
+  const sentSig = {}; changed.forEach(function(s){ sentSig[s] = JSON.stringify(sl[s] || {}); });
+  const sentDone = e.done ? 1 : 0;
+  const sentAt = Date.now();                                       /* our revision stamp for this send */
+  let sentAll = false;
   try{
-    if(!rec._seen){
-      await ref.set(fsFullDoc(e));                          /* first time: create the whole document */
+    if(!e._fbSeen){
+      await ref.set(fsFullDoc(e)); sentAll = true;                 /* brand-new project → create the whole document */
     } else {
-      const now = Date.now(), sl = fsSlice(e.data), upd = { updatedBy: _gUser || '', pid };
-      changed.forEach(s => { upd[s] = fsClean(sl[s] || {}); upd['revs.' + s] = now; });   /* per-section: only changed fields, others untouched */
+      const now = sentAt, upd = { updatedBy: _gUser || '', pid };
+      changed.forEach(function(s){ upd[s] = fsClean(sl[s] || {}); upd['revs.' + s] = now; });
       if(doneChanged){ upd.done = !!e.done; upd.doneAt = e.doneAt || 0; }
-      upd.bucket = projBucketOf(e);   /* BUILD 15.67: keep the role-routing bucket current */
+      upd.bucket = projBucketOf(e);
       if(msigChanged) upd.msig = msig;
       try{ await ref.update(upd); }
-      catch(err){ await ref.set(fsFullDoc(e)); }             /* doc vanished → recreate */
+      catch(err){
+        if(err && (err.code === 'not-found' || /not[- ]?found|No document to update/i.test(err.message || ''))){
+          await ref.set(fsFullDoc(e)); sentAll = true;             /* ONLY a confirmed missing doc justifies a full set */
+        } else { throw err; }                                      /* transient/permission → keep queued, DO NOT full-set */
+      }
     }
-    fsRememberPushed(e); e._fbSeen = true; delete e._localNew;   /* BUILD 14.13: it's in Firestore now — no longer a pending local addition */
-    setCloudStat('Synced ✓ ' + (_gUser || '') + ' · ' + hhmm());
-    if(msigChanged && !_mediaPushLock[pid]){                    /* BUILD 14.53: serialize per-project so a retry can't create a DUPLICATE Drive folder */
+    /* ACK — remember exactly what was sent (all sections on a full-doc set, else the captured ones) */
+    if(sentAll){ const sl2 = fsSlice(e.data); FS_SECTIONS.forEach(function(s){ rec[s] = JSON.stringify(sl2[s] || {}); }); }
+    else { Object.keys(sentSig).forEach(function(s){ rec[s] = sentSig[s]; }); }
+    rec._seen = true; rec._done = sentDone;
+    rec._pushedRev = rec._pushedRev || {};                         /* BUILD 16.07: remember our own send stamp per section */
+    (sentAll ? FS_SECTIONS : Object.keys(sentSig)).forEach(function(s){ rec._pushedRev[s] = sentAt; });
+    e._fbSeen = true; delete e._localNew;
+    _fsStampSent();
+    if(msigChanged && !_mediaPushLock[pid]){                       /* media: unchanged behaviour, own retry */
       _mediaPushLock[pid] = true;
       try{
-        await fbpMediaUpload(e);                                /* compact sync file _media/<pid>.media.json (crosses machines) */
-        await fbpBrowseMirror(e);                               /* ALWAYS mirror to the browsable folder — BUILD 14.58: no longer gated behind the media upload's return, so a mirror that failed once RETRIES (was: browse folder stayed empty forever) */
-        (_fsLocal[pid] = _fsLocal[pid] || {})._msig = msig;     /* BUILD 14.51: mark pushed ONLY on success */
+        await fbpMediaUpload(e);
+        await fbpBrowseMirror(e);
+        (_fsLocal[pid] = _fsLocal[pid] || {})._msig = msig;
+        try{ _markDocsSynced(e.data); }catch(_){}                       /* BUILD 16.11: these files are now in the cloud */
       }catch(_){
         setCloudStat('⚠ Photos/docs upload failed (Drive) — will retry');
-        setTimeout(function(){ try{ fsPushNow(e); }catch(_){ } }, 8000);   /* retry (rate limit / transient) — _msig stays unset so it re-fires */
+        setTimeout(function(){ try{ fsPushNow(e); }catch(_){ } }, 8000);
       } finally { _mediaPushLock[pid] = false; }
     }
-  }catch(err){ setCloudStat('⚠ Sync error: ' + (err.message || '') + ' — click to retry'); }
+    return { ok:true };
+  }catch(err){
+    setCloudStat('⚠ Sync error: ' + (err.message || '') + ' — will retry');
+    _fsScheduleRetry(pid);
+    return { ok:false };                                           /* nothing marked sent → next pass/retry re-sends */
+  }
 }
+/* BUILD 16.06 LIVE hotfix (Defect 2, cont.): when the user finishes editing (blur), apply the
+   incoming values that were deferred while typing, refresh the open module, and push promptly. */
+function _fsApplyPendingSnap(){
+  const e = activeEntry(); if(!e) return false;
+  const pid = fbpPid(e); if(!pid) return false;
+  const snap = _fsPendingSnap[pid]; if(!snap) return false;
+  const pend = _F7_GUARD ? fsPendingSections(e) : [];        /* keep the user's still-unpushed edits */
+  const rec = _fsLocal[pid] || (_fsLocal[pid] = { _seen:true });
+  let ch = false, conflict = false;
+  Object.keys(snap).forEach(function(s){
+    if(pend.indexOf(s) >= 0){ conflict = true; return; }      /* section changed locally too → keep local, flag conflict */
+    if(rec._pushedRev && rec._pushedRev[s] && snap[s].rrev < rec._pushedRev[s]) return;   /* BUILD 16.07: stale echo older than our own later push — never roll back; its successor is on the way */
+    if(fsApplySection(e.data, s, snap[s].val)) ch = true;
+    e._fsRev = e._fsRev || {}; e._fsRev[s] = snap[s].rrev;
+    try{ rec[s] = JSON.stringify(fsSlice(e.data)[s] || {}); }catch(_){}   /* received ≠ our unsent change */
+  });
+  delete _fsPendingSnap[pid];
+  if(ch){ saveState._skipCloud = true; saveState(); saveState._skipCloud = false; }
+  if(conflict) setCloudStat('⚠ Team update on a field you edited — your unsaved change kept; review');
+  return ch;
+}
+/* BUILD 16.07: one coalesced re-render per burst of snapshots (no flicker); defers again if the user
+   started typing in the meantime; never touches the create/edit forms. */
+function _fsRerenderSoon(){
+  clearTimeout(_fsRerenderT);
+  _fsRerenderT = setTimeout(function(){
+    _fsRerenderT = null;
+    if(isTypingInInput()){ _fsRerenderPending = true; return; }
+    if(onProjectFormPage()) return;
+    _fsRerendering = true;
+    try{ rerenderKeepScroll(); }catch(_){}
+    _fsRerendering = false;
+  }, 250);
+}
+function _fsFlushOnBlur(ev){
+  /* ignore blur events produced by our OWN re-render (element detached) — otherwise render→blur→push→render loops */
+  try{ if(_fsRerendering) return; if(ev && ev.target && ev.target.nodeType === 1 && !document.contains(ev.target)) return; }catch(_){}
+  setTimeout(function(){
+    if(isTypingInInput()) return;                             /* moved to another input → keep deferring */
+    const ch = _fsApplyPendingSnap();
+    if(_fsRerenderPending || ch){
+      _fsRerenderPending = false; _fsRerendering = true;
+      try{ if(typeof rerenderKeepScroll==='function' && !onProjectFormPage()) rerenderKeepScroll(); if(typeof renderHeader==='function') renderHeader(); if(typeof renderSideProject==='function') renderSideProject(); }catch(_){}
+      _fsRerendering = false; _fsStampRecv();
+    }
+    /* push promptly ONLY if there is a genuine local change (never a phantom re-send of received data) */
+    try{ const e = activeEntry(); if(e && typeof fsChangedSections==='function' && fsChangedSections(e).length && typeof fsTouch==='function') fsTouch(); }catch(_){}
+  }, 60);
+}
+try{ document.addEventListener('focusout', _fsFlushOnBlur, true); }catch(_){}
+
 async function fsDelete(e){
   const pid = fbpPid(e); if(!pid || !fsReady()) return;
   /* BUILD 14.63: mark/clean the Drive folder FIRST — while the doc still exists, so the browse folder
@@ -6410,29 +6628,38 @@ function fsApplyDoc(data){
        this is the root fix for "opened an old project, Documentation empty, backup shrank to half". */
     e = { id:newId(), frozen:false, data:d, _fbSeen:true, _fsRev:Object.assign({}, revs), _remoteMsig:data.msig||'', _browseFid:data.browseFid||'', _mediaPending:true };
     if(data.done){ e.done = true; e.doneAt = data.doneAt || Date.now(); }
+    /* BUILD 16.03 — seed the push-baseline from the cloud doc, so a later edit pushes ONLY the sections
+       actually changed (never a whole-document overwrite that could wipe another machine's filled sections). */
+    try{ const rec={ _seen:true, _done:e.done?1:0, _msig:data.msig||'' }; const sl0=fsSlice(d); FS_SECTIONS.forEach(function(s){ rec[s]=JSON.stringify(sl0[s]||{}); }); _fsLocal[pid]=rec; }catch(_){}
     db.projects.push(e);
     return true;
   }
   e._fbSeen = true; e._remoteMsig = data.msig || ''; if(data.browseFid) e._browseFid = data.browseFid;
   e._fsRev = e._fsRev || {};
-  if(e === activeEntry() && isTypingInInput()) return false;   /* don't disturb active typing; next snapshot re-applies */
-  /* BUILD 14.61 (F7): for the ACTIVE project, never overwrite a section that has UNPUSHED local edits.
-     Skip it this round and leave _fsRev[s] stale so the snapshot AFTER our own push re-syncs it. */
-  const pending = (_F7_GUARD && e === activeEntry()) ? fsPendingSections(e) : [];
+  /* BUILD 16.06 LIVE hotfix (Defect 2): never DROP an incoming snapshot because the user is typing.
+     While an input is focused, DEFER each incoming section into _fsPendingSnap (applied on blur),
+     leaving _fsRev stale so nothing is lost; when not typing, apply live so the open module refreshes.
+     Applies a section when its remote revision DIFFERS from what we last applied (clock-independent). */
+  const isActive = (e === activeEntry());
+  const typing = isActive && isTypingInInput();
+  const pending = (_F7_GUARD && isActive) ? fsPendingSections(e) : [];
   let ch = false;
   FS_SECTIONS.forEach(s => {
-    /* BUILD 14.32: apply a section whenever its remote revision DIFFERS from what we last applied —
-       NOT strictly-greater. The Firestore snapshot is the authoritative latest state, so "differs"
-       means someone changed it → adopt it. The old `rrev > lrev` gate broke sync between two users
-       whose machine CLOCKS were skewed: once the faster clock's timestamp was stored, every later
-       edit from the slower machine (smaller timestamp) was permanently ignored ("synced 1-2 times
-       then stopped"). Comparing by inequality is clock-independent. Applying our own echo is a no-op
-       (identical data → liveApply reports no change) and never loops (applies use _skipCloud). */
     const rrev = revs[s] || 0, lrev = e._fsRev[s];
     if(data[s] === undefined || rrev === lrev) return;
-    if(pending.indexOf(s) >= 0) return;   /* BUILD 14.61: unpushed local edit → don't clobber; re-applies after our push */
+    if(pending.indexOf(s) >= 0) return;              /* unpushed local edit → don't clobber; re-applies after our push */
+    if(typing){                                      /* defer instead of dropping the whole snapshot */
+      (_fsPendingSnap[pid] = _fsPendingSnap[pid] || {})[s] = { val: data[s], rrev: rrev };
+      _fsRerenderPending = true; return;
+    }
     if(fsApplySection(e.data, s, data[s])) ch = true; e._fsRev[s] = rrev;
+    /* BUILD 16.07: data we just RECEIVED is not our unsent change — refresh the push baseline so a later
+       push never re-sends this stale copy and wipes another machine's newer rows (root of "row vanished"). */
+    try{ (_fsLocal[pid] = _fsLocal[pid] || { _seen:true })[s] = JSON.stringify(fsSlice(e.data)[s] || {}); }catch(_){}
   });
+  /* BUILD 16.03 — make sure this existing project has a push-baseline, so its first edit this session
+     updates only the changed section instead of overwriting the whole cloud document. */
+  try{ if(!_fsLocal[pid]){ const rec={ _seen:true, _done:e.done?1:0, _msig:e._remoteMsig||'' }; const sl0=fsSlice(e.data); FS_SECTIONS.forEach(function(s){ rec[s]=JSON.stringify(sl0[s]||{}); }); _fsLocal[pid]=rec; } }catch(_){}
   if(!!data.done !== !!e.done){ if(data.done){ e.done = true; e.doneAt = data.doneAt || Date.now(); } else { delete e.done; delete e.doneAt; } ch = true; }
   return ch;
 }
@@ -6568,14 +6795,32 @@ function fsApplyLibrary(data){
   LIB_GROUPS.forEach(g => { const inc = inLib[g.key]; nextLib[g.key] = Array.isArray(inc) ? inc.map(it => ({cat:(it&&it.cat)||'', name:(it&&it.name)||'', price:(it&&it.price)||'', link:(it&&it.link)||'', grp:(it&&it.grp)||''})) : []; });
   const before = libSig();
   db.library = nextLib;
+  /* BUILD 16.07: adopting a remote library must NEVER destroy a category the user just added locally
+     and that the server has not confirmed yet (it is absent from our merge base). Remote deletions
+     (present in base, absent remotely) are still honoured. Anything local-only is re-published. */
+  let remoteCats = null, localExtra = false;
   if(data.cats && typeof data.cats === 'object'){
-    db.cats = {};
-    Object.keys(data.cats).forEach(k => { if(Array.isArray(data.cats[k])) db.cats[k] = data.cats[k].map(c => String(c)); });
+    remoteCats = {};
+    Object.keys(data.cats).forEach(k => { if(Array.isArray(data.cats[k])) remoteCats[k] = data.cats[k].map(c => String(c)); });
+    const baseCats = (db.libBase && db.libBase.cats) || {}, prevCats = (db.cats && typeof db.cats==='object') ? db.cats : {};
+    const low = x => String(x).toLowerCase();
+    const next = {};
+    const keys = {}; Object.keys(remoteCats).forEach(k => keys[k]=1); Object.keys(prevCats).forEach(k => keys[k]=1);
+    Object.keys(keys).forEach(k => {
+      const remote = remoteCats[k], local = Array.isArray(prevCats[k]) ? prevCats[k].map(String) : [], base = Array.isArray(baseCats[k]) ? baseCats[k].map(String) : [];
+      if(!remote){ next[k] = local.slice(); if(local.length) localExtra = true; return; }   /* key missing remotely → keep ours */
+      const res = remote.slice();
+      local.forEach(c => { const cl = low(c); if(!res.some(x => low(x)===cl) && !base.some(x => low(x)===cl)){ res.push(c); localExtra = true; } });   /* unconfirmed local add survives */
+      next[k] = res;
+    });
+    db.cats = next;
   }
   db.libRev = rrev;
-  db.libBase = _libSnapshot({library:db.library, cats:db.cats});   /* this adopted state is our new merge base */
+  db.libBase = _libSnapshot({library:db.library, cats: remoteCats || db.cats});   /* base = what the SERVER holds; our unconfirmed adds stay "pending" until published */
+  if(localExtra){ setTimeout(function(){ try{ _libDirty = true; fsPushLibrary(); }catch(_){} }, 300); }   /* publish the local-only categories now */
   _libSigLast = libSig();
   try{ normalizeSort(); }catch(_){}
+  if(before !== _libSigLast){ try{ setTimeout(function(){ try{ fixHalfNamesFromLibrary(); }catch(_){} }, 600); }catch(_){} }   /* BUILD 16.10: library arrived → complete half names */
   return before !== _libSigLast;
 }
 /* run once shortly after connect: publish our library ONLY if the server has none yet (seed) or we
@@ -6628,12 +6873,14 @@ function fsOnSnapshot(snap){
   }catch(err){ /* keep going */ }
   if(touched){
     saveState._skipCloud = true; saveState(); saveState._skipCloud = false;
-    if(!isTypingInInput() && !onProjectFormPage()) rerenderKeepScroll();   /* BUILD 14.46/14.47: refresh but keep scroll (no jump-to-top on Library etc.); never wipe a form */
+    if(isTypingInInput()){ _fsRerenderPending = true; }              /* BUILD 16.06: refresh the open module on blur (don't yank the caret) */
+    else if(!onProjectFormPage()){ _fsRerenderSoon(); }             /* LIVE: refresh the open module (coalesced — no flicker on bursts) */
     renderHeader(); renderSideProject();
+    _fsStampRecv();
   }
   _fsApplying = false;
   fbpMediaSync().catch(function(){});                        /* pull changed photos/docs from Drive */
-  setCloudStat('Synced ✓ ' + (_gUser || '') + ' · ' + hhmm());
+  _fsShowStat();
 }
 async function fsStart(){
   if(!_FS) return;
@@ -6668,6 +6915,9 @@ async function fsStart(){
   /* BUILD 14.34: shortly after connect, seed/publish our library only if the server has none yet or
      we hold genuine local changes — a plain reconnect never force-bumps the transaction counter. */
   setTimeout(function(){ try{ fsLibSyncOnConnect(); }catch(_){} }, 3500);
+  /* BUILD 16.11: the 16.09 "publish local media shortly after connect" hook was REMOVED — a client whose
+     local media was merely OLDER than the cloud's pushed its stale copy over the fresh file (files vanished
+     for everyone). Media is published only as a consequence of a local edit, and never while behind. */
   /* BUILD 14.7: photos/docs live on Drive, pulled by fbpMediaSync. onSnapshot only fires it on a
      DB change — if the media file lagged behind the doc's msig (upload race), the pull got the old
      file and never retried until a reload (the "sync only after Ctrl+Shift+R" bug). A steady 12s
@@ -6724,7 +6974,7 @@ async function fsWipeAll(){
     }
     db.projects = []; db.activeId = null;
     db.mediaMap = {}; db.backupMap = {}; db.driveMap = {};
-    _fsLocal = {}; try{ _fbpLocal = {}; }catch(_){}
+    _fsLocal = {}; _fsQ = {}; _fsRetryT = {}; _fsPendingSnap = {}; _fsRerenderPending = false; try{ _fbpLocal = {}; }catch(_){}
     syncActive(); saveState(); renderHeader(); renderSideProject();
     goTo('#/create');
     setCloudStat('Clean slate ✓ — load your .json projects now');
@@ -6741,7 +6991,7 @@ async function fsResyncLocal(){
   try{
     setCloudStat('Re-syncing this computer…');
     _fsSeededPush = true;                                   /* receive only — never re-push the dropped locals */
-    db.projects = []; db.activeId = null; _fsLocal = {}; db.mediaMap = {}; db.driveMap = {};
+    db.projects = []; db.activeId = null; _fsLocal = {}; _fsQ = {}; _fsRetryT = {}; _fsPendingSnap = {}; db.mediaMap = {}; db.driveMap = {};
     const snap = await _fsCol.get();
     _fsApplying = true;
     snap.forEach(doc => { const d = doc.data(); if(d && d.pid) fsApplyDoc(d); });
@@ -7624,6 +7874,20 @@ function applyPhotosFrom(d, s){
 /* apply the DOCUMENTATION files + content list from a newer copy (BUILD 12.89) — these ride
    only in the heavy json, NOT in the liveSlice, so the poll never used to sync them: docs
    uploaded on A never reached an already-downloaded project on B. */
+/* BUILD 16.11: files are marked `_synced` once they are known to be in the cloud (pulled, or pushed by us).
+   On a pull, local files WITHOUT the mark are additions the cloud has not seen yet — they are kept and
+   appended, never dropped. Files WITH the mark that are absent from the incoming set were deleted by a
+   teammate — honoured. No resurrection loops, no lost uploads. */
+function _markDocsSynced(d){
+  if(d && d.docs && d.docs.files) Object.keys(d.docs.files).forEach(k => (d.docs.files[k]||[]).forEach(f => { if(f) f._synced = true; }));
+  if(d && d.shipping && Array.isArray(d.shipping.docs)) d.shipping.docs.forEach(f => { if(f) f._synced = true; });
+}
+function _mergeDocList(incoming, local){
+  const inc = (incoming || []).map(f => Object.assign({}, f, { _synced:true }));
+  const names = {}; inc.forEach(f => { if(f && f.name) names[f.name] = 1; });
+  (local || []).forEach(f => { if(f && !f._synced && f.name && !names[f.name]) inc.push(f); });   /* keep never-synced local additions */
+  return inc;
+}
 function applyDocsFrom(d, s){
   let ch = false;
   if(s.docs && s.docs.files){
@@ -7632,11 +7896,26 @@ function applyDocsFrom(d, s){
     const hasFiles = o => Object.keys(o).some(k => Array.isArray(o[k]) && o[k].length);
     /* BUILD 15.38 — Замок 5: an EMPTY incoming doc set never wipes a NON-empty local one (protects
        against a peer that materialized the project and pushed empty docs before its media synced). */
-    if(!(!hasFiles(incoming) && hasFiles(local)) && JSON.stringify(local) !== JSON.stringify(incoming)){ d.docs.files = incoming; ch = true; }
+    if(!(!hasFiles(incoming) && hasFiles(local))){
+      const merged = {};
+      const keys = {}; Object.keys(incoming).forEach(k => keys[k] = 1); Object.keys(local).forEach(k => keys[k] = 1);
+      Object.keys(keys).forEach(k => { merged[k] = _mergeDocList(incoming[k], local[k]); });
+      if(JSON.stringify(local) !== JSON.stringify(merged)){ d.docs.files = merged; ch = true; }
+    }
   }
   if('contentList' in s){
     /* same guard: don't let an empty content list clear a real one */
     if(!(s.contentList == null && d.contentList != null) && JSON.stringify(d.contentList || null) !== JSON.stringify(s.contentList || null)){ d.contentList = s.contentList || null; ch = true; }
+  }
+  /* BUILD 16.09: Shipping Documents from a newer copy — same rule: an EMPTY incoming list never wipes a
+     non-empty local one (a peer that has not pulled media yet must not erase your uploads). */
+  if(s.shipping && Array.isArray(s.shipping.docs)){
+    d.shipping = d.shipping || {date:'',pallets:[],assign:{},docs:[],meta:{},packed:{}};
+    const inD = s.shipping.docs, loD = Array.isArray(d.shipping.docs) ? d.shipping.docs : [];
+    if(!(inD.length === 0 && loD.length > 0)){
+      const merged = _mergeDocList(inD, loD);                      /* BUILD 16.11: keep never-synced local additions */
+      if(JSON.stringify(loD) !== JSON.stringify(merged)){ d.shipping.docs = merged; ch = true; }
+    }
   }
   return ch;
 }
@@ -7645,6 +7924,9 @@ function cloudDocsSig(e){
   const d = e.data;
   if(d.docs && d.docs.files) Object.keys(d.docs.files).forEach(cat => (d.docs.files[cat]||[]).forEach(f => { if(f && f.name && f.data) sig[f.name] = (f.data||'').length; }));
   if(d.contentList && d.contentList.data) sig[d.contentList.name] = (d.contentList.data||'').length;
+  /* BUILD 16.09: Shipping Documents (+ Add Document) are part of the media signature, so uploading
+     one on any machine changes msig and the media file is re-synced to every other machine. */
+  if(d.shipping && Array.isArray(d.shipping.docs)) d.shipping.docs.forEach(f => { if(f && f.name && f.data) sig['ship:' + f.name] = (f.data||'').length; });
   return sig;
 }
 function cloudSyncNow(){
@@ -8324,6 +8606,29 @@ const libCamByCat = cat => libByGroupCat('cameras', cat);
 function camTotal(){ return state.camera.rows.reduce((s,r)=> s + rowSum(r), 0); }
 function addCam(){ state.camera.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
 function rmCam(i){ state.camera.rows.splice(i,1); saveState(); rerenderKeepScroll(); }
+/* ---- Camera flight cases (BUILD 16.16) ----
+   The camera kit ships in flight cases. A case is a named group ABOVE the hardware table; a row is
+   moved into a case (whole row, with all its cells) via the "Case" selector and can be moved back
+   ("— Table"). Rows STAY in state.camera.rows (only r.caseId is set) so totals, ordering, library
+   fill and sync are untouched; state.camera.cases = [{id, name}] syncs with the camera section. */
+function camCases(){ if(!state.camera) state.camera = {rows:[],ready:false,photos:[]}; if(!Array.isArray(state.camera.cases)) state.camera.cases = []; return state.camera.cases; }
+function camCaseLabel(c, ci){ return 'Case ' + (ci+1) + ((c && (c.name||'').trim()) ? ' — ' + (c.name||'').trim() : ''); }
+function camCaseRows(id){ return state.camera.rows.map((r,i)=>({r,i})).filter(x => x.r.caseId === id); }
+function camCaseTotal(id){ return camCaseRows(id).reduce((s,x)=> s + rowSum(x.r), 0); }
+function addCamCase(){ camCases().push({ id:newId(), name:'' }); saveState(); rerenderKeepScroll(); }
+function rmCamCase(id){
+  const cs = camCases(); const ci = cs.findIndex(c=>c.id===id); if(ci<0) return;
+  const n = camCaseRows(id).length;
+  if(n && !confirm('Remove ' + camCaseLabel(cs[ci], ci) + '? Its ' + n + ' component(s) return to the table below.')) return;
+  state.camera.rows.forEach(r => { if(r.caseId === id) delete r.caseId; });
+  cs.splice(ci,1); saveState(); rerenderKeepScroll();
+}
+function setCamCase(i, id){
+  const r = state.camera.rows[i]; if(!r) return;
+  if(id && camCases().some(c=>c.id===id)) r.caseId = id; else delete r.caseId;
+  saveState(); rerenderKeepScroll();
+}
+function renCamCase(id, v){ const c = camCases().find(c=>c.id===id); if(!c) return; c.name = v; saveState(); const h = document.getElementById('camCaseH'+id); if(h) h.textContent = camCaseLabel(c, camCases().indexOf(c)); }
 function setCamCat(i, v){
   state.camera.rows[i].cat = v;
   if(autoFillFromCat(state.camera.rows[i], libCamByCat(v))) flashStat('Filled from Library ✓');
@@ -8950,7 +9255,14 @@ function pageTools(){
 function pageCamera(){
   const ready = state.camera.ready;
   const P = state.project;
-  const camRows = state.camera.rows.map((r,i)=>`
+  const cases = camCases();
+  const hasCases = cases.length > 0;
+  /* BUILD 16.16: one row template for the table AND the case blocks; the "Case" column appears once a case exists */
+  const caseCell = (r,i) => !hasCases ? '' : `<td class="tight" style="width:11%"><select class="cell" title="Move this whole row into a flight case" onchange="setCamCase(${i},this.value)">
+        <option value="" ${!r.caseId?'selected':''}>— Table</option>
+        ${cases.map((c,ci)=>`<option value="${esc(c.id)}" ${r.caseId===c.id?'selected':''}>${esc(camCaseLabel(c,ci))}</option>`).join('')}
+      </select></td>`;
+  const camRowHtml = (r,i)=>`
     <tr>
       <td class="tight" style="width:17%"><select class="cell ${!(r.cat||'').trim()?'empty':''}" onchange="setCamCat(${i},this.value);this.classList.toggle('empty',!this.value)">
         <option value="" ${!(r.cat||'').trim()?'selected':''}>— Category —</option>
@@ -8959,14 +9271,35 @@ function pageCamera(){
       </select></td>
       <td class="tight"><input class="cell b" id="camN${i}" onfocus="dlFocus(this)" onblur="dlBlur(this)" list="${(r.cat||'').trim()?camListId(r.cat):'dlLibAll'}" value="${esc(r.name)}" placeholder="Pick from Library or type" oninput="updCam(${i},'name',this.value)"></td>
       <td style="width:6%;text-align:center">${ordDot('camera', i, r)}</td>
-      ${shipChk('camera', i, r)}
+      ${(r.caseId && cases.some(c=>c.id===r.caseId)) ? '<td style="width:4%;text-align:center;opacity:.5" title="Ships inside its flight case">—</td>' : shipChk('camera', i, r)}
+      ${caseCell(r,i)}
       <td class="tight" style="width:7%"><input class="cell num" value="${esc(r.qty)}" oninput="updCam(${i},'qty',this.value)"></td>
       <td class="tight" style="width:11%"><input class="cell num" id="camP${i}" value="${esc(r.price)}" placeholder="—" oninput="updCam(${i},'price',this.value)"></td>
       <td class="num" style="width:11%"><span id="camRowT${i}">${fmt(priceNum(r.price)*(parseFloat(r.qty)||1) || null)}</span></td>
       <td class="tight" style="width:15%"><div style="display:flex;align-items:center;gap:4px"><input class="cell" id="camL${i}" onmouseenter="lpShow(this)" onmouseleave="lpHide()" value="${esc(r.link)}" placeholder="https://" oninput="updCam(${i},'link',this.value)"><button class="mod-btn" style="padding:4px 7px;flex:none" title="Copy link" onclick="copyRowLink('camL${i}', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button><button class="mod-btn" style="padding:4px 7px;flex:none" title="Open link" onclick="openRowLink('camL${i}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><path d="M15 3h6v6M10 14L21 3"/></svg></button></div></td>
       <td class="tolib">${(r.name||'').trim() && !libFind(r.name) ? `<button title="Add to Library" onclick="addCamRowToLib(${i})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M9 9.5h6M12 6.5v6"/></svg></button>` : ''}</td>
       <td class="rm"><button title="Remove" onclick="rmCam(${i})">×</button></td>
-    </tr>`).join('');
+    </tr>`;
+  const camHead = `<thead><tr><th>Category</th><th>Hardware</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:center" title="Combine into one shipping place">Ship</th>${hasCases?'<th title="Flight case">Case</th>':''}<th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th><th>Link</th><th></th><th></th></tr></thead>`;
+  const camCols = hasCases ? 11 : 10;
+  const camRows = state.camera.rows.map((r,i)=> (r.caseId && cases.some(c=>c.id===r.caseId)) ? '' : camRowHtml(r,i)).join('');
+  const caseBlocks = cases.map((c,ci)=>{
+    const rows = camCaseRows(c.id);
+    return `
+    <div class="card" id="camCase${esc(c.id)}">
+      <div class="card-head" style="gap:10px;flex-wrap:wrap">
+        <h3 id="camCaseH${esc(c.id)}" style="margin-right:4px">${esc(camCaseLabel(c,ci))}</h3>
+        <input class="cell" style="max-width:260px" value="${esc(c.name||'')}" placeholder="Case label (e.g. Camera + lens)" oninput="renCamCase('${esc(c.id)}',this.value)">
+        <span style="font-size:12px;opacity:.7;margin-left:auto">${rows.length} component${rows.length===1?'':'s'} · ships as one place</span>
+        <button class="mod-btn" style="padding:5px 11px;font-size:11.5px" title="Remove this case — its components return to the table below" onclick="rmCamCase('${esc(c.id)}')">Remove case</button>
+      </div>
+      ${rows.length ? `<table class="eq">
+        ${camHead}
+        <tbody>${rows.map(x=>camRowHtml(x.r,x.i)).join('')}</tbody>
+        <tfoot><tr><td colspan="${camCols-4}">${esc(camCaseLabel(c,ci))} total</td><td class="num">${fmt(camCaseTotal(c.id))}</td><td colspan="3"></td></tr></tfoot>
+      </table>` : `<div style="padding:10px 14px;font-size:12.5px;opacity:.65">Empty — in the table below pick "${esc(camCaseLabel(c,ci))}" in the Case column to move a row here.</div>`}
+    </div>`;
+  }).join('');
 
   return `
   <div class="page">
@@ -8993,15 +9326,21 @@ function pageCamera(){
       <div><h2>Camera Builder</h2><div class="st-sub">Hardware is picked from the Equipment Library — Cameras group.</div></div>
       <div class="st-total"><div class="l">Components total</div><div class="v" id="stCam">${fmt(camTotal())}</div></div>
     </div>
+    <!-- BUILD 16.16: flight cases stack here, ABOVE the hardware table; rows are moved in with the "Case" column -->
+    <div style="display:flex;align-items:center;gap:10px;margin:0 0 12px">
+      <button class="mod-btn" style="padding:6px 12px;font-size:12px" title="Create a flight case — then move rows into it from the table below" onclick="addCamCase()">+ Add Case</button>
+      <span style="font-size:12px;opacity:.65">${hasCases ? `${cases.length} case${cases.length===1?'':'s'} · each case ships as one place` : 'Cameras ship in flight cases — create Case 1, then move rows into it.'}</span>
+    </div>
+    ${caseBlocks}
     <div class="card">
       <div class="card-head"><h3>Hardware configuration</h3><button class="mod-btn" style="padding:5px 11px;font-size:11.5px;margin-right:8px" title="Fetch fresh prices from the links" onclick="refreshPrices('camera')">↻ Prices</button>
         <button class="ready-btn ${ready?'on':''}" id="camReadyBtn" onclick="toggleCamReady()">
           <span class="led ${ready?'on':''}" id="camBtnLed"></span><span id="camBtnLbl">${ready ? 'Camera Ready' : 'Mark as Ready'}</span></button>
       </div>
       <table class="eq">
-        <thead><tr><th>Category</th><th>Hardware</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:center" title="Combine into one shipping place">Ship</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th><th>Link</th><th></th><th></th></tr></thead>
+        ${camHead}
         <tbody>${camRows}</tbody>
-        <tfoot><tr><td colspan="6">Camera total</td><td class="num" id="camFoot">${fmt(camTotal())}</td><td colspan="3"></td></tr></tfoot>
+        <tfoot><tr><td colspan="${camCols-4}">Camera total</td><td class="num" id="camFoot">${fmt(camTotal())}</td><td colspan="3"></td></tr></tfoot>
       </table>
       <button class="add-line" onclick="addCam()">+ Add component</button>
     </div>
@@ -9488,6 +9827,8 @@ const DOC_FILE_SECTIONS = [
   { key:'projdocs', label:'Project Documents', cats:[
     ['docEquip','Equipment List','.pdf,.xlsx,.xls,.csv,.docx,.txt'],
     ['docShip','Shipping Documents','.pdf,.xlsx,.xls,.docx,.jpg,.jpeg,.png'],
+    ['shipLabelPallet','Shipping Labels — Pallets (PDF)','.pdf'],      /* BUILD 16.07: uploaded from Shipping */
+    ['shipLabelDriver','Shipping Documents — Driver (PDF)','.pdf'],    /* BUILD 16.07: uploaded from Shipping */
     ['docClient','Client Documents','.pdf,.xlsx,.xls,.docx,.txt'] ]},
   /* TOOL DATABASES (BUILD 12.85): source JSON/PDF from the Fulldome tools; these ride in
      the project AND mirror into a SEPARATE Drive subfolder "Documentation/TOOL DATABASES/" */
@@ -9511,6 +9852,23 @@ function docFilesOf(catKey){
 function entryDocFiles(e, catKey){
   const d = e && e.data;
   return (d && d.docs && d.docs.files && Array.isArray(d.docs.files[catKey])) ? d.docs.files[catKey] : [];
+}
+/* BUILD 16.07: Shipping — uploaded label/driver PDFs (stored like all project documents, synced via Drive) */
+function shipLabelFilesHtml(){
+  const e = activeEntry(); if(!e) return '';
+  const cats = [['shipLabelPallet','Pallet labels (PDF)'],['shipLabelDriver','Driver documents (PDF)']];
+  return cats.map(function(c){
+    const k = c[0], lab = c[1], files = entryDocFiles(e, k);
+    const rows = files.length ? files.map(function(f, i){
+      return '<div style="display:flex;align-items:center;gap:8px;font-size:12.5px;padding:3px 0">'
+        + '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(f.name)+'">'+esc(f.name)+'</span>'
+        + '<span style="color:var(--dim);font-size:11px">'+fmtSize(f.size)+'</span>'
+        + '<button class="mod-btn primary" style="padding:3px 9px;font-size:11px" onclick="downloadDocFileEntry(\''+e.id+'\',\''+k+'\','+i+')">Download</button>'
+        + '<button class="mod-btn" style="padding:3px 9px;font-size:11px" title="Remove" onclick="rmDocFileEntry(\''+e.id+'\',\''+k+'\','+i+')">×</button>'
+        + '</div>';
+    }).join('') : '<div style="font-size:12px;color:var(--dim)">No file uploaded yet</div>';
+    return '<div style="flex:1;min-width:240px"><div style="font-size:10.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--dim);margin-bottom:4px">'+lab+'</div>'+rows+'</div>';
+  }).join('');
 }
 function docFileCount(){
   return docScope().reduce((s,e)=> s + DOC_FILE_SECTIONS.reduce((x,sec)=> x + sec.cats.reduce((y,c)=> y + entryDocFiles(e,c[0]).length, 0), 0), 0);
@@ -11273,51 +11631,912 @@ loadState(()=>{ restoreHandles();
   }catch(_){}
 })();
 
-/* BUILD 16.02 — auto update check: poll the deployed index.html; if its BUILD number is newer than the
-   one this tab is running, show an "Update" banner. Clicking it hard-reloads (cache-busted) to the new version. */
+/* BUILD 16.04 — safe auto-update (minimal; does NOT touch save/sync/debounce/deploy, no version.json, no SW):
+   poll the deployed index.html; when its BUILD is newer, reload the tab ONLY at a safe moment
+   (no typing, no unsaved local edit, no pending IndexedDB save, no in-flight/unpushed Firestore work).
+   If the user is still working it shows a passive "Update waiting" note and reloads itself once synced. */
 (function(){
   try{
-    if(location.protocol === 'file:') return;   /* the file:// guard already handles that case */
-    function cmpBuild(a,b){ var A=String(a).split('.').map(Number), B=String(b).split('.').map(Number);
-      for(var i=0;i<Math.max(A.length,B.length);i++){ var x=A[i]||0, y=B[i]||0; if(x!==y) return x-y; } return 0; }
-    function maxBuild(txt){ var out=null, m, re=/BUILD\s+([0-9]+(?:\.[0-9]+)+)/g;
-      while((m=re.exec(String(txt||'')))){ if(out===null || cmpBuild(m[1],out)>0) out=m[1]; } return out; }
-    /* this tab's running build = the highest BUILD tag in the live document (the footer) */
-    var running = maxBuild((document.querySelector('.side-foot')||document.body||{}).textContent||'');
+    if(location.protocol==='file:') return;                       // the file:// guard handles that case
+    function cmp(a,b){ var A=String(a).split('.').map(Number), B=String(b).split('.').map(Number);
+      for(var i=0;i<Math.max(A.length,B.length);i++){ var x=A[i]||0,y=B[i]||0; if(x!==y) return x-y; } return 0; }
+    function maxBuild(t){ var o=null,m,re=/BUILD\s+([0-9]+(?:\.[0-9]+)+)/g;
+      while((m=re.exec(String(t||'')))){ if(o===null||cmp(m[1],o)>0) o=m[1]; } return o; }
+    var running=maxBuild((document.querySelector('.side-foot')||document.body||{}).textContent||'');
     if(!running) return;
-    var _shown=false, _timer=null;
-    function hardReload(){
-      try{ var base=location.pathname + '?u=' + Date.now(); location.replace(base + (location.hash||'#/dashboard')); }
-      catch(_){ location.reload(); }
+
+    /* READ-ONLY: is anything still un-synced? (never writes, never touches any timer) */
+    function unsynced(){
+      try{
+        if(typeof isTypingInInput==='function' && isTypingInInput()) return true;                 // user typing
+        if(typeof _savePending!=='undefined' && (_savePending||_saveQueued)) return true;          // IndexedDB save in flight
+        if(typeof _fsApplying!=='undefined' && _fsApplying) return true;                           // applying an incoming snapshot
+        if(typeof _fsPushT!=='undefined' && _fsPushT) return true;                                 // debounced Firestore push scheduled
+        if(typeof _mediaPushLock!=='undefined' && _mediaPushLock){ for(var k in _mediaPushLock){ if(_mediaPushLock[k]) return true; } }
+        var ps=(typeof db!=='undefined' && db.projects)||[];
+        for(var i=0;i<ps.length;i++){ var e=ps[i]; if(!e) continue;
+          if(e._localNew) return true;                                                             // never-pushed project
+          if(typeof fsPendingSections==='function' && fsPendingSections(e).length) return true; } // unpushed / in-flight sections
+      }catch(_){}
+      return false;
     }
-    function showBanner(newv){
-      if(_shown) return; _shown=true; if(_timer){ clearInterval(_timer); _timer=null; }
-      var bar=document.createElement('div'); bar.setAttribute('role','alert');
+
+    var pending=null, bar=null, stuckShown=false;
+    function showWaiting(){
+      if(bar && document.body.contains(bar)) return;
+      bar=document.createElement('div'); bar.setAttribute('role','status');
       bar.style.cssText='position:fixed;left:0;right:0;top:0;z-index:2147483646;background:#0f5c39;color:#fff;'
         +'font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:14px;line-height:1.45;'
-        +'padding:11px 16px;box-shadow:0 2px 12px rgba(0,0,0,.4);display:flex;gap:12px;align-items:center;flex-wrap:wrap';
-      bar.innerHTML='<span style="font-size:17px">⬆️</span>'
-        +'<span style="flex:1;min-width:220px"><b>New version available (b'+newv+').</b> You are on b'+running+' — update to get the latest changes.</span>'
-        +'<button id="_updNow" style="background:#fff;color:#0f5c39;font-weight:800;border:none;cursor:pointer;'
-        +'padding:9px 18px;border-radius:8px;white-space:nowrap">Update</button>'
-        +'<button id="_updLater" style="background:transparent;color:#cfeede;border:1px solid rgba(255,255,255,.35);'
-        +'cursor:pointer;padding:9px 14px;border-radius:8px;white-space:nowrap">Later</button>';
-      var mount=function(){ if(!document.body) return; document.body.appendChild(bar); document.body.style.paddingTop='56px';
-        var n=document.getElementById('_updNow'); if(n) n.onclick=hardReload;
-        var l=document.getElementById('_updLater'); if(l) l.onclick=function(){ bar.remove(); document.body.style.paddingTop=''; }; };
-      if(document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
+        +'padding:11px 16px;box-shadow:0 2px 12px rgba(0,0,0,.4);display:flex;gap:10px;align-items:center';
+      var ic=document.createElement('span'); ic.textContent='⏳'; ic.style.fontSize='17px';
+      var msg=document.createElement('span'); msg.style.flex='1';
+      msg.textContent='New version ready — it will apply after synchronization, or press Update now.';
+      bar.appendChild(ic); bar.appendChild(msg);
+      /* BUILD 16.07: manual "Update" button — press → reloads to the new build immediately */
+      var btn=document.createElement('button'); btn.type='button'; btn.textContent='Update';
+      btn.style.cssText='flex:none;background:#fff;color:#0f5c39;border:none;border-radius:6px;padding:7px 14px;font:600 13px -apple-system,Segoe UI,Roboto,Arial,sans-serif;cursor:pointer';
+      btn.onclick=function(){ try{ if(!pending) return; hideWaiting(); reloadTo(pending); }catch(_){} };
+      bar.appendChild(btn);
+      var m=function(){ if(document.body){ document.body.appendChild(bar); document.body.style.paddingTop='56px'; } };
+      if(document.body) m(); else document.addEventListener('DOMContentLoaded', m);
     }
+    function hideWaiting(){ if(bar){ try{ bar.remove(); }catch(_){ } bar=null; try{ document.body.style.paddingTop=''; }catch(_){ } } }
+
+    function reloadTo(nv){
+      try{ sessionStorage.setItem('fdp_upd_target', nv); sessionStorage.setItem('fdp_upd_retry','0'); }catch(_){}
+      location.replace(location.pathname + '?u=' + Date.now() + (location.hash || '#/dashboard'));   // keep pid + module (hash)
+    }
+
+    /* runs often while an update is pending: reload as soon as it becomes safe */
+    function readyTick(){
+      if(!pending) return;
+      try{ if(pending === sessionStorage.getItem('fdp_upd_gaveup')) return; }catch(_){}   // gave up on this build -> wait for Ctrl+Shift+R
+      if(unsynced()){ showWaiting(); return; }                                            // still working -> keep the passive note
+      hideWaiting(); reloadTo(pending);                                                   // safe moment -> update itself
+    }
+
     function check(){
-      fetch(location.pathname + '?_ck=' + Date.now(), { cache:'no-store' })
+      fetch(location.pathname + '?_ck=' + Date.now(), { cache:'no-store' })               // no-store + cache-buster
         .then(function(r){ return r.ok ? r.text() : ''; })
-        .then(function(t){ var nv=maxBuild(t); if(nv && cmpBuild(nv, running) > 0) showBanner(nv); })
+        .then(function(t){ var nv=maxBuild(t);
+          if(nv && cmp(nv, running) > 0){ pending=nv; readyTick(); }
+          else { pending=null; hideWaiting(); }
+        })
         .catch(function(){});
     }
-    setTimeout(check, 30000);                     /* first check 30s after load */
-    _timer=setInterval(check, 180000);            /* then every 3 min */
-    document.addEventListener('visibilitychange', function(){ if(!document.hidden) check(); });   /* and whenever the tab is refocused */
+
+    /* after a reload we requested: did we actually land on the expected build? (max 2 retries, no loop) */
+    (function verify(){
+      try{
+        var target=sessionStorage.getItem('fdp_upd_target'); if(!target) return;
+        if(cmp(running, target) >= 0){ sessionStorage.removeItem('fdp_upd_target'); sessionStorage.removeItem('fdp_upd_retry'); sessionStorage.removeItem('fdp_upd_gaveup'); return; }
+        var n=(parseInt(sessionStorage.getItem('fdp_upd_retry')||'0',10))+1;
+        if(n>2){ sessionStorage.setItem('fdp_upd_gaveup', target); sessionStorage.removeItem('fdp_upd_target'); sessionStorage.removeItem('fdp_upd_retry'); stuck(target); return; }
+        sessionStorage.setItem('fdp_upd_retry', String(n));
+        location.replace(location.pathname + '?u=' + Date.now() + (location.hash || '#/dashboard'));
+      }catch(_){}
+    })();
+    function stuck(target){
+      if(stuckShown) return; stuckShown=true;
+      var d=document.createElement('div'); d.setAttribute('role','alert');
+      d.style.cssText='position:fixed;left:0;right:0;top:0;z-index:2147483646;background:#8a5a00;color:#fff;'
+        +'font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:14px;padding:11px 16px;display:flex;gap:10px;align-items:center';
+      var ic=document.createElement('span'); ic.textContent='⚠️'; ic.style.fontSize='17px';
+      var msg=document.createElement('span'); msg.style.flex='1';
+      msg.textContent='Still loading an old cached version (wanted b'+target+', got b'+running+'). Press Ctrl+Shift+R (Mac: Cmd+Shift+R).';
+      d.appendChild(ic); d.appendChild(msg);
+      var m=function(){ if(document.body){ document.body.appendChild(d); document.body.style.paddingTop='56px'; } };
+      if(document.body) m(); else document.addEventListener('DOMContentLoaded', m);
+    }
+
+    setTimeout(check, 30000);                     // first version check 30s after load
+    setInterval(check, 60000);                    // then every minute
+    setInterval(readyTick, 5000);                 // while pending, reload as soon as it is safe
+    document.addEventListener('visibilitychange', function(){ if(!document.hidden){ check(); } });   // and on tab refocus
   }catch(_){}
 })();
+</script>
+
+<!-- ================= Sync V2.2 live-sync integration (BUILD 16.05) — DORMANT while SYNC_V2===false ================= -->
+<script>
+/* Sync V2.2 — BUILD 16.05. Flag OFF by default; see SYNC_V2 / SYNC_V2_PIDS below. */
+/* =====================================================================
+   Fulldome PSP — Sync V2.2 engine (universal field/row sync)
+   Integrated build. Talks to storage ONLY via an injected `adapter`.
+   Fixes in 2.2 (per review for real integration):
+    #1  conflicts are SEPARATE documents keyed by opId (no serverTimestamp
+        inside arrays — that is illegal in real Firestore). A conflicts
+        subcollection is listened to and surfaced.
+    #8  open() reads PARENT META first (pid, schema:2, migrationStatus:
+        'complete', optional rowCount/checksum). An un-migrated/empty project
+        is a BLOCKING error, never a confirmed empty form.
+    #10 nested tables (shipping.pallets) are their own synced rows.
+    #11 safe Firestore document IDs (slash/@/__/space/unicode handled).
+   Storage model (split docs):
+     projects_v2/<pid>                          meta { pid, schema, migrationStatus, rowCount, checksum }
+     projects_v2/<pid>/rows/<safeDocId>         one row/singleton doc
+        { moduleId, rowId, kind, ord?, fields:{<f>:{v,rev,by,at,op}}, deleted? }
+     projects_v2/<pid>/conflicts/<opId>         one conflict { moduleId,rowId,field,v,by,at,baseRev,over }
+   Media/base64 never enter Firestore (declared mediaKeys -> Drive manifest).
+   ===================================================================== */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  if (typeof window !== 'undefined') window.SyncV2 = api;
+})(this, function () {
+  'use strict';
+
+  function SyncError(message, code) { const e = new Error(message); e.name = 'SyncError'; e.code = code || 'sync/error'; return e; }
+  const STATUS = {
+    LOCAL_SAVED: 'local-saved', CLOUD_SAVING: 'cloud-saving', CLOUD_SAVED: 'cloud-saved',
+    CLOUD_SAVE_FAILED: 'cloud-save-failed', CLOUD_UPDATE_RECEIVED: 'cloud-update-received',
+    OFFLINE: 'offline', CONFLICT: 'conflict', BLOCKED: 'blocked'
+  };
+  const SINGLE = '@';
+  const SEP = '\u0002';
+  const CONFLICT_CAP = 100;
+
+  /* ---------- safe Firestore document ids (#11) ----------
+     Firestore ids: must be non-empty, <=1500 bytes, cannot be "." or "..",
+     cannot contain "/", cannot match /^__.*__$/. We percent-encode "/" and
+     control chars, map unsafe edge cases, and keep everything else (incl.
+     unicode, @, spaces, single underscores) which Firestore allows. */
+  function safeId(raw) {
+    let s = String(raw == null ? '' : raw);
+    s = s.replace(/%/g, '%25').replace(/\//g, '%2F').replace(/[\u0000-\u001f\u007f]/g, function (c) { return '%' + c.charCodeAt(0).toString(16).padStart(2, '0').toUpperCase(); });
+    if (s === '') s = '%E'; if (s === '.') s = '%2E'; if (s === '..') s = '%2E%2E';
+    if (/^__.*__$/.test(s)) s = 'u' + s;   // avoid the reserved __.*__ pattern
+    return s;
+  }
+  const DOCSEP = '__';
+  function docIdFor(moduleId, rowId) { return safeId(moduleId) + DOCSEP + safeId(rowId == null ? SINGLE : rowId); }
+  function cid(moduleId, rowId, field) { return moduleId + SEP + (rowId == null ? SINGLE : String(rowId)) + SEP + field; }
+
+  /* ---------- central registry ---------- */
+  const MODULE_REGISTRY = Object.create(null);
+  function registerModule(id, spec) {
+    if (!id || typeof id !== 'string') throw SyncError('registerModule: id required', 'sync/bad-registration');
+    if (!spec || ['table', 'singleton', 'list'].indexOf(spec.kind) < 0) throw SyncError('registerModule: bad kind for ' + id, 'sync/bad-registration');
+    MODULE_REGISTRY[id] = {
+      id: id, title: spec.title || id, kind: spec.kind,
+      rowsKey: spec.rowsKey || 'rows', idKey: spec.idKey || 'id',
+      containerKey: spec.containerKey || 'list', flags: spec.flags || [], mediaKeys: spec.mediaKeys || [],
+      // for a nested table lifted out of a parent singleton (e.g. shipping.pallets):
+      parent: spec.parent || null, parentArrayKey: spec.parentArrayKey || null
+    };
+    return MODULE_REGISTRY[id];
+  }
+  function getModuleSpec(id) { const m = MODULE_REGISTRY[id]; if (!m) throw SyncError('Module "' + id + '" is not registered', 'sync/unregistered-module'); return m; }
+  function isRegistered(id) { return !!MODULE_REGISTRY[id]; }
+
+  registerModule('project',      { kind: 'singleton', title: 'Project Information' });
+  registerModule('server',       { kind: 'table', title: 'Server',       flags: ['ready', 'caseSize'] });
+  registerModule('backup',       { kind: 'table', title: 'Backup Server', flags: ['ready', 'caseSize', 'name', 'enabled'] });
+  registerModule('vj',           { kind: 'table', title: 'VJ',            flags: ['ready'] });
+  registerModule('rack',         { kind: 'table', title: 'Rack',          flags: ['ready', 'heightU', 'rackId', 'slots'] });
+  registerModule('camera',       { kind: 'table', title: 'Camera',        flags: ['ready'], mediaKeys: ['photos'] });
+  registerModule('speakers',     { kind: 'table', title: 'Speakers',      flags: ['ready'] });
+  registerModule('fan',          { kind: 'table', title: 'Fan / HVAC',    flags: ['ready'] });
+  registerModule('cables',       { kind: 'table', title: 'Cables',        flags: ['ready'] });
+  registerModule('tools',        { kind: 'table', title: 'Tools',         flags: ['ready'] });
+  registerModule('projectors',   { kind: 'list',  title: 'Projectors', containerKey: 'list', idKey: 'id', flags: ['selId', 'selModel', 'removableLens', 'lenses', 'models'], mediaKeys: ['web'] });
+  registerModule('validation',   { kind: 'singleton', title: 'Validation' });
+  registerModule('vjValidation', { kind: 'singleton', title: 'VJ Validation' });
+  registerModule('shipping',     { kind: 'singleton', title: 'Shipping', mediaKeys: ['palletPhotos', 'docs'] });
+  registerModule('shippingPallets', { kind: 'table', title: 'Shipping Pallets', idKey: 'id', parent: 'shipping', parentArrayKey: 'pallets' });  // #10
+  registerModule('docs',         { kind: 'singleton', title: 'Docs (refs only)', mediaKeys: ['files', 'sitePh'] });
+  registerModule('contentList',  { kind: 'singleton', title: 'Content List', mediaKeys: ['data'] });
+
+  let _opSeq = 0;
+  function newOpId(who) { return (who || 'op') + '-' + Date.now().toString(36) + '-' + (++_opSeq).toString(36); }
+  function newRowId() { return 'r_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8); }
+  function jeq(a, b) { return JSON.stringify(a === undefined ? null : a) === JSON.stringify(b === undefined ? null : b); }
+  function clone(x) { return x == null ? x : JSON.parse(JSON.stringify(x)); }
+
+  /* ---------- migration (pure, idempotent, lossless for non-media) ---------- */
+  function dryRunMigrate(legacyState, opts) {
+    opts = opts || {};
+    const by = opts.by || 'migration';
+    const pid = opts.pid || (legacyState.project && legacyState.project.pid) || null;
+    const op = 'migrate:' + pid;
+    const rows = [], media = [];
+    function fieldsFrom(obj, moduleId, mediaKeys, rowId) {
+      const fields = {};
+      Object.keys(obj).forEach(function (k) {
+        if (mediaKeys.indexOf(k) >= 0) { media.push({ moduleId: moduleId, rowId: rowId, field: k }); return; }
+        fields[k] = { v: clone(obj[k]), rev: 1, by: by, at: 0, op: op };
+      });
+      return fields;
+    }
+    Object.keys(MODULE_REGISTRY).forEach(function (moduleId) {
+      const spec = MODULE_REGISTRY[moduleId];
+      // resolve source: nested table reads parent[parentArrayKey]; others read state[moduleId]
+      let src = spec.parent ? (legacyState[spec.parent] || {})[spec.parentArrayKey] : legacyState[moduleId];
+      if (spec.parent) {
+        const arr = Array.isArray(src) ? src : [];
+        arr.forEach(function (row, index) {
+          row = row || {};
+          const hasId = row[spec.idKey] != null && row[spec.idKey] !== '';
+          const rowId = hasId ? String(row[spec.idKey]) : (moduleId + '#' + index);
+          const body = {}; Object.keys(row).forEach(function (k) { if (k !== spec.idKey) body[k] = row[k]; });
+          rows.push({ moduleId: moduleId, rowId: rowId, kind: 'table', ord: index, fields: fieldsFrom(body, moduleId, spec.mediaKeys, rowId), synthId: !hasId });
+        });
+        return;
+      }
+      if (src === undefined || src === null) return;
+      if (spec.kind === 'singleton') {
+        // for a singleton that also has a nested table (shipping.pallets), drop that array (it migrates as its own module)
+        const obj = {}; Object.keys(src).forEach(function (k) { obj[k] = src[k]; });
+        Object.keys(MODULE_REGISTRY).forEach(function (mm) { const s2 = MODULE_REGISTRY[mm]; if (s2.parent === moduleId) delete obj[s2.parentArrayKey]; });
+        rows.push({ moduleId: moduleId, rowId: SINGLE, kind: 'singleton', fields: fieldsFrom(obj, moduleId, spec.mediaKeys, SINGLE) });
+        return;
+      }
+      const arrKey = spec.kind === 'list' ? spec.containerKey : spec.rowsKey;
+      const arr = Array.isArray(src[arrKey]) ? src[arrKey] : [];
+      arr.forEach(function (row, index) {
+        row = row || {};
+        const hasId = spec.idKey && row[spec.idKey] != null && row[spec.idKey] !== '';
+        const rowId = hasId ? String(row[spec.idKey]) : (moduleId + '#' + index);
+        const body = {}; Object.keys(row).forEach(function (k) { if (k !== spec.idKey) body[k] = row[k]; });
+        rows.push({ moduleId: moduleId, rowId: rowId, kind: spec.kind, ord: index, fields: fieldsFrom(body, moduleId, spec.mediaKeys, rowId), synthId: !hasId });
+      });
+      const flagFields = {};
+      (spec.flags || []).forEach(function (f) { if (Object.prototype.hasOwnProperty.call(src, f)) flagFields[f] = { v: clone(src[f]), rev: 1, by: by, at: 0, op: op }; });
+      if (Object.keys(flagFields).length) rows.push({ moduleId: moduleId, rowId: SINGLE, kind: 'flags', fields: flagFields });
+    });
+    const doc = { meta: { pid: pid, schema: 2, migrationStatus: 'complete', migratedBy: by, rowCount: rows.length }, rows: rows, media: media };
+    return doc;
+  }
+
+  function reconstructLegacy(v2) {
+    const out = {};
+    const byModule = {};
+    v2.rows.forEach(function (rd) { (byModule[rd.moduleId] || (byModule[rd.moduleId] = [])).push(rd); });
+    // first pass: non-nested modules
+    Object.keys(MODULE_REGISTRY).forEach(function (moduleId) {
+      const spec = MODULE_REGISTRY[moduleId]; if (spec.parent) return;
+      const docs = byModule[moduleId]; if (!docs) return;
+      if (spec.kind === 'singleton') {
+        const d = docs.find(function (x) { return x.rowId === SINGLE; }) || { fields: {} };
+        const obj = {}; Object.keys(d.fields).forEach(function (f) { obj[f] = clone(d.fields[f].v); });
+        out[moduleId] = obj; return;
+      }
+      const arrKey = spec.kind === 'list' ? spec.containerKey : spec.rowsKey;
+      const rowDocs = docs.filter(function (x) { return x.rowId !== SINGLE && !x.deleted; }).sort(function (a, b) { return (a.ord - b.ord) || (a.rowId < b.rowId ? -1 : 1); });
+      out[moduleId] = {}; out[moduleId][arrKey] = rowDocs.map(function (rd) { const row = {}; if (!rd.synthId) row[spec.idKey] = rd.rowId; Object.keys(rd.fields).forEach(function (f) { row[f] = clone(rd.fields[f].v); }); return row; });
+      const flagsDoc = docs.find(function (x) { return x.rowId === SINGLE; });
+      if (flagsDoc) Object.keys(flagsDoc.fields).forEach(function (f) { out[moduleId][f] = clone(flagsDoc.fields[f].v); });
+    });
+    // second pass: nested tables back into their parent
+    Object.keys(MODULE_REGISTRY).forEach(function (moduleId) {
+      const spec = MODULE_REGISTRY[moduleId]; if (!spec.parent) return;
+      const docs = byModule[moduleId] || [];
+      const rowDocs = docs.filter(function (x) { return x.rowId !== SINGLE && !x.deleted; }).sort(function (a, b) { return (a.ord - b.ord) || (a.rowId < b.rowId ? -1 : 1); });
+      out[spec.parent] = out[spec.parent] || {};
+      out[spec.parent][spec.parentArrayKey] = rowDocs.map(function (rd) { const row = {}; if (!rd.synthId) row[spec.idKey] = rd.rowId; Object.keys(rd.fields).forEach(function (f) { row[f] = clone(rd.fields[f].v); }); return row; });
+    });
+    return out;
+  }
+
+  function buildLocalModel(rowDocsMap) {
+    const docs = Array.isArray(rowDocsMap) ? rowDocsMap : Object.keys(rowDocsMap).map(function (k) { return rowDocsMap[k]; });
+    const model = {};
+    Object.keys(MODULE_REGISTRY).forEach(function (m) { model[m] = {}; });
+    const byModule = {};
+    docs.forEach(function (rd) { if (rd && isRegistered(rd.moduleId)) (byModule[rd.moduleId] || (byModule[rd.moduleId] = [])).push(rd); });
+    Object.keys(byModule).forEach(function (moduleId) {
+      const spec = MODULE_REGISTRY[moduleId], list = byModule[moduleId];
+      if (spec.kind === 'singleton') { const d = list.find(function (x) { return x.rowId === SINGLE; }) || { fields: {} }; Object.keys(d.fields).forEach(function (f) { model[moduleId][f] = clone(d.fields[f].v); }); return; }
+      const flagsDoc = list.find(function (x) { return x.rowId === SINGLE; });
+      if (flagsDoc) Object.keys(flagsDoc.fields).forEach(function (f) { model[moduleId][f] = clone(flagsDoc.fields[f].v); });
+      const rowDocs = list.filter(function (x) { return x.rowId !== SINGLE && !x.deleted; }).sort(function (a, b) { return ((a.ord || 0) - (b.ord || 0)) || (a.rowId < b.rowId ? -1 : 1); });
+      const arrKey = spec.kind === 'list' ? spec.containerKey : spec.rowsKey;
+      model[moduleId][arrKey] = rowDocs.map(function (rd) { const row = { __id: rd.rowId }; Object.keys(rd.fields).forEach(function (f) { row[f] = clone(rd.fields[f].v); }); return row; });
+    });
+    return model;
+  }
+
+  /* =====================================================================
+     SyncClient
+     ===================================================================== */
+  function SyncClient(opts) {
+    if (!(this instanceof SyncClient)) return new SyncClient(opts);
+    this.adapter = opts.adapter; this.user = opts.user || 'anon'; this.outbox = opts.outbox || null;
+    this.onStatus = opts.onStatus || function () {}; this.onModel = opts.onModel || function () {};
+    this.onConflicts = opts.onConflicts || function () {};
+    this.debounceMs = opts.debounceMs == null ? 250 : opts.debounceMs;
+    this.pid = null; this.gen = 0;                 // #3 generation token
+    this._rowDocs = {}; this._conflicts = {};      // opId -> conflict
+    this._localRev = {}; this._activeEdits = {}; this._pendingRemote = {}; this._lastLocal = {};
+    this._cellState = {}; this._applying = false;
+    this._unsub = null; this._unsubConf = null; this._confirmed = false; this._writes = 0;
+    if (this.outbox) this.outbox.bind(this);
+  }
+  SyncClient.prototype._emit = function (phase, extra) { this.onStatus(Object.assign({ phase: phase, at: Date.now() }, extra || {})); };
+  function _isOffline(err) { return err && (err.code === 'unavailable' || err.code === 'offline'); }
+
+  /* #8 meta gate: read parent meta first; block unless migrated+complete */
+  SyncClient.prototype.open = async function (pid, opts) {
+    opts = opts || {};
+    this.pid = pid; this.gen++; const myGen = this.gen;   // #3 bump generation; late callbacks check it
+    this._confirmed = false; this._rowDocs = {}; this._localRev = {}; this._conflicts = {};
+    let meta;
+    try { meta = await this.adapter.getDocServer(this.adapter.metaDocRef(pid)); }
+    catch (err) { this._emit(STATUS.OFFLINE, { reason: err.code || err.message, pid: pid }); return { confirmed: false, offline: true }; }
+    if (this.gen !== myGen) return { stale: true };        // a newer open() started; abandon
+    if (meta.fromCache) { this._emit(STATUS.OFFLINE, { reason: 'meta-fromCache', pid: pid }); return { confirmed: false, offline: true }; }
+    const m = meta.exists ? meta.data() : null;
+    if (!m || m.schema !== 2 || m.migrationStatus !== 'complete') {
+      this._emit(STATUS.BLOCKED, { pid: pid, reason: !m ? 'no-meta' : (m.schema !== 2 ? 'bad-schema' : 'migration-' + (m.migrationStatus || 'missing')) });
+      return { confirmed: false, blocked: true, reason: !m ? 'no-meta' : 'not-migrated' };   // never a confirmed empty form
+    }
+    let snap;
+    try { snap = await this.adapter.getColServer(this.adapter.rowsColRef(pid)); }
+    catch (err) { this._emit(STATUS.OFFLINE, { reason: err.code || err.message, pid: pid }); return { confirmed: false, offline: true }; }
+    if (this.gen !== myGen) return { stale: true };
+    if (snap.fromCache) { this._emit(STATUS.OFFLINE, { reason: 'rows-fromCache', pid: pid }); return { confirmed: false, offline: true }; }
+    // optional integrity check
+    if (m.rowCount != null && snap.docs.length < m.rowCount) {
+      this._emit(STATUS.BLOCKED, { pid: pid, reason: 'rowcount-mismatch', expected: m.rowCount, got: snap.docs.length });
+      return { confirmed: false, blocked: true, reason: 'rowcount-mismatch' };
+    }
+    snap.docs.forEach((d) => { this._rowDocs[d.id] = d.data; this._seedRevFromDoc(d.data); });
+    // conflicts
+    try { const cs = await this.adapter.getColServer(this.adapter.conflictColRef(pid)); cs.docs.forEach((d) => { this._conflicts[d.id] = d.data; }); } catch (e) {}
+    this._confirmed = true; this._meta = m;
+    this._startLive(myGen);
+    const model = this._overlayActive(buildLocalModel(this._rowDocs));
+    this.onModel(model, { confirmed: true, source: 'server', changedCells: null });
+    this.onConflicts(this._conflicts);
+    this._emit(STATUS.CLOUD_UPDATE_RECEIVED, { pid: pid, confirmed: true });
+    if (this.outbox) this.outbox.resume().catch(() => {});
+    return { confirmed: true, offline: false, model: model };
+  };
+
+  SyncClient.prototype._seedRevFromDoc = function (rd) { if (!rd || !rd.fields) return; Object.keys(rd.fields).forEach((f) => { this._localRev[cid(rd.moduleId, rd.rowId, f)] = rd.fields[f].rev; }); };
+
+  SyncClient.prototype._startLive = function (myGen) {
+    if (this._unsub) { try { this._unsub(); } catch (e) {} }
+    if (this._unsubConf) { try { this._unsubConf(); } catch (e) {} }
+    const self = this;
+    this._unsub = this.adapter.onSnapshotCol(this.adapter.rowsColRef(this.pid), function (changes, meta) {
+      if (self.gen !== myGen) return;                 // #3 reject late snapshots of an old project
+      self._applyRemote(changes, meta || {});
+    }, function (err) { self._emit(STATUS.OFFLINE, { reason: (err && (err.code || err.message)) || 'stream' }); });
+    this._unsubConf = this.adapter.onSnapshotCol(this.adapter.conflictColRef(this.pid), function (changes) {
+      if (self.gen !== myGen) return;
+      changes.forEach(function (ch) { if (ch.type === 'removed') delete self._conflicts[ch.id]; else self._conflicts[ch.id] = ch.data; });
+      self.onConflicts(self._conflicts);
+      if (Object.keys(self._conflicts).length) self._emit(STATUS.CONFLICT, { pid: self.pid, count: Object.keys(self._conflicts).length });
+    }, function () {});
+  };
+
+  SyncClient.prototype._applyRemote = function (changes, meta) {
+    this._applying = true; const changedCells = [];
+    try {
+      changes.forEach((ch) => {
+        const docId = ch.id;
+        if (ch.type === 'removed') { delete this._rowDocs[docId]; changedCells.push({ docId: docId, removed: true }); return; }
+        const rd = ch.data; this._rowDocs[docId] = rd;
+        if (rd.deleted) changedCells.push({ docId: docId, moduleId: rd.moduleId, rowId: rd.rowId, deleted: true });
+        const fields = rd.fields || {};
+        Object.keys(fields).forEach((f) => {
+          const c = cid(rd.moduleId, rd.rowId, f);
+          if (this._localRev[c] === fields[f].rev) return;
+          if (this._activeEdits[c]) { this._pendingRemote[c] = fields[f]; return; }   // #5 keep active field
+          this._localRev[c] = fields[f].rev;
+          changedCells.push({ docId: docId, moduleId: rd.moduleId, rowId: rd.rowId, field: f });
+        });
+      });
+    } finally { this._applying = false; }
+    if (changedCells.length) {
+      const model = this._overlayActive(buildLocalModel(this._rowDocs));   // #5 active local values kept in the model
+      this.onModel(model, { confirmed: true, source: 'snapshot', changedCells: changedCells, activeEdits: Object.keys(this._activeEdits) });
+      this._emit(STATUS.CLOUD_UPDATE_RECEIVED, { pid: this.pid, changed: changedCells.length });
+    }
+  };
+
+  SyncClient.prototype.beginEdit = function (m, r, f) { getModuleSpec(m); this._activeEdits[cid(m, r, f)] = true; };
+  SyncClient.prototype.endEdit = function (m, r, f) {
+    const c = cid(m, r, f); delete this._activeEdits[c];
+    const stashed = this._pendingRemote[c];
+    if (stashed) { delete this._pendingRemote[c]; this._emit(STATUS.CONFLICT, { cellId: c, remote: stashed, note: 'remote-changed-while-editing' }); }
+  };
+  // #5 the currently-edited local value the UI should keep in the model
+  SyncClient.prototype.activeValue = function (m, r, f) { const c = cid(m, r, f); return this._activeEdits[c] ? this._lastLocal[c] : undefined; };
+  // overlay active local values onto a model so onModel carries them (not the stale remote)
+  SyncClient.prototype._overlayActive = function (model) {
+    Object.keys(this._activeEdits).forEach((c) => {
+      const p = c.split(SEP); const m = p[0], r = p[1], f = p[2];
+      if (!isRegistered(m) || !model[m] || !(c in this._lastLocal)) return;
+      const spec = MODULE_REGISTRY[m];
+      if (spec.kind === 'singleton' || r === SINGLE) { model[m][f] = this._lastLocal[c]; return; }
+      const arrKey = spec.kind === 'list' ? spec.containerKey : spec.rowsKey;
+      const row = (model[m][arrKey] || []).find((x) => x.__id === r); if (row) row[f] = this._lastLocal[c];
+    });
+    return model;
+  };
+
+  SyncClient.prototype.setField = function (moduleId, rowId, field, value) {
+    getModuleSpec(moduleId);
+    const c = cid(moduleId, rowId, field);
+    this._lastLocal[c] = value;                         // #5 remember the local value for active-field overlay
+    this._emit(STATUS.LOCAL_SAVED, { moduleId, rowId, field });
+    const st = this._cellState[c] || (this._cellState[c] = { inflight: false, pending: undefined, timer: null });
+    st.pending = { moduleId, rowId, field, value };
+    if (st.inflight) return Promise.resolve({ status: 'coalesced' });
+    return this._scheduleFlush(c);
+  };
+  SyncClient.prototype._scheduleFlush = function (c) { const st = this._cellState[c], self = this; if (st.timer) clearTimeout(st.timer); return new Promise((res) => { st.timer = setTimeout(() => { self._flushCell(c).then(res, res); }, self.debounceMs); }); };
+  SyncClient.prototype._flushCell = async function (c) {
+    const st = this._cellState[c]; if (!st || st.inflight || st.pending === undefined) return { status: 'idle' };
+    const job = st.pending; st.pending = undefined; st.inflight = true;
+    const baseRev = this._localRev[c] || 0;
+    let res;
+    try { res = await this._writeCellTxn(job.moduleId, job.rowId, job.field, job.value, baseRev); }
+    catch (err) { st.inflight = false; if (err.code === 'offline') { await this._enqueueOffline({ type: 'setField', moduleId: job.moduleId, rowId: job.rowId, field: job.field, value: job.value, baseRev: baseRev }); return { status: 'queued' }; } throw err; }
+    st.inflight = false;
+    if (res.status === 'ok' || res.status === 'noop') this._localRev[c] = res.rev;
+    if (st.pending !== undefined) return this._flushCell(c);
+    return res;
+  };
+
+  /* one field write = transaction on ONE row doc; conflict -> a conflict DOC (#1) */
+  SyncClient.prototype._writeCellTxn = async function (moduleId, rowId, field, value, baseRev) {
+    const spec = getModuleSpec(moduleId);
+    const ref = this.adapter.rowDocRef(this.pid, docIdFor(moduleId, rowId));
+    const self = this, op = newOpId(this.user);
+    this._emit(STATUS.CLOUD_SAVING, { moduleId, rowId, field });
+    let result;
+    try {
+      result = await this.adapter.runTransaction(async function (tx) {
+        const snap = await tx.get(ref);
+        const doc = snap.exists ? snap.data() : { moduleId, rowId, kind: spec.kind, fields: {}, deleted: null };
+        const at = self.adapter.serverTimestamp();
+        const cur = doc.fields && doc.fields[field]; const curRev = cur ? cur.rev : 0;
+        if (cur && jeq(cur.v, value)) return { status: 'noop', rev: curRev };
+        if (cur && baseRev !== curRev && !jeq(cur.v, value)) {
+          // #1 write a SEPARATE conflict doc keyed by opId (serverTimestamp is a top-level field -> legal)
+          const cref = self.adapter.conflictDocRef(self.pid, op);
+          tx.set(cref, { moduleId, rowId, field, v: clone(value), by: self.user, at: at, baseRev: baseRev, over: { v: clone(cur.v), by: cur.by, rev: cur.rev }, resolved: false }, { merge: false });
+          return { status: 'conflict', rev: curRev, op: op };
+        }
+        const newRev = curRev + 1;
+        const patch = { moduleId, rowId, kind: spec.kind, fields: {} };
+        patch.fields[field] = { v: clone(value), rev: newRev, by: self.user, at: at, op: op };
+        tx.set(ref, patch, { merge: true });
+        return { status: 'ok', rev: newRev };
+      });
+    } catch (err) {
+      if (_isOffline(err)) { this._emit(STATUS.OFFLINE, { moduleId, rowId, field }); throw SyncError('offline', 'offline'); }
+      this._emit(STATUS.CLOUD_SAVE_FAILED, { moduleId, rowId, field, code: err.code || 'error', message: err.message }); throw err;
+    }
+    this._writes++;
+    if (result.status === 'ok' || result.status === 'noop') this._emit(STATUS.CLOUD_SAVED, { moduleId, rowId, field, rev: result.rev });
+    else if (result.status === 'conflict') this._emit(STATUS.CONFLICT, { moduleId, rowId, field, op: result.op, note: 'concurrent-same-field' });
+    return result;
+  };
+
+  SyncClient.prototype.setFlag = function (m, f, v) { return this.setField(m, SINGLE, f, v); };
+  SyncClient.prototype.setSingleton = function (m, f, v) { const s = getModuleSpec(m); if (s.kind !== 'singleton') throw SyncError('setSingleton on non-singleton ' + m, 'sync/kind'); return this.setField(m, SINGLE, f, v); };
+
+  SyncClient.prototype._addRowCore = async function (moduleId, rowId, rowObj, ord) {
+    const spec = getModuleSpec(moduleId);
+    const ref = this.adapter.rowDocRef(this.pid, docIdFor(moduleId, rowId));
+    const self = this, op = newOpId(this.user);
+    this._emit(STATUS.CLOUD_SAVING, { moduleId, rowId, add: true });
+    const out = await this.adapter.runTransaction(async function (tx) {
+      const snap = await tx.get(ref);
+      if (snap.exists && !snap.data().deleted) return { status: 'exists', rowId: rowId };
+      const at = self.adapter.serverTimestamp(); const fields = {};
+      Object.keys(rowObj || {}).forEach(function (k) { if (k === spec.idKey) return; if (spec.mediaKeys.indexOf(k) >= 0) return; fields[k] = { v: clone(rowObj[k]), rev: 1, by: self.user, at: at, op: op }; });
+      tx.set(ref, { moduleId, rowId, kind: spec.kind, ord: ord, fields: fields, deleted: null }, { merge: false });
+      return { status: 'ok', rowId: rowId };
+    });
+    this._writes++; this._emit(STATUS.CLOUD_SAVED, { moduleId, rowId, add: true });
+    Object.keys(rowObj || {}).forEach((k) => { if (k !== spec.idKey && spec.mediaKeys.indexOf(k) < 0) this._localRev[cid(moduleId, rowId, k)] = 1; });
+    return out;
+  };
+  SyncClient.prototype.addRow = async function (moduleId, rowObj) {
+    const spec = getModuleSpec(moduleId);
+    if (spec.kind === 'singleton') throw SyncError('addRow on singleton ' + moduleId, 'sync/kind');
+    const rowId = (spec.idKey && rowObj && rowObj[spec.idKey] != null && rowObj[spec.idKey] !== '') ? String(rowObj[spec.idKey]) : newRowId();
+    const ord = Date.now() + Math.random();
+    try { const out = await this._addRowCore(moduleId, rowId, rowObj, ord); return { rowId: rowId, result: out }; }
+    catch (err) { if (_isOffline(err)) { await this._enqueueOffline({ type: 'addRow', moduleId, rowId, rowObj: clone(rowObj), ord: ord }); return { status: 'queued', rowId: rowId }; } this._emit(STATUS.CLOUD_SAVE_FAILED, { moduleId, rowId, code: err.code || 'error', message: err.message }); throw err; }
+  };
+
+  /* #7 delete carries a base revision snapshot; if a newer edit exists it is surfaced as a conflict, not silently hidden */
+  SyncClient.prototype._deleteRowCore = async function (moduleId, rowId, baseRevs) {
+    getModuleSpec(moduleId);
+    const ref = this.adapter.rowDocRef(this.pid, docIdFor(moduleId, rowId));
+    const self = this, op = newOpId(this.user);
+    this._emit(STATUS.CLOUD_SAVING, { moduleId, rowId, delete: true });
+    const out = await this.adapter.runTransaction(async function (tx) {
+      const snap = await tx.get(ref); const at = self.adapter.serverTimestamp();
+      if (snap.exists && baseRevs) {                 // #7 newer field than the delete was based on?
+        const cur = snap.data().fields || {}; let newer = false;
+        Object.keys(cur).forEach(function (f) { if (baseRevs[f] != null && cur[f].rev > baseRevs[f]) newer = true; });
+        if (newer) {
+          const cref = self.adapter.conflictDocRef(self.pid, op);
+          tx.set(cref, { moduleId, rowId, field: '(row)', kind: 'delete-vs-edit', by: self.user, at: at, baseRevs: baseRevs, resolved: false }, { merge: false });
+          return { status: 'conflict', op: op };
+        }
+      }
+      tx.set(ref, { moduleId, rowId, deleted: { at: at, by: self.user, op: op } }, { merge: true });
+      return { status: 'ok' };
+    });
+    this._writes++;
+    if (out.status === 'conflict') this._emit(STATUS.CONFLICT, { moduleId, rowId, op: out.op, note: 'delete-vs-edit' });
+    else this._emit(STATUS.CLOUD_SAVED, { moduleId, rowId, delete: true });
+    return out;
+  };
+  SyncClient.prototype.deleteRow = async function (moduleId, rowId, baseRevs) {
+    try { return await this._deleteRowCore(moduleId, rowId, baseRevs || null); }
+    catch (err) { if (_isOffline(err)) { await this._enqueueOffline({ type: 'deleteRow', moduleId, rowId, baseRevs: baseRevs || null }); return { status: 'queued' }; } this._emit(STATUS.CLOUD_SAVE_FAILED, { moduleId, rowId, code: err.code || 'error', message: err.message }); throw err; }
+  };
+
+  /* resolveConflict requires conflictOpId + expectedRevision (#6) */
+  SyncClient.prototype._resolveCore = async function (moduleId, rowId, field, chosenValue, guard) {
+    getModuleSpec(moduleId); guard = guard || {};
+    if (!guard.conflictOpId || guard.expectedRevision == null) throw SyncError('resolveConflict requires conflictOpId and expectedRevision', 'sync/bad-resolve');
+    const ref = this.adapter.rowDocRef(this.pid, docIdFor(moduleId, rowId));
+    const cref = this.adapter.conflictDocRef(this.pid, guard.conflictOpId);
+    const self = this, op = newOpId(this.user);
+    const out = await this.adapter.runTransaction(async function (tx) {
+      const snap = await tx.get(ref); if (!snap.exists) throw SyncError('row gone', 'sync/stale-resolve');
+      const doc = snap.data(); const cur = doc.fields && doc.fields[field]; const curRev = cur ? cur.rev : 0;
+      if (curRev !== guard.expectedRevision) throw SyncError('stale resolve: rev ' + guard.expectedRevision + '->' + curRev, 'sync/stale-resolve');
+      const at = self.adapter.serverTimestamp();
+      const patch = { moduleId, rowId, fields: {} };
+      patch.fields[field] = { v: clone(chosenValue), rev: curRev + 1, by: self.user, at: at, op: op };
+      tx.set(ref, patch, { merge: true });
+      tx.delete(cref);                               // remove the resolved conflict doc
+      return { status: 'resolved', rev: curRev + 1 };
+    });
+    this._localRev[cid(moduleId, rowId, field)] = out.rev; this._emit(STATUS.CLOUD_SAVED, { moduleId, rowId, field, resolved: true }); return out;
+  };
+  SyncClient.prototype.resolveConflict = async function (moduleId, rowId, field, chosenValue, guard) {
+    try { return await this._resolveCore(moduleId, rowId, field, chosenValue, guard); }
+    catch (err) { if (err.code === 'sync/stale-resolve') { this._emit(STATUS.CONFLICT, { moduleId, rowId, field, note: 'resolve-rejected-stale' }); throw err; } if (_isOffline(err)) { await this._enqueueOffline({ type: 'resolveConflict', moduleId, rowId, field, value: chosenValue, guard: guard }); return { status: 'queued' }; } throw err; }
+  };
+
+  SyncClient.prototype._enqueueOffline = async function (op) { this._emit(STATUS.OFFLINE, { queued: op.type }); if (this.outbox) await this.outbox.enqueue(this.pid, op); };
+  SyncClient.prototype._replayOp = async function (op) {
+    if (op.type === 'setField') return this._writeCellTxn(op.moduleId, op.rowId, op.field, op.value, op.baseRev);
+    if (op.type === 'addRow') return this._addRowCore(op.moduleId, op.rowId, op.rowObj || {}, op.ord);
+    if (op.type === 'deleteRow') return this._deleteRowCore(op.moduleId, op.rowId, op.baseRevs || null);
+    if (op.type === 'resolveConflict') return this._resolveCore(op.moduleId, op.rowId, op.field, op.value, op.guard);
+    throw SyncError('unknown op ' + op.type, 'sync/bad-op');
+  };
+  SyncClient.prototype.close = function () { this.gen++; if (this._unsub) { try { this._unsub(); } catch (e) {} this._unsub = null; } if (this._unsubConf) { try { this._unsubConf(); } catch (e) {} this._unsubConf = null; } };
+
+  return {
+    SyncError, STATUS, SINGLE, SEP, DOCSEP, CONFLICT_CAP, MODULE_REGISTRY,
+    registerModule, getModuleSpec, isRegistered, safeId, docIdFor, cid,
+    dryRunMigrate, reconstructLegacy, buildLocalModel, SyncClient, newRowId
+  };
+});
+/* REAL Firebase adapter (Firestore compat SDK). Ships. Maps the engine's
+   adapter interface to real Firestore. Server time = FieldValue.serverTimestamp();
+   field delete = FieldValue.delete(). Conflicts and meta are their own docs
+   (no serverTimestamp inside arrays). */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  if (typeof window !== 'undefined') window.createFirestoreAdapter = api.createFirestoreAdapter;
+})(this, function () {
+  'use strict';
+  function createFirestoreAdapter(firebase, db) {
+    const FieldValue = firebase.firestore.FieldValue;
+    const ROOT = 'projects_v2';
+    const proj = function (pid) { return db.collection(ROOT).doc(pid); };
+    return {
+      _firebase: firebase, _db: db,
+      serverTimestamp: function () { return FieldValue.serverTimestamp(); },
+      deleteField: function () { return FieldValue.delete(); },
+      metaDocRef: function (pid) { return proj(pid); },
+      rowsColRef: function (pid) { return proj(pid).collection('rows'); },
+      rowDocRef: function (pid, docId) { return proj(pid).collection('rows').doc(docId); },
+      conflictColRef: function (pid) { return proj(pid).collection('conflicts'); },
+      conflictDocRef: function (pid, opId) { return proj(pid).collection('conflicts').doc(opId); },
+      getDocServer: function (ref) { return ref.get({ source: 'server' }).then(function (s) { return { exists: s.exists, id: s.id, data: function () { return s.data(); }, fromCache: s.metadata.fromCache }; }); },
+      getColServer: function (colRef) { return colRef.get({ source: 'server' }).then(function (snap) { return { fromCache: snap.metadata.fromCache, docs: snap.docs.map(function (d) { return { id: d.id, data: d.data() }; }) }; }); },
+      onSnapshotCol: function (colRef, cb, errCb) {
+        return colRef.onSnapshot({ includeMetadataChanges: false }, function (snap) {
+          const changes = snap.docChanges().map(function (c) { return { type: c.type, id: c.doc.id, data: c.doc.data() }; });
+          cb(changes, { fromCache: snap.metadata.fromCache });
+        }, errCb);
+      },
+      runTransaction: function (fn) {
+        return db.runTransaction(function (t) {
+          const tx = {
+            get: function (ref) { return t.get(ref).then(function (s) { return { exists: s.exists, id: s.id, data: function () { return s.data(); } }; }); },
+            set: function (ref, data, o) { return t.set(ref, data, o || {}); },
+            delete: function (ref) { return t.delete(ref); }
+          };
+          return fn(tx);
+        });
+      }
+    };
+  }
+  return { createFirestoreAdapter: createFirestoreAdapter };
+});
+/* =====================================================================
+   Durable offline OUTBOX (IndexedDB).
+   - Every op persists BEFORE it is confirmed: pid, type, moduleId, rowId,
+     field, value, baseRev, opId, and (for addRow) rowId+ord, (for resolve)
+     guard. baseRev is frozen at edit time and NEVER recomputed on flush.
+   - An op is removed ONLY after the server confirms it.
+   - A failed flush does NOT clear the queue.
+   - resume() replays in FIFO order; stops on the first still-offline op.
+   - Auto-resumes on 'online' (browser) and on startup/reload (open() reads
+     whatever is persisted).
+   - setField edits to the same cell are COALESCED (latest value, original
+     frozen baseRev + opId), so a burst offline doesn't self-overwrite.
+   Works in Node tests via an injected idb factory (fake-indexeddb) and in
+   the browser via global indexedDB.
+   ===================================================================== */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  if (typeof window !== 'undefined') window.SyncV2Outbox = api;
+})(this, function () {
+  'use strict';
+
+  function Outbox(opts) {
+    opts = opts || {};
+    this.dbName = opts.dbName || 'fdp_syncv2_outbox';
+    this.idb = opts.indexedDB || (typeof indexedDB !== 'undefined' ? indexedDB : null);
+    if (!this.idb) throw new Error('Outbox: no IndexedDB available (inject opts.indexedDB in Node)');
+    this.client = null; this._db = null; this._resuming = false; this._seq = 0;
+    const self = this;
+    if (opts.autoResumeOnOnline !== false && typeof addEventListener === 'function') {
+      try { addEventListener('online', function () { if (self.client) self.resume().catch(function () {}); }); } catch (e) {}
+    }
+  }
+
+  Outbox.prototype.bind = function (client) { this.client = client; };
+
+  Outbox.prototype._open = function () {
+    const self = this;
+    if (this._db) return Promise.resolve(this._db);
+    return new Promise(function (resolve, reject) {
+      const req = self.idb.open(self.dbName, 1);
+      req.onupgradeneeded = function () {
+        const db = req.result;
+        if (!db.objectStoreNames.contains('ops')) {
+          const os = db.createObjectStore('ops', { keyPath: 'id', autoIncrement: true });
+          os.createIndex('byPid', 'pid', { unique: false });
+        }
+      };
+      req.onsuccess = function () { self._db = req.result; resolve(self._db); };
+      req.onerror = function () { reject(req.error); };
+    });
+  };
+
+  Outbox.prototype._tx = function (mode) { return this._open().then((db) => db.transaction('ops', mode).objectStore('ops')); };
+  function _req(r) { return new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+
+  Outbox.prototype._allForPid = async function (pid) {
+    const os = await this._tx('readonly');
+    const all = await _req(os.getAll());
+    return all.filter((o) => o.pid === pid).sort((a, b) => a.id - b.id);
+  };
+
+  Outbox.prototype.pendingCount = async function (pid) { return (await this._allForPid(pid)).length; };
+
+  // cellKey used to coalesce setField bursts to the same field
+  function cellKey(op) { return op.type === 'setField' ? ['setField', op.moduleId, op.rowId, op.field].join('\u0001') : null; }
+
+  Outbox.prototype.enqueue = async function (pid, op) {
+    const os = await this._tx('readwrite');
+    if (op.type === 'setField') {
+      // coalesce: if a pending setField for the same cell exists, update its value only
+      const all = await _req(os.getAll());
+      const existing = all.filter((o) => o.pid === pid && cellKey(o) === cellKey(op)).sort((a, b) => a.id - b.id)[0];
+      if (existing) { existing.value = op.value; await _req(os.put(existing)); return existing.id; }  // keep original baseRev + opId
+    }
+    const rec = Object.assign({ pid: pid, enqueuedAt: Date.now(), opId: op.opId || (op.type + '-' + Date.now() + '-' + (++this._seq)) }, op);
+    return _req(os.add(rec));
+  };
+
+  Outbox.prototype._remove = async function (id) { const os = await this._tx('readwrite'); return _req(os.delete(id)); };
+
+  // Replay FIFO. Delete an op ONLY on server confirmation. Stop on first
+  // still-offline op (keep the queue). A hard failure keeps the op too.
+  Outbox.prototype.resume = async function () {
+    if (!this.client || this._resuming) return { flushed: 0, remaining: await this.pendingCount(this.client ? this.client.pid : null) };
+    this._resuming = true;
+    let flushed = 0;
+    try {
+      const pid = this.client.pid;
+      const ops = await this._allForPid(pid);
+      for (const rec of ops) {
+        let res;
+        try { res = await this.client._replayOp(rec); }
+        catch (err) {
+          if (err && err.code === 'offline') break;         // still offline -> stop, keep queue
+          break;                                            // hard failure -> keep queue, stop (no silent clear)
+        }
+        if (res && res.status === 'queued') break;          // adapter still offline
+        await this._remove(rec.id); flushed++;              // confirmed -> remove
+      }
+    } finally { this._resuming = false; }
+    return { flushed: flushed, remaining: await this.pendingCount(this.client.pid) };
+  };
+
+  Outbox.prototype.clearAll = async function () { const os = await this._tx('readwrite'); return _req(os.clear()); };
+
+  return { Outbox: Outbox };
+});
+/* =====================================================================
+   Sync V2 <-> Fulldome PSP bridge (integration layer).
+   Inlined into index.html. 100% DORMANT when SYNC_V2 === false — it only
+   DEFINES functions; it installs no hooks and changes no behavior until the
+   flag is turned on per-pid. This is the single central sync path for ALL
+   modules (fields, tables, add/delete/reorder, ready-flags, Projectors,
+   Shipping incl. pallets, Validation, Tools, and any FUTURE module) — it is
+   registry-driven, so there is NO module-specific code and no Tools special
+   case. Certified for flag-ON only after the emulator suite + a 2-device test.
+   ===================================================================== */
+(function () {
+  'use strict';
+  /* ---- MASTER FLAG (off) + per-pid cutover allowlist (#12) ---- */
+  var SYNC_V2 = false;
+  var SYNC_V2_PIDS = Object.create(null);     // e.g. SYNC_V2_PIDS['PID123'] = true
+  if (typeof window === 'undefined') return;  // in Node (tests) define nothing active
+  window.SYNC_V2 = SYNC_V2; window.SYNC_V2_PIDS = SYNC_V2_PIDS;
+  function on(pid) { return SYNC_V2 && (pid ? !!SYNC_V2_PIDS[pid] : true); }
+  window.syncV2On = on;
+  if (!SYNC_V2) { window.syncV2Boot = function () {}; return; }   // hard short-circuit: OFF ⇒ nothing else defined/installed
+
+  /* ================= everything below runs ONLY when SYNC_V2 === true ================= */
+  var S = window.SyncV2;
+  var _client = null, _outbox = null, _baseline = {}, _blockedBanner = null;
+
+  function curEntry() { return (typeof activeEntry === 'function') ? activeEntry() : null; }
+  function curPid() { var e = curEntry(); return e && typeof fbpPid === 'function' ? fbpPid(e) : (e && e.data && e.data.project && e.data.project.pid); }
+  function stat(t) { try { if (typeof setCloudStat === 'function') setCloudStat(t); } catch (e) {} }
+
+  /* honest status mapping (#13 UI) */
+  function onStatus(s) {
+    switch (s.phase) {
+      case S.STATUS.LOCAL_SAVED: stat('Local saved'); break;
+      case S.STATUS.CLOUD_SAVING: stat('Cloud saving…'); break;
+      case S.STATUS.CLOUD_SAVED: stat('Cloud saved ✓ ' + (window._gUser || '')); break;
+      case S.STATUS.CLOUD_SAVE_FAILED: stat('⚠ Cloud save failed — ' + (s.message || s.code || '')); break;
+      case S.STATUS.OFFLINE: stat('⚠ Offline — will retry'); break;
+      case S.STATUS.CONFLICT: stat('⚠ Conflict — review'); break;
+      case S.STATUS.BLOCKED: showBlocked(s.reason); break;
+      case S.STATUS.CLOUD_UPDATE_RECEIVED: /* keep last own-save status; peers arriving is not "saved" */ break;
+    }
+  }
+  function showBlocked(reason) {
+    stat('⛔ Project not ready (' + reason + ')');
+    if (_blockedBanner) return;
+    _blockedBanner = document.createElement('div');
+    _blockedBanner.setAttribute('role', 'alert');
+    _blockedBanner.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:2147483645;background:#7a1f1f;color:#fff;font:14px -apple-system,Segoe UI,Roboto,Arial;padding:11px 16px;text-align:center';
+    _blockedBanner.textContent = 'This project is not fully migrated to live-sync yet (' + reason + '). It is not shown to avoid data loss. Contact the admin.';
+    if (document.body) document.body.appendChild(_blockedBanner);
+  }
+  function clearBlocked() { if (_blockedBanner) { try { _blockedBanner.remove(); } catch (e) {} _blockedBanner = null; } }
+
+  /* ---- in-memory migration: give every table/list/pallet row a stable id so
+     the diff is stable across inserts/removes (#4 rowId, #10 pallets) ---- */
+  function ensureRowIds(state) {
+    Object.keys(S.MODULE_REGISTRY).forEach(function (moduleId) {
+      var spec = S.MODULE_REGISTRY[moduleId];
+      var arr = null;
+      if (spec.parent) { var p = state[spec.parent]; arr = p && p[spec.parentArrayKey]; }
+      else if (spec.kind === 'table') { arr = state[moduleId] && state[moduleId][spec.rowsKey]; }
+      else if (spec.kind === 'list') { arr = state[moduleId] && state[moduleId][spec.containerKey]; }
+      if (!Array.isArray(arr)) return;
+      arr.forEach(function (row) { if (row && (row[spec.idKey] == null || row[spec.idKey] === '')) row[spec.idKey] = S.newRowId(); });
+    });
+  }
+
+  /* current field snapshot as { cid: value } and { rowKey: {moduleId,rowId,ord,obj} } */
+  function snapshot(state, pid) {
+    ensureRowIds(state);
+    var mig = S.dryRunMigrate(state, { pid: pid });   // registry-driven; media excluded to mig.media
+    var cells = {}, rowsMeta = {};
+    mig.rows.forEach(function (rd) {
+      var isRowLevel = rd.rowId !== S.SINGLE;
+      if (isRowLevel) rowsMeta[rd.moduleId + '\u0001' + rd.rowId] = { moduleId: rd.moduleId, rowId: rd.rowId, ord: rd.ord, fields: rd.fields };
+      Object.keys(rd.fields).forEach(function (f) { cells[S.cid(rd.moduleId, rd.rowId, f)] = rd.fields[f].v; });
+    });
+    return { cells: cells, rowsMeta: rowsMeta, mig: mig };
+  }
+
+  /* diff current state vs baseline → emit the minimal set of sync ops */
+  function diffAndPush(state) {
+    var pid = curPid(); if (!pid || !_client || _client.pid !== pid) return;
+    var now = snapshot(state, pid);
+    var base = _baseline[pid] || { cells: {}, rowsMeta: {} };
+    // new rows (present now, absent in baseline) -> addRow (atomic, all fields)
+    Object.keys(now.rowsMeta).forEach(function (k) {
+      if (!base.rowsMeta[k]) {
+        var rm = now.rowsMeta[k]; var obj = {}; Object.keys(rm.fields).forEach(function (f) { obj[f] = rm.fields[f].v; });
+        var spec = S.MODULE_REGISTRY[rm.moduleId]; if (spec && spec.idKey) obj[spec.idKey] = rm.rowId;
+        _client.addRow(rm.moduleId, obj);
+      }
+    });
+    // removed rows (in baseline, gone now) -> deleteRow with base revisions (#7)
+    Object.keys(base.rowsMeta).forEach(function (k) {
+      if (!now.rowsMeta[k]) { var rm = base.rowsMeta[k]; var brev = {}; Object.keys(rm.fields || {}).forEach(function (f) { brev[f] = (_client._localRev[S.cid(rm.moduleId, rm.rowId, f)] || 0); }); _client.deleteRow(rm.moduleId, rm.rowId, brev); }
+    });
+    // changed fields -> setField (serialized+debounced per cell inside the client)
+    Object.keys(now.cells).forEach(function (c) {
+      if (JSON.stringify(now.cells[c]) !== JSON.stringify(base.cells[c])) {
+        var p = c.split(S.SEP); _client.setField(p[0], p[1], p[2], now.cells[c]);
+      }
+    });
+    _baseline[pid] = now;   // advance baseline
+  }
+
+  /* apply a V2 model back into the app state + rerender (never clobber active input) */
+  function applyModel(model, meta) {
+    var e = curEntry(); if (!e) return; var state = e.data;
+    // map model back into the app's state shape (registry-driven)
+    Object.keys(S.MODULE_REGISTRY).forEach(function (moduleId) {
+      var spec = S.MODULE_REGISTRY[moduleId]; var mm = model[moduleId]; if (mm === undefined) return;
+      if (spec.parent) { state[spec.parent] = state[spec.parent] || {}; state[spec.parent][spec.parentArrayKey] = (mm[spec.rowsKey] || []).map(stripId); return; }
+      if (spec.kind === 'singleton') { state[moduleId] = Object.assign(state[moduleId] || {}, mm); return; }
+      var arrKey = spec.kind === 'list' ? spec.containerKey : spec.rowsKey;
+      state[moduleId] = state[moduleId] || {};
+      if (mm[arrKey]) state[moduleId][arrKey] = mm[arrKey].map(stripId);
+      (spec.flags || []).forEach(function (f) { if (f in mm) state[moduleId][f] = mm[f]; });
+    });
+    _baseline[curPid()] = snapshot(state, curPid());   // keep baseline in sync with applied remote
+    try { if (typeof isTypingInInput !== 'function' || !isTypingInInput()) { if (typeof rerenderKeepScroll === 'function') rerenderKeepScroll(); } } catch (e2) {}
+    try { if (typeof renderHeader === 'function') renderHeader(); if (typeof renderSideProject === 'function') renderSideProject(); } catch (e3) {}
+  }
+  function stripId(row) { var r = Object.assign({}, row); delete r.__id; return r; }
+
+  /* ---- boot + open with generation-token lifecycle (#3) ---- */
+  window.syncV2Boot = function () {
+    if (!SYNC_V2 || _client) return;
+    if (!(window.firebase && window._fsDb && typeof createFirestoreAdapter === 'function')) { setTimeout(window.syncV2Boot, 800); return; }
+    var adapter = createFirestoreAdapter(window.firebase, window._fsDb);
+    try { _outbox = new window.SyncV2Outbox.Outbox({ dbName: 'fdp_syncv2_outbox' }); } catch (e) { _outbox = null; }
+    _client = new S.SyncClient({ adapter: adapter, user: window._gUser || '', outbox: _outbox, onStatus: onStatus, onModel: applyModel, onConflicts: function (c) { window.__syncV2Conflicts = c; } });
+    window._syncV2Client = _client;
+    window.syncV2OpenActive();
+  };
+
+  var _switchTimer = null;
+  window.syncV2OpenActive = function () {
+    if (!_client) return; var pid = curPid();
+    if (!on(pid)) return;                    // this project not cut over yet -> V1 path stays in charge
+    clearBlocked();
+    if (_switchTimer) { clearTimeout(_switchTimer); _switchTimer = null; }
+    _client.close();                          // stop old listeners + bump generation (rejects late snapshots) (#3)
+    _client.open(pid).then(function (r) {
+      if (r && r.blocked) return;             // banner already shown by BLOCKED status (#8)
+      if (r && r.confirmed) _baseline[pid] = snapshot(curEntry().data, pid);   // baseline from confirmed server state
+    }).catch(function () {});
+  };
+
+  /* hook the app's save path so local edits diff-push through the ONE sync API (#14).
+     Installed only when the flag is on; wraps saveState without altering its behavior. */
+  (function installSaveHook() {
+    if (typeof window.saveState !== 'function') { setTimeout(installSaveHook, 500); return; }
+    var orig = window.saveState;
+    window.saveState = function () {
+      var r = orig.apply(this, arguments);
+      try { if (on(curPid()) && !orig._skipCloud) diffAndPush(curEntry().data); } catch (e) {}
+      return r;
+    };
+    window.saveState._skipCloud = orig._skipCloud;
+  })();
+
+  /* open live-sync once the app + Firestore are ready */
+  if (document.readyState === 'complete' || document.readyState === 'interactive') setTimeout(window.syncV2Boot, 1200);
+  else document.addEventListener('DOMContentLoaded', function () { setTimeout(window.syncV2Boot, 1200); });
+})();
+
 </script>
 </body>
 </html>
