@@ -802,7 +802,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.16 · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.17 · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -10353,7 +10353,7 @@ function domeEmptyComponents(){
 }
 function domeEmptyModel(){
   return { domeUid:newId(), serial:'', size:'', type:'', screenType:'', screenTypeOther:'',
-    doors:'', doorsCustom:'', hvacOpenings:'', fanOpenings:'', readyToShip:false, components:domeEmptyComponents(), truss:domeEmptyTruss(), schematics:domeEmptySchem(), archived:false, rev:0, _saved:false };
+    doors:'', doorsCustom:'', hvacOpenings:'', fanOpenings:'', readyToShip:false, components:domeEmptyComponents(), truss:domeEmptyTruss(), schematics:domeEmptySchem(), archived:false, deleted:false, rev:0, _saved:false };
 }
 /* Normalise a model's components to the current shape (lazy migration for older dome cards). */
 function domeEnsureComponents(m){
@@ -10508,6 +10508,8 @@ function _domeMergeIdLists(base, local, server, localNewer){
   return out;
 }
 /* merge a whole shared list (server) with our local docs, per domeUid, using the per-card base */
+/* BUILD 16.16: a deleted dome (code-420 delete) stays deleted whichever side is newer — never resurrected by a stale copy */
+function _domeStickyDelete(m, l, s){ if((l && l.deleted) || (s && s.deleted)){ m.deleted = true; m.archived = true; } return m; }
 function domeMergeDocs(server, local){
   const sBy={}, lBy={}, base=domeBaseMap();
   (server||[]).forEach(function(d){ if(d && d.domeUid) sBy[d.domeUid]=d; });
@@ -10515,7 +10517,7 @@ function domeMergeDocs(server, local){
   const uids={}; Object.keys(sBy).forEach(u=>uids[u]=1); Object.keys(lBy).forEach(u=>uids[u]=1);
   return Object.keys(uids).map(function(u){
     const s=sBy[u], l=lBy[u];
-    if(s && l){ const m = domeMerge3(base[u], l, s, (l.rev||0) >= (s.rev||0)); m.rev = Math.max(l.rev||0, s.rev||0); return m; }
+    if(s && l){ const m = domeMerge3(base[u], l, s, (l.rev||0) >= (s.rev||0)); m.rev = Math.max(l.rev||0, s.rev||0); _domeStickyDelete(m, l, s); return m; }
     return s || l;
   });
 }
@@ -10530,7 +10532,7 @@ function domeFsApplyDoc(data){                        /* field-level merge an in
     if(i<0){ db.domeLib.push(Object.assign(domeEmptyModel(), s, { _saved:true })); base[uid]=s; ch=true; return; }
     const localDoc = domeFsModelDoc(db.domeLib[i]);
     const merged = domeMerge3(base[uid], localDoc, s, (localDoc.rev||0) >= (s.rev||0));
-    merged.rev = Math.max(localDoc.rev||0, s.rev||0);
+    merged.rev = Math.max(localDoc.rev||0, s.rev||0); _domeStickyDelete(merged, localDoc, s);
     if(!_domeEqj(merged, localDoc)){ db.domeLib[i] = _domeKeepLocalBytes(db.domeLib[i], Object.assign(domeEmptyModel(), merged, { _saved:true })); ch=true; }
     base[uid] = merged;                              /* new agreed base */
   });
@@ -10602,7 +10604,7 @@ function domeFsModelDoc(m){
   return { domeUid:m.domeUid, serial:m.serial||'', size:String(m.size||''), type:m.type||'', screenType:m.screenType||'',
     screenTypeOther:m.screenTypeOther||'', doors:m.doors||'', doorsCustom:m.doorsCustom||'',
     hvacOpenings:String(m.hvacOpenings||''), fanOpenings:String(m.fanOpenings||''), readyToShip:!!m.readyToShip,
-    components:domeComponentsDoc(m.components), truss:domeTrussDoc(m.truss), schematics:domeSchemDoc(m.schematics), archived:!!m.archived, updatedBy:_gUser||'', rev:(m.rev||0) };
+    components:domeComponentsDoc(m.components), truss:domeTrussDoc(m.truss), schematics:domeSchemDoc(m.schematics), archived:!!m.archived, deleted:!!m.deleted, updatedBy:_gUser||'', rev:(m.rev||0) };
 }
 
 /* ---- Google Drive backup (BUILD 15.06): on Save, and every 15 min if changed, write the dome card
@@ -10868,6 +10870,35 @@ function domeSaveCard(){
   _domeSearch=''; _domeFilterType=''; _domeFilterScreen='';   /* BUILD 15.12: never hide the just-saved dome behind a stale/autofilled search or filter */
   domeBackToList();   /* return to the Dome Library list and show the saved dome */
 }
+/* BUILD 16.16 — Delete a dome from the list: code 420 → the card becomes a synced tombstone (archived + deleted,
+   content stripped) so every teammate's copy hides it and it never comes back through the merge; its Google Drive
+   working folder (_dome library / <dome>) and the BACKUPS mirror JSON are moved to Drive Trash (recoverable ~30 days). */
+async function domeDeleteCard(uid){
+  const m=domeFind(uid); if(!m) return;
+  const label = domeTitle(m) || m.serial || uid;
+  const code = prompt('Delete dome "' + label + '" everywhere?\nThis removes the card for the whole team AND moves its Google Drive folder to Trash.\n\nEnter delete code to confirm:');
+  if(code===null) return;
+  if(String(code).trim()!=='420'){ alert('Wrong code — dome not deleted.'); return; }
+  const rec = domeDriveMap()[uid] || {};
+  /* 1) tombstone + strip content, publish to the team */
+  m.archived = true; m.deleted = true; m.readyToShip = false;
+  m.components = domeEmptyComponents(); m.truss = domeEmptyTruss(); m.schematics = domeEmptySchem();
+  if(_domeEditId===uid){ _domeEditId=null; _domeView='list'; }
+  saveDomeLib(); rerenderKeepScroll(); flashStat('Deleting dome "' + label + '"…');
+  try{ if(m._saved || domeFsReady()) await domeFsPushModel(m); }catch(_){}
+  /* 2) Google Drive: working folder + BACKUPS mirror JSON → Trash */
+  if(_cloudOn && _gTok){
+    try{
+      let fid = rec.folderId; if(fid && !(await driveAlive(fid))) fid = null;
+      if(!fid){ try{ const root = await domeDriveRoot(); fid = await driveFindFolder(domeFolderName(m), root); }catch(_){} }
+      if(fid) await driveTrashTree(fid);
+      if(rec.bkJsonId){ try{ await driveTrash(rec.bkJsonId); }catch(_){} }
+      delete domeDriveMap()[uid]; saveDomeLib();
+      flashStat('Dome "' + label + '" deleted — Drive folder moved to Trash ✓');
+    }catch(e){ flashStat('Dome deleted; ⚠ Drive cleanup failed: ' + (e && e.message || e)); }
+  } else flashStat('Dome "' + label + '" deleted locally — sign in to remove its Drive folder');
+  rerenderKeepScroll();
+}
 function domeArchiveCard(){
   const m=domeEditing(); if(!m) return;
   if(!confirm('Archive this dome card? It is hidden from the catalogue (soft-delete via archived:true, never physically deleted).')) return;
@@ -10973,7 +11004,8 @@ function pageDomeLibrary(){
       <td style="text-align:center">${(String(m.fanOpenings||'').trim()!=='')?esc(m.fanOpenings):'—'}</td>
       <td style="text-align:center">${(String(m.hvacOpenings||'').trim()!=='')?esc(m.hvacOpenings):'—'}</td>
       <td style="text-align:center"><label class="rts-box${m.readyToShip?' on':''}" title="${m.readyToShip?'Ready to ship':'Mark as ready to ship'}" onclick="event.stopPropagation()"><input type="checkbox" ${m.readyToShip?'checked':''} onchange="domeToggleReady('${m.domeUid}',this.checked)"><span class="rts-tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5 9-11"/></svg></span></label></td>
-      <td style="text-align:right"><button class="mod-btn primary" style="padding:5px 12px" onclick="domeOpenCard('${m.domeUid}')">Open / Edit</button></td>
+      <td style="text-align:right;white-space:nowrap"><button class="mod-btn primary" style="padding:5px 12px" onclick="domeOpenCard('${m.domeUid}')">Open / Edit</button>
+        <button class="mod-btn" style="padding:5px 10px;margin-left:6px;color:var(--fdp-red)" title="Delete this dome everywhere — card, team sync and its Google Drive folder (code required)" onclick="event.stopPropagation();domeDeleteCard('${m.domeUid}')">Delete</button></td>
     </tr>${exp?`<tr class="dpass-row"><td colspan="9">${domePassport(m)}</td></tr>`:''}`; }).join('');
   const totalActive = db.domeLib.filter(m=>!m.archived).length;
   const filtered = (q!=='' || _domeFilterType || _domeFilterScreen);
