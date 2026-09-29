@@ -802,7 +802,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.16 · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.19 · PROJECTOR ACCESSORIES TABLE (SHIPS AS ITS OWN MODULE AFTER PROJECTORS) · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1113,6 +1113,9 @@ function ensureProjectors(d){
   if(!Array.isArray(d.projectors.lenses)) d.projectors.lenses = [];
   d.projectors.lenses.forEach(l=>{ if(l.model==null) l.model=''; if(l.ratio==null) l.ratio=''; if(l.serial==null) l.serial=''; if(l.qty==null) l.qty=''; if(!l.id) l.id='ln'+Date.now()+Math.floor(Math.random()*1e4); });
   if(d.projectors.selModel==null) d.projectors.selModel = '';
+  /* BUILD 16.19 — Projector Accessories table (user-filled, nothing pre-filled) */
+  if(!Array.isArray(d.projectors.acc)) d.projectors.acc = [];
+  d.projectors.acc.forEach(a=>{ ['item','model','req','source','qty','packed','notes'].forEach(k=>{ if(a[k]==null) a[k]=''; }); if(!a.id) a.id='pa'+Date.now()+Math.floor(Math.random()*1e4); });
   if(!d.projectors.models || typeof d.projectors.models!=='object') d.projectors.models = {};
   /* project-level model data (photos, specs) RIDES IN THE PROJECT FILE.
      Self-heal: models used in this project pull their photos from the global
@@ -4758,6 +4761,8 @@ function shipPlaces(){
   rkSeparate.forEach((it,i)=> places.push({key:'pl|rack-sep|'+i, name:it.name, module:rackMod, items:[it]}));
   /* ---- Projectors — each unit its own place ---- */
   ((state.projectors&&state.projectors.list)||[]).forEach((p,i)=>{ const nm=((p.mfr||'')+' '+(p.model||'')).trim(); if(!nm) return; places.push({key:'pl|proj|'+(p.id||i), name: nm + (p.serial?(' · SN '+p.serial):(p.num?(' #'+p.num):'')), module:'Projectors', items:[{key:'i|proj|'+(p.id||i), name:nm, qty:1, link:''}]}); });
+  /* ---- Projector Accessories (BUILD 16.19) — user-filled table on the Projectors page; ships as ONE place ---- */
+  try{ const pacc = projAccShipItems(); if(pacc.length) places.push({key:'pl|pacc', name:'Projector Accessories', module:'Projector Accessories', items:pacc}); }catch(_){}
   /* ---- Speakers / Audio (BUILD 14.20) ---- */
   const spkCombined = [], spkSeparate = [];
   ((state.speakers&&state.speakers.rows)||[]).forEach((r,idx)=>{ if(!(r.name||'').trim()) return; (isCombined(r)?spkCombined:spkSeparate).push(mkItem(r,'i|spk|'+idx)); });
@@ -4788,7 +4793,7 @@ function shipPlaces(){
     if(cs){ (camByCase[cs.id] = camByCase[cs.id] || []).push(it); return; }   /* BUILD 16.16: a flight case ships as ONE place */
     (isCombined(r)?camCombined:camSeparate).push(it);
   });
-  camCasesL.forEach((c,ci)=>{ const its = camByCase[c.id]; if(its && its.length) places.push({key:'pl|cam-case|'+c.id, name:camCaseLabel(c, ci), module:'Calibration Camera', items:its}); });
+  camCasesL.forEach((c,ci)=>{ const its = camByCase[c.id]; if(its && its.length) places.push({key:'pl|cam-case|'+c.id, name:camCaseLabel(c, ci), module:'Calibration Camera', items:its, sub:camCaseLabel(c, ci)}); });   /* sub = sub-section heading in the packing list / PDF */
   if(camCombined.length) places.push({key:'pl|cam', name:'Camera', module:'Calibration Camera', items:camCombined});
   camSeparate.forEach((it,i)=> places.push({key:'pl|cam-sep|'+i, name:it.name, module:'Calibration Camera', items:[it]}));
   return places;
@@ -4869,11 +4874,14 @@ function genShipPDF(){
        in the same order as the on-screen table — not one flat pile per pallet. */
     const listByModule = (pls) => {
       const order = [], byMod = {};
-      pls.forEach(pl => { const m = pl.module || 'Other'; if(!byMod[m]){ byMod[m] = []; order.push(m); } byMod[m] = byMod[m].concat(pl.items); });
+      /* BUILD 16.16: a place with a sub-section label (camera flight case) is listed under its own sub-heading */
+      pls.forEach(pl => { const m = pl.module || 'Other'; if(!byMod[m]){ byMod[m] = []; order.push(m); } if(pl.sub) byMod[m].push({ _sub: pl.sub, _n: pl.items.length, items: pl.items }); else byMod[m] = byMod[m].concat(pl.items); });
       order.forEach(m => {
         const its = byMod[m]; if(!its.length) return;
         y += 3; nl('    ' + String(m).toUpperCase(), 10, true, '#333');
-        its.forEach(it => nl('        - ' + it.name + (it.qty>1 ? ('  x' + it.qty) : '') + cmtOf(it), 10, false, '#222'));
+        const line = it => nl('        - ' + it.name + (it.qty>1 ? ('  x' + it.qty) : '') + cmtOf(it), 10, false, '#222');
+        its.filter(x => !x._sub).forEach(line);
+        its.filter(x => x._sub).forEach(x => { nl('      ' + String(x._sub).toUpperCase() + '  (' + x._n + ' items, one place)', 10, true, '#555'); x.items.forEach(line); });
       });
     };
     let totalWt = 0;
@@ -4984,7 +4992,11 @@ function pageShipping(){
     const body = modPlaces.map(pl => {
       const plIdx = places.indexOf(pl); const pid = S.assign[pl.key]||'';
       const packed = !!(S.packed && S.packed[pl.key]);
-      return pl.items.map((it, ii)=>{
+      /* BUILD 16.16: a place with a sub-section label (e.g. a camera flight case) gets its own heading row —
+         so it is visible that these items travel together as ONE place (one pallet cell / one loaded box) */
+      const subHdr = pl.sub ? `<tr class="subhdr"><td colspan="7" style="padding:6px 10px 6px 34px;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--ink2);background:rgba(0,0,0,.035);border-top:1px solid var(--line)">
+          <span class="chip c-mut" style="font-size:9.5px;margin-right:8px;text-transform:none;letter-spacing:0">${pl.items.length} item${pl.items.length===1?'':'s'} · ONE PLACE</span>${esc(pl.sub)}</td></tr>` : '';
+      return subHdr + pl.items.map((it, ii)=>{
         n++;
         const href = shipLinkHref(it.link);
         const link = href
@@ -5391,7 +5403,7 @@ function liveSlice(d){
     fan:     { rows: (d.fan && d.fan.rows) || [], ready: !!(d.fan && d.fan.ready) },
     cables:  { rows: (d.cables && d.cables.rows) || [], ready: !!(d.cables && d.cables.ready) },
     tools:   { rows: (d.tools && d.tools.rows) || [], ready: !!(d.tools && d.tools.ready) },
-    projectors: { list: (d.projectors && d.projectors.list) || [], selId: (d.projectors && d.projectors.selId) || null, removableLens: !!(d.projectors && d.projectors.removableLens), lenses: (d.projectors && d.projectors.lenses) || [] },
+    projectors: { list: (d.projectors && d.projectors.list) || [], selId: (d.projectors && d.projectors.selId) || null, removableLens: !!(d.projectors && d.projectors.removableLens), lenses: (d.projectors && d.projectors.lenses) || [], acc: (d.projectors && d.projectors.acc) || [] },   /* acc = Projector Accessories (BUILD 16.19) */
     validation:   d.validation || {},                 /* dashboard test chips — live now (BUILD 12.7) */
     vjValidation: d.vjValidation || {},
     shipping: { date:(d.shipping&&d.shipping.date)||'', pallets:(d.shipping&&d.shipping.pallets)||[], assign:(d.shipping&&d.shipping.assign)||{}, meta:(d.shipping&&d.shipping.meta)||{}, packed:(d.shipping&&d.shipping.packed)||{} }   /* pallets + date + comments + loaded flags sync; docs ride in the heavy json only (BUILD 12.54) */
@@ -5432,7 +5444,7 @@ function liveApply(d, live){
   if(live.fan){ d.fan = d.fan || {rows:[],ready:false,photos:[]}; setIf(d.fan, 'rows', live.fan.rows || []); setIf(d.fan, 'ready', !!live.fan.ready); }
   if(live.cables){ d.cables = d.cables || {rows:[],ready:false,photos:[]}; setIf(d.cables, 'rows', live.cables.rows || []); setIf(d.cables, 'ready', !!live.cables.ready); }
   if(live.tools){ d.tools = d.tools || {rows:[],ready:false,photos:[]}; setIf(d.tools, 'rows', live.tools.rows || []); setIf(d.tools, 'ready', !!live.tools.ready); }
-  if(live.projectors){ d.projectors = d.projectors || {list:[],selId:null,models:{}}; setIf(d.projectors, 'list', live.projectors.list || []); setIf(d.projectors, 'selId', live.projectors.selId || null); if('removableLens' in live.projectors) setIf(d.projectors, 'removableLens', !!live.projectors.removableLens); if('lenses' in live.projectors) setIf(d.projectors, 'lenses', live.projectors.lenses || []); }
+  if(live.projectors){ d.projectors = d.projectors || {list:[],selId:null,models:{}}; setIf(d.projectors, 'list', live.projectors.list || []); setIf(d.projectors, 'selId', live.projectors.selId || null); if('removableLens' in live.projectors) setIf(d.projectors, 'removableLens', !!live.projectors.removableLens); if('lenses' in live.projectors) setIf(d.projectors, 'lenses', live.projectors.lenses || []); if('acc' in live.projectors) setIf(d.projectors, 'acc', live.projectors.acc || []); }
   if(live.validation)   setIf(d, 'validation',   live.validation);      /* dashboard test chips (BUILD 12.7) */
   if(live.vjValidation) setIf(d, 'vjValidation', live.vjValidation);
   if(live.shipping){ d.shipping = d.shipping || {date:'',pallets:[],assign:{},docs:[],meta:{},packed:{}}; setIf(d.shipping,'date',live.shipping.date||''); setIf(d.shipping,'pallets',live.shipping.pallets||[]); setIf(d.shipping,'assign',live.shipping.assign||{}); if('meta' in live.shipping) setIf(d.shipping,'meta',live.shipping.meta||{}); if('packed' in live.shipping) setIf(d.shipping,'packed',live.shipping.packed||{}); }
@@ -9394,6 +9406,46 @@ function addLens(silent){ const pr=ensureProjectors(state);
   if(!silent){ saveState(); rerenderKeepScroll(); } }
 function rmLens(i){ const pr=ensureProjectors(state); if(!pr.lenses[i]) return; pr.lenses.splice(i,1); saveState(); rerenderKeepScroll(); }
 function updLens(i,k,v){ const l=projLenses()[i]; if(!l) return; l[k]=v; saveState(); }
+/* BUILD 16.19 — Projector Accessories: item / model-part / required / source / qty to ship / packed / notes.
+   Rows are added by the user only; rows with a name and Qty to Ship > 0 ship as ONE place "Projector Accessories"
+   (module right after Projectors in the packing list / PDF). */
+const PROJ_ACC_SOURCES = ['Included','Fulldome Stock','Purchase','Other'];
+function projAcc(){ return ensureProjectors(state).acc; }
+function addProjAcc(){ projAcc().push({ id:'pa'+Date.now()+Math.floor(Math.random()*1e4), item:'', model:'', req:'', source:'', qty:'', packed:'', notes:'' }); saveState(); rerenderKeepScroll(); }
+function rmProjAcc(i){ const a=projAcc(); if(!a[i]) return; a.splice(i,1); saveState(); rerenderKeepScroll(); }
+function updProjAcc(i,k,v){ const a=projAcc()[i]; if(!a) return; a[k]=v; saveState();
+  if(k==='qty' || k==='packed'){ const el=document.getElementById('paPk'+i); if(el) el.textContent='/ '+(String(a.qty||'').trim()||'—'); } }
+function projAccShipItems(){ return projAcc().map((a,i)=>({a,i})).filter(x=>String(x.a.item||'').trim() && (parseFloat(x.a.qty)||0)>0)
+  .map(x=>({ key:'i|pacc|'+x.a.id, name:String(x.a.item).trim()+(String(x.a.model||'').trim()?' — '+String(x.a.model).trim():''), qty:parseFloat(x.a.qty)||1, link:'' })); }
+function projAccCard(){
+  const acc = projAcc();
+  const rows = acc.map((a,i)=>`
+    <tr>
+      <td class="tight" style="width:17%"><input class="cell b" value="${esc(a.item)}" placeholder="Item" oninput="updProjAcc(${i},'item',this.value)"></td>
+      <td class="tight" style="width:16%"><input class="cell" value="${esc(a.model)}" placeholder="Model / Part No." oninput="updProjAcc(${i},'model',this.value)"></td>
+      <td class="tight" style="width:8%"><input class="cell num" value="${esc(a.req)}" placeholder="—" oninput="updProjAcc(${i},'req',this.value)"></td>
+      <td class="tight" style="width:14%"><select class="cell ${!(a.source||'').trim()?'empty':''}" onchange="updProjAcc(${i},'source',this.value);this.classList.toggle('empty',!this.value)">
+        <option value="" ${!(a.source||'').trim()?'selected':''}>— Source —</option>
+        ${PROJ_ACC_SOURCES.map(s=>`<option value="${s}" ${a.source===s?'selected':''}>${s}</option>`).join('')}
+        ${(a.source||'').trim() && PROJ_ACC_SOURCES.indexOf(a.source)<0 ? `<option value="${esc(a.source)}" selected>${esc(a.source)}</option>` : ''}
+      </select></td>
+      <td class="tight" style="width:9%"><input class="cell num" value="${esc(a.qty)}" placeholder="0" title="Ships in the packing list when > 0" oninput="updProjAcc(${i},'qty',this.value)"></td>
+      <td class="tight" style="width:10%"><div style="display:flex;align-items:center;gap:4px"><input class="cell num" style="width:52px" value="${esc(a.packed)}" placeholder="0" oninput="updProjAcc(${i},'packed',this.value)"><span id="paPk${i}" style="font-size:12px;color:var(--dim);white-space:nowrap">/ ${esc(String(a.qty||'').trim()||'—')}</span></div></td>
+      <td class="tight"><input class="cell" value="${esc(a.notes)}" placeholder="Notes" oninput="updProjAcc(${i},'notes',this.value)"></td>
+      <td class="rm"><button title="Remove" onclick="rmProjAcc(${i})">×</button></td>
+    </tr>`).join('');
+  return `
+      <div class="card" style="margin:16px 0 0">
+        <div class="card-head"><h3>Projector Accessories</h3><span class="chip c-mut"><span class="cd"></span>${acc.length}</span></div>
+        <div class="hint" style="margin:-6px 0 12px;color:var(--dim);font-size:11.5px">Projector-specific accessories supplied or purchased for this project. Rows with a Qty to Ship appear automatically in the Shipping list (module "Projector Accessories").</div>
+        ${acc.length ? `
+        <table class="eq">
+          <thead><tr><th>Item</th><th>Model / Part No.</th><th style="text-align:right">Required</th><th>Source</th><th style="text-align:right">Qty to Ship</th><th>Packed</th><th>Notes</th><th></th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>` : `<div style="font-size:12.5px;color:#9aa2ad;padding:4px 2px">No accessories yet — add the first one.</div>`}
+        <button class="add-line" onclick="addProjAcc()">+ Add accessory</button>
+      </div>`;
+}
 function setSelProjector(id){ ensureProjectors(state).selId = id; saveState(); rerenderKeepScroll(); }
 function openProjectorWeb(){
   const p = selProjector();
@@ -9762,6 +9814,7 @@ function pageProjectors(){
       </table>` : `<div style="font-size:12.5px;color:#9aa2ad;padding:4px 2px">No projectors yet — add the first one.</div>`}
       <button class="add-line" onclick="addProjector()">+ Add projector</button>
       ${lensCard}
+      ${projAccCard()}
       </div>
     </div>
     <div style="margin-top:18px"></div>
@@ -10346,7 +10399,7 @@ function domeEmptyComponents(){
 }
 function domeEmptyModel(){
   return { domeUid:newId(), serial:'', size:'', type:'', screenType:'', screenTypeOther:'',
-    doors:'', doorsCustom:'', hvacOpenings:'', fanOpenings:'', readyToShip:false, components:domeEmptyComponents(), truss:domeEmptyTruss(), schematics:domeEmptySchem(), archived:false, rev:0, _saved:false };
+    doors:'', doorsCustom:'', hvacOpenings:'', fanOpenings:'', readyToShip:false, components:domeEmptyComponents(), truss:domeEmptyTruss(), schematics:domeEmptySchem(), archived:false, deleted:false, rev:0, _saved:false };
 }
 /* Normalise a model's components to the current shape (lazy migration for older dome cards). */
 function domeEnsureComponents(m){
@@ -10465,23 +10518,44 @@ function _domeEqj(a,b){ return JSON.stringify(a===undefined?null:a)===JSON.strin
 function _domeIsObj(x){ return x && typeof x==='object' && !Array.isArray(x); }
 function domeMerge3(base, local, server, localNewer){
   if(_domeEqj(local, server)) return (local!==undefined ? local : server);
-  if(base!==undefined && _domeEqj(local, base)) return server;      /* we didn't touch it → take server's */
-  if(base!==undefined && _domeEqj(server, base)) return local;      /* server didn't touch it → keep ours */
-  if(local===undefined) return server;
+  if(local===undefined) return server;                              /* BUILD 16.16: a side that lacks a key never deletes it (fields are never removed from a card — a missing key means an older build / stale copy) */
   if(server===undefined) return local;
-  if(_domeIsObj(local) && _domeIsObj(server)){                      /* recurse per key */
+  if(_domeIsObj(local) && _domeIsObj(server)){                      /* recurse per key (BUILD 16.16: always — so a key one side lacks is merged per key, never dropped by an object-level "keep ours") */
     const b = _domeIsObj(base) ? base : {};
     const keys = {}; Object.keys(b).forEach(k=>keys[k]=1); Object.keys(local).forEach(k=>keys[k]=1); Object.keys(server).forEach(k=>keys[k]=1);
     const out = {}; Object.keys(keys).forEach(function(k){ out[k] = domeMerge3(b[k], local[k], server[k], localNewer); });
     return out;
   }
+  if(base!==undefined && _domeEqj(local, base)) return server;      /* we didn't touch it → take server's */
+  if(base!==undefined && _domeEqj(server, base)) return local;      /* server didn't touch it → keep ours */
+  if(_domeIdList(local) && _domeIdList(server)) return _domeMergeIdLists(base, local, server, localNewer);   /* BUILD 16.16: id-keyed set merge */
   if(Array.isArray(local) && Array.isArray(server) && Array.isArray(base)
      && local.length===server.length && base.length===local.length){    /* row-by-row when lengths match */
     return local.map(function(_, i){ return domeMerge3(base[i], local[i], server[i], localNewer); });
   }
   return localNewer ? local : server;                              /* conflicting leaf / length-changed list → newest wins */
 }
+/* BUILD 16.16 — lists of {id,…} records (schematic files, truss files, elements, kits, kit items) are merged as SETS
+   keyed by id, not "newest side wins": a record present on either side is KEPT unless the base proves the other side
+   deleted it. Before this, a client whose copy of a card lacked the files (older build, stale cache, no base yet)
+   won the tie and the whole file list vanished for everyone. Same-id records merge field by field. */
+function _domeIdList(a){ return Array.isArray(a) && a.every(function(x){ return x && typeof x==='object' && !Array.isArray(x) && x.id!==undefined && x.id!==''; }); }
+function _domeMergeIdLists(base, local, server, localNewer){
+  const b = _domeIdList(base) ? base : [];
+  const bBy={}, lBy={}, sBy={}; b.forEach(function(x){ bBy[x.id]=x; }); local.forEach(function(x){ lBy[x.id]=x; }); server.forEach(function(x){ sBy[x.id]=x; });
+  const order=[], seen={}; server.concat(local).forEach(function(x){ if(!seen[x.id]){ seen[x.id]=1; order.push(x.id); } });
+  const out=[];
+  order.forEach(function(id){
+    const l=lBy[id], s=sBy[id], hasB=Object.prototype.hasOwnProperty.call(bBy, id);
+    if(l && s){ out.push(domeMerge3(bBy[id], l, s, localNewer)); return; }
+    if(l && !s){ if(hasB && _domeEqj(l, bBy[id])) return;  out.push(l); return; }   /* server deleted it and we didn't change it → gone; else keep (added / edited here) */
+    if(s && !l){ if(hasB && _domeEqj(s, bBy[id])) return;  out.push(s); return; }   /* we deleted it and server didn't change it → gone; else keep */
+  });
+  return out;
+}
 /* merge a whole shared list (server) with our local docs, per domeUid, using the per-card base */
+/* BUILD 16.16: a deleted dome (code-420 delete) stays deleted whichever side is newer — never resurrected by a stale copy */
+function _domeStickyDelete(m, l, s){ if((l && l.deleted) || (s && s.deleted)){ m.deleted = true; m.archived = true; } return m; }
 function domeMergeDocs(server, local){
   const sBy={}, lBy={}, base=domeBaseMap();
   (server||[]).forEach(function(d){ if(d && d.domeUid) sBy[d.domeUid]=d; });
@@ -10489,7 +10563,7 @@ function domeMergeDocs(server, local){
   const uids={}; Object.keys(sBy).forEach(u=>uids[u]=1); Object.keys(lBy).forEach(u=>uids[u]=1);
   return Object.keys(uids).map(function(u){
     const s=sBy[u], l=lBy[u];
-    if(s && l){ const m = domeMerge3(base[u], l, s, (l.rev||0) >= (s.rev||0)); m.rev = Math.max(l.rev||0, s.rev||0); return m; }
+    if(s && l){ const m = domeMerge3(base[u], l, s, (l.rev||0) >= (s.rev||0)); m.rev = Math.max(l.rev||0, s.rev||0); _domeStickyDelete(m, l, s); return m; }
     return s || l;
   });
 }
@@ -10504,11 +10578,23 @@ function domeFsApplyDoc(data){                        /* field-level merge an in
     if(i<0){ db.domeLib.push(Object.assign(domeEmptyModel(), s, { _saved:true })); base[uid]=s; ch=true; return; }
     const localDoc = domeFsModelDoc(db.domeLib[i]);
     const merged = domeMerge3(base[uid], localDoc, s, (localDoc.rev||0) >= (s.rev||0));
-    merged.rev = Math.max(localDoc.rev||0, s.rev||0);
-    if(!_domeEqj(merged, localDoc)){ db.domeLib[i] = Object.assign(domeEmptyModel(), merged, { _saved:true }); ch=true; }
+    merged.rev = Math.max(localDoc.rev||0, s.rev||0); _domeStickyDelete(merged, localDoc, s);
+    if(!_domeEqj(merged, localDoc)){ db.domeLib[i] = _domeKeepLocalBytes(db.domeLib[i], Object.assign(domeEmptyModel(), merged, { _saved:true })); ch=true; }
     base[uid] = merged;                              /* new agreed base */
   });
   return ch;
+}
+/* BUILD 16.16 — the shared doc carries file METADATA only; when a merged doc replaces the local card, keep the
+   local file bytes (data:) for entries with the same id, so Download keeps working offline on this machine. */
+function _domeKeepLocalBytes(oldM, newM){
+  try{
+    if(!oldM || !newM) return newM;
+    const copy = function(oldList, newList){ if(!Array.isArray(oldList)||!Array.isArray(newList)) return;
+      newList.forEach(function(f){ if(!f || f.data) return; const o = oldList.find(function(x){ return x && x.id===f.id && x.data; }); if(o) f.data = o.data; }); };
+    if(oldM.schematics && newM.schematics) DOME_SCHEM.forEach(function(b){ copy(oldM.schematics[b.key], newM.schematics[b.key]); });
+    if(oldM.truss && newM.truss) copy(oldM.truss.files, newM.truss.files);
+  }catch(_){}
+  return newM;
 }
 /* after OUR push: merged is authoritative → adopt it into db.domeLib AND set it as the new base
    (do NOT route through domeMerge3 here — base would equal server and wrongly keep local). */
@@ -10520,7 +10606,7 @@ function domeAdoptMerged(list){
     if(_domeEditId===d.domeUid) return;              /* don't disturb an open card */
     const i=db.domeLib.findIndex(function(m){ return m.domeUid===d.domeUid; });
     const model=Object.assign(domeEmptyModel(), d, { _saved:true });
-    if(i>=0) db.domeLib[i]=model; else db.domeLib.push(model);
+    if(i>=0) db.domeLib[i]=_domeKeepLocalBytes(db.domeLib[i], model); else db.domeLib.push(model);
   });
 }
 function domeFsEnsureStarted(){
@@ -10564,7 +10650,7 @@ function domeFsModelDoc(m){
   return { domeUid:m.domeUid, serial:m.serial||'', size:String(m.size||''), type:m.type||'', screenType:m.screenType||'',
     screenTypeOther:m.screenTypeOther||'', doors:m.doors||'', doorsCustom:m.doorsCustom||'',
     hvacOpenings:String(m.hvacOpenings||''), fanOpenings:String(m.fanOpenings||''), readyToShip:!!m.readyToShip,
-    components:domeComponentsDoc(m.components), truss:domeTrussDoc(m.truss), schematics:domeSchemDoc(m.schematics), archived:!!m.archived, updatedBy:_gUser||'', rev:(m.rev||0) };
+    components:domeComponentsDoc(m.components), truss:domeTrussDoc(m.truss), schematics:domeSchemDoc(m.schematics), archived:!!m.archived, deleted:!!m.deleted, updatedBy:_gUser||'', rev:(m.rev||0) };
 }
 
 /* ---- Google Drive backup (BUILD 15.06): on Save, and every 15 min if changed, write the dome card
@@ -10653,7 +10739,7 @@ async function domeBackupAllChanged(){ if(!(_cloudOn && _gTok)) return;
 
 /* ---------- navigation / CRUD ---------- */
 function domeNewCard(){ const m = domeEmptyModel(); db.domeLib.push(m); _domeEditId = m.domeUid; _domeView='card'; _domeTab='overview'; _domeKitOpen=null; _domeKitPick=null; saveDomeLib(); rerenderKeepScroll(); }
-function domeOpenCard(uid){ _domeEditId = uid; _domeView='card'; _domeTab='overview'; _domeKitOpen=null; _domeKitPick=null; rerenderKeepScroll(); }
+function domeOpenCard(uid){ _domeEditId = uid; _domeView='card'; _domeTab='overview'; _domeKitOpen=null; _domeKitPick=null; rerenderKeepScroll(); try{ domeSchemAutoCheck(domeFind(uid)); }catch(_){} }   /* BUILD 16.16: re-attach schematics from Drive if the card lost them */
 function domeSetTab(t){ _domeTab=t; rerenderKeepScroll(); }
 function domeBackToList(){ _domeEditId=null; _domeView='list'; rerenderKeepScroll(); }
 function domeCancelCard(){ const m=domeEditing(); if(m && !m._saved){ db.domeLib = db.domeLib.filter(x=>x.domeUid!==m.domeUid); saveDomeLib(); } domeBackToList(); }
@@ -10716,16 +10802,52 @@ function domeSchemAddFile(key, input){ if(!domeSchemKeyOk(key)) return; const m=
   const rd=new FileReader();
   rd.onload=function(){ domeEnsureSchem(m); m.schematics[key].push({ id:newId(), name:f.name, type:f.type||'', size:f.size,
     data:String(rd.result||''), driveFileId:'', added:new Date().toISOString(), archived:false }); saveDomeLib();
-    try{ domeBackupWrite(m, true); }catch(_){}   /* backs up card JSON + uploads the new file to Drive (best-effort) */
+    try{ domeBackupWrite(m, true).then(function(){ try{ domeFsPushModel(m); }catch(_){} }); }catch(_){}   /* backs up card JSON + uploads the new file to Drive, THEN publishes the metadata (BUILD 16.16: was only pushed on the next card save) */
     rerenderKeepScroll(); };
   rd.onerror=function(){ alert('Could not read the file.'); };
   rd.readAsDataURL(f); input.value=''; }
+/* BUILD 16.16 — re-attach schematic PDFs that exist on Google Drive (Dome Library → <dome> → Documentation →
+   Schematics → <scheme>) but are missing from the card's metadata. Adds only, never removes; runs once per card
+   per session automatically and on the "Check Drive" button. Returns the number of files re-attached. */
+var _domeSchemChecked = {};
+async function domeSchemRestoreFromDrive(m, silent){
+  if(!m || !(_cloudOn && _gTok)) return 0;
+  domeEnsureSchem(m);
+  let added = 0;
+  try{
+    const rec = domeDriveMap()[m.domeUid] || {};
+    let fid = rec.folderId; if(fid && !(await driveAlive(fid))) fid = null;
+    if(!fid){ const root = await domeDriveRoot(); fid = await driveFindFolder(domeFolderName(m), root); }
+    if(!fid){ if(!silent) flashStat('No Drive folder for this dome yet'); return 0; }
+    const docFolder = await driveFindFolder('Documentation', fid); if(!docFolder) return 0;
+    const schemFolder = await driveFindFolder('Schematics', docFolder); if(!schemFolder) return 0;
+    for(const b of DOME_SCHEM){
+      const sub = await driveFindFolder(b.label, schemFolder); if(!sub) continue;
+      const q = encodeURIComponent("'" + sub + "' in parents and trashed = false and mimeType != 'application/vnd.google-apps.folder'");
+      const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name,mimeType,size,createdTime)&pageSize=200&orderBy=createdTime');
+      const j = await r.json(); const files = (j && j.files) || [];
+      const list = m.schematics[b.key];
+      files.forEach(function(df){
+        if(list.some(function(f){ return f.driveFileId === df.id; })) return;                       /* already attached */
+        const byName = list.find(function(f){ return !f.driveFileId && !f.archived && f.name === df.name; });
+        if(byName){ byName.driveFileId = df.id; added++; return; }                                   /* local entry, Drive copy found → link it */
+        list.push({ id:newId(), name:df.name||'scheme.pdf', type:df.mimeType||'application/pdf', size:parseInt(df.size,10)||0,
+                    data:'', driveFileId:df.id, added:df.createdTime||new Date().toISOString(), archived:false }); added++;
+      });
+    }
+  }catch(e){ if(!silent) flashStat('⚠ Drive check failed: ' + (e && e.message || e)); return 0; }
+  if(added){ saveDomeLib(); try{ domeFsPushModel(m); }catch(_){} flashStat('Re-attached ' + added + ' file' + (added===1?'':'s') + ' from Drive ✓'); if(_domeEditId===m.domeUid) rerenderKeepScroll(); }
+  else if(!silent) flashStat('Drive checked — all schematic files are attached ✓');
+  return added;
+}
+function domeSchemCheckDrive(){ const m=domeEditing(); if(!m) return; if(!(_cloudOn && _gTok)){ flashStat('Sign in to check Google Drive'); return; } domeSchemRestoreFromDrive(m, false); }
+function domeSchemAutoCheck(m){ if(!m || !m.domeUid || _domeSchemChecked[m.domeUid] || !(_cloudOn && _gTok)) return; _domeSchemChecked[m.domeUid]=true; setTimeout(function(){ domeSchemRestoreFromDrive(m, true).catch(function(){}); }, 800); }
 function domeSchemFileDownload(key, id){ const m=domeEditing(); if(!m) return; domeEnsureSchem(m); const f=(m.schematics[key]||[]).find(x=>x.id===id); if(!f) return;
   if(f.data){ const a=document.createElement('a'); a.href=f.data; a.download=f.name||'scheme.pdf'; document.body.appendChild(a); a.click(); a.remove(); }
   else if(f.driveFileId){ window.open('https://drive.google.com/file/d/'+f.driveFileId+'/view','_blank'); }
   else { alert('This file was added on another device and is not stored locally yet.'); } }
 function domeArchiveSchemFile(key, id){ const m=domeEditing(); if(!m) return; domeEnsureSchem(m); const f=(m.schematics[key]||[]).find(x=>x.id===id); if(!f) return;
-  if(!confirm('Remove this drawing from the dome card? (metadata only — the Google Drive copy is not deleted)')) return; f.archived=true; saveDomeLib(); rerenderKeepScroll(); }
+  if(!confirm('Remove this drawing from the dome card? (metadata only — the Google Drive copy is not deleted)')) return; f.archived=true; saveDomeLib(); try{ domeFsPushModel(m); }catch(_){} rerenderKeepScroll(); }
 /* Best-effort: upload schematic files with local bytes but no driveFileId into Documentation → Schematics → <bucket>. */
 async function domeSchemUploadFiles(m, fid){ if(!m||!m.schematics||!(_cloudOn && _gTok)) return;
   try{ let docFolder=null, schemFolder=null;
@@ -10793,6 +10915,35 @@ function domeSaveCard(){
   flashStat('Dome card saved ✓');
   _domeSearch=''; _domeFilterType=''; _domeFilterScreen='';   /* BUILD 15.12: never hide the just-saved dome behind a stale/autofilled search or filter */
   domeBackToList();   /* return to the Dome Library list and show the saved dome */
+}
+/* BUILD 16.16 — Delete a dome from the list: code 420 → the card becomes a synced tombstone (archived + deleted,
+   content stripped) so every teammate's copy hides it and it never comes back through the merge; its Google Drive
+   working folder (_dome library / <dome>) and the BACKUPS mirror JSON are moved to Drive Trash (recoverable ~30 days). */
+async function domeDeleteCard(uid){
+  const m=domeFind(uid); if(!m) return;
+  const label = domeTitle(m) || m.serial || uid;
+  const code = prompt('Delete dome "' + label + '" everywhere?\nThis removes the card for the whole team AND moves its Google Drive folder to Trash.\n\nEnter delete code to confirm:');
+  if(code===null) return;
+  if(String(code).trim()!=='420'){ alert('Wrong code — dome not deleted.'); return; }
+  const rec = domeDriveMap()[uid] || {};
+  /* 1) tombstone + strip content, publish to the team */
+  m.archived = true; m.deleted = true; m.readyToShip = false;
+  m.components = domeEmptyComponents(); m.truss = domeEmptyTruss(); m.schematics = domeEmptySchem();
+  if(_domeEditId===uid){ _domeEditId=null; _domeView='list'; }
+  saveDomeLib(); rerenderKeepScroll(); flashStat('Deleting dome "' + label + '"…');
+  try{ if(m._saved || domeFsReady()) await domeFsPushModel(m); }catch(_){}
+  /* 2) Google Drive: working folder + BACKUPS mirror JSON → Trash */
+  if(_cloudOn && _gTok){
+    try{
+      let fid = rec.folderId; if(fid && !(await driveAlive(fid))) fid = null;
+      if(!fid){ try{ const root = await domeDriveRoot(); fid = await driveFindFolder(domeFolderName(m), root); }catch(_){} }
+      if(fid) await driveTrashTree(fid);
+      if(rec.bkJsonId){ try{ await driveTrash(rec.bkJsonId); }catch(_){} }
+      delete domeDriveMap()[uid]; saveDomeLib();
+      flashStat('Dome "' + label + '" deleted — Drive folder moved to Trash ✓');
+    }catch(e){ flashStat('Dome deleted; ⚠ Drive cleanup failed: ' + (e && e.message || e)); }
+  } else flashStat('Dome "' + label + '" deleted locally — sign in to remove its Drive folder');
+  rerenderKeepScroll();
 }
 function domeArchiveCard(){
   const m=domeEditing(); if(!m) return;
@@ -10899,7 +11050,8 @@ function pageDomeLibrary(){
       <td style="text-align:center">${(String(m.fanOpenings||'').trim()!=='')?esc(m.fanOpenings):'—'}</td>
       <td style="text-align:center">${(String(m.hvacOpenings||'').trim()!=='')?esc(m.hvacOpenings):'—'}</td>
       <td style="text-align:center"><label class="rts-box${m.readyToShip?' on':''}" title="${m.readyToShip?'Ready to ship':'Mark as ready to ship'}" onclick="event.stopPropagation()"><input type="checkbox" ${m.readyToShip?'checked':''} onchange="domeToggleReady('${m.domeUid}',this.checked)"><span class="rts-tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5 9-11"/></svg></span></label></td>
-      <td style="text-align:right"><button class="mod-btn primary" style="padding:5px 12px" onclick="domeOpenCard('${m.domeUid}')">Open / Edit</button></td>
+      <td style="text-align:right;white-space:nowrap"><button class="mod-btn primary" style="padding:5px 12px" onclick="domeOpenCard('${m.domeUid}')">Open / Edit</button>
+        <button class="mod-btn" style="width:30px;height:30px;padding:0;margin-left:6px;display:inline-flex;align-items:center;justify-content:center;font-size:17px;line-height:1;color:var(--fdp-red);vertical-align:middle" title="Delete this dome everywhere — card, team sync and its Google Drive folder (code required)" onclick="event.stopPropagation();domeDeleteCard('${m.domeUid}')">×</button></td>
     </tr>${exp?`<tr class="dpass-row"><td colspan="9">${domePassport(m)}</td></tr>`:''}`; }).join('');
   const totalActive = db.domeLib.filter(m=>!m.archived).length;
   const filtered = (q!=='' || _domeFilterType || _domeFilterScreen);
@@ -11005,8 +11157,8 @@ function domeSchematicsCard(m){
     </div>`;
   };
   return `<div class="card">
-    <div class="card-head"><h3>Assembly Schematics</h3></div>
-    <div class="hint" style="margin:-6px 0 12px;color:var(--dim);font-size:11.5px">Assembly drawings for this dome. Attach PDF files to each scheme — they are stored with the dome card and backed up to Google Drive (Dome Library → this dome → Documentation → Schematics).</div>
+    <div class="card-head"><h3>Assembly Schematics</h3><button class="mod-btn" style="padding:5px 11px;font-size:11.5px" title="Re-attach PDFs that are on Google Drive (Documentation → Schematics) but missing here" onclick="domeSchemCheckDrive()">↻ Check Drive</button></div>
+    <div class="hint" style="margin:-6px 0 12px;color:var(--dim);font-size:11.5px">Assembly drawings for this dome. Attach PDF files to each scheme — they are stored with the dome card and backed up to Google Drive (Dome Library → this dome → Documentation → Schematics). If a file is on Drive but not listed here, "Check Drive" re-attaches it.</div>
     ${DOME_SCHEM.map(row).join('')}
   </div>`;
 }
