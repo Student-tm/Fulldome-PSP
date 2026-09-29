@@ -802,7 +802,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.13 · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.16 · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -941,7 +941,7 @@ const emptyState = () => ({
   vjValidation: { cpu:false, mem:false, gpu:false },
   docs: { sitePh: [], files: {} },   /* Documentation archive: site photos + files per DOC category */
   projectors: { list: [], selId: null },   /* Projectors module: inventory, setup, web settings */
-  camera: { rows: [], ready: false, photos: [] },   /* Calibration Camera module (mirrors server builder) */
+  camera: { rows: [], ready: false, photos: [], cases: [] },   /* Calibration Camera module (mirrors server builder); cases = flight cases (BUILD 16.16) */
   speakers: { rows: [], ready: false, photos: [] },   /* Speaker / Audio System module (mirrors camera builder) — BUILD 14.20 */
   fan: { rows: [], ready: false, photos: [] },   /* Screen Fan / Ventilation module (mirrors speakers) — BUILD 14.27 */
   cables: { rows: [], ready: false, photos: [] },   /* Cables & Adapters module (mirrors fan) — BUILD 14.31 */
@@ -4098,7 +4098,7 @@ function pageDashboard(){
       </div>
 
       <div class="card sum"><h3>Shipping Info</h3>
-        <div class="srow"><span class="k">Total Equipment</span><span class="v">${totalItems()} items</span></div>
+        <div class="srow"><span class="k">Total Equipment</span><span class="v">${shipItems().length} items</span></div>   <!-- BUILD 16.15: same basis as the packing list (all modules), was Server+Rack only -->
         ${(function(){ const ps=(state.shipping&&state.shipping.pallets)||[];
           let rows=`<div class="srow"><span class="k">Number of Pallets</span><span class="v ${ps.length?'ok':'mut'}">${ps.length||'—'}</span></div>`;
           let totWt=0;
@@ -4779,8 +4779,16 @@ function shipPlaces(){
   if(toolCombined.length) places.push({key:'pl|tool', name:'Tools', module:'Tools', items:toolCombined});
   toolSeparate.forEach((it,i)=> places.push({key:'pl|tool-sep|'+i, name:it.name, module:'Tools', items:[it]}));
   /* ---- Camera ---- */
-  const camCombined = [], camSeparate = [];
-  ((state.camera&&state.camera.rows)||[]).forEach((r,idx)=>{ if(!(r.name||'').trim()) return; (isCombined(r)?camCombined:camSeparate).push(mkItem(r,'i|cam|'+idx)); });
+  const camCombined = [], camSeparate = [], camByCase = {};
+  const camCasesL = (state.camera&&state.camera.cases)||[];
+  ((state.camera&&state.camera.rows)||[]).forEach((r,idx)=>{
+    if(!(r.name||'').trim()) return;
+    const it = mkItem(r,'i|cam|'+idx);
+    const cs = r.caseId && camCasesL.find(c=>c.id===r.caseId);
+    if(cs){ (camByCase[cs.id] = camByCase[cs.id] || []).push(it); return; }   /* BUILD 16.16: a flight case ships as ONE place */
+    (isCombined(r)?camCombined:camSeparate).push(it);
+  });
+  camCasesL.forEach((c,ci)=>{ const its = camByCase[c.id]; if(its && its.length) places.push({key:'pl|cam-case|'+c.id, name:camCaseLabel(c, ci), module:'Calibration Camera', items:its}); });
   if(camCombined.length) places.push({key:'pl|cam', name:'Camera', module:'Calibration Camera', items:camCombined});
   camSeparate.forEach((it,i)=> places.push({key:'pl|cam-sep|'+i, name:it.name, module:'Calibration Camera', items:[it]}));
   return places;
@@ -5072,10 +5080,7 @@ function pageShipping(){
         <tbody>${eqRows}</tbody>
       </table>
     </div>
-    ${S.docs.length ? `<div class="card" style="margin-top:16px">
-      <div class="card-head"><h3>Shipping Documents (legacy)</h3></div>
-      ${docRows}
-    </div>` : ''}
+    ${'' /* BUILD 16.14: legacy Shipping Documents card removed from the page (files stay in the project data) */}
 
     <div class="card" style="margin-top:16px">
       <div class="card-head"><h3>Pallet Photos</h3><span class="chip c-mut"><span class="cd"></span>${S.pallets.length} pallet${S.pallets.length===1?'':'s'}</span></div>
@@ -5381,7 +5386,7 @@ function liveSlice(d){
     backup:  { rows: (d.backup && d.backup.rows) || [], ready: !!(d.backup && d.backup.ready), caseSize: (d.backup && d.backup.caseSize) || '', name: (d.backup && d.backup.name) || '', enabled: !!(d.backup && d.backup.enabled) },
     vj:      { rows: (d.vj && d.vj.rows) || [], ready: !!(d.vj && d.vj.ready) },
     rack:    { rows: d.rack.rows || [], heightU: d.rack.heightU || 12, slots: d.rack.slots || {}, rackId: d.rack.rackId || '', ready: !!d.rack.ready },
-    camera:  { rows: (d.camera && d.camera.rows) || [], ready: !!(d.camera && d.camera.ready) },
+    camera:  { rows: (d.camera && d.camera.rows) || [], ready: !!(d.camera && d.camera.ready), cases: (d.camera && d.camera.cases) || [] },   /* BUILD 16.16: flight cases sync with the rows */
     speakers:{ rows: (d.speakers && d.speakers.rows) || [], ready: !!(d.speakers && d.speakers.ready) },
     fan:     { rows: (d.fan && d.fan.rows) || [], ready: !!(d.fan && d.fan.ready) },
     cables:  { rows: (d.cables && d.cables.rows) || [], ready: !!(d.cables && d.cables.ready) },
@@ -5422,7 +5427,7 @@ function liveApply(d, live){
   if(live.backup){ d.backup = d.backup || {rows:[],ready:false,photos:[],caseSize:'',name:'',enabled:false}; setIf(d.backup, 'rows', live.backup.rows || []); setIf(d.backup, 'ready', !!live.backup.ready); if('caseSize' in live.backup) setIf(d.backup, 'caseSize', live.backup.caseSize || ''); if('name' in live.backup) setIf(d.backup, 'name', live.backup.name || ''); if('enabled' in live.backup) setIf(d.backup, 'enabled', !!live.backup.enabled); }
   if(live.vj){ d.vj = d.vj || {rows:[],ready:false,photos:[]}; setIf(d.vj, 'rows', live.vj.rows || []); setIf(d.vj, 'ready', !!live.vj.ready); }
   if(live.rack){ setIf(d.rack, 'rows', live.rack.rows || []); setIf(d.rack, 'heightU', live.rack.heightU || 12); setIf(d.rack, 'slots', live.rack.slots || {}); if('rackId' in live.rack) setIf(d.rack, 'rackId', live.rack.rackId || ''); if('ready' in live.rack) setIf(d.rack, 'ready', !!live.rack.ready); }
-  if(live.camera){ d.camera = d.camera || {rows:[],ready:false,photos:[]}; setIf(d.camera, 'rows', live.camera.rows || []); setIf(d.camera, 'ready', !!live.camera.ready); }
+  if(live.camera){ d.camera = d.camera || {rows:[],ready:false,photos:[]}; setIf(d.camera, 'rows', live.camera.rows || []); setIf(d.camera, 'ready', !!live.camera.ready); if('cases' in live.camera) setIf(d.camera, 'cases', live.camera.cases || []); }   /* BUILD 16.16: a pre-16.16 sender has no 'cases' key → keep ours */
   if(live.speakers){ d.speakers = d.speakers || {rows:[],ready:false,photos:[]}; setIf(d.speakers, 'rows', live.speakers.rows || []); setIf(d.speakers, 'ready', !!live.speakers.ready); }
   if(live.fan){ d.fan = d.fan || {rows:[],ready:false,photos:[]}; setIf(d.fan, 'rows', live.fan.rows || []); setIf(d.fan, 'ready', !!live.fan.ready); }
   if(live.cables){ d.cables = d.cables || {rows:[],ready:false,photos:[]}; setIf(d.cables, 'rows', live.cables.rows || []); setIf(d.cables, 'ready', !!live.cables.ready); }
@@ -8594,6 +8599,29 @@ const libCamByCat = cat => libByGroupCat('cameras', cat);
 function camTotal(){ return state.camera.rows.reduce((s,r)=> s + rowSum(r), 0); }
 function addCam(){ state.camera.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
 function rmCam(i){ state.camera.rows.splice(i,1); saveState(); rerenderKeepScroll(); }
+/* ---- Camera flight cases (BUILD 16.16) ----
+   The camera kit ships in flight cases. A case is a named group ABOVE the hardware table; a row is
+   moved into a case (whole row, with all its cells) via the "Case" selector and can be moved back
+   ("— Table"). Rows STAY in state.camera.rows (only r.caseId is set) so totals, ordering, library
+   fill and sync are untouched; state.camera.cases = [{id, name}] syncs with the camera section. */
+function camCases(){ if(!state.camera) state.camera = {rows:[],ready:false,photos:[]}; if(!Array.isArray(state.camera.cases)) state.camera.cases = []; return state.camera.cases; }
+function camCaseLabel(c, ci){ return 'Case ' + (ci+1) + ((c && (c.name||'').trim()) ? ' — ' + (c.name||'').trim() : ''); }
+function camCaseRows(id){ return state.camera.rows.map((r,i)=>({r,i})).filter(x => x.r.caseId === id); }
+function camCaseTotal(id){ return camCaseRows(id).reduce((s,x)=> s + rowSum(x.r), 0); }
+function addCamCase(){ camCases().push({ id:newId(), name:'' }); saveState(); rerenderKeepScroll(); }
+function rmCamCase(id){
+  const cs = camCases(); const ci = cs.findIndex(c=>c.id===id); if(ci<0) return;
+  const n = camCaseRows(id).length;
+  if(n && !confirm('Remove ' + camCaseLabel(cs[ci], ci) + '? Its ' + n + ' component(s) return to the table below.')) return;
+  state.camera.rows.forEach(r => { if(r.caseId === id) delete r.caseId; });
+  cs.splice(ci,1); saveState(); rerenderKeepScroll();
+}
+function setCamCase(i, id){
+  const r = state.camera.rows[i]; if(!r) return;
+  if(id && camCases().some(c=>c.id===id)) r.caseId = id; else delete r.caseId;
+  saveState(); rerenderKeepScroll();
+}
+function renCamCase(id, v){ const c = camCases().find(c=>c.id===id); if(!c) return; c.name = v; saveState(); const h = document.getElementById('camCaseH'+id); if(h) h.textContent = camCaseLabel(c, camCases().indexOf(c)); }
 function setCamCat(i, v){
   state.camera.rows[i].cat = v;
   if(autoFillFromCat(state.camera.rows[i], libCamByCat(v))) flashStat('Filled from Library ✓');
@@ -9220,7 +9248,14 @@ function pageTools(){
 function pageCamera(){
   const ready = state.camera.ready;
   const P = state.project;
-  const camRows = state.camera.rows.map((r,i)=>`
+  const cases = camCases();
+  const hasCases = cases.length > 0;
+  /* BUILD 16.16: one row template for the table AND the case blocks; the "Case" column appears once a case exists */
+  const caseCell = (r,i) => !hasCases ? '' : `<td class="tight" style="width:11%"><select class="cell" title="Move this whole row into a flight case" onchange="setCamCase(${i},this.value)">
+        <option value="" ${!r.caseId?'selected':''}>— Table</option>
+        ${cases.map((c,ci)=>`<option value="${esc(c.id)}" ${r.caseId===c.id?'selected':''}>${esc(camCaseLabel(c,ci))}</option>`).join('')}
+      </select></td>`;
+  const camRowHtml = (r,i)=>`
     <tr>
       <td class="tight" style="width:17%"><select class="cell ${!(r.cat||'').trim()?'empty':''}" onchange="setCamCat(${i},this.value);this.classList.toggle('empty',!this.value)">
         <option value="" ${!(r.cat||'').trim()?'selected':''}>— Category —</option>
@@ -9229,14 +9264,35 @@ function pageCamera(){
       </select></td>
       <td class="tight"><input class="cell b" id="camN${i}" onfocus="dlFocus(this)" onblur="dlBlur(this)" list="${(r.cat||'').trim()?camListId(r.cat):'dlLibAll'}" value="${esc(r.name)}" placeholder="Pick from Library or type" oninput="updCam(${i},'name',this.value)"></td>
       <td style="width:6%;text-align:center">${ordDot('camera', i, r)}</td>
-      ${shipChk('camera', i, r)}
+      ${(r.caseId && cases.some(c=>c.id===r.caseId)) ? '<td style="width:4%;text-align:center;opacity:.5" title="Ships inside its flight case">—</td>' : shipChk('camera', i, r)}
+      ${caseCell(r,i)}
       <td class="tight" style="width:7%"><input class="cell num" value="${esc(r.qty)}" oninput="updCam(${i},'qty',this.value)"></td>
       <td class="tight" style="width:11%"><input class="cell num" id="camP${i}" value="${esc(r.price)}" placeholder="—" oninput="updCam(${i},'price',this.value)"></td>
       <td class="num" style="width:11%"><span id="camRowT${i}">${fmt(priceNum(r.price)*(parseFloat(r.qty)||1) || null)}</span></td>
       <td class="tight" style="width:15%"><div style="display:flex;align-items:center;gap:4px"><input class="cell" id="camL${i}" onmouseenter="lpShow(this)" onmouseleave="lpHide()" value="${esc(r.link)}" placeholder="https://" oninput="updCam(${i},'link',this.value)"><button class="mod-btn" style="padding:4px 7px;flex:none" title="Copy link" onclick="copyRowLink('camL${i}', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button><button class="mod-btn" style="padding:4px 7px;flex:none" title="Open link" onclick="openRowLink('camL${i}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><path d="M15 3h6v6M10 14L21 3"/></svg></button></div></td>
       <td class="tolib">${(r.name||'').trim() && !libFind(r.name) ? `<button title="Add to Library" onclick="addCamRowToLib(${i})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M9 9.5h6M12 6.5v6"/></svg></button>` : ''}</td>
       <td class="rm"><button title="Remove" onclick="rmCam(${i})">×</button></td>
-    </tr>`).join('');
+    </tr>`;
+  const camHead = `<thead><tr><th>Category</th><th>Hardware</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:center" title="Combine into one shipping place">Ship</th>${hasCases?'<th title="Flight case">Case</th>':''}<th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th><th>Link</th><th></th><th></th></tr></thead>`;
+  const camCols = hasCases ? 11 : 10;
+  const camRows = state.camera.rows.map((r,i)=> (r.caseId && cases.some(c=>c.id===r.caseId)) ? '' : camRowHtml(r,i)).join('');
+  const caseBlocks = cases.map((c,ci)=>{
+    const rows = camCaseRows(c.id);
+    return `
+    <div class="card" id="camCase${esc(c.id)}">
+      <div class="card-head" style="gap:10px;flex-wrap:wrap">
+        <h3 id="camCaseH${esc(c.id)}" style="margin-right:4px">${esc(camCaseLabel(c,ci))}</h3>
+        <input class="cell" style="max-width:260px" value="${esc(c.name||'')}" placeholder="Case label (e.g. Camera + lens)" oninput="renCamCase('${esc(c.id)}',this.value)">
+        <span style="font-size:12px;opacity:.7;margin-left:auto">${rows.length} component${rows.length===1?'':'s'} · ships as one place</span>
+        <button class="mod-btn" style="padding:5px 11px;font-size:11.5px" title="Remove this case — its components return to the table below" onclick="rmCamCase('${esc(c.id)}')">Remove case</button>
+      </div>
+      ${rows.length ? `<table class="eq">
+        ${camHead}
+        <tbody>${rows.map(x=>camRowHtml(x.r,x.i)).join('')}</tbody>
+        <tfoot><tr><td colspan="${camCols-4}">${esc(camCaseLabel(c,ci))} total</td><td class="num">${fmt(camCaseTotal(c.id))}</td><td colspan="3"></td></tr></tfoot>
+      </table>` : `<div style="padding:10px 14px;font-size:12.5px;opacity:.65">Empty — in the table below pick "${esc(camCaseLabel(c,ci))}" in the Case column to move a row here.</div>`}
+    </div>`;
+  }).join('');
 
   return `
   <div class="page">
@@ -9263,15 +9319,21 @@ function pageCamera(){
       <div><h2>Camera Builder</h2><div class="st-sub">Hardware is picked from the Equipment Library — Cameras group.</div></div>
       <div class="st-total"><div class="l">Components total</div><div class="v" id="stCam">${fmt(camTotal())}</div></div>
     </div>
+    <!-- BUILD 16.16: flight cases stack here, ABOVE the hardware table; rows are moved in with the "Case" column -->
+    <div style="display:flex;align-items:center;gap:10px;margin:0 0 12px">
+      <button class="mod-btn" style="padding:6px 12px;font-size:12px" title="Create a flight case — then move rows into it from the table below" onclick="addCamCase()">+ Add Case</button>
+      <span style="font-size:12px;opacity:.65">${hasCases ? `${cases.length} case${cases.length===1?'':'s'} · each case ships as one place` : 'Cameras ship in flight cases — create Case 1, then move rows into it.'}</span>
+    </div>
+    ${caseBlocks}
     <div class="card">
       <div class="card-head"><h3>Hardware configuration</h3><button class="mod-btn" style="padding:5px 11px;font-size:11.5px;margin-right:8px" title="Fetch fresh prices from the links" onclick="refreshPrices('camera')">↻ Prices</button>
         <button class="ready-btn ${ready?'on':''}" id="camReadyBtn" onclick="toggleCamReady()">
           <span class="led ${ready?'on':''}" id="camBtnLed"></span><span id="camBtnLbl">${ready ? 'Camera Ready' : 'Mark as Ready'}</span></button>
       </div>
       <table class="eq">
-        <thead><tr><th>Category</th><th>Hardware</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:center" title="Combine into one shipping place">Ship</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th><th>Link</th><th></th><th></th></tr></thead>
+        ${camHead}
         <tbody>${camRows}</tbody>
-        <tfoot><tr><td colspan="6">Camera total</td><td class="num" id="camFoot">${fmt(camTotal())}</td><td colspan="3"></td></tr></tfoot>
+        <tfoot><tr><td colspan="${camCols-4}">Camera total</td><td class="num" id="camFoot">${fmt(camTotal())}</td><td colspan="3"></td></tr></tfoot>
       </table>
       <button class="add-line" onclick="addCam()">+ Add component</button>
     </div>
