@@ -804,7 +804,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.29 · DOME LIBRARY: A DELETED TRUSS KIT / ELEMENT / FILE STAYS DELETED (NO-BASE TIEBREAKER BY REV) · DOME LIBRARY FIX: SAVE DOME CARD KEEPS TRUSS SN / COMPONENTS / SCHEMATICS (MERGE BASE WAS ALIASED TO THE LIVE CARD) · NEW MODULE: DOME & TRUSS (PICK FROM DOME LIBRARY · TRUSS KIT · SHIPS AUTOMATICALLY) · AUTO-UPDATE: RETRIES FOR ~15 MIN WHEN THE SERVER STILL SENDS THE OLD FILE · SHIPPING: SUB-SECTIONS — CAMERA CASES + OTHER, POWER / VIDEO / AUDIO CABLES (LIST + PDF) · SHIPPING PDF REBUILT (A4 LANDSCAPE · NOT-PACKED SECTION PER UNIT · GREEN/RED + WORDS · PAGE X OF Y) · SIDEBAR: EQUIPMENT & SHIPPING LINK · SHIPPING: CLICK AN ITEM NAME → JUMPS TO ITS MODULE ROW · PROJECTOR ACCESSORIES TABLE (EVERY NAMED ROW SHIPS AS ITS OWN MODULE AFTER PROJECTORS) · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.30 · DOME & TRUSS: READY = DOME CARD "READY TO SHIP" (INDICATOR, NOT A BUTTON) · DOME LIBRARY: A DELETED TRUSS KIT / ELEMENT / FILE STAYS DELETED (NO-BASE TIEBREAKER BY REV) · DOME LIBRARY FIX: SAVE DOME CARD KEEPS TRUSS SN / COMPONENTS / SCHEMATICS (MERGE BASE WAS ALIASED TO THE LIVE CARD) · NEW MODULE: DOME & TRUSS (PICK FROM DOME LIBRARY · TRUSS KIT · SHIPS AUTOMATICALLY) · AUTO-UPDATE: RETRIES FOR ~15 MIN WHEN THE SERVER STILL SENDS THE OLD FILE · SHIPPING: SUB-SECTIONS — CAMERA CASES + OTHER, POWER / VIDEO / AUDIO CABLES (LIST + PDF) · SHIPPING PDF REBUILT (A4 LANDSCAPE · NOT-PACKED SECTION PER UNIT · GREEN/RED + WORDS · PAGE X OF Y) · SIDEBAR: EQUIPMENT & SHIPPING LINK · SHIPPING: CLICK AN ITEM NAME → JUMPS TO ITS MODULE ROW · PROJECTOR ACCESSORIES TABLE (EVERY NAMED ROW SHIPS AS ITS OWN MODULE AFTER PROJECTORS) · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -4057,7 +4057,7 @@ function pageDashboard(){
           <div class="ms"><span class="k">Dome</span><span class="v ${st.dome?'ok':''}">${st.dome?esc(st.dome):'None'}</span></div>
           <div class="ms"><span class="k">Truss</span><span class="v">${st.truss?esc(st.truss):'—'}</span></div>
           <div class="ms"><span class="k">Truss Kit</span><span class="v">${st.kit?esc(st.kit):'—'}</span></div>
-          <div class="ms"><span class="k">Dome Build</span><span class="v" style="display:inline-flex;align-items:center;gap:6px"><span class="led sm ${st.ready?'on':''}"></span>${st.ready?'Ready':'Not Ready'}</span></div>`; })()}
+          <div class="ms"><span class="k">Ready to Ship</span><span class="v" style="display:inline-flex;align-items:center;gap:6px" title="From the Dome Library card"><span class="led sm ${st.ready?'on':''}"></span>${st.ready?'Ready':'Not Ready'}</span></div>`; })()}
         </div>
         <a class="mod-btn primary" href="#/dome">Open Module ${IC.open}</a>
       </div>
@@ -9572,7 +9572,7 @@ function domeLibList(){ return ((db.domeLib||[]).filter(m => m && m.domeUid && !
 function projDome(){ const dm = ensureDome(state); return dm.domeUid ? (domeFind(dm.domeUid) || null) : null; }
 /* metadata snapshot of a dome card for the project (never files / photos) */
 function domeSnapOf(m){ if(!m) return null; const t = domeEnsureTruss(m);
-  return { domeUid:m.domeUid, serial:m.serial||'', size:String(m.size||''), type:m.type||'', screenType:m.screenType||'', screenTypeOther:m.screenTypeOther||'', doors:m.doors||'', doorsCustom:m.doorsCustom||'',
+  return { domeUid:m.domeUid, serial:m.serial||'', size:String(m.size||''), type:m.type||'', screenType:m.screenType||'', screenTypeOther:m.screenTypeOther||'', doors:m.doors||'', doorsCustom:m.doorsCustom||'', readyToShip:!!m.readyToShip,
     fanOpenings:String(m.fanOpenings||''), hvacOpenings:String(m.hvacOpenings||''),
     truss:{ sn:t.sn||'', color:t.color||'', bags:t.bags||'', parts:t.parts||'', couplers:t.couplers||'',
       elements:(t.elements||[]).filter(e=>e && String(e.name||'').trim()).map(e=>({ id:e.id, cat:e.cat||'', name:e.name, qty:String(e.qty||'1') })),
@@ -9588,10 +9588,10 @@ function addProjDomeFromLib(){ const sel = document.getElementById('domeLibPick'
 function rmProjDome(){ if(!confirm('Remove the dome from this project? (The Dome Library card is not affected.)')) return; setProjDome(''); }
 function setProjDomeKit(id){ const dm = ensureDome(state); dm.kitId = id || ''; saveState(); rerenderKeepScroll(); }
 function refreshProjDomeSnap(){ const m = projDome(); if(!m) return; ensureDome(state).snap = domeSnapOf(m); saveState(); rerenderKeepScroll(); flashStat('Dome data refreshed from the Dome Library ✓'); }
-function toggleDomeReady(){ const dm = ensureDome(state);
-  if(dm.ready){ dm.ready = false; saveState(); renderSideProject(); rerenderKeepScroll(); return; }
-  if(!dm.domeUid){ alert('Add a dome from the Dome Library before marking Ready.'); return; }
-  dm.ready = true; saveState(); renderSideProject(); rerenderKeepScroll(); }
+/* BUILD 16.30: the module's readiness is NOT a button — it mirrors the dome card's "Ready to Ship" checkbox in the Dome
+   Library (live card when present, else the project's snapshot). Red until the dome is marked Ready to Ship there. */
+function projDomeReady(){ const sn = projDomeData(); if(!sn) return false; const m = projDome(); return m ? !!m.readyToShip : !!sn.readyToShip; }
+function toggleDomeReady(){ const m = projDome(); if(m){ flashStat('Readiness comes from the Dome Library — tick "Ready to Ship" on the dome card'); } }
 /* shipping places: Dome (1 place) + Truss (1 place: ring + elements, or the selected kit's items) */
 function domeShipPlaces(){ const sn = projDomeData(); if(!sn) return []; const dm = ensureDome(state); const out = [];
   const domeName = 'Dome ' + domeSnapTitle(sn);
@@ -9603,16 +9603,16 @@ function domeShipPlaces(){ const sn = projDomeData(); if(!sn) return []; const d
   if(items.length) out.push({ key:'pl|truss', name:'Truss' + (kit?(' — Kit '+kit.num):''), module:'Dome & Truss', items });
   return out; }
 function domeModuleStats(){ const sn = projDomeData(); const dm = ensureDome(state); const t = (sn && sn.truss) || {}; const kit = dm.kitId ? (t.kits||[]).find(k=>k.id===dm.kitId) : null;
-  return { dome: sn ? domeSnapTitle(sn) : '', truss: sn ? (String(t.sn||'').trim() || String(t.color||'').trim() || ((t.elements||[]).length ? (t.elements.length+' elements') : '')) : '', kit: kit ? ('Kit ' + kit.num) : '', ready: dm.ready }; }
+  return { dome: sn ? domeSnapTitle(sn) : '', truss: sn ? (String(t.sn||'').trim() || String(t.color||'').trim() || ((t.elements||[]).length ? (t.elements.length+' elements') : '')) : '', kit: kit ? ('Kit ' + kit.num) : '', ready: projDomeReady() }; }
 function pageDome(){
-  const dm = ensureDome(state); const P = state.project; const m = projDome(); const sn = projDomeData(); const st = domeModuleStats();
+  const dm = ensureDome(state); const P = state.project; const m = projDome(); const sn = projDomeData(); const st = domeModuleStats(); const ready = st.ready;
   const lib = domeLibList();
   const stale = !!(dm.domeUid && !m);   /* card not in this machine's Dome Library copy (yet) → working from the snapshot */
   const kits = (sn && sn.truss && sn.truss.kits) || [];
   const picker = `
     <div class="card" id="domeSel">
       <div class="card-head"><h3>${sn ? 'Project dome' : 'Select dome'}</h3>
-        <button class="ready-btn ${dm.ready?'on':''}" onclick="toggleDomeReady()"><span class="led ${dm.ready?'on':''}"></span><span>${dm.ready ? 'Dome Ready' : 'Mark as Ready'}</span></button></div>
+        <span class="ready-btn ${ready?'on':''}" style="cursor:default" title="${ready ? 'The dome card is marked Ready to Ship in the Dome Library' : 'Red until the dome card is marked \"Ready to Ship\" in the Dome Library'}"><span class="led ${ready?'on':''}"></span><span>${ready ? 'Ready to Ship' : 'Not Ready to Ship'}</span></span></div>
       ${sn ? `
       <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:4px 0 10px">
         <div style="min-width:0;flex:1">
@@ -9632,7 +9632,7 @@ function pageDome(){
         </select>
         <span style="font-size:11.5px;color:var(--dim)">The selected kit's items ship in the "Truss" place; without a kit — the ring and the truss elements.</span>
       </div>` : ''}` : `
-      <div class="hint" style="margin:-4px 0 12px;color:var(--dim);font-size:12px">Pick the dome for this project from the shared Dome Library — its passport and truss come with it and ship automatically in Equipment &amp; Shipping.</div>
+      <div class="hint" style="margin:-4px 0 12px;color:var(--dim);font-size:12px">Pick the dome for this project from the shared Dome Library — its passport and truss come with it and ship automatically in Equipment &amp; Shipping. The Ready indicator mirrors the card's "Ready to Ship" in the Dome Library.</div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         ${lib.length ? `<select class="cell" id="domeLibPick" style="max-width:420px">${lib.map(x=>`<option value="${esc(x.domeUid)}">${esc(domeTitle(x))}${domeHasTruss(x)?' · truss':''}</option>`).join('')}</select>
         <button class="mod-btn primary" style="padding:7px 14px" onclick="addProjDomeFromLib()">+ Add from Library</button>` : `<span style="font-size:12.5px;color:var(--dim)">The Dome Library is empty — create a dome card there first.</span> <a class="mod-btn" style="padding:7px 14px" href="#/dome-library">Open Dome Library</a>`}
@@ -9663,7 +9663,7 @@ function pageDome(){
       <div class="kpi red"><div class="kl">Dome</div><div class="kvv" style="font-size:15px">${st.dome ? esc(st.dome) : '—'}</div></div>
       <div class="kpi"><div class="kl">Truss</div><div class="kvv" style="font-size:15px">${st.truss ? esc(st.truss) : '—'}</div></div>
       <div class="kpi"><div class="kl">Truss kit</div><div class="kvv" style="font-size:15px">${st.kit ? esc(st.kit) : '—'}</div></div>
-      <div class="kpi"><div class="kl">Dome build</div><div class="kvv" style="font-size:15px;display:flex;align-items:center;gap:8px"><span class="led ${dm.ready?'on':''}"></span><span>${dm.ready?'Ready':'Not Ready'}</span></div></div>
+      <div class="kpi"><div class="kl">Ready to Ship</div><div class="kvv" style="font-size:15px;display:flex;align-items:center;gap:8px" title="From the Dome Library card"><span class="led ${ready?'on':''}"></span><span>${ready?'Ready':'Not Ready'}</span></div></div>
     </div>
     <div class="sec-title" id="dome">
       <div class="stic">${IC.dome}</div>
@@ -11883,7 +11883,7 @@ function presPaint(){ try{
   document.querySelectorAll('#content tr[data-presdome]').forEach(function(row){
     const uid=row.getAttribute('data-presdome'); const who=domeL.filter(function(r){return String(r.scopeKey)==='dome:'+uid;}); const r=presPick(who,me); if(!r) return;
     row.classList.add('pres-on'); row.style.setProperty('--pc', r.color||'#2e9e5b');
-    const last=row.querySelector('td:last-child'); if(last) last.insertAdjacentHTML('beforeend', ' '+presChip(r, r.sessionId===me, true));
+    const last=row.querySelector('td:last-child'); if(last) last.insertAdjacentHTML('afterbegin', presChip(r, r.sessionId===me, true)+' ');   /* BUILD 16.30: avatar goes BEFORE the buttons so Open / Edit and × never shift */
   });
   /* 3) Dome card tabs (Overview / Components / Truss) — colored dot on the tab someone edits */
   document.querySelectorAll('#content .dtab[data-pressec]').forEach(function(tab){
