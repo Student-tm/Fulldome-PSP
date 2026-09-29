@@ -804,7 +804,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.30 · DOME & TRUSS: READY = DOME CARD "READY TO SHIP" (INDICATOR, NOT A BUTTON) · DOME LIBRARY: A DELETED TRUSS KIT / ELEMENT / FILE STAYS DELETED (NO-BASE TIEBREAKER BY REV) · DOME LIBRARY FIX: SAVE DOME CARD KEEPS TRUSS SN / COMPONENTS / SCHEMATICS (MERGE BASE WAS ALIASED TO THE LIVE CARD) · NEW MODULE: DOME & TRUSS (PICK FROM DOME LIBRARY · TRUSS KIT · SHIPS AUTOMATICALLY) · AUTO-UPDATE: RETRIES FOR ~15 MIN WHEN THE SERVER STILL SENDS THE OLD FILE · SHIPPING: SUB-SECTIONS — CAMERA CASES + OTHER, POWER / VIDEO / AUDIO CABLES (LIST + PDF) · SHIPPING PDF REBUILT (A4 LANDSCAPE · NOT-PACKED SECTION PER UNIT · GREEN/RED + WORDS · PAGE X OF Y) · SIDEBAR: EQUIPMENT & SHIPPING LINK · SHIPPING: CLICK AN ITEM NAME → JUMPS TO ITS MODULE ROW · PROJECTOR ACCESSORIES TABLE (EVERY NAMED ROW SHIPS AS ITS OWN MODULE AFTER PROJECTORS) · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.34 · DOME CARD: COVER / INFLATABLE COVER GET COLOUR (GREY · WHITE · PRINTED) + MATERIAL · ARCHIVE BUTTONS REMOVED (DELETE ONLY) · DELETE BUTTON ON COVER / SCREEN / INFLATABLE ENTRIES · DASHBOARD: CAMERA MODEL = ALL "CAMERA" ROWS (NO LENS) · DOME & TRUSS: READY = DOME CARD "READY TO SHIP" (INDICATOR, NOT A BUTTON) · DOME LIBRARY: A DELETED TRUSS KIT / ELEMENT / FILE STAYS DELETED (NO-BASE TIEBREAKER BY REV) · DOME LIBRARY FIX: SAVE DOME CARD KEEPS TRUSS SN / COMPONENTS / SCHEMATICS (MERGE BASE WAS ALIASED TO THE LIVE CARD) · NEW MODULE: DOME & TRUSS (PICK FROM DOME LIBRARY · TRUSS KIT · SHIPS AUTOMATICALLY) · AUTO-UPDATE: RETRIES FOR ~15 MIN WHEN THE SERVER STILL SENDS THE OLD FILE · SHIPPING: SUB-SECTIONS — CAMERA CASES + OTHER, POWER / VIDEO / AUDIO CABLES (LIST + PDF) · SHIPPING PDF REBUILT (A4 LANDSCAPE · NOT-PACKED SECTION PER UNIT · GREEN/RED + WORDS · PAGE X OF Y) · SIDEBAR: EQUIPMENT & SHIPPING LINK · SHIPPING: CLICK AN ITEM NAME → JUMPS TO ITS MODULE ROW · PROJECTOR ACCESSORIES TABLE (EVERY NAMED ROW SHIPS AS ITS OWN MODULE AFTER PROJECTORS) · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -4097,7 +4097,7 @@ function pageDashboard(){
         ${ensureProjectors(state).removableLens ? `<div class="srow"><span class="k">Lens Model</span><span class="v">${(function(){ const models=[...new Set(projLenses().map(l=>(l.model||'').trim()).filter(Boolean))]; return models.length ? esc(models.join(', ')) : '—'; })()}</span></div>` : ''}
         <div class="srow"><span class="k">Speaker Model</span><span class="v">${(P.speakersModel && String(P.speakersModel).trim()) ? esc(P.speakersModel) : '—'}</span></div>
         <div class="srow"><span class="k">Subwoofer Model</span><span class="v">${(P.subwooferModel && String(P.subwooferModel).trim()) ? esc(P.subwooferModel) : '—'}</span></div>
-        <div class="srow"><span class="k">Camera Model</span><span class="v">${(function(){ const rows=(state.camera.rows||[]).filter(r=>(r.name||'').trim()); const cam=rows.find(r=>/camera/i.test(r.cat||'')); const lens=rows.find(r=>/lens/i.test(r.cat||'')); const parts=[]; if(cam) parts.push(cam.name.trim()); if(lens) parts.push(lens.name.trim()); return parts.length ? esc(parts.join('  |  ')) : '—'; })()}</span></div>
+        <div class="srow"><span class="k">Camera Model</span><span class="v">${(function(){ /* BUILD 16.31: EVERY row whose category is "Camera" (no lens) */ const cams=(state.camera.rows||[]).filter(r=>(r.name||'').trim() && /^\s*camera\s*$/i.test(r.cat||'')).map(r=>r.name.trim()); return cams.length ? esc(cams.join('  |  ')) : '—'; })()}</span></div>
         <div class="srow"><span class="k">Content List</span><span class="v">${state.contentList
           ? `<span style="display:inline-flex;align-items:center;gap:8px">
                <span style="display:inline-flex;align-items:center;gap:5px;color:var(--ink2)" title="${esc(state.contentList.name)}">
@@ -10623,6 +10623,9 @@ const DOME_DOORS = ['WD','1D','2D','3D','Custom'];
 const DOME_DOOR_LABELS = { 'WD':'WD — Without Doors','1D':'1D — 1 Door','2D':'2D — 2 Doors','3D':'3D — 3 Doors','Custom':'Custom' };
 /* BUILD 15.08 — Components tab.  BUILD 15.09 — per-connector materials + Frame material + serial mirror */
 const DOME_COVER_KINDS = ['Cover','Screen','Inflatable Cover'];
+/* BUILD 16.34 — Cover / Inflatable Cover: colour + material (Screen keeps its Screen Type) */
+const DOME_COVER_COLORS = ['Grey','White','Printed'];
+const DOME_COVER_MATERIALS = ['Grey Fabric','Other'];
 const DOME_FRAME_MATERIALS = ['Aluminum','Steel'];
 /* BUILD 15.10 — Doors block (Components): quantity 0..3, type Rectangular/Hexagonal (+ H×W when Rectangular) */
 const DOME_DOOR_QTY = ['0','1','2','3'];
@@ -10734,7 +10737,7 @@ function domeEnsureComponents(m){
   ['qty','type','height','width'].forEach(f=>{ if(typeof c.doors[f]!=='string') c.doors[f]=String(c.doors[f]==null?'':c.doors[f]); });
   if(!Array.isArray(c.covers)) c.covers=[];
   c.covers.forEach(x=>{ if(x && typeof x==='object'){ if(!x.id) x.id=newId(); if(typeof x.kind!=='string' || DOME_COVER_KINDS.indexOf(x.kind)<0) x.kind='Cover';
-    ['serial','screenType','screenTypeOther','notes'].forEach(f=>{ if(typeof x[f]!=='string') x[f]=String(x[f]==null?'':x[f]); }); x.archived=!!x.archived; } });
+    ['serial','screenType','screenTypeOther','notes','color','material','materialOther'].forEach(f=>{ if(typeof x[f]!=='string') x[f]=String(x[f]==null?'':x[f]); }); x.archived=!!x.archived; } });
   if(!c.connectors || typeof c.connectors!=='object') c.connectors={};
   DOME_CONNECTORS.forEach(cn=>{ const q=c.connectors[cn.key]; if(!q||typeof q!=='object') c.connectors[cn.key]={qty:'',material:''};
     else { ['qty','material'].forEach(f=>{ if(typeof q[f]!=='string') q[f]=String(q[f]==null?'':q[f]); }); } });
@@ -10764,7 +10767,8 @@ function domeComponentsDoc(c){
     frame: { serial:String(fr.serial||''), tubeOuter:String(fr.tubeOuter||''), tubeWall:String(fr.tubeWall||''), material:String(fr.material||'') },
     doors: (dr=>({ qty:String(dr.qty||''), type:String(dr.type||''), height:String(dr.height||''), width:String(dr.width||'') }))(c.doors||{}),
     covers: (Array.isArray(c.covers)?c.covers:[]).map(x=>({ id:String(x.id||''), kind:String(x.kind||'Cover'), serial:String(x.serial||''),
-      screenType:String(x.screenType||''), screenTypeOther:String(x.screenTypeOther||''), notes:String(x.notes||''), archived:!!x.archived })),
+      screenType:String(x.screenType||''), screenTypeOther:String(x.screenTypeOther||''), notes:String(x.notes||''), archived:!!x.archived,
+      color:String(x.color||''), material:String(x.material||''), materialOther:String(x.materialOther||'') })),
     connectors: DOME_CONNECTORS.reduce((o,cn)=>{ const q=(c.connectors&&c.connectors[cn.key])||{}; o[cn.key]={ qty:String(q.qty||''), material:String(q.material||'') }; return o; }, {})
   };
 }
@@ -11088,12 +11092,18 @@ function domeFrameUpd(field, val){ const m=domeEditing(); if(!m) return; domeEns
 function domeMirrorScreen(m){ if(!m||!m.components) return; const s=m.components.covers.find(x=>x.kind==='Screen' && !x.archived);
   m.screenType = s?(s.screenType||''):''; m.screenTypeOther = s?(s.screenTypeOther||''):''; }
 function domeAddCover(kind){ const m=domeEditing(); if(!m) return; if(DOME_COVER_KINDS.indexOf(kind)<0) kind='Cover'; domeEnsureComponents(m);
-  m.components.covers.push({ id:newId(), kind:kind, serial:'', screenType:'', screenTypeOther:'', notes:'', archived:false }); domeMirrorScreen(m); saveDomeLib(); rerenderKeepScroll(); }
+  m.components.covers.push({ id:newId(), kind:kind, serial:'', screenType:'', screenTypeOther:'', notes:'', archived:false, color:'', material:'', materialOther:'' }); domeMirrorScreen(m); saveDomeLib(); rerenderKeepScroll(); }
 function domeCoverUpd(id, field, val){ const m=domeEditing(); if(!m) return; domeEnsureComponents(m); const x=m.components.covers.find(c=>c.id===id); if(!x) return;
-  x[field]=val; domeMirrorScreen(m); saveDomeLib(); if(field==='screenType') rerenderKeepScroll(); }
+  x[field]=val; domeMirrorScreen(m); saveDomeLib(); if(field==='screenType' || field==='material') rerenderKeepScroll(); }
 function domeArchiveCover(id){ const m=domeEditing(); if(!m) return; domeEnsureComponents(m); const x=m.components.covers.find(c=>c.id===id); if(!x) return;
   if(!confirm('Archive this '+(x.kind||'item')+'? It is hidden from the card (soft-delete via archived:true, never physically deleted).')) return;
   x.archived=true; domeMirrorScreen(m); saveDomeLib(); rerenderKeepScroll(); }
+/* BUILD 16.32 — hard delete of a cover / screen / inflatable cover entry (e.g. added by mistake). Removed from the card
+   for good (the id-keyed merge honours the removal on every teammate's copy); Archive stays for items that existed. */
+function domeDeleteCover(id){ const m=domeEditing(); if(!m) return; domeEnsureComponents(m); const i=m.components.covers.findIndex(c=>c.id===id); if(i<0) return;
+  const x=m.components.covers[i]; const label=(x.kind||'item')+(String(x.serial||'').trim()?(' '+x.serial.trim()):'');
+  if(!confirm('Delete this '+label+' from the dome card? This cannot be undone (use Archive to hide it instead).')) return;
+  m.components.covers.splice(i,1); domeMirrorScreen(m); saveDomeLib(); rerenderKeepScroll(); flashStat(label+' deleted'); }
 function domeConnUpd(key, field, val){ const m=domeEditing(); if(!m) return; domeEnsureComponents(m); if(!m.components.connectors[key]) return;
   m.components.connectors[key][field]=val; saveDomeLib(); }
 function domeDoorUpd(field, val){ const m=domeEditing(); if(!m) return; domeEnsureComponents(m); m.components.doors[field]=val;
@@ -11425,7 +11435,7 @@ function pageDomeCard(){
         <h1 style="margin:2px 0 0">${esc(domeTitle(m))} <span style="font-size:13px;color:var(--dim);font-weight:400">(${m._saved?'saved':'unsaved'})</span></h1></div>
       <div style="display:flex;gap:8px;flex:none">
         <button class="mod-btn" style="padding:8px 14px" onclick="domeCancelCard()">Cancel</button>
-        ${m._saved ? `<button class="mod-btn" style="padding:8px 14px;color:var(--fdp-red)" onclick="domeArchiveCard()">Archive</button>` : ''}
+        ${'' /* BUILD 16.33: Archive removed from the UI — deletion is the × (code 420) in the list; archived:true stays as the sync tombstone */}
         <button class="mod-btn primary" style="padding:8px 16px" onclick="domeSaveCard()">Save Dome Card</button>
       </div>
     </div>
@@ -11504,14 +11514,22 @@ function domeCoverCard(x){
   const screenFld = isScreen ? _dfld('Screen Type',
       `<select class="cell" onchange="domeCoverUpd('${x.id}','screenType',this.value)"><option value="" ${!x.screenType?'selected':''}>—</option>${DOME_SCREEN.map(s=>`<option value="${esc(s)}" ${x.screenType===s?'selected':''}>${esc(s)}</option>`).join('')}</select>`
       + (x.screenType==='Other' ? `<input class="cell" style="margin-top:6px" placeholder="Specify screen type" value="${esc(x.screenTypeOther)}" oninput="domeCoverUpd('${x.id}','screenTypeOther',this.value)">` : '')) : '';
+  /* BUILD 16.34: Cover / Inflatable Cover → Colour (Grey / White / Printed) + Material (Grey Fabric / Other) */
+  const colorFld = !isScreen ? _dfld(x.kind + ' Colour',
+      `<select class="cell" onchange="domeCoverUpd('${x.id}','color',this.value)"><option value="" ${!x.color?'selected':''}>—</option>${DOME_COVER_COLORS.map(c=>`<option value="${esc(c)}" ${x.color===c?'selected':''}>${esc(c)}</option>`).join('')}${x.color && DOME_COVER_COLORS.indexOf(x.color)<0 ? `<option value="${esc(x.color)}" selected>${esc(x.color)}</option>` : ''}</select>`) : '';
+  const materialFld = !isScreen ? _dfld('Material',
+      `<select class="cell" onchange="domeCoverUpd('${x.id}','material',this.value)"><option value="" ${!x.material?'selected':''}>—</option>${DOME_COVER_MATERIALS.map(c=>`<option value="${esc(c)}" ${x.material===c?'selected':''}>${esc(c)}</option>`).join('')}</select>`
+      + (x.material==='Other' ? `<input class="cell" style="margin-top:6px" placeholder="Specify material" value="${esc(x.materialOther)}" oninput="domeCoverUpd('${x.id}','materialOther',this.value)">` : '')) : '';
   return `<div style="border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:0 0 10px;background:#fbfbfc">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
       <span style="font-weight:700;font-size:12px;color:var(--fdp-red);text-transform:uppercase;letter-spacing:.6px">${esc(x.kind)}</span>
-      <button class="mod-btn" style="padding:5px 12px;color:var(--fdp-red)" onclick="domeArchiveCover('${x.id}')">Archive</button>
+      <div style="display:flex;gap:6px;flex:none">
+        <button class="mod-btn" style="padding:5px 12px;color:var(--fdp-red)" title="Remove this entry for good" onclick="domeDeleteCover('${x.id}')">Delete</button>
+      </div>
     </div>
     <div class="fgrid">
       ${_dfld('Serial Number', `<input class="cell" value="${esc(x.serial)}" placeholder="e.g. SC-10-002" oninput="domeCoverUpd('${x.id}','serial',this.value)">`)}
-      ${screenFld}
+      ${screenFld}${colorFld}${materialFld}
       ${_dfld('Notes', `<textarea class="cell" placeholder="Notes" oninput="domeCoverUpd('${x.id}','notes',this.value)">${esc(x.notes)}</textarea>`)}
     </div>
   </div>`;
