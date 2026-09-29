@@ -4788,7 +4788,11 @@ function shipPlaces(){
     if(cs){ (camByCase[cs.id] = camByCase[cs.id] || []).push(it); return; }   /* BUILD 16.16: a flight case ships as ONE place */
     (isCombined(r)?camCombined:camSeparate).push(it);
   });
+<<<<<<< HEAD
   camCasesL.forEach((c,ci)=>{ const its = camByCase[c.id]; if(its && its.length) places.push({key:'pl|cam-case|'+c.id, name:camCaseLabel(c, ci), module:'Calibration Camera', items:its, sub:camCaseLabel(c, ci)}); });   /* sub = sub-section heading in the packing list / PDF */
+=======
+  camCasesL.forEach((c,ci)=>{ const its = camByCase[c.id]; if(its && its.length) places.push({key:'pl|cam-case|'+c.id, name:camCaseLabel(c, ci), module:'Calibration Camera', items:its}); });
+>>>>>>> 4d28dbd4a44ae837b70c6b96dc5ba491365b8f90
   if(camCombined.length) places.push({key:'pl|cam', name:'Camera', module:'Calibration Camera', items:camCombined});
   camSeparate.forEach((it,i)=> places.push({key:'pl|cam-sep|'+i, name:it.name, module:'Calibration Camera', items:[it]}));
   return places;
@@ -4869,6 +4873,7 @@ function genShipPDF(){
        in the same order as the on-screen table — not one flat pile per pallet. */
     const listByModule = (pls) => {
       const order = [], byMod = {};
+<<<<<<< HEAD
       /* BUILD 16.16: a place with a sub-section label (camera flight case) is listed under its own sub-heading */
       pls.forEach(pl => { const m = pl.module || 'Other'; if(!byMod[m]){ byMod[m] = []; order.push(m); } if(pl.sub) byMod[m].push({ _sub: pl.sub, _n: pl.items.length, items: pl.items }); else byMod[m] = byMod[m].concat(pl.items); });
       order.forEach(m => {
@@ -4877,6 +4882,13 @@ function genShipPDF(){
         const line = it => nl('        - ' + it.name + (it.qty>1 ? ('  x' + it.qty) : '') + cmtOf(it), 10, false, '#222');
         its.filter(x => !x._sub).forEach(line);
         its.filter(x => x._sub).forEach(x => { nl('      ' + String(x._sub).toUpperCase() + '  (' + x._n + ' items, one place)', 10, true, '#555'); x.items.forEach(line); });
+=======
+      pls.forEach(pl => { const m = pl.module || 'Other'; if(!byMod[m]){ byMod[m] = []; order.push(m); } byMod[m] = byMod[m].concat(pl.items); });
+      order.forEach(m => {
+        const its = byMod[m]; if(!its.length) return;
+        y += 3; nl('    ' + String(m).toUpperCase(), 10, true, '#333');
+        its.forEach(it => nl('        - ' + it.name + (it.qty>1 ? ('  x' + it.qty) : '') + cmtOf(it), 10, false, '#222'));
+>>>>>>> 4d28dbd4a44ae837b70c6b96dc5ba491365b8f90
       });
     };
     let totalWt = 0;
