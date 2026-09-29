@@ -802,7 +802,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.07 · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · UPDATE BUTTON · SHIPPING LABEL PDFs · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.13 · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1770,7 +1770,57 @@ function dlBlur(el){
     if(!el.value.trim()) el.value = el.dataset.dlprev;
     delete el.dataset.dlprev;
   }
+  /* BUILD 16.08: a typed search fragment (e.g. `12"` or `16'`) must never be saved as the item name.
+     On blur, snap it to the ONE library item it matches in this field's list (exact → prefix →
+     contains), write the FULL name back and fire `input` so the row saves it (+ price/link auto-fill).
+     Generic: every module's name field that uses the library datalist. */
+  try{
+    const v = (el.value || '').trim();
+    if(!v || libFind(v)) return;                                   /* empty, or already an exact library item */
+    const dl = el.list; if(!dl) return;
+    const opts = Array.from(dl.options || []).map(o => o.value).filter(Boolean);
+    const lv = v.toLowerCase();
+    let m = opts.filter(o => o.toLowerCase() === lv);
+    if(m.length !== 1) m = opts.filter(o => o.toLowerCase().startsWith(lv));
+    if(m.length !== 1) m = opts.filter(o => o.toLowerCase().includes(lv));
+    if(m.length === 1 && m[0] !== v){
+      el.value = m[0];
+      el.dispatchEvent(new Event('input', { bubbles:true }));      /* → updX(i,'name',fullName) → saveState */
+      try{ flashStat('Matched from Library: ' + m[0]); }catch(_){}
+    }
+  }catch(_){}
 }
+/* BUILD 16.10: complete "half names" already SAVED in a project (a typed search fragment such as `12"`
+   that was stored as the item name) from the Library — a row name that is not a library item but
+   uniquely matches one in its category (exact → prefix → contains) becomes that full name, and the
+   library price/link are filled if empty. Runs after load and whenever the shared library arrives. */
+function _snapNameFromLib(name, items){
+  const v = (name || '').trim(); if(!v || libFind(v)) return null;
+  const lv = v.toLowerCase(); const opts = (items || []).map(it => (it.name || '').trim()).filter(Boolean);
+  let m = opts.filter(o => o.toLowerCase() === lv);
+  if(m.length !== 1) m = opts.filter(o => o.toLowerCase().startsWith(lv));
+  if(m.length !== 1) m = opts.filter(o => o.toLowerCase().includes(lv));
+  return (m.length === 1 && m[0] !== v) ? m[0] : null;
+}
+function fixHalfNamesFromLibrary(){
+  try{
+    const e = activeEntry(); if(!e || !e.data) return 0; const d = e.data; let n = 0;
+    const groups = [['server','server'],['backup','server'],['vj','server'],['rack','rack'],['camera','camera'],['speakers','speakers'],['fan','fan'],['cables','cables'],['tools','tools']];
+    groups.forEach(function(g){ const mod = g[0], grp = g[1]; const rows = (d[mod] && d[mod].rows) || [];
+      rows.forEach(function(r){
+        if(!r || !(r.name || '').trim()) return;
+        const items = (r.cat || '').trim() ? libByGroupCat(grp, r.cat) : libAllItems();
+        const full = _snapNameFromLib(r.name, items); if(!full) return;
+        r.name = full; const it = libFind(full);
+        if(it){ if(!String(r.price||'').trim() && String(it.price||'').trim()) r.price = it.price; if(!String(r.link||'').trim() && (it.link||'').trim()) r.link = it.link; }
+        n++;
+      });
+    });
+    if(n){ saveState(); try{ if(!isTypingInInput()) rerenderKeepScroll(); }catch(_){} try{ flashStat(n + ' name' + (n === 1 ? '' : 's') + ' completed from Library'); }catch(_){} }
+    return n;
+  }catch(_){ return 0; }
+}
+try{ setTimeout(function(){ try{ fixHalfNamesFromLibrary(); }catch(_){} }, 4000); }catch(_){}   /* once after load (local library) */
 const catListId  = cat => 'dlLibCat'  + Math.max(0, ciIndexOf(srvCats(), cat));
 const rackListId = cat => 'dlRackCat' + Math.max(0, ciIndexOf(rackCatList(), cat));
 function libFind(name){
@@ -4807,6 +4857,17 @@ function genShipPDF(){
     else nl('STATUS: NOT COMPLETE — ' + loadedPl.length + ' of ' + places.length + ' places loaded', 12, true, '#b00');
     y += 6;
     const cmtOf = it => (S.meta && S.meta[it.key] && S.meta[it.key].cmt) ? ('   [' + S.meta[it.key].cmt + ']') : '';
+    /* BUILD 16.12: items are listed UNDER their module heading (Server, Backup Server, Rack, Projectors, …)
+       in the same order as the on-screen table — not one flat pile per pallet. */
+    const listByModule = (pls) => {
+      const order = [], byMod = {};
+      pls.forEach(pl => { const m = pl.module || 'Other'; if(!byMod[m]){ byMod[m] = []; order.push(m); } byMod[m] = byMod[m].concat(pl.items); });
+      order.forEach(m => {
+        const its = byMod[m]; if(!its.length) return;
+        y += 3; nl('    ' + String(m).toUpperCase(), 10, true, '#333');
+        its.forEach(it => nl('        - ' + it.name + (it.qty>1 ? ('  x' + it.qty) : '') + cmtOf(it), 10, false, '#222'));
+      });
+    };
     let totalWt = 0;
     S.pallets.forEach(p => {
       const pls = places.filter(pl => S.assign[pl.key] === p.id);
@@ -4817,12 +4878,12 @@ function genShipPDF(){
       const wt = (p.wt||'').trim(); if(wt) totalWt += parseFloat(wt) || 0;
       y += 6;
       nl('Pallet ' + (p.num||'?') + (p.name ? ('  —  ' + p.name) : '') + (pls.length ? (anyLoaded ? '   [LOADED]' : '   [NOT LOADED]') : ''), 12, true, pls.length ? (anyLoaded ? '#1a7f37' : '#b00') : '#111');
-      nl('    ' + dimStr + '     weight: ' + (wt ? wt + ' lb' : '—'), 10, false, '#555');
-      if(its.length) its.forEach(it => nl('    - ' + it.name + (it.qty>1 ? ('  x' + it.qty) : '') + cmtOf(it), 10, false, '#222'));
+      nl('    ' + dimStr + '     weight: ' + (wt ? wt + ' lb' : '—') + '     items: ' + its.reduce((s,it)=>s+(it.qty||1),0), 10, false, '#555');
+      if(its.length) listByModule(pls);
       else nl('    (empty)', 10, false, '#999');
     });
     const un = places.filter(pl => !S.assign[pl.key]);
-    if(un.length){ y += 8; nl('NOT ON ANY PALLET (' + un.length + ')', 12, true, '#b00'); un.forEach(pl => pl.items.forEach(it => nl('    - ' + it.name + (it.qty>1 ? ('  x' + it.qty) : '') + cmtOf(it), 10, false, '#222'))); }
+    if(un.length){ y += 8; nl('NOT ON ANY PALLET (' + un.length + ')', 12, true, '#b00'); listByModule(un); }
     y += 14;
     nl('Total pallets: ' + S.pallets.length + '        Total weight: ' + (totalWt ? (Math.round(totalWt*10)/10) + ' lb' : '—'), 11, true);
     nl('Places loaded: ' + loadedPl.length + ' / ' + places.length + (complete ? '   — COMPLETE' : '   — INCOMPLETE'), 11, true, complete ? '#1a7f37' : '#b00');
@@ -5011,10 +5072,10 @@ function pageShipping(){
         <tbody>${eqRows}</tbody>
       </table>
     </div>
-    <div class="card" style="margin-top:16px">
-      <div class="card-head"><h3>Shipping Documents</h3><button class="mod-btn primary" style="padding:6px 12px;font-size:12px" onclick="pickShipDoc()">+ Add Document</button></div>
+    ${S.docs.length ? `<div class="card" style="margin-top:16px">
+      <div class="card-head"><h3>Shipping Documents (legacy)</h3></div>
       ${docRows}
-    </div>
+    </div>` : ''}
 
     <div class="card" style="margin-top:16px">
       <div class="card-head"><h3>Pallet Photos</h3><span class="chip c-mut"><span class="cd"></span>${S.pallets.length} pallet${S.pallets.length===1?'':'s'}</span></div>
@@ -5761,6 +5822,19 @@ function applyProjWebFrom(d, media){
   return ch;
 }
 function fbpMediaSig(e){ try{ return photoSigStr(e) + '|' + docsSigStr(e) + '|' + projWebSigStr(e); }catch(_){ return ''; } }
+/* BUILD 16.11: are we BEHIND the cloud's media? The cloud record carries a media version (msig) that we
+   have neither applied (mediaMap msig = last version pulled/pushed by us) nor produced (our local sig).
+   A client that is behind must PULL first and must never publish — otherwise its stale copy overwrites
+   the fresh shared media file and photos/documents vanish for everyone. */
+function fbpMediaBehind(e){
+  try{
+    const pid = fbpPid(e); if(!pid) return false;
+    const remote = e._remoteMsig || ''; if(!remote) return false;
+    const local = fbpMediaSig(e);
+    const known = (((typeof mediaMap === 'function') ? mediaMap() : (db.mediaMap || {}))[pid] || {}).msig || '';
+    return remote !== local && remote !== known;
+  }catch(_){ return false; }
+}
 function fbpMediaPayload(e){
   const d = e.data || {};
   return {
@@ -5772,7 +5846,7 @@ function fbpMediaPayload(e){
     docs:{ sitePh:(d.docs&&d.docs.sitePh)||[], files:(d.docs&&d.docs.files)||{} },
     projectors:{ models:(d.projectors&&d.projectors.models)||{} },
     projectorsWeb: projWebPayload(d),                       /* BUILD 14.5: projector Web-settings files travel here, not in the DB doc */
-    shipping:{ palletPhotos:(d.shipping&&d.shipping.palletPhotos)||{} },
+    shipping:{ palletPhotos:(d.shipping&&d.shipping.palletPhotos)||{}, docs:(d.shipping&&Array.isArray(d.shipping.docs))?d.shipping.docs:[] },   /* BUILD 16.09: shipping docs travel in the media file */
     contentList: d.contentList || null
   };
 }
@@ -5787,6 +5861,7 @@ function fbpMediaIsEmpty(e){
   if(photoSets.some(anyArr)) return false;
   if(m.projectors && m.projectors.models && Object.keys(m.projectors.models).length) return false;
   if(m.shipping && m.shipping.palletPhotos && Object.keys(m.shipping.palletPhotos).some(k=>anyArr(m.shipping.palletPhotos[k]))) return false;
+  if(m.shipping && anyArr(m.shipping.docs)) return false;   /* BUILD 16.09: shipping documents count as media */
   if(m.projectorsWeb && Object.keys(m.projectorsWeb).some(k=>anyArr(m.projectorsWeb[k]))) return false;
   if(m.docs && m.docs.files && Object.keys(m.docs.files).some(k=>anyArr(m.docs.files[k]))) return false;
   if(m.contentList) return false;
@@ -5797,8 +5872,19 @@ async function fbpMediaRoot(){
      (both accounts converge on it via driveRootId's shared-folder preference), NOT in a
      per-account "My Drive" root — else account A's media folder is invisible to account B
      and photos never cross. `_media` is a service subfolder (hidden from the team list). */
-  if(db.mediaRootId2 && await driveAlive(db.mediaRootId2)) return db.mediaRootId2;
+  /* BUILD 16.13: a cached `_media` id is trusted ONLY if it still lives inside the CURRENT team root.
+     An account that ran the app before the team folder was shared with it cached a PRIVATE `_media`
+     and kept using it forever — it never saw the team's photos/documents and the team never saw its.
+     Now the cache is re-validated against the shared root and dropped if it points elsewhere. */
   const teamRoot = await driveRootId();
+  if(db.mediaRootId2 && await driveAlive(db.mediaRootId2)){
+    let ok = false;
+    try{ const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + db.mediaRootId2 + '?fields=parents&supportsAllDrives=true'); const j = await r.json(); ok = Array.isArray(j.parents) && j.parents.indexOf(teamRoot) >= 0; }catch(_){ ok = true; }   /* network glitch → keep cache */
+    if(ok) return db.mediaRootId2;
+    db.mediaRootId2 = null;                                   /* stale/private folder → re-resolve under the shared root */
+    try{ if(db.mediaMap) db.mediaMap = {}; }catch(_){}        /* file ids from the wrong folder are useless now */
+    try{ db.projects.forEach(function(e){ if(e && e._fbSeen) e._mediaPending = true; }); }catch(_){}   /* pull (never push) until caught up with the shared media */
+  }
   let id = await backupFindChildFolder('_media', teamRoot);
   if(!id) id = await backupCreateFolder('_media', teamRoot);
   db.mediaRootId2 = id; return id;
@@ -5830,6 +5916,8 @@ async function fbpMediaUpload(e){
      Firestore whose photos/docs are only partially pulled must not overwrite/shrink the full Drive file).
      Both-empty counts as caught up, so a genuinely media-less project isn't blocked forever. */
   if(e._mediaPending){ if(fbpMediaSig(e) === (e._remoteMsig||'')) e._mediaPending = false; else return false; }
+  /* BUILD 16.11 — Замок 6: never overwrite the shared media file while this copy is BEHIND it. Pull first. */
+  if(fbpMediaBehind(e)){ try{ fbpMediaSync().catch(function(){}); }catch(_){} return false; }
   const sig = fbpMediaSig(e);
   const rec = mediaMap()[pid] || {};
   if(rec.msig === sig && rec.fileId) return false;         /* media unchanged since our last upload */
@@ -5864,6 +5952,9 @@ async function fbpMediaDownloadApply(e, wantSig){
   mediaMap()[pid] = { fileId, msig: wantSig || fbpMediaSig(e) };
   e._mediaPending = false;                                    /* BUILD 15.38: real media is now local → safe to upload/backup again */
   if(ch){ saveState._skipCloud = true; saveState(); saveState._skipCloud = false; }
+  /* BUILD 16.11: we are now caught up; if we still hold never-synced local additions (kept by the merge),
+     publish them — now as a SUPERSET of the cloud's files, never a stale replacement. */
+  try{ if(fbpMediaSig(e) !== (wantSig || '')) setTimeout(function(){ try{ fsPushNow(e).catch(function(){}); }catch(_){} }, 1500); }catch(_){}
   return ch;
 }
 /* BUILD 15.38: force-restore the ACTIVE project's photos + documents from its Drive media file,
@@ -6369,7 +6460,10 @@ async function _fsPushPass(e, pid){
   const changed = fsChangedSections(e);
   const msig = fbpMediaSig(e);
   const doneChanged = rec._done !== (e.done ? 1 : 0);
-  const msigChanged = rec._msig !== msig;
+  /* BUILD 16.11: while BEHIND the cloud's media, never advertise our (stale) msig — pull instead. */
+  const behind = fbpMediaBehind(e);
+  if(behind){ try{ fbpMediaSync().catch(function(){}); }catch(_){} }
+  const msigChanged = !behind && rec._msig !== msig;
   if(rec._seen && !changed.length && !doneChanged && !msigChanged) return { ok:true };
   const ref = _fsCol.doc(pid);
   /* capture the EXACT signatures being sent BEFORE any await — edits that land during the await are
@@ -6408,6 +6502,7 @@ async function _fsPushPass(e, pid){
         await fbpMediaUpload(e);
         await fbpBrowseMirror(e);
         (_fsLocal[pid] = _fsLocal[pid] || {})._msig = msig;
+        try{ _markDocsSynced(e.data); }catch(_){}                       /* BUILD 16.11: these files are now in the cloud */
       }catch(_){
         setCloudStat('⚠ Photos/docs upload failed (Drive) — will retry');
         setTimeout(function(){ try{ fsPushNow(e); }catch(_){ } }, 8000);
@@ -6713,6 +6808,7 @@ function fsApplyLibrary(data){
   if(localExtra){ setTimeout(function(){ try{ _libDirty = true; fsPushLibrary(); }catch(_){} }, 300); }   /* publish the local-only categories now */
   _libSigLast = libSig();
   try{ normalizeSort(); }catch(_){}
+  if(before !== _libSigLast){ try{ setTimeout(function(){ try{ fixHalfNamesFromLibrary(); }catch(_){} }, 600); }catch(_){} }   /* BUILD 16.10: library arrived → complete half names */
   return before !== _libSigLast;
 }
 /* run once shortly after connect: publish our library ONLY if the server has none yet (seed) or we
@@ -6807,6 +6903,9 @@ async function fsStart(){
   /* BUILD 14.34: shortly after connect, seed/publish our library only if the server has none yet or
      we hold genuine local changes — a plain reconnect never force-bumps the transaction counter. */
   setTimeout(function(){ try{ fsLibSyncOnConnect(); }catch(_){} }, 3500);
+  /* BUILD 16.11: the 16.09 "publish local media shortly after connect" hook was REMOVED — a client whose
+     local media was merely OLDER than the cloud's pushed its stale copy over the fresh file (files vanished
+     for everyone). Media is published only as a consequence of a local edit, and never while behind. */
   /* BUILD 14.7: photos/docs live on Drive, pulled by fbpMediaSync. onSnapshot only fires it on a
      DB change — if the media file lagged behind the doc's msig (upload race), the pull got the old
      file and never retried until a reload (the "sync only after Ctrl+Shift+R" bug). A steady 12s
@@ -7763,6 +7862,20 @@ function applyPhotosFrom(d, s){
 /* apply the DOCUMENTATION files + content list from a newer copy (BUILD 12.89) — these ride
    only in the heavy json, NOT in the liveSlice, so the poll never used to sync them: docs
    uploaded on A never reached an already-downloaded project on B. */
+/* BUILD 16.11: files are marked `_synced` once they are known to be in the cloud (pulled, or pushed by us).
+   On a pull, local files WITHOUT the mark are additions the cloud has not seen yet — they are kept and
+   appended, never dropped. Files WITH the mark that are absent from the incoming set were deleted by a
+   teammate — honoured. No resurrection loops, no lost uploads. */
+function _markDocsSynced(d){
+  if(d && d.docs && d.docs.files) Object.keys(d.docs.files).forEach(k => (d.docs.files[k]||[]).forEach(f => { if(f) f._synced = true; }));
+  if(d && d.shipping && Array.isArray(d.shipping.docs)) d.shipping.docs.forEach(f => { if(f) f._synced = true; });
+}
+function _mergeDocList(incoming, local){
+  const inc = (incoming || []).map(f => Object.assign({}, f, { _synced:true }));
+  const names = {}; inc.forEach(f => { if(f && f.name) names[f.name] = 1; });
+  (local || []).forEach(f => { if(f && !f._synced && f.name && !names[f.name]) inc.push(f); });   /* keep never-synced local additions */
+  return inc;
+}
 function applyDocsFrom(d, s){
   let ch = false;
   if(s.docs && s.docs.files){
@@ -7771,11 +7884,26 @@ function applyDocsFrom(d, s){
     const hasFiles = o => Object.keys(o).some(k => Array.isArray(o[k]) && o[k].length);
     /* BUILD 15.38 — Замок 5: an EMPTY incoming doc set never wipes a NON-empty local one (protects
        against a peer that materialized the project and pushed empty docs before its media synced). */
-    if(!(!hasFiles(incoming) && hasFiles(local)) && JSON.stringify(local) !== JSON.stringify(incoming)){ d.docs.files = incoming; ch = true; }
+    if(!(!hasFiles(incoming) && hasFiles(local))){
+      const merged = {};
+      const keys = {}; Object.keys(incoming).forEach(k => keys[k] = 1); Object.keys(local).forEach(k => keys[k] = 1);
+      Object.keys(keys).forEach(k => { merged[k] = _mergeDocList(incoming[k], local[k]); });
+      if(JSON.stringify(local) !== JSON.stringify(merged)){ d.docs.files = merged; ch = true; }
+    }
   }
   if('contentList' in s){
     /* same guard: don't let an empty content list clear a real one */
     if(!(s.contentList == null && d.contentList != null) && JSON.stringify(d.contentList || null) !== JSON.stringify(s.contentList || null)){ d.contentList = s.contentList || null; ch = true; }
+  }
+  /* BUILD 16.09: Shipping Documents from a newer copy — same rule: an EMPTY incoming list never wipes a
+     non-empty local one (a peer that has not pulled media yet must not erase your uploads). */
+  if(s.shipping && Array.isArray(s.shipping.docs)){
+    d.shipping = d.shipping || {date:'',pallets:[],assign:{},docs:[],meta:{},packed:{}};
+    const inD = s.shipping.docs, loD = Array.isArray(d.shipping.docs) ? d.shipping.docs : [];
+    if(!(inD.length === 0 && loD.length > 0)){
+      const merged = _mergeDocList(inD, loD);                      /* BUILD 16.11: keep never-synced local additions */
+      if(JSON.stringify(loD) !== JSON.stringify(merged)){ d.shipping.docs = merged; ch = true; }
+    }
   }
   return ch;
 }
@@ -7784,6 +7912,9 @@ function cloudDocsSig(e){
   const d = e.data;
   if(d.docs && d.docs.files) Object.keys(d.docs.files).forEach(cat => (d.docs.files[cat]||[]).forEach(f => { if(f && f.name && f.data) sig[f.name] = (f.data||'').length; }));
   if(d.contentList && d.contentList.data) sig[d.contentList.name] = (d.contentList.data||'').length;
+  /* BUILD 16.09: Shipping Documents (+ Add Document) are part of the media signature, so uploading
+     one on any machine changes msig and the media file is re-synced to every other machine. */
+  if(d.shipping && Array.isArray(d.shipping.docs)) d.shipping.docs.forEach(f => { if(f && f.name && f.data) sig['ship:' + f.name] = (f.data||'').length; });
   return sig;
 }
 function cloudSyncNow(){
