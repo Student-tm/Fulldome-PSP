@@ -755,6 +755,8 @@
   table.eq .tolib button{border:none;background:transparent;color:#c5ccd4;cursor:pointer;padding:8px 4px;display:inline-flex}
   table.eq .tolib button:hover{color:#2e7d32}
   table.eq .tolib svg{width:14px;height:14px}
+.shipjump{cursor:pointer;border-bottom:1px dotted transparent}.shipjump:hover{color:var(--fdp-red);border-bottom-color:var(--fdp-red)}
+tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0%,45%{background:#fff3c4;box-shadow:inset 0 -2px 0 #e8b400}100%{background:transparent;box-shadow:none}}
 </style>
 
 </head>
@@ -802,7 +804,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.19 · PROJECTOR ACCESSORIES TABLE (SHIPS AS ITS OWN MODULE AFTER PROJECTORS) · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.21 · PROJECTOR ACCESSORIES TABLE (EVERY NAMED ROW SHIPS AS ITS OWN MODULE AFTER PROJECTORS) · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -4799,6 +4801,28 @@ function shipPlaces(){
   return places;
 }
 var _shipCollapsed = {};   /* module -> collapsed (session-only UI state) */
+/* BUILD 16.22 — click an equipment name in the packing list → open the module where it was entered and highlight
+   that exact row (the item key encodes its source: i|srv, i|bk, i|vj, i|rack|<row>, i|cam|<row>, i|proj|<id>, i|pacc|<id>…). */
+const SHIP_JUMP = { srv:['#/server-rack','server','srvN'], vj:['#/server-rack','vj','vjN'], bk:['#/server-rack','backup','bkN'],
+  rack:['#/server-rack','rack','rackN'], proj:['#/projectors','prInv','projN'], pacc:['#/projectors','prInv','paccN'],
+  spk:['#/speakers','speakers','spkN'], fan:['#/fan','fan','fanN'], cab:['#/cables','cables','cabN'], tool:['#/tools','tools','toolN'], cam:['#/camera','camera','camN'] };
+function shipGoTo(key){
+  const parts = String(key||'').split('|'); if(parts[0]!=='i') return;
+  const j = SHIP_JUMP[parts[1]]; if(!j) return;
+  const idx = parts.length>2 ? parts.slice(2).join('|') : '';
+  const focusId = (idx!=='' ? j[2]+idx : '');
+  location.hash = j[0];
+  setTimeout(function(){
+    try{
+      const el = focusId && document.getElementById(focusId);
+      const anchor = document.getElementById(j[1]);
+      const tgt = el ? (el.closest('tr') || el) : anchor;
+      if(tgt && tgt.scrollIntoView) tgt.scrollIntoView({ block:'center', behavior:'smooth' });
+      if(el){ el.focus({ preventScroll:true }); }
+      if(tgt){ tgt.classList.add('ship-hit'); setTimeout(function(){ tgt.classList.remove('ship-hit'); }, 2600); }
+    }catch(_){}
+  }, 80);
+}
 function toggleShipGroup(mi){ const mod = shipModules()[mi]; if(!mod) return; _shipCollapsed[mod] = !_shipCollapsed[mod]; rerenderKeepScroll(); }
 /* collapse / expand ALL module groups at once (button before the # column) */
 function toggleShipAllGroups(){
@@ -5012,7 +5036,7 @@ function pageShipping(){
           : '';
         return `<tr class="${ii===pl.items.length-1?'pl-last':''}">
           <td class="tight" style="width:4%;text-align:right;color:var(--dim)">${n}</td>
-          <td title="${esc(it.name)}">${esc(it.name)}</td>
+          <td title="${esc(it.name)} — click to open where it was entered"><span class="shipjump" onclick="shipGoTo('${esc(it.key)}')">${esc(it.name)}</span></td>
           <td class="tight" style="width:16%"><input class="cell" value="${esc(cmt)}" placeholder="—" oninput="setShipCmt('${it.key}',this.value)"></td>
           <td style="text-align:right;width:6%">${it.qty}</td>
           <td class="tight" style="width:5%;text-align:center">${link}</td>
@@ -9413,15 +9437,17 @@ const PROJ_ACC_SOURCES = ['Included','Fulldome Stock','Purchase','Other'];
 function projAcc(){ return ensureProjectors(state).acc; }
 function addProjAcc(){ projAcc().push({ id:'pa'+Date.now()+Math.floor(Math.random()*1e4), item:'', model:'', req:'', source:'', qty:'', packed:'', notes:'' }); saveState(); rerenderKeepScroll(); }
 function rmProjAcc(i){ const a=projAcc(); if(!a[i]) return; a.splice(i,1); saveState(); rerenderKeepScroll(); }
-function updProjAcc(i,k,v){ const a=projAcc()[i]; if(!a) return; a[k]=v; saveState();
-  if(k==='qty' || k==='packed'){ const el=document.getElementById('paPk'+i); if(el) el.textContent='/ '+(String(a.qty||'').trim()||'—'); } }
-function projAccShipItems(){ return projAcc().map((a,i)=>({a,i})).filter(x=>String(x.a.item||'').trim() && (parseFloat(x.a.qty)||0)>0)
-  .map(x=>({ key:'i|pacc|'+x.a.id, name:String(x.a.item).trim()+(String(x.a.model||'').trim()?' — '+String(x.a.model).trim():''), qty:parseFloat(x.a.qty)||1, link:'' })); }
+function updProjAcc(i,k,v){ const a=projAcc()[i]; if(!a) return; a[k]=v; saveState(); }   /* BUILD 16.21: Packed column removed (packing is tracked in Shipping) */
+/* BUILD 16.20: EVERY named accessory ships (was: only rows with Qty to Ship > 0 — rows with an empty Qty were silently
+   left out). Quantity = Qty to Ship, else Required, else Packed, else 1. */
+function projAccShipQty(a){ const n = v => parseFloat(String(v==null?'':v).replace(',','.'))||0; return n(a.qty) || n(a.req) || 1; }
+function projAccShipItems(){ return projAcc().filter(a=>String(a.item||'').trim())
+  .map(a=>({ key:'i|pacc|'+a.id, name:String(a.item).trim()+(String(a.model||'').trim()?' — '+String(a.model).trim():''), qty:projAccShipQty(a), link:'' })); }
 function projAccCard(){
   const acc = projAcc();
   const rows = acc.map((a,i)=>`
     <tr>
-      <td class="tight" style="width:17%"><input class="cell b" value="${esc(a.item)}" placeholder="Item" oninput="updProjAcc(${i},'item',this.value)"></td>
+      <td class="tight" style="width:17%"><input class="cell b" id="paccN${esc(a.id)}" value="${esc(a.item)}" placeholder="Item" oninput="updProjAcc(${i},'item',this.value)"></td>
       <td class="tight" style="width:16%"><input class="cell" value="${esc(a.model)}" placeholder="Model / Part No." oninput="updProjAcc(${i},'model',this.value)"></td>
       <td class="tight" style="width:8%"><input class="cell num" value="${esc(a.req)}" placeholder="—" oninput="updProjAcc(${i},'req',this.value)"></td>
       <td class="tight" style="width:14%"><select class="cell ${!(a.source||'').trim()?'empty':''}" onchange="updProjAcc(${i},'source',this.value);this.classList.toggle('empty',!this.value)">
@@ -9429,18 +9455,17 @@ function projAccCard(){
         ${PROJ_ACC_SOURCES.map(s=>`<option value="${s}" ${a.source===s?'selected':''}>${s}</option>`).join('')}
         ${(a.source||'').trim() && PROJ_ACC_SOURCES.indexOf(a.source)<0 ? `<option value="${esc(a.source)}" selected>${esc(a.source)}</option>` : ''}
       </select></td>
-      <td class="tight" style="width:9%"><input class="cell num" value="${esc(a.qty)}" placeholder="0" title="Ships in the packing list when > 0" oninput="updProjAcc(${i},'qty',this.value)"></td>
-      <td class="tight" style="width:10%"><div style="display:flex;align-items:center;gap:4px"><input class="cell num" style="width:52px" value="${esc(a.packed)}" placeholder="0" oninput="updProjAcc(${i},'packed',this.value)"><span id="paPk${i}" style="font-size:12px;color:var(--dim);white-space:nowrap">/ ${esc(String(a.qty||'').trim()||'—')}</span></div></td>
+      <td class="tight" style="width:9%"><input class="cell num" value="${esc(a.qty)}" placeholder="0" title="Quantity in the packing list (empty = Required)" oninput="updProjAcc(${i},'qty',this.value)"></td>
       <td class="tight"><input class="cell" value="${esc(a.notes)}" placeholder="Notes" oninput="updProjAcc(${i},'notes',this.value)"></td>
       <td class="rm"><button title="Remove" onclick="rmProjAcc(${i})">×</button></td>
     </tr>`).join('');
   return `
       <div class="card" style="margin:16px 0 0">
         <div class="card-head"><h3>Projector Accessories</h3><span class="chip c-mut"><span class="cd"></span>${acc.length}</span></div>
-        <div class="hint" style="margin:-6px 0 12px;color:var(--dim);font-size:11.5px">Projector-specific accessories supplied or purchased for this project. Rows with a Qty to Ship appear automatically in the Shipping list (module "Projector Accessories").</div>
+        <div class="hint" style="margin:-6px 0 12px;color:var(--dim);font-size:11.5px">Projector-specific accessories supplied or purchased for this project. Every named row appears automatically in the Shipping list (module "Projector Accessories") — quantity = Qty to Ship (or Required if empty).</div>
         ${acc.length ? `
         <table class="eq">
-          <thead><tr><th>Item</th><th>Model / Part No.</th><th style="text-align:right">Required</th><th>Source</th><th style="text-align:right">Qty to Ship</th><th>Packed</th><th>Notes</th><th></th></tr></thead>
+          <thead><tr><th>Item</th><th>Model / Part No.</th><th style="text-align:right">Required</th><th>Source</th><th style="text-align:right">Qty to Ship</th><th>Notes</th><th></th></tr></thead>
           <tbody>${rows}</tbody>
         </table>` : `<div style="font-size:12.5px;color:#9aa2ad;padding:4px 2px">No accessories yet — add the first one.</div>`}
         <button class="add-line" onclick="addProjAcc()">+ Add accessory</button>
@@ -9699,7 +9724,7 @@ function pageProjectors(){
     <tr>
       <td class="tight" style="width:9%"><input class="cell num b" value="${esc(p.num)}" placeholder="#" oninput="updProj(${i},'num',this.value)"></td>
       <td class="tight" style="width:18%"><input class="cell" value="${esc(p.mfr)}" placeholder="Manufacturer" oninput="updProj(${i},'mfr',this.value)"></td>
-      <td class="tight"><input class="cell b" value="${esc(p.model)}" placeholder="Model" oninput="updProj(${i},'model',this.value)"></td>
+      <td class="tight"><input class="cell b" id="projN${esc(p.id||i)}" value="${esc(p.model)}" placeholder="Model" oninput="updProj(${i},'model',this.value)"></td>
       <td class="tight" style="width:13%"><input class="cell" value="${esc(p.bright)}" placeholder="Brightness" oninput="updProj(${i},'bright',this.value)"></td>
       ${lensOn ? '' : `<td class="tight" style="width:10%"><input class="cell" value="${esc(p.throw)}" placeholder="Throw Ratio" oninput="updProj(${i},'throw',this.value)"></td>`}
       <td class="tight" style="width:15%"><input class="cell" value="${esc(p.serial)}" placeholder="Serial Number" oninput="updProj(${i},'serial',this.value)"></td>
