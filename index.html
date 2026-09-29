@@ -1431,7 +1431,7 @@ const NAV = [
   {id:'library', label:'Equipment Library', ic:IC.lib, route:'#/library'},
   {id:'dome-library', label:'Dome Library', ic:IC.dome, route:'#/dome-library'},
   {id:'documentation', label:'Documentation', ic:IC.doc, route:'#/documentation'},
-  {id:'logs', label:'System Logs', ic:IC.logs, route:'#/logs'},
+  {id:'shipping', label:'Equipment & Shipping', ic:IC.ship, route:'#/shipping'},   /* BUILD 16.23: replaces the 'System Logs' placeholder — quick access to the shipping module */
   {id:'settings', label:'Settings', ic:IC.set, route:'#/settings'},
   {id:'admin', label:'Admin Console', ic:(IC.shield||IC.set), route:'#/admin', adminOnly:true}   /* BUILD 15.67 */
 ];
@@ -4739,7 +4739,7 @@ function backupServerSection(){
    Assignment is per PLACE (one pallet per place, chosen once). */
 function shipPlaces(){
   const P = state.project; const places = [];
-  const mkItem = (r, key) => ({ key, name:(r.name||'').trim(), qty:parseFloat(r.qty)||1, link:r.link||'' });
+  const mkItem = (r, key) => ({ key, name:(r.name||'').trim(), qty:parseFloat(r.qty)||1, link:r.link||'', cat:(r.cat||'').trim() });   /* cat → CATEGORY column of the PDF (BUILD 16.24) */
   /* ---- Server (main) → its OWN place — BUILD 14.59: split out of the old "Server & Rack" so
          the shipping order reads Server → Backup Server → Rack ---- */
   const serverName = (P.sysNumber ? ('FDPSN#'+P.sysNumber) : 'Dome Server') + (P.type ? (' '+P.type) : '');
@@ -4762,7 +4762,7 @@ function shipPlaces(){
   if(rkCombined.length) places.push({key:'pl|rack', name:rackLabel, module:rackMod, items:rkCombined});
   rkSeparate.forEach((it,i)=> places.push({key:'pl|rack-sep|'+i, name:it.name, module:rackMod, items:[it]}));
   /* ---- Projectors — each unit its own place ---- */
-  ((state.projectors&&state.projectors.list)||[]).forEach((p,i)=>{ const nm=((p.mfr||'')+' '+(p.model||'')).trim(); if(!nm) return; places.push({key:'pl|proj|'+(p.id||i), name: nm + (p.serial?(' · SN '+p.serial):(p.num?(' #'+p.num):'')), module:'Projectors', items:[{key:'i|proj|'+(p.id||i), name:nm, qty:1, link:''}]}); });
+  ((state.projectors&&state.projectors.list)||[]).forEach((p,i)=>{ const nm=((p.mfr||'')+' '+(p.model||'')).trim(); if(!nm) return; places.push({key:'pl|proj|'+(p.id||i), name: nm + (p.serial?(' · SN '+p.serial):(p.num?(' #'+p.num):'')), module:'Projectors', items:[{key:'i|proj|'+(p.id||i), name:nm, qty:1, link:'', cat:'Projector', serial:(p.serial||'').trim()}]}); });   /* serial → PDF (BUILD 16.24) */
   /* ---- Projector Accessories (BUILD 16.19) — user-filled table on the Projectors page; ships as ONE place ---- */
   try{ const pacc = projAccShipItems(); if(pacc.length) places.push({key:'pl|pacc', name:'Projector Accessories', module:'Projector Accessories', items:pacc}); }catch(_){}
   /* ---- Speakers / Audio (BUILD 14.20) ---- */
@@ -4871,62 +4871,208 @@ function loadJsPDF(cb){
   s.onerror = () => alert('Could not load the PDF generator — internet connection required.');
   document.head.appendChild(s);
 }
+/* BUILD 16.24 — Shipping / Packing List PDF, rebuilt as the final shipping document (A4 landscape):
+   header with project / date / status / pallets / weight / planned-packed-missing counts; a red
+   NOT PACKED section listing every unit that is not on a loaded pallet (Missing = Required − packed on all
+   pallets, computed per item KEY); then one section per pallet (dims, weight, table QTY | ITEM / MODEL |
+   CATEGORY | CASE / LOCATION | STATUS) with rows tinted green (PACKED) / red (NOT PACKED) AND labelled in
+   words. Everything comes from the common Shipping List (shipPlaces) — every module, incl. Projector
+   Accessories and camera flight cases (own sub-sections). Table header repeats on every page, a category
+   heading is never left alone at a page bottom, long names wrap, footer "Page X of Y". */
+function _shipPdfModel(){
+  const S = state.shipping, places = shipPlaces();
+  const num = v => parseFloat(String(v==null?'':v).replace(',','.')) || 0;
+  const req = {}, packedQ = {}, info = {};
+  places.forEach(pl => {
+    const palId = S.assign[pl.key] || '';
+    const pal = palId ? S.pallets.find(p => p.id === palId) : null;
+    const loaded = !!(pal && S.packed && S.packed[pl.key]);
+    pl.items.forEach(it => {
+      const q = num(it.qty) || 1;
+      req[it.key] = (req[it.key] || 0) + q;
+      if(loaded) packedQ[it.key] = (packedQ[it.key] || 0) + q;
+      info[it.key] = { it, pl, pal, loaded };
+    });
+  });
+  const units = Object.keys(req).map(k => ({ key:k, required:req[k], packed:packedQ[k] || 0, missing:Math.max(0, req[k] - (packedQ[k] || 0)), it:info[k].it, pl:info[k].pl, pal:info[k].pal, loaded:info[k].loaded }));
+  const totals = { required:0, packed:0, missing:0 };
+  units.forEach(u => { totals.required += u.required; totals.packed += u.packed; totals.missing += u.missing; });
+  const totalWt = S.pallets.reduce((s,p) => s + num(p.wt), 0);
+  return { S, places, units, totals, totalWt, num };
+}
 function genShipPDF(){
   loadJsPDF(function(JsPDF){
-    const S = state.shipping, P = state.project, items = shipItems();
-    const doc = new JsPDF({unit:'pt', format:'a4'});
-    const M = 48; let y = 58;
-    const nl = (t, size, bold, color) => {
-      if(y > 792){ doc.addPage(); y = 58; }
-      doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(size||10); doc.setTextColor(color||'#111');
-      doc.text(String(t), M, y); y += (size||10) + 6;
+    const P = state.project;
+    const Mdl = _shipPdfModel(), S = Mdl.S, units = Mdl.units, T = Mdl.totals;
+    const doc = new JsPDF({ unit:'pt', format:'a4', orientation:'landscape' });
+    const PW = doc.internal.pageSize.getWidth(), PH = doc.internal.pageSize.getHeight();
+    const M = 36, BOTTOM = PH - 40, CW = PW - 2*M;
+    const GREEN = [26,127,55], RED = [176,0,0], GREEN_BG = [230,244,234], RED_BG = [253,232,232], INK = [20,20,20], DIM = [90,90,90], LINE = [200,200,200], HEAD_BG = [235,237,240];
+    let y = M;
+    const totalPagesExp = '{total_pages_count_string}';
+    const setFont = (size, bold, color) => { doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(size); const c = color || INK; doc.setTextColor(c[0], c[1], c[2]); };
+    const footer = () => {
+      const n = doc.getNumberOfPages();
+      setFont(8, false, DIM);
+      doc.text('Shipping / Packing List — #' + (P.number||'') + ' ' + (P.title||'') + '   ·   generated ' + new Date().toLocaleString(), M, PH - 18);
+      doc.text('Page ' + n + ' of ' + totalPagesExp, PW - M, PH - 18, { align:'right' });
     };
-    doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.setTextColor('#111'); doc.text('SHIPPING / PACKING LIST', M, y); y += 26;
-    nl('Project: #' + (P.number||'') + '  ' + (P.title||''), 11, true);
-    nl('Shipping date: ' + (S.date || '—'), 10, false, '#444');
-    const places = shipPlaces();
-    const assignedPl = places.filter(pl => S.assign[pl.key]);
-    const loadedPl = places.filter(pl => S.assign[pl.key] && S.packed && S.packed[pl.key]);
-    const complete = places.length > 0 && loadedPl.length === places.length;
-    /* status banner — instantly shows whether shipping is finished */
-    y += 4;
-    if(complete) nl('STATUS: READY TO SHIP — all ' + places.length + ' places loaded', 12, true, '#1a7f37');
-    else nl('STATUS: NOT COMPLETE — ' + loadedPl.length + ' of ' + places.length + ' places loaded', 12, true, '#b00');
-    y += 6;
-    const cmtOf = it => (S.meta && S.meta[it.key] && S.meta[it.key].cmt) ? ('   [' + S.meta[it.key].cmt + ']') : '';
-    /* BUILD 16.12: items are listed UNDER their module heading (Server, Backup Server, Rack, Projectors, …)
-       in the same order as the on-screen table — not one flat pile per pallet. */
-    const listByModule = (pls) => {
-      const order = [], byMod = {};
-      /* BUILD 16.16: a place with a sub-section label (camera flight case) is listed under its own sub-heading */
-      pls.forEach(pl => { const m = pl.module || 'Other'; if(!byMod[m]){ byMod[m] = []; order.push(m); } if(pl.sub) byMod[m].push({ _sub: pl.sub, _n: pl.items.length, items: pl.items }); else byMod[m] = byMod[m].concat(pl.items); });
-      order.forEach(m => {
-        const its = byMod[m]; if(!its.length) return;
-        y += 3; nl('    ' + String(m).toUpperCase(), 10, true, '#333');
-        const line = it => nl('        - ' + it.name + (it.qty>1 ? ('  x' + it.qty) : '') + cmtOf(it), 10, false, '#222');
-        its.filter(x => !x._sub).forEach(line);
-        its.filter(x => x._sub).forEach(x => { nl('      ' + String(x._sub).toUpperCase() + '  (' + x._n + ' items, one place)', 10, true, '#555'); x.items.forEach(line); });
-      });
+    const newPage = () => { footer(); doc.addPage(); y = M; };
+    const ensure = (h) => { if(y + h > BOTTOM) newPage(); };
+    const text = (t, size, bold, color, opts) => { setFont(size, bold, color); const lines = doc.splitTextToSize(String(t), (opts && opts.w) || CW); ensure(lines.length * (size + 3)); doc.text(lines, (opts && opts.x) || M, y + size, opts && opts.align ? { align:opts.align } : undefined); y += lines.length * (size + 3) + ((opts && opts.gap) || 2); };
+    /* ---- vector status marks (Helvetica has no ✓ / ✕ glyph) ---- */
+    const mark = (kind, x, cy, color) => {
+      doc.setDrawColor(color[0], color[1], color[2]); doc.setLineWidth(1.4);
+      if(kind === 'ok'){ doc.line(x, cy, x + 3, cy + 3); doc.line(x + 3, cy + 3, x + 8, cy - 4); }
+      else { doc.line(x, cy - 3.5, x + 7, cy + 3.5); doc.line(x, cy + 3.5, x + 7, cy - 3.5); }
     };
-    let totalWt = 0;
-    S.pallets.forEach(p => {
-      const pls = places.filter(pl => S.assign[pl.key] === p.id);
-      const its = pls.reduce((a,pl)=>a.concat(pl.items),[]);
-      const anyLoaded = pls.some(pl => S.packed && S.packed[pl.key]);
-      const dims = [p.l, p.w, p.h].map(x => (x||'').trim()).filter(Boolean);
-      const dimStr = dims.length ? (dims.join('" x ') + '" (L x W x H)') : 'size —';
-      const wt = (p.wt||'').trim(); if(wt) totalWt += parseFloat(wt) || 0;
+    /* ---- generic table with wrapping, repeated header, group rows kept with their first data row ---- */
+    const FS = 9, LH = FS + 3, PAD = 4;
+    function table(cols, rows, contLabel){
+      const widths = cols.map(c => c.w);
+      const cont = () => { if(!contLabel) return; setFont(9, true, DIM); doc.text(contLabel + '  (continued)', M, y + 9); y += 14; };
+      const header = () => {
+        const h = LH + PAD * 2;
+        doc.setFillColor(HEAD_BG[0], HEAD_BG[1], HEAD_BG[2]); doc.rect(M, y, CW, h, 'F');
+        setFont(8.5, true, INK); let x = M;
+        cols.forEach((c, i) => { doc.text(c.title, c.align === 'right' ? x + widths[i] - PAD : x + PAD, y + PAD + FS, c.align === 'right' ? { align:'right' } : undefined); x += widths[i]; });
+        doc.setDrawColor(LINE[0], LINE[1], LINE[2]); doc.setLineWidth(0.5); doc.line(M, y + h, M + CW, y + h);
+        y += h;
+      };
+      const measure = (r) => {
+        if(r.group) return { h: LH + PAD * 2, lines:null };
+        setFont(FS, false);
+        const lines = r.cells.map((c, i) => doc.splitTextToSize(String(c == null ? '' : c), widths[i] - PAD * 2 - (cols[i].mark ? 12 : 0)));
+        const n = Math.max.apply(null, lines.map(l => l.length).concat([1]));
+        return { h: n * LH + PAD * 2, lines };
+      };
+      const drawRow = (r, m) => {
+        if(r.group){
+          doc.setFillColor(r.sub ? 248 : 242, r.sub ? 248 : 242, r.sub ? 248 : 242); doc.rect(M, y, CW, m.h, 'F');
+          setFont(r.sub ? 8.5 : 9, true, r.sub ? DIM : INK);
+          doc.text(String(r.group), M + PAD + (r.sub ? 14 : 0), y + PAD + FS);
+          doc.setDrawColor(LINE[0], LINE[1], LINE[2]); doc.line(M, y + m.h - 0.3, M + CW, y + m.h - 0.3);
+          y += m.h; return;
+        }
+        if(r.bg){ doc.setFillColor(r.bg[0], r.bg[1], r.bg[2]); doc.rect(M, y, CW, m.h, 'F'); }
+        let x = M;
+        cols.forEach((c, i) => {
+          const col = r.color || INK;
+          setFont(FS, !!(c.bold || (r.boldCols && r.boldCols[i])), r.cellColor && r.cellColor[i] ? r.cellColor[i] : col);
+          let tx = c.align === 'right' ? x + widths[i] - PAD : x + PAD;
+          if(c.mark && r.mark){ mark(r.mark, x + PAD, y + PAD + FS - 3.5, r.cellColor && r.cellColor[i] ? r.cellColor[i] : col); tx += 12; }
+          doc.text(m.lines[i], tx, y + PAD + FS, c.align === 'right' ? { align:'right' } : undefined);
+          x += widths[i];
+        });
+        doc.setDrawColor(LINE[0], LINE[1], LINE[2]); doc.setLineWidth(0.4); doc.line(M, y + m.h - 0.3, M + CW, y + m.h - 0.3);   /* inside the row, so the next row's fill never hides it */
+        y += m.h;
+      };
+      ensure(LH + PAD * 2 + LH + PAD * 2); header();
+      for(let i = 0; i < rows.length; i++){
+        const r = rows[i], m = measure(r);
+        let need = m.h;
+        if(r.group){ /* keep the heading with its first data row (and a sub-heading with its parent) */
+          let j = i + 1, extra = 0; while(j < rows.length && rows[j].group && rows[j].sub){ extra += measure(rows[j]).h; j++; }
+          if(j < rows.length) extra += measure(rows[j]).h; need += extra;
+        }
+        if(y + need > BOTTOM){ newPage(); cont(); header(); }
+        drawRow(r, m);
+      }
       y += 6;
-      nl('Pallet ' + (p.num||'?') + (p.name ? ('  —  ' + p.name) : '') + (pls.length ? (anyLoaded ? '   [LOADED]' : '   [NOT LOADED]') : ''), 12, true, pls.length ? (anyLoaded ? '#1a7f37' : '#b00') : '#111');
-      nl('    ' + dimStr + '     weight: ' + (wt ? wt + ' lb' : '—') + '     items: ' + its.reduce((s,it)=>s+(it.qty||1),0), 10, false, '#555');
-      if(its.length) listByModule(pls);
-      else nl('    (empty)', 10, false, '#999');
+    }
+    /* ---- helpers ---- */
+    const cmtOf = it => (S.meta && S.meta[it.key] && S.meta[it.key].cmt) ? String(S.meta[it.key].cmt).trim() : '';
+    const itemLabel = it => { let s = it.name || '—'; if(it.serial) s += '  ·  SN ' + it.serial; const c = cmtOf(it); if(c) s += '  [' + c + ']'; return s; };
+    const catOf = (it, pl) => (it.cat || '').trim() || (pl.module || '—');
+    const locOf = (it, pl) => pl.sub ? pl.sub : (pl.items.length > 1 ? pl.name : 'Own place');
+    const palLabel = p => 'PALLET ' + (p.num || '?') + (p.name ? (' — ' + p.name) : '');
+    /* merge identical units (same name / category / serial / location / status) into one row by qty */
+    const mergeRows = (list, keyFn) => { const out = [], by = {}; list.forEach(u => { const k = keyFn(u); if(by[k]){ by[k].qty += u.qty; return; } by[k] = Object.assign({}, u); out.push(by[k]); }); return out; };
+    const groupByModule = (list) => { const order = [], by = {}; list.forEach(u => { const m = u.module || 'Other'; if(!by[m]){ by[m] = []; order.push(m); } by[m].push(u); }); return order.map(m => ({ module:m, list:by[m] })); };
+
+    /* ================= HEADER ================= */
+    const complete = units.length > 0 && T.missing === 0;
+    setFont(18, true, INK); doc.text('SHIPPING / PACKING LIST', M, y + 18); y += 30;
+    setFont(11, true, INK); doc.text('Project:  #' + (P.number||'') + '  ' + (P.title||''), M, y + 11);
+    setFont(11, false, DIM); doc.text('Shipping date:  ' + (S.date || '—'), PW - M, y + 11, { align:'right' }); y += 20;
+    /* KPI strip */
+    const kpis = [
+      ['STATUS', complete ? 'COMPLETE' : 'INCOMPLETE', complete ? GREEN : RED],
+      ['PALLETS', String(S.pallets.length), INK],
+      ['TOTAL WEIGHT', Mdl.totalWt ? (Math.round(Mdl.totalWt * 10) / 10) + ' lb' : '—', INK],
+      ['PLANNED (QTY)', String(T.required), INK],
+      ['PACKED (QTY)', String(T.packed), T.packed ? GREEN : INK],
+      ['NOT PACKED (QTY)', String(T.missing), T.missing ? RED : GREEN]
+    ];
+    const kw = CW / kpis.length, kh = 40;
+    kpis.forEach((k, i) => {
+      const x = M + i * kw;
+      doc.setFillColor(246, 247, 249); doc.setDrawColor(LINE[0], LINE[1], LINE[2]); doc.setLineWidth(0.5); doc.rect(x, y, kw - 4, kh, 'FD');
+      setFont(7.5, true, DIM); doc.text(k[0], x + 8, y + 13);
+      setFont(14, true, k[2]); doc.text(k[1], x + 8, y + 31);
     });
-    const un = places.filter(pl => !S.assign[pl.key]);
-    if(un.length){ y += 8; nl('NOT ON ANY PALLET (' + un.length + ')', 12, true, '#b00'); listByModule(un); }
-    y += 14;
-    nl('Total pallets: ' + S.pallets.length + '        Total weight: ' + (totalWt ? (Math.round(totalWt*10)/10) + ' lb' : '—'), 11, true);
-    nl('Places loaded: ' + loadedPl.length + ' / ' + places.length + (complete ? '   — COMPLETE' : '   — INCOMPLETE'), 11, true, complete ? '#1a7f37' : '#b00');
+    y += kh + 12;
+    if(!complete){
+      doc.setFillColor(RED_BG[0], RED_BG[1], RED_BG[2]); doc.rect(M, y, CW, 34, 'F');
+      setFont(18, true, RED); doc.text(units.length ? 'INCOMPLETE — ITEMS NOT PACKED' : 'INCOMPLETE — NO ITEMS IN THE SHIPPING LIST', M + 10, y + 24); y += 44;
+    } else {
+      doc.setFillColor(GREEN_BG[0], GREEN_BG[1], GREEN_BG[2]); doc.rect(M, y, CW, 34, 'F');
+      setFont(18, true, GREEN); doc.text('COMPLETE — ALL ITEMS PACKED ON PALLETS', M + 10, y + 24); y += 44;
+    }
+
+    /* ================= NOT PACKED / NOT ON ANY PALLET ================= */
+    const missingUnits = units.filter(u => u.missing > 0).map(u => ({
+      qty:u.missing, name:itemLabel(u.it), cat:catOf(u.it, u.pl), module:u.pl.module || 'Other', serial:u.it.serial || '',
+      reason: u.pal ? ('On ' + palLabel(u.pal).replace('PALLET', 'Pallet') + ' — NOT LOADED (On pallet not ticked)') : 'Not assigned to any pallet'
+    }));
+    if(missingUnits.length){
+      ensure(60);
+      text('NOT PACKED / NOT ON ANY PALLET  —  ' + T.missing + ' unit' + (T.missing === 1 ? '' : 's') + ' in ' + missingUnits.length + ' position' + (missingUnits.length === 1 ? '' : 's'), 13, true, RED, { gap:4 });
+      const rows = [];
+      groupByModule(missingUnits).forEach(g => {
+        rows.push({ group:String(g.module).toUpperCase() });
+        mergeRows(g.list, u => [u.name, u.cat, u.serial, u.reason].join('|')).forEach(u => rows.push({ cells:[String(u.qty), u.name, u.cat, u.reason], bg:RED_BG, color:RED, boldCols:[true, true, false, false] }));
+      });
+      table([{ title:'QTY', w:46, align:'right' }, { title:'ITEM / MODEL', w:CW - 46 - 150 - 250 }, { title:'CATEGORY', w:150 }, { title:'REASON', w:250 }], rows, 'NOT PACKED / NOT ON ANY PALLET');
+      y += 4;
+    }
+
+    /* ================= PALLETS ================= */
+    const cols = [{ title:'QTY', w:46, align:'right' }, { title:'ITEM / MODEL', w:CW - 46 - 130 - 190 - 110 }, { title:'CATEGORY', w:130 }, { title:'CASE / LOCATION', w:190 }, { title:'STATUS', w:110, mark:true }];
+    if(!S.pallets.length){ text('No pallets created yet.', 11, true, RED); }
+    S.pallets.forEach(p => {
+      const pu = units.filter(u => u.pal && u.pal.id === p.id);
+      const allLoaded = pu.length > 0 && pu.every(u => u.loaded), anyLoaded = pu.some(u => u.loaded);
+      const st = !pu.length ? 'EMPTY' : allLoaded ? 'PACKED' : anyLoaded ? 'PARTIALLY PACKED' : 'NOT PACKED';
+      const stCol = !pu.length ? DIM : allLoaded ? GREEN : RED;
+      const dims = [p.l, p.w, p.h].map(x => String(x || '').trim()).filter(Boolean);
+      const dimStr = dims.length === 3 ? (dims.join('" × ') + '"  (L × W × H)') : (dims.length ? dims.join('" × ') + '"' : 'size —');
+      const wt = String(p.wt || '').trim();
+      const qtyOn = pu.reduce((s,u) => s + u.required, 0), qtyPk = pu.reduce((s,u) => s + u.packed, 0);
+      ensure(70);
+      y += 4;
+      setFont(13, true, stCol); doc.text(palLabel(p) + '  —  ' + st, M, y + 13); y += 20;
+      setFont(9, false, DIM); doc.text(dimStr + '     Weight: ' + (wt ? wt + ' lb' : '—') + '     Units on pallet: ' + qtyOn + '     Packed: ' + qtyPk + '     Not packed: ' + (qtyOn - qtyPk), M, y + 9); y += 16;
+      if(!pu.length){ text('(empty — nothing assigned to this pallet)', 9, false, DIM); return; }
+      const rows = [];
+      const list = pu.map(u => ({ qty:u.required, name:itemLabel(u.it), cat:catOf(u.it, u.pl), module:u.pl.module || 'Other', sub:u.pl.sub || '', serial:u.it.serial || '', loc:locOf(u.it, u.pl), loaded:u.loaded }));
+      groupByModule(list).forEach(g => {
+        rows.push({ group:String(g.module).toUpperCase() });
+        const plain = g.list.filter(u => !u.sub), cased = g.list.filter(u => u.sub);
+        const push = u => rows.push({ cells:[String(u.qty), u.name, u.cat, u.loc, u.loaded ? 'PACKED' : 'NOT PACKED'], bg:u.loaded ? GREEN_BG : RED_BG, color:INK, cellColor:[null, null, null, null, u.loaded ? GREEN : RED], mark:u.loaded ? 'ok' : 'x', boldCols:[true, false, false, false, true] });
+        mergeRows(plain, u => [u.name, u.cat, u.serial, u.loc, u.loaded].join('|')).forEach(push);
+        const subs = []; cased.forEach(u => { if(subs.indexOf(u.sub) < 0) subs.push(u.sub); });
+        subs.forEach(sb => { const its = cased.filter(u => u.sub === sb); rows.push({ group:sb.toUpperCase() + '  (' + its.reduce((s,u)=>s+u.qty,0) + ' units — one place)', sub:true }); mergeRows(its, u => [u.name, u.cat, u.serial, u.loaded].join('|')).forEach(push); });
+      });
+      table(cols, rows, palLabel(p) + '  —  ' + st);
+    });
+
+    /* ================= SUMMARY ================= */
+    ensure(50); y += 4;
+    setFont(11, true, INK); doc.text('Total pallets: ' + S.pallets.length + '        Total weight: ' + (Mdl.totalWt ? (Math.round(Mdl.totalWt * 10) / 10) + ' lb' : '—') + '        Planned: ' + T.required + '   Packed: ' + T.packed + '   Not packed: ' + T.missing, M, y + 11); y += 18;
+    setFont(11, true, complete ? GREEN : RED); doc.text(complete ? 'COMPLETE — all items are packed on pallets' : 'INCOMPLETE — ' + T.missing + ' unit' + (T.missing === 1 ? '' : 's') + ' not packed (see the red section on page 1)', M, y + 11); y += 18;
+    footer();
+    try{ doc.putTotalPages(totalPagesExp); }catch(_){}
     const fn = ('Shipping ' + (P.number||'') + ' ' + (P.title||'')).trim().replace(/[\/\\:*?"<>|]/g, '-') + '.pdf';
     doc.save(fn); flashStat('Shipping PDF generated ✓');
   });
@@ -11456,7 +11602,7 @@ const ROUTES = {
   '#/network':       {nav:'dashboard', render:()=>pagePlaceholder('Network', IC.net, 'Switches, VLANs, IP plan and connectivity for the dome system — planned module.', 'Coming Soon')},
   '#/fan':           {nav:'dashboard', render:pageFan},
   '#/tools':         {nav:'dashboard', render:pageTools},
-  '#/shipping':      {nav:'dashboard', render:pageShipping},
+  '#/shipping':      {nav:'shipping', render:pageShipping},
   '#/admin':         {nav:'admin', render:pageAdmin, noProject:true}   /* BUILD 15.67 */
 };
 
