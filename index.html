@@ -381,6 +381,16 @@
   .dtab:hover{color:var(--ink)}
   .dtab.sel{color:var(--fdp-red);border-bottom-color:var(--fdp-red)}
   .fgrid .full{grid-column:1/-1}
+  /* BUILD 16.36 — Dome card › Components: one parameter per row (label left, field right), 30% narrower; the blocks (Frame, Covers & Screens, Doors, Connectors) stay separate cards */
+  .dcomp{max-width:70%}
+  @media (max-width:1100px){ .dcomp{max-width:100%} }
+  .dcomp .fgrid{display:block}
+  .dcomp .fld{display:grid;grid-template-columns:200px minmax(0,1fr);gap:6px 14px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+  .dcomp .fld:last-child{border-bottom:0}
+  .dcomp .fld>label{margin:0}
+  .dcomp .fld>*:not(label){grid-column:2}
+  .dcomp .fld .hint{margin-top:0}
+  .dcomp .fld textarea.cell{min-height:64px}
   #lnkPrev{position:fixed;z-index:9999;display:none;width:300px;background:#fff;border:1px solid var(--line);border-radius:12px;
     box-shadow:0 10px 32px rgba(15,23,42,.18);padding:10px;pointer-events:none}
   #lnkPrev .lp-top{display:flex;align-items:center;gap:7px;margin-bottom:8px}
@@ -804,7 +814,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.34 · DOME CARD: COVER / INFLATABLE COVER GET COLOUR (GREY · WHITE · PRINTED) + MATERIAL · ARCHIVE BUTTONS REMOVED (DELETE ONLY) · DELETE BUTTON ON COVER / SCREEN / INFLATABLE ENTRIES · DASHBOARD: CAMERA MODEL = ALL "CAMERA" ROWS (NO LENS) · DOME & TRUSS: READY = DOME CARD "READY TO SHIP" (INDICATOR, NOT A BUTTON) · DOME LIBRARY: A DELETED TRUSS KIT / ELEMENT / FILE STAYS DELETED (NO-BASE TIEBREAKER BY REV) · DOME LIBRARY FIX: SAVE DOME CARD KEEPS TRUSS SN / COMPONENTS / SCHEMATICS (MERGE BASE WAS ALIASED TO THE LIVE CARD) · NEW MODULE: DOME & TRUSS (PICK FROM DOME LIBRARY · TRUSS KIT · SHIPS AUTOMATICALLY) · AUTO-UPDATE: RETRIES FOR ~15 MIN WHEN THE SERVER STILL SENDS THE OLD FILE · SHIPPING: SUB-SECTIONS — CAMERA CASES + OTHER, POWER / VIDEO / AUDIO CABLES (LIST + PDF) · SHIPPING PDF REBUILT (A4 LANDSCAPE · NOT-PACKED SECTION PER UNIT · GREEN/RED + WORDS · PAGE X OF Y) · SIDEBAR: EQUIPMENT & SHIPPING LINK · SHIPPING: CLICK AN ITEM NAME → JUMPS TO ITS MODULE ROW · PROJECTOR ACCESSORIES TABLE (EVERY NAMED ROW SHIPS AS ITS OWN MODULE AFTER PROJECTORS) · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.37 · DOME CARD › DOORS: FABRIC DOOR (QTY + SERIAL) · COMPONENTS: COMPACT ONE-PARAMETER-PER-ROW LAYOUT · DOME LIBRARY: AN OPEN CARD NOW RECEIVES TEAMMATES' CHANGES LIVE (DELETIONS INCLUDED) · DOME CARD: COVER / INFLATABLE COVER GET COLOUR (GREY · WHITE · PRINTED) + MATERIAL · ARCHIVE BUTTONS REMOVED (DELETE ONLY) · DELETE BUTTON ON COVER / SCREEN / INFLATABLE ENTRIES · DASHBOARD: CAMERA MODEL = ALL "CAMERA" ROWS (NO LENS) · DOME & TRUSS: READY = DOME CARD "READY TO SHIP" (INDICATOR, NOT A BUTTON) · DOME LIBRARY: A DELETED TRUSS KIT / ELEMENT / FILE STAYS DELETED (NO-BASE TIEBREAKER BY REV) · DOME LIBRARY FIX: SAVE DOME CARD KEEPS TRUSS SN / COMPONENTS / SCHEMATICS (MERGE BASE WAS ALIASED TO THE LIVE CARD) · NEW MODULE: DOME & TRUSS (PICK FROM DOME LIBRARY · TRUSS KIT · SHIPS AUTOMATICALLY) · AUTO-UPDATE: RETRIES FOR ~15 MIN WHEN THE SERVER STILL SENDS THE OLD FILE · SHIPPING: SUB-SECTIONS — CAMERA CASES + OTHER, POWER / VIDEO / AUDIO CABLES (LIST + PDF) · SHIPPING PDF REBUILT (A4 LANDSCAPE · NOT-PACKED SECTION PER UNIT · GREEN/RED + WORDS · PAGE X OF Y) · SIDEBAR: EQUIPMENT & SHIPPING LINK · SHIPPING: CLICK AN ITEM NAME → JUMPS TO ITS MODULE ROW · PROJECTOR ACCESSORIES TABLE (EVERY NAMED ROW SHIPS AS ITS OWN MODULE AFTER PROJECTORS) · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -10733,8 +10743,8 @@ function domeEnsureComponents(m){
   if(!c.frame || typeof c.frame!=='object') c.frame={serial:'',tubeOuter:'',tubeWall:'',material:''};
   ['serial','tubeOuter','tubeWall','material'].forEach(f=>{ if(typeof c.frame[f]!=='string') c.frame[f]=String(c.frame[f]==null?'':c.frame[f]); });
   c.frame.serial = String(m.serial||'');   /* BUILD 15.09: Frame serial === Dome serial (single value, mirrored) */
-  if(!c.doors || typeof c.doors!=='object') c.doors={qty:'',type:'',height:'',width:''};
-  ['qty','type','height','width'].forEach(f=>{ if(typeof c.doors[f]!=='string') c.doors[f]=String(c.doors[f]==null?'':c.doors[f]); });
+  if(!c.doors || typeof c.doors!=='object') c.doors={qty:'',type:'',height:'',width:'',fabricQty:'',fabricSerial:''};
+  ['qty','type','height','width','fabricQty','fabricSerial'].forEach(f=>{ if(typeof c.doors[f]!=='string') c.doors[f]=String(c.doors[f]==null?'':c.doors[f]); });   /* fabricQty / fabricSerial — Fabric Door (BUILD 16.37) */
   if(!Array.isArray(c.covers)) c.covers=[];
   c.covers.forEach(x=>{ if(x && typeof x==='object'){ if(!x.id) x.id=newId(); if(typeof x.kind!=='string' || DOME_COVER_KINDS.indexOf(x.kind)<0) x.kind='Cover';
     ['serial','screenType','screenTypeOther','notes','color','material','materialOther'].forEach(f=>{ if(typeof x[f]!=='string') x[f]=String(x[f]==null?'':x[f]); }); x.archived=!!x.archived; } });
@@ -10765,7 +10775,7 @@ function domeComponentsDoc(c){
   c = c || {}; const fr = c.frame||{};
   return {
     frame: { serial:String(fr.serial||''), tubeOuter:String(fr.tubeOuter||''), tubeWall:String(fr.tubeWall||''), material:String(fr.material||'') },
-    doors: (dr=>({ qty:String(dr.qty||''), type:String(dr.type||''), height:String(dr.height||''), width:String(dr.width||'') }))(c.doors||{}),
+    doors: (dr=>({ qty:String(dr.qty||''), type:String(dr.type||''), height:String(dr.height||''), width:String(dr.width||''), fabricQty:String(dr.fabricQty||''), fabricSerial:String(dr.fabricSerial||'') }))(c.doors||{}),
     covers: (Array.isArray(c.covers)?c.covers:[]).map(x=>({ id:String(x.id||''), kind:String(x.kind||'Cover'), serial:String(x.serial||''),
       screenType:String(x.screenType||''), screenTypeOther:String(x.screenTypeOther||''), notes:String(x.notes||''), archived:!!x.archived,
       color:String(x.color||''), material:String(x.material||''), materialOther:String(x.materialOther||'') })),
@@ -10904,7 +10914,9 @@ function domeFsApplyDoc(data){                        /* field-level merge an in
   list.forEach(function(s){
     if(!s || !s.domeUid) return;
     const uid = s.domeUid;
-    if(_domeEditId === uid) return;                  /* don't disturb an open card; base stays, push merges on save */
+    /* BUILD 16.35: an OPEN card is merged LIVE too (3-way, so unsaved local edits survive; a teammate's deletion or
+       edit shows up at once) — before this, snapshots arriving while a card was open were dropped, so a cover deleted
+       on another machine stayed on this screen. */
     if(base[uid] && (s.rev||0) < (base[uid].rev||0)) return;   /* BUILD 16.28: an OLDER copy than what we already agreed on (stale echo) never rolls a card back */
     const i = db.domeLib.findIndex(function(m){ return m.domeUid===uid; });
     if(i<0){ db.domeLib.push(Object.assign(domeEmptyModel(), _domeClone(s), { _saved:true })); base[uid]=_domeClone(s); ch=true; return; }
@@ -10912,11 +10924,15 @@ function domeFsApplyDoc(data){                        /* field-level merge an in
     _domeRevCtx = { l:(localDoc.rev||0), s:(s.rev||0) };
     const merged = domeMerge3(base[uid], localDoc, s, (localDoc.rev||0) >= (s.rev||0));
     merged.rev = Math.max(localDoc.rev||0, s.rev||0); _domeStickyDelete(merged, localDoc, s);
-    if(!_domeEqj(merged, localDoc)){ db.domeLib[i] = _domeKeepLocalBytes(db.domeLib[i], Object.assign(domeEmptyModel(), merged, { _saved:true })); ch=true; }
-    base[uid] = _domeClone(merged);                  /* new agreed base — a DEEP COPY (BUILD 16.28, see _domeClone) */
+    if(!_domeEqj(merged, localDoc)){ db.domeLib[i] = _domeKeepLocalBytes(db.domeLib[i], Object.assign(domeEmptyModel(), merged, { _saved:(db.domeLib[i]._saved !== false) })); ch=true; if(_domeEditId === uid) _domeOpenChanged = true; }
+    base[uid] = _domeClone(s);                       /* new agreed base = what the SERVER has (deep copy) — so an unsaved local edit or deletion still reads as "ours" at the next push (BUILD 16.35; was: merged) */
   });
   return ch;
 }
+/* BUILD 16.35 — the open card was changed by an incoming snapshot: refresh the screen when it is safe (not mid-typing) */
+var _domeOpenChanged = false;
+function domeRefreshOpenIfChanged(){ if(!_domeOpenChanged) return; if(typeof isTypingInInput==='function' && isTypingInInput()) return; _domeOpenChanged = false; if(location.hash==='#/dome-library'){ try{ rerenderKeepScroll(); }catch(_){} flashStat('Dome card updated by a teammate'); } }
+try{ document.addEventListener('focusout', function(){ setTimeout(domeRefreshOpenIfChanged, 60); }, true); setInterval(domeRefreshOpenIfChanged, 4000); }catch(_){}
 /* BUILD 16.16 — the shared doc carries file METADATA only; when a merged doc replaces the local card, keep the
    local file bytes (data:) for entries with the same id, so Download keeps working offline on this machine. */
 function _domeKeepLocalBytes(oldM, newM){
@@ -10936,7 +10952,7 @@ function domeAdoptMerged(list){
   (list||[]).forEach(function(d){
     if(!d || !d.domeUid) return;
     base[d.domeUid]=_domeClone(d);                   /* new agreed base — a DEEP COPY (BUILD 16.28) */
-    if(_domeEditId===d.domeUid) return;              /* don't disturb an open card */
+    if(_domeEditId===d.domeUid) return;              /* don't replace the open card's model (keystrokes typed during the push would be lost); its base is updated above */
     const i=db.domeLib.findIndex(function(m){ return m.domeUid===d.domeUid; });
     const model=Object.assign(domeEmptyModel(), d, { _saved:true });
     if(i>=0) db.domeLib[i]=_domeKeepLocalBytes(db.domeLib[i], model); else db.domeLib.push(model);
@@ -11575,6 +11591,12 @@ function domeTabComponents(m){
       ${_dfld('Number of Doors', `<select class="cell" onchange="domeDoorUpd('qty',this.value)"><option value="" ${!dr.qty?'selected':''}>—</option>${DOME_DOOR_QTY.map(x=>`<option value="${esc(x)}" ${dr.qty===x?'selected':''}>${esc(x)}</option>`).join('')}</select>`)}
       ${_dfld('Door Type', `<select class="cell" onchange="domeDoorUpd('type',this.value)"><option value="" ${!dr.type?'selected':''}>—</option>${DOME_DOOR_TYPES.map(x=>`<option value="${esc(x)}" ${dr.type===x?'selected':''}>${esc(x)}</option>`).join('')}</select>`)}
       ${doorDims}
+      ${_dfld('Fabric Door', `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <span style="font-size:11px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.5px">Qty</span>
+          <input class="cell num" type="number" min="0" step="1" style="max-width:90px" value="${esc(dr.fabricQty)}" placeholder="0" oninput="domeDoorUpd('fabricQty',this.value)">
+          <span style="font-size:11px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.5px">Serial Number</span>
+          <input class="cell" style="flex:1;min-width:160px" value="${esc(dr.fabricSerial)}" placeholder="e.g. 03-1.7-WD-FD" oninput="domeDoorUpd('fabricSerial',this.value)">
+        </div>`)}
     </div>
   </div>`;
   /* 4. Connectors */
@@ -11591,7 +11613,7 @@ function domeTabComponents(m){
     <div class="card-head"><h3>Connectors</h3></div>
     ${connRows}
   </div>`;
-  return frame + covers + doors + connectors;
+  return `<div class="dcomp">` + frame + covers + doors + connectors + `</div>`;   /* BUILD 16.36: compact one-per-row layout */
 }
 
 /* ---------- Truss tab (BUILD 15.14) ---------- */
