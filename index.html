@@ -804,7 +804,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.27 · NEW MODULE: DOME & TRUSS (PICK FROM DOME LIBRARY · TRUSS KIT · SHIPS AUTOMATICALLY) · AUTO-UPDATE: RETRIES FOR ~15 MIN WHEN THE SERVER STILL SENDS THE OLD FILE · SHIPPING: SUB-SECTIONS — CAMERA CASES + OTHER, POWER / VIDEO / AUDIO CABLES (LIST + PDF) · SHIPPING PDF REBUILT (A4 LANDSCAPE · NOT-PACKED SECTION PER UNIT · GREEN/RED + WORDS · PAGE X OF Y) · SIDEBAR: EQUIPMENT & SHIPPING LINK · SHIPPING: CLICK AN ITEM NAME → JUMPS TO ITS MODULE ROW · PROJECTOR ACCESSORIES TABLE (EVERY NAMED ROW SHIPS AS ITS OWN MODULE AFTER PROJECTORS) · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.28 · DOME LIBRARY FIX: SAVE DOME CARD KEEPS TRUSS SN / COMPONENTS / SCHEMATICS (MERGE BASE WAS ALIASED TO THE LIVE CARD) · NEW MODULE: DOME & TRUSS (PICK FROM DOME LIBRARY · TRUSS KIT · SHIPS AUTOMATICALLY) · AUTO-UPDATE: RETRIES FOR ~15 MIN WHEN THE SERVER STILL SENDS THE OLD FILE · SHIPPING: SUB-SECTIONS — CAMERA CASES + OTHER, POWER / VIDEO / AUDIO CABLES (LIST + PDF) · SHIPPING PDF REBUILT (A4 LANDSCAPE · NOT-PACKED SECTION PER UNIT · GREEN/RED + WORDS · PAGE X OF Y) · SIDEBAR: EQUIPMENT & SHIPPING LINK · SHIPPING: CLICK AN ITEM NAME → JUMPS TO ITS MODULE ROW · PROJECTOR ACCESSORIES TABLE (EVERY NAMED ROW SHIPS AS ITS OWN MODULE AFTER PROJECTORS) · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -10835,6 +10835,11 @@ function domeFsDocRef(){ return _fsDb.collection('projects').doc(DOME_DOC_ID); }
    not touch a leaf yields to the side that did; a real conflict (same leaf changed on both) is resolved
    by rev (localNewer). Base is updated after every push and every applied snapshot. */
 function domeBaseMap(){ if(!db.domeBase || typeof db.domeBase!=='object') db.domeBase={}; return db.domeBase; }
+/* BUILD 16.28 — ROOT CAUSE of "Save Dome Card loses the truss SN / components / schematics": the merge base and the
+   live card SHARED the same nested objects (Object.assign is shallow), so editing m.truss.sn also edited base.truss.sn,
+   the 3-way merge then saw "local == base → we didn't touch it" and took the server's (old) value. Every base write
+   now stores an independent deep copy. */
+function _domeClone(x){ try{ return x === undefined ? undefined : JSON.parse(JSON.stringify(x)); }catch(_){ return x; } }
 function _domeEqj(a,b){ return JSON.stringify(a===undefined?null:a)===JSON.stringify(b===undefined?null:b); }
 function _domeIsObj(x){ return x && typeof x==='object' && !Array.isArray(x); }
 function domeMerge3(base, local, server, localNewer){
@@ -10895,13 +10900,14 @@ function domeFsApplyDoc(data){                        /* field-level merge an in
     if(!s || !s.domeUid) return;
     const uid = s.domeUid;
     if(_domeEditId === uid) return;                  /* don't disturb an open card; base stays, push merges on save */
+    if(base[uid] && (s.rev||0) < (base[uid].rev||0)) return;   /* BUILD 16.28: an OLDER copy than what we already agreed on (stale echo) never rolls a card back */
     const i = db.domeLib.findIndex(function(m){ return m.domeUid===uid; });
-    if(i<0){ db.domeLib.push(Object.assign(domeEmptyModel(), s, { _saved:true })); base[uid]=s; ch=true; return; }
+    if(i<0){ db.domeLib.push(Object.assign(domeEmptyModel(), _domeClone(s), { _saved:true })); base[uid]=_domeClone(s); ch=true; return; }
     const localDoc = domeFsModelDoc(db.domeLib[i]);
     const merged = domeMerge3(base[uid], localDoc, s, (localDoc.rev||0) >= (s.rev||0));
     merged.rev = Math.max(localDoc.rev||0, s.rev||0); _domeStickyDelete(merged, localDoc, s);
     if(!_domeEqj(merged, localDoc)){ db.domeLib[i] = _domeKeepLocalBytes(db.domeLib[i], Object.assign(domeEmptyModel(), merged, { _saved:true })); ch=true; }
-    base[uid] = merged;                              /* new agreed base */
+    base[uid] = _domeClone(merged);                  /* new agreed base — a DEEP COPY (BUILD 16.28, see _domeClone) */
   });
   return ch;
 }
@@ -10923,7 +10929,7 @@ function domeAdoptMerged(list){
   const base=domeBaseMap();
   (list||[]).forEach(function(d){
     if(!d || !d.domeUid) return;
-    base[d.domeUid]=d;                               /* new agreed base */
+    base[d.domeUid]=_domeClone(d);                   /* new agreed base — a DEEP COPY (BUILD 16.28) */
     if(_domeEditId===d.domeUid) return;              /* don't disturb an open card */
     const i=db.domeLib.findIndex(function(m){ return m.domeUid===d.domeUid; });
     const model=Object.assign(domeEmptyModel(), d, { _saved:true });
