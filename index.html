@@ -802,7 +802,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.16 · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.16 · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -10472,21 +10472,40 @@ function _domeEqj(a,b){ return JSON.stringify(a===undefined?null:a)===JSON.strin
 function _domeIsObj(x){ return x && typeof x==='object' && !Array.isArray(x); }
 function domeMerge3(base, local, server, localNewer){
   if(_domeEqj(local, server)) return (local!==undefined ? local : server);
-  if(base!==undefined && _domeEqj(local, base)) return server;      /* we didn't touch it → take server's */
-  if(base!==undefined && _domeEqj(server, base)) return local;      /* server didn't touch it → keep ours */
-  if(local===undefined) return server;
+  if(local===undefined) return server;                              /* BUILD 16.16: a side that lacks a key never deletes it (fields are never removed from a card — a missing key means an older build / stale copy) */
   if(server===undefined) return local;
-  if(_domeIsObj(local) && _domeIsObj(server)){                      /* recurse per key */
+  if(_domeIsObj(local) && _domeIsObj(server)){                      /* recurse per key (BUILD 16.16: always — so a key one side lacks is merged per key, never dropped by an object-level "keep ours") */
     const b = _domeIsObj(base) ? base : {};
     const keys = {}; Object.keys(b).forEach(k=>keys[k]=1); Object.keys(local).forEach(k=>keys[k]=1); Object.keys(server).forEach(k=>keys[k]=1);
     const out = {}; Object.keys(keys).forEach(function(k){ out[k] = domeMerge3(b[k], local[k], server[k], localNewer); });
     return out;
   }
+  if(base!==undefined && _domeEqj(local, base)) return server;      /* we didn't touch it → take server's */
+  if(base!==undefined && _domeEqj(server, base)) return local;      /* server didn't touch it → keep ours */
+  if(_domeIdList(local) && _domeIdList(server)) return _domeMergeIdLists(base, local, server, localNewer);   /* BUILD 16.16: id-keyed set merge */
   if(Array.isArray(local) && Array.isArray(server) && Array.isArray(base)
      && local.length===server.length && base.length===local.length){    /* row-by-row when lengths match */
     return local.map(function(_, i){ return domeMerge3(base[i], local[i], server[i], localNewer); });
   }
   return localNewer ? local : server;                              /* conflicting leaf / length-changed list → newest wins */
+}
+/* BUILD 16.16 — lists of {id,…} records (schematic files, truss files, elements, kits, kit items) are merged as SETS
+   keyed by id, not "newest side wins": a record present on either side is KEPT unless the base proves the other side
+   deleted it. Before this, a client whose copy of a card lacked the files (older build, stale cache, no base yet)
+   won the tie and the whole file list vanished for everyone. Same-id records merge field by field. */
+function _domeIdList(a){ return Array.isArray(a) && a.every(function(x){ return x && typeof x==='object' && !Array.isArray(x) && x.id!==undefined && x.id!==''; }); }
+function _domeMergeIdLists(base, local, server, localNewer){
+  const b = _domeIdList(base) ? base : [];
+  const bBy={}, lBy={}, sBy={}; b.forEach(function(x){ bBy[x.id]=x; }); local.forEach(function(x){ lBy[x.id]=x; }); server.forEach(function(x){ sBy[x.id]=x; });
+  const order=[], seen={}; server.concat(local).forEach(function(x){ if(!seen[x.id]){ seen[x.id]=1; order.push(x.id); } });
+  const out=[];
+  order.forEach(function(id){
+    const l=lBy[id], s=sBy[id], hasB=Object.prototype.hasOwnProperty.call(bBy, id);
+    if(l && s){ out.push(domeMerge3(bBy[id], l, s, localNewer)); return; }
+    if(l && !s){ if(hasB && _domeEqj(l, bBy[id])) return;  out.push(l); return; }   /* server deleted it and we didn't change it → gone; else keep (added / edited here) */
+    if(s && !l){ if(hasB && _domeEqj(s, bBy[id])) return;  out.push(s); return; }   /* we deleted it and server didn't change it → gone; else keep */
+  });
+  return out;
 }
 /* merge a whole shared list (server) with our local docs, per domeUid, using the per-card base */
 function domeMergeDocs(server, local){
@@ -10512,10 +10531,22 @@ function domeFsApplyDoc(data){                        /* field-level merge an in
     const localDoc = domeFsModelDoc(db.domeLib[i]);
     const merged = domeMerge3(base[uid], localDoc, s, (localDoc.rev||0) >= (s.rev||0));
     merged.rev = Math.max(localDoc.rev||0, s.rev||0);
-    if(!_domeEqj(merged, localDoc)){ db.domeLib[i] = Object.assign(domeEmptyModel(), merged, { _saved:true }); ch=true; }
+    if(!_domeEqj(merged, localDoc)){ db.domeLib[i] = _domeKeepLocalBytes(db.domeLib[i], Object.assign(domeEmptyModel(), merged, { _saved:true })); ch=true; }
     base[uid] = merged;                              /* new agreed base */
   });
   return ch;
+}
+/* BUILD 16.16 — the shared doc carries file METADATA only; when a merged doc replaces the local card, keep the
+   local file bytes (data:) for entries with the same id, so Download keeps working offline on this machine. */
+function _domeKeepLocalBytes(oldM, newM){
+  try{
+    if(!oldM || !newM) return newM;
+    const copy = function(oldList, newList){ if(!Array.isArray(oldList)||!Array.isArray(newList)) return;
+      newList.forEach(function(f){ if(!f || f.data) return; const o = oldList.find(function(x){ return x && x.id===f.id && x.data; }); if(o) f.data = o.data; }); };
+    if(oldM.schematics && newM.schematics) DOME_SCHEM.forEach(function(b){ copy(oldM.schematics[b.key], newM.schematics[b.key]); });
+    if(oldM.truss && newM.truss) copy(oldM.truss.files, newM.truss.files);
+  }catch(_){}
+  return newM;
 }
 /* after OUR push: merged is authoritative → adopt it into db.domeLib AND set it as the new base
    (do NOT route through domeMerge3 here — base would equal server and wrongly keep local). */
@@ -10527,7 +10558,7 @@ function domeAdoptMerged(list){
     if(_domeEditId===d.domeUid) return;              /* don't disturb an open card */
     const i=db.domeLib.findIndex(function(m){ return m.domeUid===d.domeUid; });
     const model=Object.assign(domeEmptyModel(), d, { _saved:true });
-    if(i>=0) db.domeLib[i]=model; else db.domeLib.push(model);
+    if(i>=0) db.domeLib[i]=_domeKeepLocalBytes(db.domeLib[i], model); else db.domeLib.push(model);
   });
 }
 function domeFsEnsureStarted(){
@@ -10660,7 +10691,7 @@ async function domeBackupAllChanged(){ if(!(_cloudOn && _gTok)) return;
 
 /* ---------- navigation / CRUD ---------- */
 function domeNewCard(){ const m = domeEmptyModel(); db.domeLib.push(m); _domeEditId = m.domeUid; _domeView='card'; _domeTab='overview'; _domeKitOpen=null; _domeKitPick=null; saveDomeLib(); rerenderKeepScroll(); }
-function domeOpenCard(uid){ _domeEditId = uid; _domeView='card'; _domeTab='overview'; _domeKitOpen=null; _domeKitPick=null; rerenderKeepScroll(); }
+function domeOpenCard(uid){ _domeEditId = uid; _domeView='card'; _domeTab='overview'; _domeKitOpen=null; _domeKitPick=null; rerenderKeepScroll(); try{ domeSchemAutoCheck(domeFind(uid)); }catch(_){} }   /* BUILD 16.16: re-attach schematics from Drive if the card lost them */
 function domeSetTab(t){ _domeTab=t; rerenderKeepScroll(); }
 function domeBackToList(){ _domeEditId=null; _domeView='list'; rerenderKeepScroll(); }
 function domeCancelCard(){ const m=domeEditing(); if(m && !m._saved){ db.domeLib = db.domeLib.filter(x=>x.domeUid!==m.domeUid); saveDomeLib(); } domeBackToList(); }
@@ -10723,16 +10754,52 @@ function domeSchemAddFile(key, input){ if(!domeSchemKeyOk(key)) return; const m=
   const rd=new FileReader();
   rd.onload=function(){ domeEnsureSchem(m); m.schematics[key].push({ id:newId(), name:f.name, type:f.type||'', size:f.size,
     data:String(rd.result||''), driveFileId:'', added:new Date().toISOString(), archived:false }); saveDomeLib();
-    try{ domeBackupWrite(m, true); }catch(_){}   /* backs up card JSON + uploads the new file to Drive (best-effort) */
+    try{ domeBackupWrite(m, true).then(function(){ try{ domeFsPushModel(m); }catch(_){} }); }catch(_){}   /* backs up card JSON + uploads the new file to Drive, THEN publishes the metadata (BUILD 16.16: was only pushed on the next card save) */
     rerenderKeepScroll(); };
   rd.onerror=function(){ alert('Could not read the file.'); };
   rd.readAsDataURL(f); input.value=''; }
+/* BUILD 16.16 — re-attach schematic PDFs that exist on Google Drive (Dome Library → <dome> → Documentation →
+   Schematics → <scheme>) but are missing from the card's metadata. Adds only, never removes; runs once per card
+   per session automatically and on the "Check Drive" button. Returns the number of files re-attached. */
+var _domeSchemChecked = {};
+async function domeSchemRestoreFromDrive(m, silent){
+  if(!m || !(_cloudOn && _gTok)) return 0;
+  domeEnsureSchem(m);
+  let added = 0;
+  try{
+    const rec = domeDriveMap()[m.domeUid] || {};
+    let fid = rec.folderId; if(fid && !(await driveAlive(fid))) fid = null;
+    if(!fid){ const root = await domeDriveRoot(); fid = await driveFindFolder(domeFolderName(m), root); }
+    if(!fid){ if(!silent) flashStat('No Drive folder for this dome yet'); return 0; }
+    const docFolder = await driveFindFolder('Documentation', fid); if(!docFolder) return 0;
+    const schemFolder = await driveFindFolder('Schematics', docFolder); if(!schemFolder) return 0;
+    for(const b of DOME_SCHEM){
+      const sub = await driveFindFolder(b.label, schemFolder); if(!sub) continue;
+      const q = encodeURIComponent("'" + sub + "' in parents and trashed = false and mimeType != 'application/vnd.google-apps.folder'");
+      const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name,mimeType,size,createdTime)&pageSize=200&orderBy=createdTime');
+      const j = await r.json(); const files = (j && j.files) || [];
+      const list = m.schematics[b.key];
+      files.forEach(function(df){
+        if(list.some(function(f){ return f.driveFileId === df.id; })) return;                       /* already attached */
+        const byName = list.find(function(f){ return !f.driveFileId && !f.archived && f.name === df.name; });
+        if(byName){ byName.driveFileId = df.id; added++; return; }                                   /* local entry, Drive copy found → link it */
+        list.push({ id:newId(), name:df.name||'scheme.pdf', type:df.mimeType||'application/pdf', size:parseInt(df.size,10)||0,
+                    data:'', driveFileId:df.id, added:df.createdTime||new Date().toISOString(), archived:false }); added++;
+      });
+    }
+  }catch(e){ if(!silent) flashStat('⚠ Drive check failed: ' + (e && e.message || e)); return 0; }
+  if(added){ saveDomeLib(); try{ domeFsPushModel(m); }catch(_){} flashStat('Re-attached ' + added + ' file' + (added===1?'':'s') + ' from Drive ✓'); if(_domeEditId===m.domeUid) rerenderKeepScroll(); }
+  else if(!silent) flashStat('Drive checked — all schematic files are attached ✓');
+  return added;
+}
+function domeSchemCheckDrive(){ const m=domeEditing(); if(!m) return; if(!(_cloudOn && _gTok)){ flashStat('Sign in to check Google Drive'); return; } domeSchemRestoreFromDrive(m, false); }
+function domeSchemAutoCheck(m){ if(!m || !m.domeUid || _domeSchemChecked[m.domeUid] || !(_cloudOn && _gTok)) return; _domeSchemChecked[m.domeUid]=true; setTimeout(function(){ domeSchemRestoreFromDrive(m, true).catch(function(){}); }, 800); }
 function domeSchemFileDownload(key, id){ const m=domeEditing(); if(!m) return; domeEnsureSchem(m); const f=(m.schematics[key]||[]).find(x=>x.id===id); if(!f) return;
   if(f.data){ const a=document.createElement('a'); a.href=f.data; a.download=f.name||'scheme.pdf'; document.body.appendChild(a); a.click(); a.remove(); }
   else if(f.driveFileId){ window.open('https://drive.google.com/file/d/'+f.driveFileId+'/view','_blank'); }
   else { alert('This file was added on another device and is not stored locally yet.'); } }
 function domeArchiveSchemFile(key, id){ const m=domeEditing(); if(!m) return; domeEnsureSchem(m); const f=(m.schematics[key]||[]).find(x=>x.id===id); if(!f) return;
-  if(!confirm('Remove this drawing from the dome card? (metadata only — the Google Drive copy is not deleted)')) return; f.archived=true; saveDomeLib(); rerenderKeepScroll(); }
+  if(!confirm('Remove this drawing from the dome card? (metadata only — the Google Drive copy is not deleted)')) return; f.archived=true; saveDomeLib(); try{ domeFsPushModel(m); }catch(_){} rerenderKeepScroll(); }
 /* Best-effort: upload schematic files with local bytes but no driveFileId into Documentation → Schematics → <bucket>. */
 async function domeSchemUploadFiles(m, fid){ if(!m||!m.schematics||!(_cloudOn && _gTok)) return;
   try{ let docFolder=null, schemFolder=null;
@@ -11012,8 +11079,8 @@ function domeSchematicsCard(m){
     </div>`;
   };
   return `<div class="card">
-    <div class="card-head"><h3>Assembly Schematics</h3></div>
-    <div class="hint" style="margin:-6px 0 12px;color:var(--dim);font-size:11.5px">Assembly drawings for this dome. Attach PDF files to each scheme — they are stored with the dome card and backed up to Google Drive (Dome Library → this dome → Documentation → Schematics).</div>
+    <div class="card-head"><h3>Assembly Schematics</h3><button class="mod-btn" style="padding:5px 11px;font-size:11.5px" title="Re-attach PDFs that are on Google Drive (Documentation → Schematics) but missing here" onclick="domeSchemCheckDrive()">↻ Check Drive</button></div>
+    <div class="hint" style="margin:-6px 0 12px;color:var(--dim);font-size:11.5px">Assembly drawings for this dome. Attach PDF files to each scheme — they are stored with the dome card and backed up to Google Drive (Dome Library → this dome → Documentation → Schematics). If a file is on Drive but not listed here, "Check Drive" re-attaches it.</div>
     ${DOME_SCHEM.map(row).join('')}
   </div>`;
 }
