@@ -814,7 +814,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.38 · DOME CARD: OVERVIEW + TRUSS IN THE SAME COMPACT LAYOUT · DOORS: FABRIC DOOR (QTY + SERIAL) · COMPONENTS: COMPACT ONE-PARAMETER-PER-ROW LAYOUT · DOME LIBRARY: AN OPEN CARD NOW RECEIVES TEAMMATES' CHANGES LIVE (DELETIONS INCLUDED) · DOME CARD: COVER / INFLATABLE COVER GET COLOUR (GREY · WHITE · PRINTED) + MATERIAL · ARCHIVE BUTTONS REMOVED (DELETE ONLY) · DELETE BUTTON ON COVER / SCREEN / INFLATABLE ENTRIES · DASHBOARD: CAMERA MODEL = ALL "CAMERA" ROWS (NO LENS) · DOME & TRUSS: READY = DOME CARD "READY TO SHIP" (INDICATOR, NOT A BUTTON) · DOME LIBRARY: A DELETED TRUSS KIT / ELEMENT / FILE STAYS DELETED (NO-BASE TIEBREAKER BY REV) · DOME LIBRARY FIX: SAVE DOME CARD KEEPS TRUSS SN / COMPONENTS / SCHEMATICS (MERGE BASE WAS ALIASED TO THE LIVE CARD) · NEW MODULE: DOME & TRUSS (PICK FROM DOME LIBRARY · TRUSS KIT · SHIPS AUTOMATICALLY) · AUTO-UPDATE: RETRIES FOR ~15 MIN WHEN THE SERVER STILL SENDS THE OLD FILE · SHIPPING: SUB-SECTIONS — CAMERA CASES + OTHER, POWER / VIDEO / AUDIO CABLES (LIST + PDF) · SHIPPING PDF REBUILT (A4 LANDSCAPE · NOT-PACKED SECTION PER UNIT · GREEN/RED + WORDS · PAGE X OF Y) · SIDEBAR: EQUIPMENT & SHIPPING LINK · SHIPPING: CLICK AN ITEM NAME → JUMPS TO ITS MODULE ROW · PROJECTOR ACCESSORIES TABLE (EVERY NAMED ROW SHIPS AS ITS OWN MODULE AFTER PROJECTORS) · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.39 · DOME LIBRARY: DELETED KITS / ELEMENTS / COVERS ARE STICKY TOMBSTONES (CAN NEVER COME BACK) · DOME CARD: OVERVIEW + TRUSS IN THE SAME COMPACT LAYOUT · DOORS: FABRIC DOOR (QTY + SERIAL) · COMPONENTS: COMPACT ONE-PARAMETER-PER-ROW LAYOUT · DOME LIBRARY: AN OPEN CARD NOW RECEIVES TEAMMATES' CHANGES LIVE (DELETIONS INCLUDED) · DOME CARD: COVER / INFLATABLE COVER GET COLOUR (GREY · WHITE · PRINTED) + MATERIAL · ARCHIVE BUTTONS REMOVED (DELETE ONLY) · DELETE BUTTON ON COVER / SCREEN / INFLATABLE ENTRIES · DASHBOARD: CAMERA MODEL = ALL "CAMERA" ROWS (NO LENS) · DOME & TRUSS: READY = DOME CARD "READY TO SHIP" (INDICATOR, NOT A BUTTON) · DOME LIBRARY: A DELETED TRUSS KIT / ELEMENT / FILE STAYS DELETED (NO-BASE TIEBREAKER BY REV) · DOME LIBRARY FIX: SAVE DOME CARD KEEPS TRUSS SN / COMPONENTS / SCHEMATICS (MERGE BASE WAS ALIASED TO THE LIVE CARD) · NEW MODULE: DOME & TRUSS (PICK FROM DOME LIBRARY · TRUSS KIT · SHIPS AUTOMATICALLY) · AUTO-UPDATE: RETRIES FOR ~15 MIN WHEN THE SERVER STILL SENDS THE OLD FILE · SHIPPING: SUB-SECTIONS — CAMERA CASES + OTHER, POWER / VIDEO / AUDIO CABLES (LIST + PDF) · SHIPPING PDF REBUILT (A4 LANDSCAPE · NOT-PACKED SECTION PER UNIT · GREEN/RED + WORDS · PAGE X OF Y) · SIDEBAR: EQUIPMENT & SHIPPING LINK · SHIPPING: CLICK AN ITEM NAME → JUMPS TO ITS MODULE ROW · PROJECTOR ACCESSORIES TABLE (EVERY NAMED ROW SHIPS AS ITS OWN MODULE AFTER PROJECTORS) · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -9585,8 +9585,8 @@ function domeSnapOf(m){ if(!m) return null; const t = domeEnsureTruss(m);
   return { domeUid:m.domeUid, serial:m.serial||'', size:String(m.size||''), type:m.type||'', screenType:m.screenType||'', screenTypeOther:m.screenTypeOther||'', doors:m.doors||'', doorsCustom:m.doorsCustom||'', readyToShip:!!m.readyToShip,
     fanOpenings:String(m.fanOpenings||''), hvacOpenings:String(m.hvacOpenings||''),
     truss:{ sn:t.sn||'', color:t.color||'', bags:t.bags||'', parts:t.parts||'', couplers:t.couplers||'',
-      elements:(t.elements||[]).filter(e=>e && String(e.name||'').trim()).map(e=>({ id:e.id, cat:e.cat||'', name:e.name, qty:String(e.qty||'1') })),
-      kits:(t.kits||[]).map(k=>({ id:k.id, num:k.num||'', status:k.status||'', items:(k.items||[]).filter(it=>it && String(it.name||'').trim()).map(it=>({ id:it.id, core:!!it.core, cat:it.cat||'', name:it.name, qty:String(it.qty||'1'), link:it.link||'' })) })) } }; }
+      elements:domeLiveEls(t).filter(e=>String(e.name||'').trim()).map(e=>({ id:e.id, cat:e.cat||'', name:e.name, qty:String(e.qty||'1') })),
+      kits:domeLiveKits(t).map(k=>({ id:k.id, num:k.num||'', status:k.status||'', items:(k.items||[]).filter(it=>it && String(it.name||'').trim()).map(it=>({ id:it.id, core:!!it.core, cat:it.cat||'', name:it.name, qty:String(it.qty||'1'), link:it.link||'' })) })) } }; }
 /* the dome data the module works with: the live library card when present, else the project's snapshot */
 function projDomeData(){ const dm = ensureDome(state); if(!dm.domeUid) return null; const m = domeFind(dm.domeUid); if(m && !m.archived) return domeSnapOf(m); return dm.snap || null; }
 function domeSnapTitle(sn){ if(!sn) return ''; const size = String(sn.size||'').replace(/\s*m$/i,'').trim(); return [size?size+' m':'', sn.type, sn.serial].filter(Boolean).join(' · ') || 'Dome'; }
@@ -10658,12 +10658,16 @@ function domeEmptyTruss(){ return { sn:'', color:'', bags:'', parts:'', couplers
 function domeEmptyTrussEl(){ return { id:newId(), cat:'', name:'', qty:'' }; }
 function domeEmptyKitItem(){ return { id:newId(), core:false, cat:'', name:'', qty:'', price:'', comment:'', link:'' }; }
 function domeKitPad(n){ n=parseInt(n,10)||0; return (n<10?'0':'')+n; }
+/* BUILD 16.39 — deleted kits / truss elements / covers are TOMBSTONES (deleted:true kept in the list, hidden everywhere),
+   so a deletion can never be undone by a stale copy, an old build, or a concurrent edit: the merge keeps the flag sticky. */
+function domeLiveKits(t){ return ((t&&t.kits)||[]).filter(k=>k && !k.deleted); }
+function domeLiveEls(t){ return ((t&&t.elements)||[]).filter(e=>e && !e.deleted); }
 function domeNextKitNum(m){ let mx=0; ((m.truss&&m.truss.kits)||[]).forEach(k=>{ const n=parseInt(k.num,10); if(isFinite(n)&&n>mx) mx=n; }); return domeKitPad(mx+1); }
 function domeEmptyKit(num){ return { id:newId(), num:num||'01', status:'draft', items:[], created:'' }; }
 /* Candidates offered when creating a kit: the dome truss ring + couplers + every Truss element (from library). */
 function domeTrussCandidates(m){ const t=(m&&m.truss)||{}; const out=[];
   if(String(t.sn||'').trim()) out.push({ key:'truss', cat:'', name:domeTrussName(m), qty:'1', price:'', link:'' });   /* the dome truss ring exists only once the truss has a serial */
-  (Array.isArray(t.elements)?t.elements:[]).forEach(e=>{ if(e && String(e.name||'').trim()){ const hit=libFind(e.name);
+  domeLiveEls(t).forEach(e=>{ if(e && String(e.name||'').trim()){ const hit=libFind(e.name);
     out.push({ key:'el:'+e.id, cat:e.cat||'', name:e.name, qty:String(e.qty||'1'), price:(hit&&hit.price)||'', link:(hit&&hit.link)||'' }); } });
   return out; }
 function domeEnsureTruss(m){ if(!m) return null; if(!m.truss || typeof m.truss!=='object') m.truss=domeEmptyTruss(); const t=m.truss;
@@ -10684,8 +10688,8 @@ function domeEnsureTruss(m){ if(!m) return null; if(!m.truss || typeof m.truss!=
   if('kit' in t) delete t.kit;
   /* BUILD 15.21: truss elements (components that ship with the truss, from the library) */
   if(!Array.isArray(t.elements)) t.elements=[];
-  t.elements.forEach(e=>{ if(e && typeof e==='object'){ if(!e.id) e.id=newId(); ['cat','name','qty'].forEach(f=>{ if(typeof e[f]!=='string') e[f]=String(e[f]==null?'':e[f]); }); } });
-  t.kits.forEach(k=>{ if(k && typeof k==='object'){ if(!k.id) k.id=newId(); if(!k.num) k.num=domeKitPad(1);
+  t.elements.forEach(e=>{ if(e && typeof e==='object'){ if(!e.id) e.id=newId(); ['cat','name','qty'].forEach(f=>{ if(typeof e[f]!=='string') e[f]=String(e[f]==null?'':e[f]); }); e.deleted=!!e.deleted; } });
+  t.kits.forEach(k=>{ if(k && typeof k==='object'){ if(!k.id) k.id=newId(); if(!k.num) k.num=domeKitPad(1); k.deleted=!!k.deleted;
     k.status=(k.status==='saved'?'saved':'draft'); if(typeof k.created!=='string') k.created=String(k.created||'');
     if(!Array.isArray(k.items)) k.items=[];
     /* BUILD 15.21: the Required-Core bundle is gone — migrate any 15.18/15.19 core into real rows, once */
@@ -10703,7 +10707,7 @@ function domeTrussName(m){ const t=(m&&m.truss)||{}; const sn=String(t.sn||'').t
 function domeHasTruss(m){ const t=domeEnsureTruss(m);
   if(String(t.sn||'').trim()||String(t.color||'').trim()||String(t.bags||'').trim()||String(t.parts||'').trim()||String(t.couplers||'').trim()) return true;
   if(t.files.some(f=>!f.archived)) return true;
-  return t.kits.length>0; }
+  return domeLiveKits(t).length>0; }
 function domeFileKind(f){ const n=(f.name||'').toLowerCase(); if(/\.pdf$/.test(n)||/pdf/.test(f.type||'')) return 'PDF';
   if(/\.dwg$/.test(n)) return 'DWG'; if(/\.dxf$/.test(n)) return 'DXF'; const ext=(n.split('.').pop()||'').toUpperCase(); return (ext && ext!==n.toUpperCase())?ext:'FILE'; }
 function domeFileSize(n){ n=+n||0; if(n<1024) return n+' B'; if(n<1048576) return (n/1024).toFixed(0)+' KB'; return (n/1048576).toFixed(1)+' MB'; }
@@ -10712,8 +10716,8 @@ function domeTrussDoc(t){ t=t||{}; return { sn:String(t.sn||''), color:String(t.
   files:(Array.isArray(t.files)?t.files:[]).map(f=>({ id:String(f.id||''), name:String(f.name||''), type:String(f.type||''),
     size:(typeof f.size==='number'?f.size:parseInt(f.size,10)||0), notes:String(f.notes||''), driveFileId:String(f.driveFileId||''),
     added:String(f.added||''), archived:!!f.archived })),
-  elements:(Array.isArray(t.elements)?t.elements:[]).map(e=>({ id:String(e.id||''), cat:String(e.cat||''), name:String(e.name||''), qty:String(e.qty||'') })),
-  kits:(Array.isArray(t.kits)?t.kits:[]).map(k=>({ id:String(k.id||''), num:String(k.num||''), status:(k.status==='saved'?'saved':'draft'), created:String(k.created||''),
+  elements:(Array.isArray(t.elements)?t.elements:[]).map(e=>({ id:String(e.id||''), cat:String(e.cat||''), name:String(e.name||''), qty:String(e.qty||''), deleted:!!e.deleted })),
+  kits:(Array.isArray(t.kits)?t.kits:[]).map(k=>({ id:String(k.id||''), num:String(k.num||''), status:(k.status==='saved'?'saved':'draft'), created:String(k.created||''), deleted:!!k.deleted,
     items:(Array.isArray(k.items)?k.items:[]).map(it=>({ id:String(it.id||''), core:!!it.core, cat:String(it.cat||''), name:String(it.name||''), qty:String(it.qty||''),
       price:String(it.price||''), comment:String(it.comment||''), link:String(it.link||'') })) })) }; }
 /* Each connector: its own Material option list, or materials:null → no Material field (Quantity only). */
@@ -10777,7 +10781,7 @@ function domeComponentsDoc(c){
     frame: { serial:String(fr.serial||''), tubeOuter:String(fr.tubeOuter||''), tubeWall:String(fr.tubeWall||''), material:String(fr.material||'') },
     doors: (dr=>({ qty:String(dr.qty||''), type:String(dr.type||''), height:String(dr.height||''), width:String(dr.width||''), fabricQty:String(dr.fabricQty||''), fabricSerial:String(dr.fabricSerial||'') }))(c.doors||{}),
     covers: (Array.isArray(c.covers)?c.covers:[]).map(x=>({ id:String(x.id||''), kind:String(x.kind||'Cover'), serial:String(x.serial||''),
-      screenType:String(x.screenType||''), screenTypeOther:String(x.screenTypeOther||''), notes:String(x.notes||''), archived:!!x.archived,
+      screenType:String(x.screenType||''), screenTypeOther:String(x.screenTypeOther||''), notes:String(x.notes||''), archived:!!x.archived, deleted:!!x.deleted,
       color:String(x.color||''), material:String(x.material||''), materialOther:String(x.materialOther||'') })),
     connectors: DOME_CONNECTORS.reduce((o,cn)=>{ const q=(c.connectors&&c.connectors[cn.key])||{}; o[cn.key]={ qty:String(q.qty||''), material:String(q.material||'') }; return o; }, {})
   };
@@ -10888,7 +10892,7 @@ function _domeMergeIdLists(base, local, server, localNewer){
   const out=[];
   order.forEach(function(id){
     const l=lBy[id], s=sBy[id], hasB=Object.prototype.hasOwnProperty.call(bBy, id);
-    if(l && s){ out.push(domeMerge3(bBy[id], l, s, localNewer)); return; }
+    if(l && s){ const m = domeMerge3(bBy[id], l, s, localNewer); if((l.deleted || s.deleted) && m && typeof m==='object'){ m.deleted = true; if('archived' in m) m.archived = true; } out.push(m); return; }   /* BUILD 16.39: deleted is sticky */
     if(l && !s){ if(hasB ? _domeEqj(l, bBy[id]) : (_domeRevCtx.s > _domeRevCtx.l)) return;  out.push(l); return; }   /* server deleted it and we didn't change it → gone; no base: gone only if the server is STRICTLY newer; else keep */
     if(s && !l){ if(hasB ? _domeEqj(s, bBy[id]) : (_domeRevCtx.l > _domeRevCtx.s)) return;  out.push(s); return; }   /* we deleted it and server didn't change it → gone; no base: gone only if we are STRICTLY newer; else keep (a tie never loses data) */
   });
@@ -11119,7 +11123,7 @@ function domeArchiveCover(id){ const m=domeEditing(); if(!m) return; domeEnsureC
 function domeDeleteCover(id){ const m=domeEditing(); if(!m) return; domeEnsureComponents(m); const i=m.components.covers.findIndex(c=>c.id===id); if(i<0) return;
   const x=m.components.covers[i]; const label=(x.kind||'item')+(String(x.serial||'').trim()?(' '+x.serial.trim()):'');
   if(!confirm('Delete this '+label+' from the dome card? This cannot be undone (use Archive to hide it instead).')) return;
-  m.components.covers.splice(i,1); domeMirrorScreen(m); saveDomeLib(); rerenderKeepScroll(); flashStat(label+' deleted'); }
+  x.deleted=true; x.archived=true; domeMirrorScreen(m); saveDomeLib(); try{ if(m._saved) domeFsPushModel(m); }catch(_){} rerenderKeepScroll(); flashStat(label+' deleted'); }   /* BUILD 16.39: tombstone + immediate push */
 function domeConnUpd(key, field, val){ const m=domeEditing(); if(!m) return; domeEnsureComponents(m); if(!m.components.connectors[key]) return;
   m.components.connectors[key][field]=val; saveDomeLib(); }
 function domeDoorUpd(field, val){ const m=domeEditing(); if(!m) return; domeEnsureComponents(m); m.components.doors[field]=val;
@@ -11216,7 +11220,7 @@ async function domeSchemUploadFiles(m, fid){ if(!m||!m.schematics||!(_cloudOn &&
 }
 /* ---- Ready Truss Kits (BUILD 15.18): numbered kits (01,02,…), each = a dome-truss core + modular items ---- */
 var _domeKitOpen = null;   /* id of the kit currently in edit mode, or null (list view) */
-function domeKitFind(id){ const m=domeEditing(); if(!m) return null; domeEnsureTruss(m); return m.truss.kits.find(k=>k.id===id)||null; }
+function domeKitFind(id){ const m=domeEditing(); if(!m) return null; domeEnsureTruss(m); return m.truss.kits.find(k=>k.id===id && !k.deleted)||null; }
 function domeKitCreate(){ const m=domeEditing(); if(!m) return; domeEnsureTruss(m); const k=domeEmptyKit(domeNextKitNum(m)); k.created=new Date().toISOString();
   m.truss.kits.push(k); _domeKitOpen=k.id; _domeKitPick = domeTrussCandidates(m).length ? k.id : null;   /* BUILD 15.34: no picker when the truss is empty — nothing to pick */
   saveDomeLib(); rerenderKeepScroll(); }
@@ -11225,12 +11229,12 @@ function domeKitBack(){ _domeKitOpen=null; _domeKitPick=null; rerenderKeepScroll
 function domeKitRemove(id){ const m=domeEditing(); if(!m) return; domeEnsureTruss(m); const k=m.truss.kits.find(x=>x.id===id); if(!k) return;
   const code=prompt('Enter delete code to remove Truss Kit '+(k.num||'')+':');   /* BUILD 15.26: PIN-protected delete (420) */
   if(code===null) return; if(String(code).trim()!=='420'){ alert('Wrong code — Truss Kit not deleted.'); return; }
-  m.truss.kits=m.truss.kits.filter(x=>x.id!==id); if(_domeKitOpen===id) _domeKitOpen=null; saveDomeLib(); rerenderKeepScroll(); }
+  k.deleted=true; k.items=[]; if(_domeKitOpen===id) _domeKitOpen=null; saveDomeLib(); try{ if(m._saved) domeFsPushModel(m); }catch(_){} rerenderKeepScroll(); }   /* BUILD 16.39: tombstone + immediate push */
 /* Truss elements — components that ship WITH this dome's truss, picked from the Truss library */
-function domeTrussEl(iid){ const m=domeEditing(); if(!m) return null; domeEnsureTruss(m); return m.truss.elements.find(e=>e.id===iid)||null; }
+function domeTrussEl(iid){ const m=domeEditing(); if(!m) return null; domeEnsureTruss(m); return m.truss.elements.find(e=>e.id===iid && !e.deleted)||null; }
 function domeTrussElAdd(){ const m=domeEditing(); if(!m) return; domeEnsureTruss(m); m.truss.elements.push(domeEmptyTrussEl()); saveDomeLib(); rerenderKeepScroll(); }
 function domeTrussElUpd(iid, field, val){ const e=domeTrussEl(iid); if(!e) return; e[field]=val; saveDomeLib(); if(field==='cat') rerenderKeepScroll(); }
-function domeTrussElDel(iid){ const m=domeEditing(); if(!m) return; domeEnsureTruss(m); m.truss.elements=m.truss.elements.filter(e=>e.id!==iid); saveDomeLib(); rerenderKeepScroll(); }
+function domeTrussElDel(iid){ const m=domeEditing(); if(!m) return; domeEnsureTruss(m); const e=m.truss.elements.find(x=>x.id===iid); if(e){ e.deleted=true; } saveDomeLib(); rerenderKeepScroll(); }
 function domeTrussElAddToLib(iid){ const e=domeTrussEl(iid); if(!e) return; const name=(e.name||'').trim(); if(!name||libFind(name)) return;
   ensureLibGroup('truss').push({ cat:e.cat||'', name:name, price:'', link:'' }); saveState(); flashStat('Added to Truss library ✓'); rerenderKeepScroll(); }
 /* Kit create-picker: choose which truss components (ring + couplers + elements) become kit rows */
@@ -11328,11 +11332,12 @@ function domePassport(m){
   const connTbl=`<table class="dpt"><thead><tr><th>Connector</th><th>Qty</th><th>Material</th></tr></thead><tbody>${DOME_CONNECTORS.map(cn=>{const q=c.connectors[cn.key]||{};return `<tr><td>${esc(cn.label)}</td><td>${esc(String(q.qty||'').trim()||'—')}</td><td>${cn.materials?esc(q.material||'—'):'—'}</td></tr>`;}).join('')}</tbody></table>`;
   const dr=c.doors; const doorSize = dr.type==='Rectangular' ? ((String(dr.height||'').trim()||'?')+' × '+(String(dr.width||'').trim()||'?')+' mm') : '—';
   /* Truss elements */
-  const elsTbl = t.elements.length
-    ? `<table class="dpt"><thead><tr><th style="width:6%">#</th><th>Category</th><th>Item</th><th style="text-align:right;width:12%">Qty</th></tr></thead><tbody>${t.elements.map((e,i)=>`<tr><td>${i+1}</td><td>${esc(e.cat||'—')}</td><td>${esc(e.name||'—')}</td><td style="text-align:right">${esc(e.qty||'—')}</td></tr>`).join('')}</tbody></table>`
+  const liveEls = domeLiveEls(t);
+  const elsTbl = liveEls.length
+    ? `<table class="dpt"><thead><tr><th style="width:6%">#</th><th>Category</th><th>Item</th><th style="text-align:right;width:12%">Qty</th></tr></thead><tbody>${liveEls.map((e,i)=>`<tr><td>${i+1}</td><td>${esc(e.cat||'—')}</td><td>${esc(e.name||'—')}</td><td style="text-align:right">${esc(e.qty||'—')}</td></tr>`).join('')}</tbody></table>`
     : `<div class="dpass-empty">No truss components.</div>`;
   /* Truss kits */
-  const kits = t.kits.map(k=>{ const named=k.items.filter(it=>String(it.name||'').trim());
+  const kits = domeLiveKits(t).map(k=>{ const named=k.items.filter(it=>String(it.name||'').trim());
     return `<div class="dpk"><div style="font-weight:800;font-size:13px;margin-bottom:6px">Truss Kit ${esc(k.num)} <span style="font-size:11px;font-weight:600;color:${k.status==='saved'?'#2e9e5b':'var(--ink2)'}">· ${k.status==='saved'?'Saved':'Draft'}</span> <span style="color:var(--ink2);font-weight:500;font-size:11px">· ${named.length} component${named.length===1?'':'s'}</span></div>
       ${named.length?`<table class="dpt"><thead><tr><th style="width:6%">#</th><th>Category</th><th>Item</th><th style="text-align:right;width:12%">Qty</th></tr></thead><tbody>${named.map((it,i)=>`<tr class="${it.core?'dcore':''}"><td>${i+1}</td><td>${esc(it.cat||'—')}</td><td>${esc(it.name)}</td><td style="text-align:right">${esc(it.qty||'1')}</td></tr>`).join('')}</tbody></table>`:`<div class="dpass-empty">No components.</div>`}
     </div>`; }).join('') || `<div class="dpass-empty">No truss kits yet.</div>`;
@@ -11669,7 +11674,7 @@ function domeTrussElRow(e, n){
   </tr>`;
 }
 function domeTrussElementsCard(m){
-  const t=domeEnsureTruss(m); const els=t.elements;
+  const t=domeEnsureTruss(m); const els=domeLiveEls(t);
   const rows=els.map((e,i)=>domeTrussElRow(e,i+1)).join('') || `<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:14px">No components yet. Add couplers, plates, braces… that ship with this truss.</td></tr>`;
   return `<div style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px">
     <datalist id="dlTrussKit">${(db.library&&db.library.truss||[]).filter(it=>(it.name||'').trim()).map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>
@@ -11681,8 +11686,9 @@ function domeTrussElementsCard(m){
 }
 function domeKitCard(m){
   const t=domeEnsureTruss(m);
-  const openKit = _domeKitOpen ? t.kits.find(k=>k.id===_domeKitOpen) : null;
-  const listKits = openKit ? t.kits.filter(k=>k.id!==openKit.id) : t.kits;   /* BUILD 15.27: the editing kit shows below; the rest stay visible above */
+  const liveKits = domeLiveKits(t);
+  const openKit = _domeKitOpen ? liveKits.find(k=>k.id===_domeKitOpen) : null;
+  const listKits = openKit ? liveKits.filter(k=>k.id!==openKit.id) : liveKits;   /* BUILD 15.27: the editing kit shows below; the rest stay visible above */
   const cards = listKits.map(k=>{ const named=k.items.filter(it=>String(it.name||'').trim());
     const table = named.length
       ? `<table class="eq" style="background:transparent">
