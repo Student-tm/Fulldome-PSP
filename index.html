@@ -4777,7 +4777,12 @@ function shipPlaces(){
   fanSeparate.forEach((it,i)=> places.push({key:'pl|fan-sep|'+i, name:it.name, module:'Screen Fan', items:[it]}));
   /* ---- Cables & Adapters (BUILD 14.31) ---- */
   const cabCombined = [], cabSeparate = [];
-  ((state.cables&&state.cables.rows)||[]).forEach((r,idx)=>{ if(!(r.name||'').trim()) return; (isCombined(r)?cabCombined:cabSeparate).push(mkItem(r,'i|cab|'+idx)); });
+  /* BUILD 16.25: every cable item carries its sub-section (Power / Video / Audio Cables) → sub-headings in the
+     packing list and the PDF; the combined "Cables" place lists them in group order so each heading appears once */
+  const cabSubOf = r => { const g = (typeof cabGrpOf==='function') ? cabGrpOf(r) : 'power'; const b = (typeof CAB_GROUPS!=='undefined') && CAB_GROUPS.find(x=>x.key===g); return b ? b.label : 'Cables'; };
+  const cabOrder = r => { const g = (typeof cabGrpOf==='function') ? cabGrpOf(r) : 'power'; return g==='power' ? 0 : g==='video' ? 1 : g==='audio' ? 2 : 3; };
+  ((state.cables&&state.cables.rows)||[]).map((r,idx)=>({r,idx})).sort((a,b)=> cabOrder(a.r)-cabOrder(b.r) || a.idx-b.idx)
+    .forEach(({r,idx})=>{ if(!(r.name||'').trim()) return; const it = mkItem(r,'i|cab|'+idx); it.sub = cabSubOf(r); (isCombined(r)?cabCombined:cabSeparate).push(it); });
   if(cabCombined.length) places.push({key:'pl|cab', name:'Cables', module:'Cables', items:cabCombined});
   cabSeparate.forEach((it,i)=> places.push({key:'pl|cab-sep|'+i, name:it.name, module:'Cables', items:[it]}));
   /* ---- Tools & Installation Hardware (BUILD 14.37) — ships as one "Tools" place ---- */
@@ -4795,7 +4800,9 @@ function shipPlaces(){
     if(cs){ (camByCase[cs.id] = camByCase[cs.id] || []).push(it); return; }   /* BUILD 16.16: a flight case ships as ONE place */
     (isCombined(r)?camCombined:camSeparate).push(it);
   });
-  camCasesL.forEach((c,ci)=>{ const its = camByCase[c.id]; if(its && its.length) places.push({key:'pl|cam-case|'+c.id, name:camCaseLabel(c, ci), module:'Calibration Camera', items:its, sub:camCaseLabel(c, ci)}); });   /* sub = sub-section heading in the packing list / PDF */
+  let camHasCase = false;
+  camCasesL.forEach((c,ci)=>{ const its = camByCase[c.id]; if(its && its.length){ camHasCase = true; its.forEach(it=>{ it.sub = camCaseLabel(c, ci); }); places.push({key:'pl|cam-case|'+c.id, name:camCaseLabel(c, ci), module:'Calibration Camera', items:its, subChip:its.length+' item'+(its.length===1?'':'s')+' · ONE PLACE'}); } });   /* it.sub = sub-section heading in the packing list / PDF (BUILD 16.25: item-level) */
+  if(camHasCase){ camCombined.concat(camSeparate).forEach(it=>{ it.sub = 'Other'; }); }   /* BUILD 16.25: everything outside the cases → "OTHER" */
   if(camCombined.length) places.push({key:'pl|cam', name:'Camera', module:'Calibration Camera', items:camCombined});
   camSeparate.forEach((it,i)=> places.push({key:'pl|cam-sep|'+i, name:it.name, module:'Calibration Camera', items:[it]}));
   return places;
@@ -4984,7 +4991,7 @@ function genShipPDF(){
     const cmtOf = it => (S.meta && S.meta[it.key] && S.meta[it.key].cmt) ? String(S.meta[it.key].cmt).trim() : '';
     const itemLabel = it => { let s = it.name || '—'; if(it.serial) s += '  ·  SN ' + it.serial; const c = cmtOf(it); if(c) s += '  [' + c + ']'; return s; };
     const catOf = (it, pl) => (it.cat || '').trim() || (pl.module || '—');
-    const locOf = (it, pl) => pl.sub ? pl.sub : (pl.items.length > 1 ? pl.name : 'Own place');
+    const locOf = (it, pl) => pl.subChip ? pl.name : (pl.items.length > 1 ? pl.name : 'Own place');
     const palLabel = p => 'PALLET ' + (p.num || '?') + (p.name ? (' — ' + p.name) : '');
     /* merge identical units (same name / category / serial / location / status) into one row by qty */
     const mergeRows = (list, keyFn) => { const out = [], by = {}; list.forEach(u => { const k = keyFn(u); if(by[k]){ by[k].qty += u.qty; return; } by[k] = Object.assign({}, u); out.push(by[k]); }); return out; };
@@ -5022,7 +5029,7 @@ function genShipPDF(){
 
     /* ================= NOT PACKED / NOT ON ANY PALLET ================= */
     const missingUnits = units.filter(u => u.missing > 0).map(u => ({
-      qty:u.missing, name:itemLabel(u.it), cat:catOf(u.it, u.pl), module:u.pl.module || 'Other', serial:u.it.serial || '',
+      qty:u.missing, name:itemLabel(u.it), cat:catOf(u.it, u.pl), module:u.pl.module || 'Other', serial:u.it.serial || '', sub:u.it.sub || '',
       reason: u.pal ? ('On ' + palLabel(u.pal).replace('PALLET', 'Pallet') + ' — NOT LOADED (On pallet not ticked)') : 'Not assigned to any pallet'
     }));
     if(missingUnits.length){
@@ -5031,7 +5038,8 @@ function genShipPDF(){
       const rows = [];
       groupByModule(missingUnits).forEach(g => {
         rows.push({ group:String(g.module).toUpperCase() });
-        mergeRows(g.list, u => [u.name, u.cat, u.serial, u.reason].join('|')).forEach(u => rows.push({ cells:[String(u.qty), u.name, u.cat, u.reason], bg:RED_BG, color:RED, boldCols:[true, true, false, false] }));
+        const subsM = []; g.list.forEach(u => { const sb = u.sub || ''; if(subsM.indexOf(sb) < 0) subsM.push(sb); });
+        subsM.forEach(sb => { if(sb) rows.push({ group:sb.toUpperCase(), sub:true }); mergeRows(g.list.filter(u => (u.sub || '') === sb), u => [u.name, u.cat, u.serial, u.reason].join('|')).forEach(u => rows.push({ cells:[String(u.qty), u.name, u.cat, u.reason], bg:RED_BG, color:RED, boldCols:[true, true, false, false] })); });
       });
       table([{ title:'QTY', w:46, align:'right' }, { title:'ITEM / MODEL', w:CW - 46 - 150 - 250 }, { title:'CATEGORY', w:150 }, { title:'REASON', w:250 }], rows, 'NOT PACKED / NOT ON ANY PALLET');
       y += 4;
@@ -5055,14 +5063,14 @@ function genShipPDF(){
       setFont(9, false, DIM); doc.text(dimStr + '     Weight: ' + (wt ? wt + ' lb' : '—') + '     Units on pallet: ' + qtyOn + '     Packed: ' + qtyPk + '     Not packed: ' + (qtyOn - qtyPk), M, y + 9); y += 16;
       if(!pu.length){ text('(empty — nothing assigned to this pallet)', 9, false, DIM); return; }
       const rows = [];
-      const list = pu.map(u => ({ qty:u.required, name:itemLabel(u.it), cat:catOf(u.it, u.pl), module:u.pl.module || 'Other', sub:u.pl.sub || '', serial:u.it.serial || '', loc:locOf(u.it, u.pl), loaded:u.loaded }));
+      const list = pu.map(u => ({ qty:u.required, name:itemLabel(u.it), cat:catOf(u.it, u.pl), module:u.pl.module || 'Other', sub:u.it.sub || '', onePlace:!!u.pl.subChip, serial:u.it.serial || '', loc:locOf(u.it, u.pl), loaded:u.loaded }));
       groupByModule(list).forEach(g => {
         rows.push({ group:String(g.module).toUpperCase() });
         const plain = g.list.filter(u => !u.sub), cased = g.list.filter(u => u.sub);
         const push = u => rows.push({ cells:[String(u.qty), u.name, u.cat, u.loc, u.loaded ? 'PACKED' : 'NOT PACKED'], bg:u.loaded ? GREEN_BG : RED_BG, color:INK, cellColor:[null, null, null, null, u.loaded ? GREEN : RED], mark:u.loaded ? 'ok' : 'x', boldCols:[true, false, false, false, true] });
         mergeRows(plain, u => [u.name, u.cat, u.serial, u.loc, u.loaded].join('|')).forEach(push);
         const subs = []; cased.forEach(u => { if(subs.indexOf(u.sub) < 0) subs.push(u.sub); });
-        subs.forEach(sb => { const its = cased.filter(u => u.sub === sb); rows.push({ group:sb.toUpperCase() + '  (' + its.reduce((s,u)=>s+u.qty,0) + ' units — one place)', sub:true }); mergeRows(its, u => [u.name, u.cat, u.serial, u.loaded].join('|')).forEach(push); });
+        subs.forEach(sb => { const its = cased.filter(u => u.sub === sb); rows.push({ group:sb.toUpperCase() + (its[0].onePlace ? '  (' + its.reduce((s,u)=>s+u.qty,0) + ' units — one place)' : ''), sub:true }); mergeRows(its, u => [u.name, u.cat, u.serial, u.loc, u.loaded].join('|')).forEach(push); });
       });
       table(cols, rows, palLabel(p) + '  —  ' + st);
     });
@@ -5159,34 +5167,40 @@ function pageShipping(){
     const hdr = `<tr class="grouphdr"><td colspan="7" style="cursor:pointer" onclick="toggleShipGroup(${mi})">
       <span class="gtri">${collapsed?'▸':'▾'}</span>${esc(mod)}<span class="gled ${allPacked?'on':''}" title="${allPacked?'All items in this module are loaded on pallets':'Not all items in this module are loaded on pallets yet'}"></span></td></tr>`;
     if(collapsed){ /* still advance the running numbers so they stay consistent when expanded */ modPlaces.forEach(pl=>{ n += pl.items.length; }); return hdr; }
+    let lastSub = null;   /* BUILD 16.25: item-level sub-sections (camera cases / OTHER, Power / Video / Audio cables) — a heading row
+                             appears whenever the sub-section changes; the pallet + On-pallet cells still span the WHOLE place */
     const body = modPlaces.map(pl => {
       const plIdx = places.indexOf(pl); const pid = S.assign[pl.key]||'';
       const packed = !!(S.packed && S.packed[pl.key]);
-      /* BUILD 16.16: a place with a sub-section label (e.g. a camera flight case) gets its own heading row —
-         so it is visible that these items travel together as ONE place (one pallet cell / one loaded box) */
-      const subHdr = pl.sub ? `<tr class="subhdr"><td colspan="7" style="padding:6px 10px 6px 34px;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--ink2);background:rgba(0,0,0,.035);border-top:1px solid var(--line)">
-          <span class="chip c-mut" style="font-size:9.5px;margin-right:8px;text-transform:none;letter-spacing:0">${pl.items.length} item${pl.items.length===1?'':'s'} · ONE PLACE</span>${esc(pl.sub)}</td></tr>` : '';
-      return subHdr + pl.items.map((it, ii)=>{
-        n++;
+      /* row plan for this place: [{hdr}] and [{it}] entries; the pallet cells go on the FIRST row and span them all */
+      const plan = [];
+      pl.items.forEach((it, ii) => {
+        const sub = it.sub || '';
+        if(sub && sub !== lastSub){ plan.push({ hdr:sub, chip:(ii===0 && pl.subChip) ? pl.subChip : '' }); lastSub = sub; }
+        plan.push({ it });
+      });
+      const span = plan.length;
+      const pallCell = `<td class="tight pl-cell" rowspan="${span}" style="width:6%;vertical-align:middle"><select class="cell ${pid?'':'empty'}" title="Whole ${esc(pl.name)} place → one pallet" onchange="assignPlace(${plIdx},this.value)">${palOptions(pid)}</select></td>`;
+      const packCell = `<td class="tight pl-cell" rowspan="${span}" style="width:6%;text-align:center;vertical-align:middle"><input type="checkbox" style="width:16px;height:16px;cursor:pointer;accent-color:#2e9e5b" ${packed?'checked':''} ${pid?'':'disabled title="Assign a pallet first"'} onchange="setPacked(${plIdx},this.checked)"></td>`;
+      return plan.map((row, ri) => {
+        const cells = ri === 0 ? (pallCell + packCell) : '';
+        if(row.hdr){
+          return `<tr class="subhdr"><td colspan="5" style="padding:6px 10px 6px 34px;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--ink2);background:rgba(0,0,0,.035);border-top:1px solid var(--line)">
+          ${row.chip ? `<span class="chip c-mut" style="font-size:9.5px;margin-right:8px;text-transform:none;letter-spacing:0">${esc(row.chip)}</span>` : ''}${esc(row.hdr)}</td>${cells}</tr>`;
+        }
+        const it = row.it; n++;
         const href = shipLinkHref(it.link);
         const link = href
           ? `<a href="${esc(href)}" target="_blank" rel="noopener" title="Open purchase link" style="color:var(--fdp-red);display:inline-flex"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg></a>`
           : `<span style="color:#c8ccd2">—</span>`;
         const cmt = (S.meta && S.meta[it.key] && S.meta[it.key].cmt) || '';
-        /* ONE pallet dropdown + ONE "on pallet" checkbox per PLACE — on the first item row, spanning the place */
-        const pallCell = ii === 0
-          ? `<td class="tight pl-cell" rowspan="${pl.items.length}" style="width:6%;vertical-align:middle"><select class="cell ${pid?'':'empty'}" title="Whole ${esc(pl.name)} place → one pallet" onchange="assignPlace(${plIdx},this.value)">${palOptions(pid)}</select></td>`
-          : '';
-        const packCell = ii === 0
-          ? `<td class="tight pl-cell" rowspan="${pl.items.length}" style="width:6%;text-align:center;vertical-align:middle"><input type="checkbox" style="width:16px;height:16px;cursor:pointer;accent-color:#2e9e5b" ${packed?'checked':''} ${pid?'':'disabled title="Assign a pallet first"'} onchange="setPacked(${plIdx},this.checked)"></td>`
-          : '';
-        return `<tr class="${ii===pl.items.length-1?'pl-last':''}">
+        return `<tr class="${ri===plan.length-1?'pl-last':''}">
           <td class="tight" style="width:4%;text-align:right;color:var(--dim)">${n}</td>
           <td title="${esc(it.name)} — click to open where it was entered"><span class="shipjump" onclick="shipGoTo('${esc(it.key)}')">${esc(it.name)}</span></td>
           <td class="tight" style="width:16%"><input class="cell" value="${esc(cmt)}" placeholder="—" oninput="setShipCmt('${it.key}',this.value)"></td>
           <td style="text-align:right;width:6%">${it.qty}</td>
           <td class="tight" style="width:5%;text-align:center">${link}</td>
-          ${pallCell}${packCell}
+          ${cells}
         </tr>`;
       }).join('');
     }).join('');
