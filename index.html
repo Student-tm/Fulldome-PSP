@@ -804,7 +804,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.21 · PROJECTOR ACCESSORIES TABLE (EVERY NAMED ROW SHIPS AS ITS OWN MODULE AFTER PROJECTORS) · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.27 · NEW MODULE: DOME & TRUSS (PICK FROM DOME LIBRARY · TRUSS KIT · SHIPS AUTOMATICALLY) · AUTO-UPDATE: RETRIES FOR ~15 MIN WHEN THE SERVER STILL SENDS THE OLD FILE · SHIPPING: SUB-SECTIONS — CAMERA CASES + OTHER, POWER / VIDEO / AUDIO CABLES (LIST + PDF) · SHIPPING PDF REBUILT (A4 LANDSCAPE · NOT-PACKED SECTION PER UNIT · GREEN/RED + WORDS · PAGE X OF Y) · SIDEBAR: EQUIPMENT & SHIPPING LINK · SHIPPING: CLICK AN ITEM NAME → JUMPS TO ITS MODULE ROW · PROJECTOR ACCESSORIES TABLE (EVERY NAMED ROW SHIPS AS ITS OWN MODULE AFTER PROJECTORS) · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -944,6 +944,7 @@ const emptyState = () => ({
   docs: { sitePh: [], files: {} },   /* Documentation archive: site photos + files per DOC category */
   projectors: { list: [], selId: null },   /* Projectors module: inventory, setup, web settings */
   camera: { rows: [], ready: false, photos: [], cases: [] },   /* Calibration Camera module (mirrors server builder); cases = flight cases (BUILD 16.16) */
+  dome: { domeUid: '', kitId: '', ready: false, snap: null },   /* Dome & Truss module (BUILD 16.27): dome picked from the Dome Library (+ optional truss kit); snap = metadata copy for shipping */
   speakers: { rows: [], ready: false, photos: [] },   /* Speaker / Audio System module (mirrors camera builder) — BUILD 14.20 */
   fan: { rows: [], ready: false, photos: [] },   /* Screen Fan / Ventilation module (mirrors speakers) — BUILD 14.27 */
   cables: { rows: [], ready: false, photos: [] },   /* Cables & Adapters module (mirrors fan) — BUILD 14.31 */
@@ -4047,6 +4048,20 @@ function pageDashboard(){
         <a class="mod-btn primary" href="#/tools">Open Module ${IC.open}</a>
       </div>
 
+      <div class="mod active${_lastMod==='#/dome'?' lastmod':''}">
+        <div class="mod-top"><div class="mod-ic">${IC.dome}</div>
+          <div><div class="mod-name">Dome &amp; Truss</div>${modActiveBadge(!!ensureDome(state).domeUid)}</div></div>
+        <div class="mod-desc">The project dome picked from the Dome Library — passport, truss ring, elements and a Ready Truss Kit; ships automatically.</div>
+        <div class="mod-stats">
+          ${(()=>{ const st=domeModuleStats(); return `
+          <div class="ms"><span class="k">Dome</span><span class="v ${st.dome?'ok':''}">${st.dome?esc(st.dome):'None'}</span></div>
+          <div class="ms"><span class="k">Truss</span><span class="v">${st.truss?esc(st.truss):'—'}</span></div>
+          <div class="ms"><span class="k">Truss Kit</span><span class="v">${st.kit?esc(st.kit):'—'}</span></div>
+          <div class="ms"><span class="k">Dome Build</span><span class="v" style="display:inline-flex;align-items:center;gap:6px"><span class="led sm ${st.ready?'on':''}"></span>${st.ready?'Ready':'Not Ready'}</span></div>`; })()}
+        </div>
+        <a class="mod-btn primary" href="#/dome">Open Module ${IC.open}</a>
+      </div>
+
       <div class="mod active${_lastMod==='#/shipping'?' lastmod':''}">
         <div class="mod-top"><div class="mod-ic">${IC.ship}</div>
           <div><div class="mod-name">Equipment &amp; Shipping</div>${modActiveBadge(shipItems().length>0)}</div></div>
@@ -4790,6 +4805,8 @@ function shipPlaces(){
   ((state.tools&&state.tools.rows)||[]).forEach((r,idx)=>{ if(!(r.name||'').trim()) return; (isCombined(r)?toolCombined:toolSeparate).push(mkItem(r,'i|tool|'+idx)); });
   if(toolCombined.length) places.push({key:'pl|tool', name:'Tools', module:'Tools', items:toolCombined});
   toolSeparate.forEach((it,i)=> places.push({key:'pl|tool-sep|'+i, name:it.name, module:'Tools', items:[it]}));
+  /* ---- Dome & Truss (BUILD 16.27) — the dome picked from the Dome Library + its truss (ring + elements, or the selected kit) ---- */
+  try{ const dm = domeShipPlaces(); dm.forEach(pl => places.push(pl)); }catch(_){}
   /* ---- Camera ---- */
   const camCombined = [], camSeparate = [], camByCase = {};
   const camCasesL = (state.camera&&state.camera.cases)||[];
@@ -4812,7 +4829,8 @@ var _shipCollapsed = {};   /* module -> collapsed (session-only UI state) */
    that exact row (the item key encodes its source: i|srv, i|bk, i|vj, i|rack|<row>, i|cam|<row>, i|proj|<id>, i|pacc|<id>…). */
 const SHIP_JUMP = { srv:['#/server-rack','server','srvN'], vj:['#/server-rack','vj','vjN'], bk:['#/server-rack','backup','bkN'],
   rack:['#/server-rack','rack','rackN'], proj:['#/projectors','prInv','projN'], pacc:['#/projectors','prInv','paccN'],
-  spk:['#/speakers','speakers','spkN'], fan:['#/fan','fan','fanN'], cab:['#/cables','cables','cabN'], tool:['#/tools','tools','toolN'], cam:['#/camera','camera','camN'] };
+  spk:['#/speakers','speakers','spkN'], fan:['#/fan','fan','fanN'], cab:['#/cables','cables','cabN'], tool:['#/tools','tools','toolN'], cam:['#/camera','camera','camN'],
+  dome:['#/dome','domeSel',''], truss:['#/dome','domeSel',''], 'truss-el':['#/dome','domeSel',''], 'truss-kit':['#/dome','domeSel',''] };
 function shipGoTo(key){
   const parts = String(key||'').split('|'); if(parts[0]!=='i') return;
   const j = SHIP_JUMP[parts[1]]; if(!j) return;
@@ -5587,6 +5605,7 @@ function liveSlice(d){
     fan:     { rows: (d.fan && d.fan.rows) || [], ready: !!(d.fan && d.fan.ready) },
     cables:  { rows: (d.cables && d.cables.rows) || [], ready: !!(d.cables && d.cables.ready) },
     tools:   { rows: (d.tools && d.tools.rows) || [], ready: !!(d.tools && d.tools.ready) },
+    dome:    { domeUid: (d.dome && d.dome.domeUid) || '', kitId: (d.dome && d.dome.kitId) || '', ready: !!(d.dome && d.dome.ready), snap: (d.dome && d.dome.snap) || null },   /* BUILD 16.27 */
     projectors: { list: (d.projectors && d.projectors.list) || [], selId: (d.projectors && d.projectors.selId) || null, removableLens: !!(d.projectors && d.projectors.removableLens), lenses: (d.projectors && d.projectors.lenses) || [], acc: (d.projectors && d.projectors.acc) || [] },   /* acc = Projector Accessories (BUILD 16.19) */
     validation:   d.validation || {},                 /* dashboard test chips — live now (BUILD 12.7) */
     vjValidation: d.vjValidation || {},
@@ -5627,6 +5646,7 @@ function liveApply(d, live){
   if(live.speakers){ d.speakers = d.speakers || {rows:[],ready:false,photos:[]}; setIf(d.speakers, 'rows', live.speakers.rows || []); setIf(d.speakers, 'ready', !!live.speakers.ready); }
   if(live.fan){ d.fan = d.fan || {rows:[],ready:false,photos:[]}; setIf(d.fan, 'rows', live.fan.rows || []); setIf(d.fan, 'ready', !!live.fan.ready); }
   if(live.cables){ d.cables = d.cables || {rows:[],ready:false,photos:[]}; setIf(d.cables, 'rows', live.cables.rows || []); setIf(d.cables, 'ready', !!live.cables.ready); }
+  if(live.dome){ d.dome = d.dome || {domeUid:'',kitId:'',ready:false,snap:null}; setIf(d.dome, 'domeUid', live.dome.domeUid || ''); setIf(d.dome, 'kitId', live.dome.kitId || ''); setIf(d.dome, 'ready', !!live.dome.ready); setIf(d.dome, 'snap', live.dome.snap || null); }   /* BUILD 16.27 */
   if(live.tools){ d.tools = d.tools || {rows:[],ready:false,photos:[]}; setIf(d.tools, 'rows', live.tools.rows || []); setIf(d.tools, 'ready', !!live.tools.ready); }
   if(live.projectors){ d.projectors = d.projectors || {list:[],selId:null,models:{}}; setIf(d.projectors, 'list', live.projectors.list || []); setIf(d.projectors, 'selId', live.projectors.selId || null); if('removableLens' in live.projectors) setIf(d.projectors, 'removableLens', !!live.projectors.removableLens); if('lenses' in live.projectors) setIf(d.projectors, 'lenses', live.projectors.lenses || []); if('acc' in live.projectors) setIf(d.projectors, 'acc', live.projectors.acc || []); }
   if(live.validation)   setIf(d, 'validation',   live.validation);      /* dashboard test chips (BUILD 12.7) */
@@ -6524,7 +6544,7 @@ async function fbpBrowseMirror(e){
    Google Drive (the 13.x media layer, untouched). A full project JSON is still assembled
    locally for export/backup at any time. Master switch: `var _FS = true` (RTDB `_FBP` off). */
 const FS_PROJECT_ID = 'fulldome-psp';
-const FS_SECTIONS = ['project','server','backup','vj','rack','camera','speakers','fan','cables','tools','projectors','validation','vjValidation','shipping'];
+const FS_SECTIONS = ['project','server','backup','vj','rack','camera','speakers','fan','cables','tools','projectors','validation','vjValidation','shipping','dome'];   /* + dome (BUILD 16.27) */
 var _fsApp = null, _fsDb = null, _fsAuthObj = null, _fsCol = null, _fsUnsub = null, _fsSdkP = null;
 var _fsReady = false, _fsStarted = false, _fsApplying = false, _fsPushT = null, _fsSeededPush = false;
 var _fsLocal = {};   /* pid -> {section: sig, _seen, _done, _msig} — skip no-op section writes */
@@ -9540,6 +9560,122 @@ function pageCamera(){
   </div>`;
 }
 
+/* ---------- DOME & TRUSS MODULE (BUILD 16.27) ----------
+   The project's dome is PICKED from the shared Dome Library (a dome card with its truss); optionally one of the
+   dome's Ready Truss Kits is selected for this project. "Add New Dome" (a dome created inside the project) is
+   deferred — the button is a placeholder. state.dome = { domeUid, kitId, ready, snap } syncs as the 'dome'
+   section; snap is a small metadata copy of the card (no files) so shipping keeps working on a machine whose
+   Dome Library copy is behind. */
+function ensureDome(d){ if(!d.dome || typeof d.dome!=='object') d.dome = { domeUid:'', kitId:'', ready:false, snap:null };
+  ['domeUid','kitId'].forEach(k=>{ if(typeof d.dome[k]!=='string') d.dome[k] = String(d.dome[k]==null?'':d.dome[k]); }); d.dome.ready = !!d.dome.ready; if(d.dome.snap && typeof d.dome.snap!=='object') d.dome.snap = null; return d.dome; }
+function domeLibList(){ return ((db.domeLib||[]).filter(m => m && m.domeUid && !m.archived)).slice().sort((a,b)=>{ const n=x=>{ const v=parseFloat(String(x.size||'').replace(',','.')); return isFinite(v)?v:Infinity; }; const d=n(a)-n(b); if(d) return d; return String(a.serial||'').localeCompare(String(b.serial||''), undefined, {numeric:true}); }); }
+function projDome(){ const dm = ensureDome(state); return dm.domeUid ? (domeFind(dm.domeUid) || null) : null; }
+/* metadata snapshot of a dome card for the project (never files / photos) */
+function domeSnapOf(m){ if(!m) return null; const t = domeEnsureTruss(m);
+  return { domeUid:m.domeUid, serial:m.serial||'', size:String(m.size||''), type:m.type||'', screenType:m.screenType||'', screenTypeOther:m.screenTypeOther||'', doors:m.doors||'', doorsCustom:m.doorsCustom||'',
+    fanOpenings:String(m.fanOpenings||''), hvacOpenings:String(m.hvacOpenings||''),
+    truss:{ sn:t.sn||'', color:t.color||'', bags:t.bags||'', parts:t.parts||'', couplers:t.couplers||'',
+      elements:(t.elements||[]).filter(e=>e && String(e.name||'').trim()).map(e=>({ id:e.id, cat:e.cat||'', name:e.name, qty:String(e.qty||'1') })),
+      kits:(t.kits||[]).map(k=>({ id:k.id, num:k.num||'', status:k.status||'', items:(k.items||[]).filter(it=>it && String(it.name||'').trim()).map(it=>({ id:it.id, core:!!it.core, cat:it.cat||'', name:it.name, qty:String(it.qty||'1'), link:it.link||'' })) })) } }; }
+/* the dome data the module works with: the live library card when present, else the project's snapshot */
+function projDomeData(){ const dm = ensureDome(state); if(!dm.domeUid) return null; const m = domeFind(dm.domeUid); if(m && !m.archived) return domeSnapOf(m); return dm.snap || null; }
+function domeSnapTitle(sn){ if(!sn) return ''; const size = String(sn.size||'').replace(/\s*m$/i,'').trim(); return [size?size+' m':'', sn.type, sn.serial].filter(Boolean).join(' · ') || 'Dome'; }
+function setProjDome(uid){ const dm = ensureDome(state); const m = uid ? domeFind(uid) : null;
+  if(uid && !m){ alert('This dome is not in the Dome Library.'); return; }
+  dm.domeUid = m ? m.domeUid : ''; dm.kitId = ''; dm.snap = m ? domeSnapOf(m) : null; if(!m) dm.ready = false;
+  saveState(); renderSideProject(); rerenderKeepScroll(); if(m) flashStat('Dome added from the Dome Library ✓'); }
+function addProjDomeFromLib(){ const sel = document.getElementById('domeLibPick'); const uid = sel ? sel.value : ''; if(!uid){ alert('Pick a dome from the list first.'); return; } setProjDome(uid); }
+function rmProjDome(){ if(!confirm('Remove the dome from this project? (The Dome Library card is not affected.)')) return; setProjDome(''); }
+function setProjDomeKit(id){ const dm = ensureDome(state); dm.kitId = id || ''; saveState(); rerenderKeepScroll(); }
+function refreshProjDomeSnap(){ const m = projDome(); if(!m) return; ensureDome(state).snap = domeSnapOf(m); saveState(); rerenderKeepScroll(); flashStat('Dome data refreshed from the Dome Library ✓'); }
+function toggleDomeReady(){ const dm = ensureDome(state);
+  if(dm.ready){ dm.ready = false; saveState(); renderSideProject(); rerenderKeepScroll(); return; }
+  if(!dm.domeUid){ alert('Add a dome from the Dome Library before marking Ready.'); return; }
+  dm.ready = true; saveState(); renderSideProject(); rerenderKeepScroll(); }
+/* shipping places: Dome (1 place) + Truss (1 place: ring + elements, or the selected kit's items) */
+function domeShipPlaces(){ const sn = projDomeData(); if(!sn) return []; const dm = ensureDome(state); const out = [];
+  const domeName = 'Dome ' + domeSnapTitle(sn);
+  out.push({ key:'pl|dome', name:domeName, module:'Dome & Truss', items:[{ key:'i|dome', name:domeName, qty:1, link:'', cat:'Dome', serial:sn.serial||'' }] });
+  const t = sn.truss || {}; const kit = dm.kitId ? (t.kits||[]).find(k=>k.id===dm.kitId) : null; const items = [];
+  const ringName = String(t.sn||'').trim() ? ('Dome Truss Ring · ' + t.sn) : (String(t.color||'').trim() ? ('Dome Truss Ring · ' + t.color) : '');
+  if(kit){ kit.items.forEach(it => items.push({ key:'i|truss-kit|'+it.id, name:it.name, qty:parseFloat(it.qty)||1, link:it.link||'', cat:it.cat||(it.core?'Truss':'Truss kit'), sub:'Truss Kit '+kit.num })); }
+  else { if(ringName) items.push({ key:'i|truss', name:ringName, qty:1, link:'', cat:'Truss', serial:t.sn||'' }); (t.elements||[]).forEach(e => items.push({ key:'i|truss-el|'+e.id, name:e.name, qty:parseFloat(e.qty)||1, link:'', cat:e.cat||'Truss' })); }
+  if(items.length) out.push({ key:'pl|truss', name:'Truss' + (kit?(' — Kit '+kit.num):''), module:'Dome & Truss', items });
+  return out; }
+function domeModuleStats(){ const sn = projDomeData(); const dm = ensureDome(state); const t = (sn && sn.truss) || {}; const kit = dm.kitId ? (t.kits||[]).find(k=>k.id===dm.kitId) : null;
+  return { dome: sn ? domeSnapTitle(sn) : '', truss: sn ? (String(t.sn||'').trim() || String(t.color||'').trim() || ((t.elements||[]).length ? (t.elements.length+' elements') : '')) : '', kit: kit ? ('Kit ' + kit.num) : '', ready: dm.ready }; }
+function pageDome(){
+  const dm = ensureDome(state); const P = state.project; const m = projDome(); const sn = projDomeData(); const st = domeModuleStats();
+  const lib = domeLibList();
+  const stale = !!(dm.domeUid && !m);   /* card not in this machine's Dome Library copy (yet) → working from the snapshot */
+  const kits = (sn && sn.truss && sn.truss.kits) || [];
+  const picker = `
+    <div class="card" id="domeSel">
+      <div class="card-head"><h3>${sn ? 'Project dome' : 'Select dome'}</h3>
+        <button class="ready-btn ${dm.ready?'on':''}" onclick="toggleDomeReady()"><span class="led ${dm.ready?'on':''}"></span><span>${dm.ready ? 'Dome Ready' : 'Mark as Ready'}</span></button></div>
+      ${sn ? `
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:4px 0 10px">
+        <div style="min-width:0;flex:1">
+          <div style="font-size:16px;font-weight:800">${esc(domeSnapTitle(sn))}</div>
+          <div style="font-size:12px;color:var(--dim);margin-top:3px">From the Dome Library${stale ? ' · <span style="color:var(--fdp-red)">card not found in this copy of the library — showing the saved snapshot</span>' : ''}</div>
+        </div>
+        ${m ? `<button class="mod-btn" style="padding:6px 12px" onclick="domeOpenCard('${esc(m.domeUid)}');location.hash='#/dome-library'">Open in Dome Library</button>
+        <button class="mod-btn" style="padding:6px 12px" title="Re-copy the card data into the project" onclick="refreshProjDomeSnap()">↻ Refresh from Library</button>` : ''}
+        <button class="mod-btn" style="padding:6px 12px;color:var(--fdp-red)" onclick="rmProjDome()">Remove</button>
+      </div>
+      ${kits.length ? `
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:12px">
+        <span style="font-size:12.5px;font-weight:700">Ready Truss Kit for this project</span>
+        <select class="cell" style="max-width:320px" onchange="setProjDomeKit(this.value)">
+          <option value="" ${!dm.kitId?'selected':''}>— None (ship the truss ring + elements)</option>
+          ${kits.map(k=>`<option value="${esc(k.id)}" ${dm.kitId===k.id?'selected':''}>Truss Kit ${esc(k.num)}${k.status?' · '+esc(k.status):''} · ${k.items.length} item${k.items.length===1?'':'s'}</option>`).join('')}
+        </select>
+        <span style="font-size:11.5px;color:var(--dim)">The selected kit's items ship in the "Truss" place; without a kit — the ring and the truss elements.</span>
+      </div>` : ''}` : `
+      <div class="hint" style="margin:-4px 0 12px;color:var(--dim);font-size:12px">Pick the dome for this project from the shared Dome Library — its passport and truss come with it and ship automatically in Equipment &amp; Shipping.</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        ${lib.length ? `<select class="cell" id="domeLibPick" style="max-width:420px">${lib.map(x=>`<option value="${esc(x.domeUid)}">${esc(domeTitle(x))}${domeHasTruss(x)?' · truss':''}</option>`).join('')}</select>
+        <button class="mod-btn primary" style="padding:7px 14px" onclick="addProjDomeFromLib()">+ Add from Library</button>` : `<span style="font-size:12.5px;color:var(--dim)">The Dome Library is empty — create a dome card there first.</span> <a class="mod-btn" style="padding:7px 14px" href="#/dome-library">Open Dome Library</a>`}
+        <button class="mod-btn" style="padding:7px 14px;opacity:.55;cursor:not-allowed" title="Coming soon — a dome created inside the project" onclick="flashStat('Add New Dome — coming soon')">+ Add New Dome <span class="chip c-mut" style="font-size:9.5px;margin-left:4px">soon</span></button>
+      </div>`}
+    </div>`;
+  const passport = m ? domePassport(m) : (sn ? `
+    <div class="card"><div class="card-head"><h3>Dome data (snapshot)</h3></div>
+      <div class="dpass-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px">
+        ${[['Diameter', String(sn.size||'').trim()?sn.size+' m':'—'],['Dome Type', sn.type||'—'],['Screen Type', sn.screenType||'—'],['Doors', sn.doors||'—'],['Fan (in)', sn.fanOpenings||'—'],['HVAC (in)', sn.hvacOpenings||'—'],['Truss SN', (sn.truss&&sn.truss.sn)||'—'],['Truss colour', (sn.truss&&sn.truss.color)||'—']].map(x=>`<div class="dpass-tile"><div class="l">${x[0]}</div><div class="v">${esc(x[1])}</div></div>`).join('')}
+      </div></div>` : '');
+  const shipPl = domeShipPlaces();
+  const shipCard = sn ? `
+    <div class="card"><div class="card-head"><h3>Ships as</h3><span class="chip c-mut"><span class="cd"></span>${shipPl.length} place${shipPl.length===1?'':'s'}</span></div>
+      ${shipPl.map(pl=>`<div style="padding:8px 0;border-top:1px solid var(--line)"><div style="font-weight:700;font-size:13px">${esc(pl.name)} <span style="font-weight:400;color:var(--dim);font-size:11.5px">· ${pl.items.length} item${pl.items.length===1?'':'s'}</span></div>
+        <div style="font-size:12px;color:var(--ink2);margin-top:3px">${pl.items.map(it=>esc(it.name)+(it.qty>1?' ×'+it.qty:'')).join(' · ')}</div></div>`).join('')}
+      <div style="font-size:11.5px;color:var(--dim);margin-top:8px">These places appear automatically in Equipment &amp; Shipping under "Dome &amp; Truss".</div>
+    </div>` : '';
+  return `
+  <div class="page">
+    <div class="crumbs"><a href="#/dashboard">Dashboard</a> › <span class="cur">Dome &amp; Truss</span></div>
+    <div class="pagehead">
+      <div class="eyebrow">#${esc(P.number)} · ${esc(P.title)}${P.domeDiameter?' · '+esc(P.domeDiameter)+' m '+esc(P.domeType||''):''}</div>
+      <h1>Dome &amp; Truss</h1>
+      <div class="sub">The dome and truss for this project — picked from the Dome Library, with the dome passport and the truss configuration that ships with it.</div>
+    </div>
+    <div class="kpis">
+      <div class="kpi red"><div class="kl">Dome</div><div class="kvv" style="font-size:15px">${st.dome ? esc(st.dome) : '—'}</div></div>
+      <div class="kpi"><div class="kl">Truss</div><div class="kvv" style="font-size:15px">${st.truss ? esc(st.truss) : '—'}</div></div>
+      <div class="kpi"><div class="kl">Truss kit</div><div class="kvv" style="font-size:15px">${st.kit ? esc(st.kit) : '—'}</div></div>
+      <div class="kpi"><div class="kl">Dome build</div><div class="kvv" style="font-size:15px;display:flex;align-items:center;gap:8px"><span class="led ${dm.ready?'on':''}"></span><span>${dm.ready?'Ready':'Not Ready'}</span></div></div>
+    </div>
+    <div class="sec-title" id="dome">
+      <div class="stic">${IC.dome}</div>
+      <div><h2>Dome</h2><div class="st-sub">Selected from the shared Dome Library. Edit the card itself in the Dome Library — changes flow into every project that uses it.</div></div>
+    </div>
+    ${picker}
+    ${sn ? `<div style="margin-top:16px">${passport}</div>` : ''}
+    ${shipCard ? `<div style="margin-top:16px">${shipCard}</div>` : ''}
+    <a class="backlink" href="#/dashboard">${IC.back} Back to Dashboard</a>
+  </div>`;
+}
+
 /* ---------- PROJECTORS MODULE ----------
    Inventory (number / manufacturer / model / serial / IP), per-projector
    setup status, and saved web-interface settings (HTML / JPEG / PNG)
@@ -11616,6 +11752,7 @@ const ROUTES = {
   '#/network':       {nav:'dashboard', render:()=>pagePlaceholder('Network', IC.net, 'Switches, VLANs, IP plan and connectivity for the dome system — planned module.', 'Coming Soon')},
   '#/fan':           {nav:'dashboard', render:pageFan},
   '#/tools':         {nav:'dashboard', render:pageTools},
+  '#/dome':          {nav:'dashboard', render:pageDome},   /* Dome & Truss (BUILD 16.27) */
   '#/shipping':      {nav:'shipping', render:pageShipping},
   '#/admin':         {nav:'admin', render:pageAdmin, noProject:true}   /* BUILD 15.67 */
 };
@@ -11634,7 +11771,7 @@ function goTo(hash){
    `presence` rule is not deployed, writes are denied silently and the app behaves normally.
    ============================================================================ */
 var _presSid=null, _presHbTimer=null, _presArea=null, _presSub=null, _presDomeSub=null, _presLive=[], _presDomeLive=[], _presStyled=false;
-var PRES_ROUTE_MOD = { '#/server-rack':'server','#/projectors':'projectors','#/speakers':'speakers','#/camera':'camera','#/network':'network','#/fan':'fan','#/cables':'cables','#/tools':'tools','#/shipping':'shipping','#/equipment':'shipping','#/create':'projectInfo','#/edit':'projectInfo','#/projects':'projectInfo' };
+var PRES_ROUTE_MOD = { '#/server-rack':'server','#/projectors':'projectors','#/speakers':'speakers','#/camera':'camera','#/network':'network','#/fan':'fan','#/cables':'cables','#/tools':'tools','#/dome':'dome','#/shipping':'shipping','#/equipment':'shipping','#/create':'projectInfo','#/edit':'projectInfo','#/projects':'projectInfo' };
 function presFbUid(){ try{ return (firebase.auth().currentUser && firebase.auth().currentUser.uid) || null; }catch(_){ return null; } }
 function presReady(){ return (typeof domeFsReady==='function') && domeFsReady() && !!presFbUid(); }
 function presSid(){ if(_presSid) return _presSid; try{ _presSid = sessionStorage.getItem('psp_sid')||''; }catch(_){}
@@ -11770,7 +11907,7 @@ try{ window.addEventListener('beforeunload', function(){ presDeleteOwn(); try{ p
 try{ document.addEventListener('visibilitychange', function(){ if(!document.hidden){ try{ presenceOnRoute(); }catch(_){} } }); }catch(_){}
 setTimeout(function(){ try{ presenceOnRoute(); }catch(_){} }, 4000);   /* start once Firestore/auth is up */
 var _lastMod = '';   /* the module page opened most recently — its dashboard card keeps the red frame (BUILD 12.43) */
-const MODULE_ROUTES = ['#/server-rack','#/projectors','#/speakers','#/camera','#/network','#/fan','#/cables','#/tools','#/shipping'];
+const MODULE_ROUTES = ['#/server-rack','#/projectors','#/speakers','#/camera','#/network','#/fan','#/cables','#/tools','#/dome','#/shipping'];
 /* BUILD 15.66 — while the SELECTED project is a PRE-PROJECT, only its info (Projects) and the two
    shared libraries are open; every module / dashboard / documentation etc. is LOCKED until it's moved
    to In-Progress. Stage-based — applies to everyone, including access-list (edit) members. */
@@ -11798,7 +11935,7 @@ function pagePreLocked(h){
 /* BUILD 15.67 — role-based access lock. Returns replacement HTML when the current route is not
    viewable for this user (pre-project stage lock, library view perm, or the active project's bucket),
    else null. Client-side reflection of the permissions; Firestore Rules are the real gate (Stage 2). */
-var PROJ_PAGE_HASH = {'#/dashboard':1,'#/edit':1,'#/server-rack':1,'#/projectors':1,'#/camera':1,'#/cables':1,'#/speakers':1,'#/fan':1,'#/tools':1,'#/shipping':1,'#/equipment':1,'#/documentation':1};
+var PROJ_PAGE_HASH = {'#/dashboard':1,'#/edit':1,'#/server-rack':1,'#/projectors':1,'#/camera':1,'#/cables':1,'#/speakers':1,'#/fan':1,'#/tools':1,'#/dome':1,'#/shipping':1,'#/equipment':1,'#/documentation':1};
 function pageAccessRestricted(what){
   return '<div class="page" style="max-width:720px"><div class="pagehead"><div class="eyebrow">Fulldome Projection SP</div><h1 style="margin:0">Access Restricted</h1></div>'
     +'<div class="card" style="text-align:center;padding:40px 24px;border:1px solid var(--line)"><div style="color:var(--ink2);margin-bottom:10px"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div>'
@@ -11992,16 +12129,16 @@ loadState(()=>{ restoreHandles();
     }
 
     var pending=null, bar=null, stuckShown=false;
-    function showWaiting(){
-      if(bar && document.body.contains(bar)) return;
+    function showWaiting(customMsg){
+      if(bar && document.body.contains(bar)){ if(customMsg && bar._msg && bar._msg.textContent!==customMsg) bar._msg.textContent=customMsg; return; }
       bar=document.createElement('div'); bar.setAttribute('role','status');
       bar.style.cssText='position:fixed;left:0;right:0;top:0;z-index:2147483646;background:#0f5c39;color:#fff;'
         +'font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:14px;line-height:1.45;'
         +'padding:11px 16px;box-shadow:0 2px 12px rgba(0,0,0,.4);display:flex;gap:10px;align-items:center';
       var ic=document.createElement('span'); ic.textContent='⏳'; ic.style.fontSize='17px';
       var msg=document.createElement('span'); msg.style.flex='1';
-      msg.textContent='New version ready — it will apply after synchronization, or press Update now.';
-      bar.appendChild(ic); bar.appendChild(msg);
+      msg.textContent=customMsg || 'New version ready — it will apply after synchronization, or press Update now.';
+      bar.appendChild(ic); bar.appendChild(msg); bar._msg=msg;
       /* BUILD 16.07: manual "Update" button — press → reloads to the new build immediately */
       var btn=document.createElement('button'); btn.type='button'; btn.textContent='Update';
       btn.style.cssText='flex:none;background:#fff;color:#0f5c39;border:none;border-radius:6px;padding:7px 14px;font:600 13px -apple-system,Segoe UI,Roboto,Arial,sans-serif;cursor:pointer';
@@ -12018,9 +12155,20 @@ loadState(()=>{ restoreHandles();
     }
 
     /* runs often while an update is pending: reload as soon as it becomes safe */
+    /* BUILD 16.26: when the server keeps sending the OLD file right after a deploy (CDN not propagated yet), don't give
+       up after 2 quick reloads — wait 2 minutes and try again, up to ~6 rounds (~15 min), and only then ask for Ctrl+Shift+R. */
+    var ROUND_WAIT = 120000, MAX_ROUNDS = 6;
+    function staleState(){ try{ return { build: sessionStorage.getItem('fdp_upd_gaveup'), at: parseInt(sessionStorage.getItem('fdp_upd_gaveupAt')||'0',10), rounds: parseInt(sessionStorage.getItem('fdp_upd_rounds')||'0',10) }; }catch(_){ return { build:null, at:0, rounds:0 }; } }
     function readyTick(){
       if(!pending) return;
-      try{ if(pending === sessionStorage.getItem('fdp_upd_gaveup')) return; }catch(_){}   // gave up on this build -> wait for Ctrl+Shift+R
+      var st = staleState();
+      if(pending === st.build){                                                             // this build was served stale on the last attempt
+        if(st.rounds >= MAX_ROUNDS){ stuck(pending); return; }                             // long enough -> ask for a hard refresh
+        if(Date.now() - st.at < ROUND_WAIT){ showWaiting('New version b'+pending+' is published, but the server is still sending the old one — retrying automatically in a moment.'); return; }
+        if(unsynced()){ showWaiting(); return; }
+        try{ sessionStorage.removeItem('fdp_upd_gaveup'); }catch(_){}
+        hideWaiting(); reloadTo(pending); return;
+      }
       if(unsynced()){ showWaiting(); return; }                                            // still working -> keep the passive note
       hideWaiting(); reloadTo(pending);                                                   // safe moment -> update itself
     }
@@ -12039,9 +12187,15 @@ loadState(()=>{ restoreHandles();
     (function verify(){
       try{
         var target=sessionStorage.getItem('fdp_upd_target'); if(!target) return;
-        if(cmp(running, target) >= 0){ sessionStorage.removeItem('fdp_upd_target'); sessionStorage.removeItem('fdp_upd_retry'); sessionStorage.removeItem('fdp_upd_gaveup'); return; }
+        if(cmp(running, target) >= 0){ ['fdp_upd_target','fdp_upd_retry','fdp_upd_gaveup','fdp_upd_gaveupAt','fdp_upd_rounds'].forEach(function(k){ sessionStorage.removeItem(k); }); return; }
         var n=(parseInt(sessionStorage.getItem('fdp_upd_retry')||'0',10))+1;
-        if(n>2){ sessionStorage.setItem('fdp_upd_gaveup', target); sessionStorage.removeItem('fdp_upd_target'); sessionStorage.removeItem('fdp_upd_retry'); stuck(target); return; }
+        if(n>2){   // two quick reloads still got the old file -> back off (BUILD 16.26), the periodic check retries in 2 min
+          var rounds=(parseInt(sessionStorage.getItem('fdp_upd_rounds')||'0',10))+1;
+          sessionStorage.setItem('fdp_upd_gaveup', target); sessionStorage.setItem('fdp_upd_gaveupAt', String(Date.now())); sessionStorage.setItem('fdp_upd_rounds', String(rounds));
+          sessionStorage.removeItem('fdp_upd_target'); sessionStorage.removeItem('fdp_upd_retry');
+          pending=target;
+          if(rounds >= MAX_ROUNDS) stuck(target); else showWaiting('New version b'+target+' is published, but the server is still sending the old one — retrying automatically in a moment.');
+          return; }
         sessionStorage.setItem('fdp_upd_retry', String(n));
         location.replace(location.pathname + '?u=' + Date.now() + (location.hash || '#/dashboard'));
       }catch(_){}
@@ -12055,6 +12209,10 @@ loadState(()=>{ restoreHandles();
       var msg=document.createElement('span'); msg.style.flex='1';
       msg.textContent='Still loading an old cached version (wanted b'+target+', got b'+running+'). Press Ctrl+Shift+R (Mac: Cmd+Shift+R).';
       d.appendChild(ic); d.appendChild(msg);
+      var btn=document.createElement('button'); btn.type='button'; btn.textContent='Retry';
+      btn.style.cssText='flex:none;background:#fff;color:#8a5a00;border:none;border-radius:6px;padding:7px 14px;font:600 13px -apple-system,Segoe UI,Roboto,Arial,sans-serif;cursor:pointer';
+      btn.onclick=function(){ try{ ['fdp_upd_gaveup','fdp_upd_gaveupAt','fdp_upd_rounds'].forEach(function(k){ sessionStorage.removeItem(k); }); reloadTo(target); }catch(_){} };
+      d.appendChild(btn); hideWaiting();
       var m=function(){ if(document.body){ document.body.appendChild(d); document.body.style.paddingTop='56px'; } };
       if(document.body) m(); else document.addEventListener('DOMContentLoaded', m);
     }
