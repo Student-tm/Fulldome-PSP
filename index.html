@@ -804,7 +804,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.28 · DOME LIBRARY FIX: SAVE DOME CARD KEEPS TRUSS SN / COMPONENTS / SCHEMATICS (MERGE BASE WAS ALIASED TO THE LIVE CARD) · NEW MODULE: DOME & TRUSS (PICK FROM DOME LIBRARY · TRUSS KIT · SHIPS AUTOMATICALLY) · AUTO-UPDATE: RETRIES FOR ~15 MIN WHEN THE SERVER STILL SENDS THE OLD FILE · SHIPPING: SUB-SECTIONS — CAMERA CASES + OTHER, POWER / VIDEO / AUDIO CABLES (LIST + PDF) · SHIPPING PDF REBUILT (A4 LANDSCAPE · NOT-PACKED SECTION PER UNIT · GREEN/RED + WORDS · PAGE X OF Y) · SIDEBAR: EQUIPMENT & SHIPPING LINK · SHIPPING: CLICK AN ITEM NAME → JUMPS TO ITS MODULE ROW · PROJECTOR ACCESSORIES TABLE (EVERY NAMED ROW SHIPS AS ITS OWN MODULE AFTER PROJECTORS) · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.29 · DOME LIBRARY: A DELETED TRUSS KIT / ELEMENT / FILE STAYS DELETED (NO-BASE TIEBREAKER BY REV) · DOME LIBRARY FIX: SAVE DOME CARD KEEPS TRUSS SN / COMPONENTS / SCHEMATICS (MERGE BASE WAS ALIASED TO THE LIVE CARD) · NEW MODULE: DOME & TRUSS (PICK FROM DOME LIBRARY · TRUSS KIT · SHIPS AUTOMATICALLY) · AUTO-UPDATE: RETRIES FOR ~15 MIN WHEN THE SERVER STILL SENDS THE OLD FILE · SHIPPING: SUB-SECTIONS — CAMERA CASES + OTHER, POWER / VIDEO / AUDIO CABLES (LIST + PDF) · SHIPPING PDF REBUILT (A4 LANDSCAPE · NOT-PACKED SECTION PER UNIT · GREEN/RED + WORDS · PAGE X OF Y) · SIDEBAR: EQUIPMENT & SHIPPING LINK · SHIPPING: CLICK AN ITEM NAME → JUMPS TO ITS MODULE ROW · PROJECTOR ACCESSORIES TABLE (EVERY NAMED ROW SHIPS AS ITS OWN MODULE AFTER PROJECTORS) · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -10865,6 +10865,7 @@ function domeMerge3(base, local, server, localNewer){
    keyed by id, not "newest side wins": a record present on either side is KEPT unless the base proves the other side
    deleted it. Before this, a client whose copy of a card lacked the files (older build, stale cache, no base yet)
    won the tie and the whole file list vanished for everyone. Same-id records merge field by field. */
+var _domeRevCtx = { l:0, s:0 };   /* BUILD 16.29: revs of the two cards being merged — the no-base tiebreaker for id-lists (a deleted kit must not come back from a machine that never saw the deletion) */
 function _domeIdList(a){ return Array.isArray(a) && a.every(function(x){ return x && typeof x==='object' && !Array.isArray(x) && x.id!==undefined && x.id!==''; }); }
 function _domeMergeIdLists(base, local, server, localNewer){
   const b = _domeIdList(base) ? base : [];
@@ -10874,8 +10875,8 @@ function _domeMergeIdLists(base, local, server, localNewer){
   order.forEach(function(id){
     const l=lBy[id], s=sBy[id], hasB=Object.prototype.hasOwnProperty.call(bBy, id);
     if(l && s){ out.push(domeMerge3(bBy[id], l, s, localNewer)); return; }
-    if(l && !s){ if(hasB && _domeEqj(l, bBy[id])) return;  out.push(l); return; }   /* server deleted it and we didn't change it → gone; else keep (added / edited here) */
-    if(s && !l){ if(hasB && _domeEqj(s, bBy[id])) return;  out.push(s); return; }   /* we deleted it and server didn't change it → gone; else keep */
+    if(l && !s){ if(hasB ? _domeEqj(l, bBy[id]) : (_domeRevCtx.s > _domeRevCtx.l)) return;  out.push(l); return; }   /* server deleted it and we didn't change it → gone; no base: gone only if the server is STRICTLY newer; else keep */
+    if(s && !l){ if(hasB ? _domeEqj(s, bBy[id]) : (_domeRevCtx.l > _domeRevCtx.s)) return;  out.push(s); return; }   /* we deleted it and server didn't change it → gone; no base: gone only if we are STRICTLY newer; else keep (a tie never loses data) */
   });
   return out;
 }
@@ -10889,7 +10890,7 @@ function domeMergeDocs(server, local){
   const uids={}; Object.keys(sBy).forEach(u=>uids[u]=1); Object.keys(lBy).forEach(u=>uids[u]=1);
   return Object.keys(uids).map(function(u){
     const s=sBy[u], l=lBy[u];
-    if(s && l){ const m = domeMerge3(base[u], l, s, (l.rev||0) >= (s.rev||0)); m.rev = Math.max(l.rev||0, s.rev||0); _domeStickyDelete(m, l, s); return m; }
+    if(s && l){ _domeRevCtx = { l:(l.rev||0), s:(s.rev||0) }; const m = domeMerge3(base[u], l, s, (l.rev||0) >= (s.rev||0)); m.rev = Math.max(l.rev||0, s.rev||0); _domeStickyDelete(m, l, s); return m; }
     return s || l;
   });
 }
@@ -10904,6 +10905,7 @@ function domeFsApplyDoc(data){                        /* field-level merge an in
     const i = db.domeLib.findIndex(function(m){ return m.domeUid===uid; });
     if(i<0){ db.domeLib.push(Object.assign(domeEmptyModel(), _domeClone(s), { _saved:true })); base[uid]=_domeClone(s); ch=true; return; }
     const localDoc = domeFsModelDoc(db.domeLib[i]);
+    _domeRevCtx = { l:(localDoc.rev||0), s:(s.rev||0) };
     const merged = domeMerge3(base[uid], localDoc, s, (localDoc.rev||0) >= (s.rev||0));
     merged.rev = Math.max(localDoc.rev||0, s.rev||0); _domeStickyDelete(merged, localDoc, s);
     if(!_domeEqj(merged, localDoc)){ db.domeLib[i] = _domeKeepLocalBytes(db.domeLib[i], Object.assign(domeEmptyModel(), merged, { _saved:true })); ch=true; }
