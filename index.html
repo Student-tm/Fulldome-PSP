@@ -381,6 +381,16 @@
   .dtab:hover{color:var(--ink)}
   .dtab.sel{color:var(--fdp-red);border-bottom-color:var(--fdp-red)}
   .fgrid .full{grid-column:1/-1}
+  /* BUILD 16.36 — Dome card › Components: one parameter per row (label left, field right), 30% narrower; the blocks (Frame, Covers & Screens, Doors, Connectors) stay separate cards */
+  .dcomp{max-width:70%}
+  @media (max-width:1100px){ .dcomp{max-width:100%} }
+  .dcomp .fgrid{display:block}
+  .dcomp .fld{display:grid;grid-template-columns:200px minmax(0,1fr);gap:6px 14px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+  .dcomp .fld:last-child{border-bottom:0}
+  .dcomp .fld>label{margin:0}
+  .dcomp .fld>*:not(label){grid-column:2}
+  .dcomp .fld .hint{margin-top:0}
+  .dcomp .fld textarea.cell{min-height:64px}
   #lnkPrev{position:fixed;z-index:9999;display:none;width:300px;background:#fff;border:1px solid var(--line);border-radius:12px;
     box-shadow:0 10px 32px rgba(15,23,42,.18);padding:10px;pointer-events:none}
   #lnkPrev .lp-top{display:flex;align-items:center;gap:7px;margin-bottom:8px}
@@ -755,6 +765,8 @@
   table.eq .tolib button{border:none;background:transparent;color:#c5ccd4;cursor:pointer;padding:8px 4px;display:inline-flex}
   table.eq .tolib button:hover{color:#2e7d32}
   table.eq .tolib svg{width:14px;height:14px}
+.shipjump{cursor:pointer;border-bottom:1px dotted transparent}.shipjump:hover{color:var(--fdp-red);border-bottom-color:var(--fdp-red)}
+tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0%,45%{background:#fff3c4;box-shadow:inset 0 -2px 0 #e8b400}100%{background:transparent;box-shadow:none}}
 </style>
 
 </head>
@@ -802,7 +814,7 @@
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.17 · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.40 · PROJECT SETUP: "DOME & SYSTEM CONFIGURATION" · SCREEN TYPE · INDOOR/OUTDOOR + BALLAST SYSTEM · INFLATABLE (AUTO FAN ROW) · DOME LIBRARY: DELETED KITS / ELEMENTS / COVERS ARE STICKY TOMBSTONES (CAN NEVER COME BACK) · DOME CARD: OVERVIEW + TRUSS IN THE SAME COMPACT LAYOUT · DOORS: FABRIC DOOR (QTY + SERIAL) · COMPONENTS: COMPACT ONE-PARAMETER-PER-ROW LAYOUT · DOME LIBRARY: AN OPEN CARD NOW RECEIVES TEAMMATES' CHANGES LIVE (DELETIONS INCLUDED) · DOME CARD: COVER / INFLATABLE COVER GET COLOUR (GREY · WHITE · PRINTED) + MATERIAL · ARCHIVE BUTTONS REMOVED (DELETE ONLY) · DELETE BUTTON ON COVER / SCREEN / INFLATABLE ENTRIES · DASHBOARD: CAMERA MODEL = ALL "CAMERA" ROWS (NO LENS) · DOME & TRUSS: READY = DOME CARD "READY TO SHIP" (INDICATOR, NOT A BUTTON) · DOME LIBRARY: A DELETED TRUSS KIT / ELEMENT / FILE STAYS DELETED (NO-BASE TIEBREAKER BY REV) · DOME LIBRARY FIX: SAVE DOME CARD KEEPS TRUSS SN / COMPONENTS / SCHEMATICS (MERGE BASE WAS ALIASED TO THE LIVE CARD) · NEW MODULE: DOME & TRUSS (PICK FROM DOME LIBRARY · TRUSS KIT · SHIPS AUTOMATICALLY) · AUTO-UPDATE: RETRIES FOR ~15 MIN WHEN THE SERVER STILL SENDS THE OLD FILE · SHIPPING: SUB-SECTIONS — CAMERA CASES + OTHER, POWER / VIDEO / AUDIO CABLES (LIST + PDF) · SHIPPING PDF REBUILT (A4 LANDSCAPE · NOT-PACKED SECTION PER UNIT · GREEN/RED + WORDS · PAGE X OF Y) · SIDEBAR: EQUIPMENT & SHIPPING LINK · SHIPPING: CLICK AN ITEM NAME → JUMPS TO ITS MODULE ROW · PROJECTOR ACCESSORIES TABLE (EVERY NAMED ROW SHIPS AS ITS OWN MODULE AFTER PROJECTORS) · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -942,6 +954,7 @@ const emptyState = () => ({
   docs: { sitePh: [], files: {} },   /* Documentation archive: site photos + files per DOC category */
   projectors: { list: [], selId: null },   /* Projectors module: inventory, setup, web settings */
   camera: { rows: [], ready: false, photos: [], cases: [] },   /* Calibration Camera module (mirrors server builder); cases = flight cases (BUILD 16.16) */
+  dome: { domeUid: '', kitId: '', ready: false, snap: null },   /* Dome & Truss module (BUILD 16.27): dome picked from the Dome Library (+ optional truss kit); snap = metadata copy for shipping */
   speakers: { rows: [], ready: false, photos: [] },   /* Speaker / Audio System module (mirrors camera builder) — BUILD 14.20 */
   fan: { rows: [], ready: false, photos: [] },   /* Screen Fan / Ventilation module (mirrors speakers) — BUILD 14.27 */
   cables: { rows: [], ready: false, photos: [] },   /* Cables & Adapters module (mirrors fan) — BUILD 14.31 */
@@ -1113,6 +1126,9 @@ function ensureProjectors(d){
   if(!Array.isArray(d.projectors.lenses)) d.projectors.lenses = [];
   d.projectors.lenses.forEach(l=>{ if(l.model==null) l.model=''; if(l.ratio==null) l.ratio=''; if(l.serial==null) l.serial=''; if(l.qty==null) l.qty=''; if(!l.id) l.id='ln'+Date.now()+Math.floor(Math.random()*1e4); });
   if(d.projectors.selModel==null) d.projectors.selModel = '';
+  /* BUILD 16.19 — Projector Accessories table (user-filled, nothing pre-filled) */
+  if(!Array.isArray(d.projectors.acc)) d.projectors.acc = [];
+  d.projectors.acc.forEach(a=>{ ['item','model','req','source','qty','packed','notes'].forEach(k=>{ if(a[k]==null) a[k]=''; }); if(!a.id) a.id='pa'+Date.now()+Math.floor(Math.random()*1e4); });
   if(!d.projectors.models || typeof d.projectors.models!=='object') d.projectors.models = {};
   /* project-level model data (photos, specs) RIDES IN THE PROJECT FILE.
      Self-heal: models used in this project pull their photos from the global
@@ -1426,7 +1442,7 @@ const NAV = [
   {id:'library', label:'Equipment Library', ic:IC.lib, route:'#/library'},
   {id:'dome-library', label:'Dome Library', ic:IC.dome, route:'#/dome-library'},
   {id:'documentation', label:'Documentation', ic:IC.doc, route:'#/documentation'},
-  {id:'logs', label:'System Logs', ic:IC.logs, route:'#/logs'},
+  {id:'shipping', label:'Equipment & Shipping', ic:IC.ship, route:'#/shipping'},   /* BUILD 16.23: replaces the 'System Logs' placeholder — quick access to the shipping module */
   {id:'settings', label:'Settings', ic:IC.set, route:'#/settings'},
   {id:'admin', label:'Admin Console', ic:(IC.shield||IC.set), route:'#/admin', adminOnly:true}   /* BUILD 15.67 */
 ];
@@ -2808,16 +2824,34 @@ function projectForm(P){
       </div>
 
       <div class="fgrid">
-        <div class="fsec">System Configuration</div>
+        <div class="fsec">Dome &amp; System Configuration</div>
         <div class="fld full"><label>Dome Serial (from Dome Library) <span style="color:#9aa2ad;text-transform:none;font-weight:400">— or “Manual entry” to type below</span></label>
           ${domeLibPickHTML('fDomePick', P.domeUid, 'createDomePick()')}
           <input type="hidden" id="fDomeUid" value="${esc(P.domeUid||'')}"><input type="hidden" id="fDomeSerial" value="${esc(P.domeSerial||'')}"></div>
         <div class="fld"><label>Dome Size (m)</label>
           <input id="fDome" type="number" min="1" step="0.5" value="${esc(P.domeDiameter||'')}"></div>
-        <div class="fld"><label>Dome Type</label>
+        <div class="fld"><label>Screen Type</label>
           <select id="fDomeType">
             ${['Standard','Tilt','SRD','VR','WD'].map(t=>`<option value="${t}" ${P.domeType===t?'selected':''}>${t}</option>`).join('')}
           </select></div>
+        <div class="fld"><label>Indoor / Outdoor</label>
+          <select id="fCond" onchange="editCondChange()">
+            <option value="" ${!P.indoorOutdoor?'selected':''}>— Select —</option>
+            ${['Indoor','Outdoor'].map(t=>`<option value="${t}" ${P.indoorOutdoor===t?'selected':''}>${t}</option>`).join('')}
+          </select></div>
+        <div class="fld" id="fBallastFld"${P.indoorOutdoor==='Outdoor'?'':' style="display:none"'}><label>Ballast System</label>
+          <select id="fBallast">
+            <option value="" ${!P.domeBallast?'selected':''}>— Select —</option>
+            ${['Ballast Weights','Ground Anchors','Concrete Anchors'].map(t=>`<option value="${t}" ${P.domeBallast===t?'selected':''}>${t}</option>`).join('')}
+            ${P.domeBallast && !['Ballast Weights','Ground Anchors','Concrete Anchors'].includes(P.domeBallast) ? `<option value="${esc(P.domeBallast)}" selected>${esc(P.domeBallast)}</option>` : ''}
+          </select>
+          <div class="hint">Outdoor only — ballast weights, ground anchors or concrete anchors (Equipment Library → Ballast &amp; Anchoring).</div></div>
+        <div class="fld full"><label>Inflatable</label>
+          <div class="yn" id="ynInfl">
+            <button type="button" id="inflYes" class="${P.inflatableCover==='Yes'?'on':''}" onclick="setInfl(true)">Yes</button>
+            <button type="button" id="inflNo" class="${P.inflatableCover==='Yes'?'':'on'}" onclick="setInfl(false)">No</button>
+          </div>
+          <div class="hint">Yes — an “Inflatable Fan” row is added to the Fan module automatically; the fan model is filled in there.</div></div>
         <div class="fld"><label>Projection System Type</label>
           <select id="fType">
             <option value="" ${!P.type?'selected':''}>— Select type —</option>
@@ -3214,7 +3248,7 @@ function pageProjects(){
   /* Dome Ballast — revealed only when Conditions of Use = Outdoor */
   const ballastOut = (P.indoorOutdoor === 'Outdoor');
   const ballastFld = `<div class="fld" id="pjBallastFld"${ballastOut?'':' style="display:none"'}><label>Dome Ballast</label>`
-    + _pjSel('pj_ballast', ballastOut?P.domeBallast:'', ['Ground Anchors','Concrete Ballast Blocks'], '— Select —') + `</div>`;
+    + _pjSel('pj_ballast', ballastOut?P.domeBallast:'', ['Ballast Weights','Ground Anchors','Concrete Anchors'], '— Select —') + `</div>`;
   /* Dome Server Location + conditional cable-route distance */
   const serverLoc = P.serverLocation || '';
   const locOutside = (serverLoc === 'Outside the Dome');
@@ -3253,7 +3287,7 @@ function pageProjects(){
         F('Dome Serial (from Dome Library) <span style="color:#9aa2ad;text-transform:none;font-weight:400">— or “Manual entry” to type below</span>', domeLibPickHTML('pj_domePick', P.domeUid, 'projDomePick()'), true)
       + `<input type="hidden" id="pj_domeUid" value="${esc(P.domeUid||'')}"><input type="hidden" id="pj_domeSerial" value="${esc(P.domeSerial||'')}">`
       + F('Dome Size (m)', I('pj_domeSize', P.domeDiameter, 'number', 'min="1" step="0.5" oninput="projAutoTitle()"'))
-      + F('Dome Type', _pjSel('pj_domeType', P.domeType, ['Standard','Tilt','SRD','VR','WD'], '— Select —'))
+      + F('Screen Type', _pjSel('pj_domeType', P.domeType, ['Standard','Tilt','SRD','VR','WD'], '— Select —'))
       + F('Conditions of Use', _pjSel('pj_conditions', P.indoorOutdoor, ['Indoor','Outdoor'], '— Select —', 'projFormCond()'))
       + ballastFld
       + F('Outer Cover Material', _pjSel('pj_outerCover', P.outerCover, ['Grey','PVC']))
@@ -3666,7 +3700,7 @@ function settingsDriveCard(active){
 }
 
 function pageCreate(){
-  _capChoice = false; _vjChoice = false; _audioChoice = true;
+  _capChoice = false; _vjChoice = false; _audioChoice = true; _inflChoice = false;
   return `
   <div class="create-wrap">
     <div class="create-hero">
@@ -3684,7 +3718,7 @@ function pageCreate(){
 
 function pageEdit(){
   const P = state.project;
-  _capChoice = !!P.captureRequired; _vjChoice = !!P.vjRequired; _audioChoice = (P.audioRequired!==false);
+  _capChoice = !!P.captureRequired; _vjChoice = !!P.vjRequired; _audioChoice = (P.audioRequired!==false); _inflChoice = (P.inflatableCover==='Yes');
   return `
   <div class="create-wrap">
     <div class="create-hero">
@@ -3700,7 +3734,7 @@ function pageEdit(){
   </div>`;
 }
 
-var _capChoice = false;
+var _capChoice = false, _inflChoice = false;   /* _inflChoice — Inflatable (BUILD 16.40) */
 var _vjChoice = false;
 var _audioChoice = true;   /* BUILD 15.74: Audio System toggle (default Yes) */
 function setAudio(v){
@@ -3719,6 +3753,8 @@ function setVj(v){
   const y=document.getElementById('vjYes'), n=document.getElementById('vjNo');
   if(y&&n){ y.classList.toggle('on', v); n.classList.toggle('on', !v); }
 }
+function setInfl(v){ _inflChoice = v; const y=document.getElementById('inflYes'), n=document.getElementById('inflNo'); if(y&&n){ y.classList.toggle('on', v); n.classList.toggle('on', !v); } }
+function editCondChange(){ const c=document.getElementById('fCond'), f=document.getElementById('fBallastFld'); if(c&&f){ f.style.display = c.value==='Outdoor' ? '' : 'none'; } }
 function setCap(v){
   _capChoice = v;
   const y=document.getElementById('capYes'), n=document.getElementById('capNo');
@@ -3755,7 +3791,10 @@ function readForm(){
     domeUid: g('fDomeUid') ? g('fDomeUid').value : '',            /* BUILD 15.72: linked Dome Library card */
     domeSerial: g('fDomeSerial') ? g('fDomeSerial').value : '',
     captureRequired: _capChoice,
-    vjRequired: _vjChoice
+    vjRequired: _vjChoice,
+    indoorOutdoor: g('fCond') ? g('fCond').value : '',                                   /* BUILD 16.40 */
+    domeBallast: (g('fCond') && g('fCond').value==='Outdoor' && g('fBallast')) ? g('fBallast').value : '',
+    inflatableCover: _inflChoice ? 'Yes' : 'No'
   };
 }
 function validateForm(f){
@@ -3774,6 +3813,7 @@ function createProjectInner(){
   data.project = Object.assign(f, {status:'Engineering', created:new Date().toISOString().slice(0,10), pid:newId(), _rev:Date.now()});   /* stable identity + revision from birth (BUILD 12.69/12.72) */
   data.server.rows = [blankRow(), blankRow(), blankRow()];
   if(f.captureRequired) data.server.rows.push({cat:'Capture Card', name:'', qty:1, price:'', link:''});
+  if(f.inflatableCover==='Yes') data.fan.rows.push({cat:'Inflatable Fan', name:'', qty:1, price:'', link:''});   /* BUILD 16.40 */
   if(f.vjRequired) data.vj.rows = [blankRow(), blankRow(), blankRow()];
   data.rack.rows = [blankRackRow(), blankRackRow()];
   const entry = {id:newId(), frozen:false, data, _localNew:1};   /* BUILD 14.13: explicit user creation → eligible to push to Firestore (cleared once pushed) */
@@ -3825,6 +3865,8 @@ function saveProjectEditInner(){
   if(f.vjRequired && !(state.vj.rows||[]).length){
     state.vj.rows = [blankRow(), blankRow(), blankRow()];
   }
+  /* BUILD 16.40: Inflatable = Yes and no inflatable-fan row yet → auto-add it to the Fan module */
+  if(f.inflatableCover==='Yes'){ if(!state.fan) state.fan={rows:[],ready:false,photos:[]}; if(!state.fan.rows.some(r => ((r.cat||'')+' '+(r.name||'')).toLowerCase().includes('inflat'))) state.fan.rows.push({cat:'Inflatable Fan', name:'', qty:1, price:'', link:''}); }
   revalidateReady();
   saveState(); renderHeader(); renderSideProject();
   const _e = activeEntry();
@@ -4042,6 +4084,20 @@ function pageDashboard(){
         <a class="mod-btn primary" href="#/tools">Open Module ${IC.open}</a>
       </div>
 
+      <div class="mod active${_lastMod==='#/dome'?' lastmod':''}">
+        <div class="mod-top"><div class="mod-ic">${IC.dome}</div>
+          <div><div class="mod-name">Dome &amp; Truss</div>${modActiveBadge(!!ensureDome(state).domeUid)}</div></div>
+        <div class="mod-desc">The project dome picked from the Dome Library — passport, truss ring, elements and a Ready Truss Kit; ships automatically.</div>
+        <div class="mod-stats">
+          ${(()=>{ const st=domeModuleStats(); return `
+          <div class="ms"><span class="k">Dome</span><span class="v ${st.dome?'ok':''}">${st.dome?esc(st.dome):'None'}</span></div>
+          <div class="ms"><span class="k">Truss</span><span class="v">${st.truss?esc(st.truss):'—'}</span></div>
+          <div class="ms"><span class="k">Truss Kit</span><span class="v">${st.kit?esc(st.kit):'—'}</span></div>
+          <div class="ms"><span class="k">Ready to Ship</span><span class="v" style="display:inline-flex;align-items:center;gap:6px" title="From the Dome Library card"><span class="led sm ${st.ready?'on':''}"></span>${st.ready?'Ready':'Not Ready'}</span></div>`; })()}
+        </div>
+        <a class="mod-btn primary" href="#/dome">Open Module ${IC.open}</a>
+      </div>
+
       <div class="mod active${_lastMod==='#/shipping'?' lastmod':''}">
         <div class="mod-top"><div class="mod-ic">${IC.ship}</div>
           <div><div class="mod-name">Equipment &amp; Shipping</div>${modActiveBadge(shipItems().length>0)}</div></div>
@@ -4061,7 +4117,9 @@ function pageDashboard(){
         <div class="srow"><span class="k">Project Name</span><span class="v">${esc(P.title)}</span></div>
         <div class="srow"><span class="k">Projection System</span><span class="v">${esc(P.type)||'—'}</span></div>
         <div class="srow"><span class="k">Dome Size</span><span class="v">${P.domeDiameter?esc(P.domeDiameter)+' m':'—'}</span></div>
-        <div class="srow"><span class="k">Dome Type</span><span class="v">${esc(P.domeType)||'—'}</span></div>
+        <div class="srow"><span class="k">Screen Type</span><span class="v">${esc(P.domeType)||'—'}</span></div>
+        <div class="srow"><span class="k">Indoor / Outdoor</span><span class="v">${esc(P.indoorOutdoor)||'—'}${P.indoorOutdoor==='Outdoor' && P.domeBallast ? ' · '+esc(P.domeBallast) : ''}</span></div>
+        <div class="srow"><span class="k">Inflatable</span><span class="v">${P.inflatableCover==='Yes'?'<span class="chip c-ok"><span class="cd"></span>Yes</span>':'<span class="chip c-mut"><span class="cd"></span>No</span>'}</span></div>
         <div class="srow"><span class="k">Capture Card</span><span class="v">${P.captureRequired?'<span class="chip c-ok"><span class="cd"></span>Yes</span>':'<span class="chip c-mut"><span class="cd"></span>No</span>'}</span></div>
         <div class="srow"><span class="k">VJ Server</span><span class="v">${P.vjRequired?'<span class="chip c-ok"><span class="cd"></span>Yes</span>':'<span class="chip c-mut"><span class="cd"></span>No</span>'}</span></div>
         <div class="srow"><span class="k">Installation Day</span><span class="v">${esc(P.ttDate)||'—'}</span></div>
@@ -4077,7 +4135,7 @@ function pageDashboard(){
         ${ensureProjectors(state).removableLens ? `<div class="srow"><span class="k">Lens Model</span><span class="v">${(function(){ const models=[...new Set(projLenses().map(l=>(l.model||'').trim()).filter(Boolean))]; return models.length ? esc(models.join(', ')) : '—'; })()}</span></div>` : ''}
         <div class="srow"><span class="k">Speaker Model</span><span class="v">${(P.speakersModel && String(P.speakersModel).trim()) ? esc(P.speakersModel) : '—'}</span></div>
         <div class="srow"><span class="k">Subwoofer Model</span><span class="v">${(P.subwooferModel && String(P.subwooferModel).trim()) ? esc(P.subwooferModel) : '—'}</span></div>
-        <div class="srow"><span class="k">Camera Model</span><span class="v">${(function(){ const rows=(state.camera.rows||[]).filter(r=>(r.name||'').trim()); const cam=rows.find(r=>/camera/i.test(r.cat||'')); const lens=rows.find(r=>/lens/i.test(r.cat||'')); const parts=[]; if(cam) parts.push(cam.name.trim()); if(lens) parts.push(lens.name.trim()); return parts.length ? esc(parts.join('  |  ')) : '—'; })()}</span></div>
+        <div class="srow"><span class="k">Camera Model</span><span class="v">${(function(){ /* BUILD 16.31: EVERY row whose category is "Camera" (no lens) */ const cams=(state.camera.rows||[]).filter(r=>(r.name||'').trim() && /^\s*camera\s*$/i.test(r.cat||'')).map(r=>r.name.trim()); return cams.length ? esc(cams.join('  |  ')) : '—'; })()}</span></div>
         <div class="srow"><span class="k">Content List</span><span class="v">${state.contentList
           ? `<span style="display:inline-flex;align-items:center;gap:8px">
                <span style="display:inline-flex;align-items:center;gap:5px;color:var(--ink2)" title="${esc(state.contentList.name)}">
@@ -4734,7 +4792,7 @@ function backupServerSection(){
    Assignment is per PLACE (one pallet per place, chosen once). */
 function shipPlaces(){
   const P = state.project; const places = [];
-  const mkItem = (r, key) => ({ key, name:(r.name||'').trim(), qty:parseFloat(r.qty)||1, link:r.link||'' });
+  const mkItem = (r, key) => ({ key, name:(r.name||'').trim(), qty:parseFloat(r.qty)||1, link:r.link||'', cat:(r.cat||'').trim() });   /* cat → CATEGORY column of the PDF (BUILD 16.24) */
   /* ---- Server (main) → its OWN place — BUILD 14.59: split out of the old "Server & Rack" so
          the shipping order reads Server → Backup Server → Rack ---- */
   const serverName = (P.sysNumber ? ('FDPSN#'+P.sysNumber) : 'Dome Server') + (P.type ? (' '+P.type) : '');
@@ -4757,7 +4815,9 @@ function shipPlaces(){
   if(rkCombined.length) places.push({key:'pl|rack', name:rackLabel, module:rackMod, items:rkCombined});
   rkSeparate.forEach((it,i)=> places.push({key:'pl|rack-sep|'+i, name:it.name, module:rackMod, items:[it]}));
   /* ---- Projectors — each unit its own place ---- */
-  ((state.projectors&&state.projectors.list)||[]).forEach((p,i)=>{ const nm=((p.mfr||'')+' '+(p.model||'')).trim(); if(!nm) return; places.push({key:'pl|proj|'+(p.id||i), name: nm + (p.serial?(' · SN '+p.serial):(p.num?(' #'+p.num):'')), module:'Projectors', items:[{key:'i|proj|'+(p.id||i), name:nm, qty:1, link:''}]}); });
+  ((state.projectors&&state.projectors.list)||[]).forEach((p,i)=>{ const nm=((p.mfr||'')+' '+(p.model||'')).trim(); if(!nm) return; places.push({key:'pl|proj|'+(p.id||i), name: nm + (p.serial?(' · SN '+p.serial):(p.num?(' #'+p.num):'')), module:'Projectors', items:[{key:'i|proj|'+(p.id||i), name:nm, qty:1, link:'', cat:'Projector', serial:(p.serial||'').trim()}]}); });   /* serial → PDF (BUILD 16.24) */
+  /* ---- Projector Accessories (BUILD 16.19) — user-filled table on the Projectors page; ships as ONE place ---- */
+  try{ const pacc = projAccShipItems(); if(pacc.length) places.push({key:'pl|pacc', name:'Projector Accessories', module:'Projector Accessories', items:pacc}); }catch(_){}
   /* ---- Speakers / Audio (BUILD 14.20) ---- */
   const spkCombined = [], spkSeparate = [];
   ((state.speakers&&state.speakers.rows)||[]).forEach((r,idx)=>{ if(!(r.name||'').trim()) return; (isCombined(r)?spkCombined:spkSeparate).push(mkItem(r,'i|spk|'+idx)); });
@@ -4770,7 +4830,12 @@ function shipPlaces(){
   fanSeparate.forEach((it,i)=> places.push({key:'pl|fan-sep|'+i, name:it.name, module:'Screen Fan', items:[it]}));
   /* ---- Cables & Adapters (BUILD 14.31) ---- */
   const cabCombined = [], cabSeparate = [];
-  ((state.cables&&state.cables.rows)||[]).forEach((r,idx)=>{ if(!(r.name||'').trim()) return; (isCombined(r)?cabCombined:cabSeparate).push(mkItem(r,'i|cab|'+idx)); });
+  /* BUILD 16.25: every cable item carries its sub-section (Power / Video / Audio Cables) → sub-headings in the
+     packing list and the PDF; the combined "Cables" place lists them in group order so each heading appears once */
+  const cabSubOf = r => { const g = (typeof cabGrpOf==='function') ? cabGrpOf(r) : 'power'; const b = (typeof CAB_GROUPS!=='undefined') && CAB_GROUPS.find(x=>x.key===g); return b ? b.label : 'Cables'; };
+  const cabOrder = r => { const g = (typeof cabGrpOf==='function') ? cabGrpOf(r) : 'power'; return g==='power' ? 0 : g==='video' ? 1 : g==='audio' ? 2 : 3; };
+  ((state.cables&&state.cables.rows)||[]).map((r,idx)=>({r,idx})).sort((a,b)=> cabOrder(a.r)-cabOrder(b.r) || a.idx-b.idx)
+    .forEach(({r,idx})=>{ if(!(r.name||'').trim()) return; const it = mkItem(r,'i|cab|'+idx); it.sub = cabSubOf(r); (isCombined(r)?cabCombined:cabSeparate).push(it); });
   if(cabCombined.length) places.push({key:'pl|cab', name:'Cables', module:'Cables', items:cabCombined});
   cabSeparate.forEach((it,i)=> places.push({key:'pl|cab-sep|'+i, name:it.name, module:'Cables', items:[it]}));
   /* ---- Tools & Installation Hardware (BUILD 14.37) — ships as one "Tools" place ---- */
@@ -4778,6 +4843,8 @@ function shipPlaces(){
   ((state.tools&&state.tools.rows)||[]).forEach((r,idx)=>{ if(!(r.name||'').trim()) return; (isCombined(r)?toolCombined:toolSeparate).push(mkItem(r,'i|tool|'+idx)); });
   if(toolCombined.length) places.push({key:'pl|tool', name:'Tools', module:'Tools', items:toolCombined});
   toolSeparate.forEach((it,i)=> places.push({key:'pl|tool-sep|'+i, name:it.name, module:'Tools', items:[it]}));
+  /* ---- Dome & Truss (BUILD 16.27) — the dome picked from the Dome Library + its truss (ring + elements, or the selected kit) ---- */
+  try{ const dm = domeShipPlaces(); dm.forEach(pl => places.push(pl)); }catch(_){}
   /* ---- Camera ---- */
   const camCombined = [], camSeparate = [], camByCase = {};
   const camCasesL = (state.camera&&state.camera.cases)||[];
@@ -4788,12 +4855,37 @@ function shipPlaces(){
     if(cs){ (camByCase[cs.id] = camByCase[cs.id] || []).push(it); return; }   /* BUILD 16.16: a flight case ships as ONE place */
     (isCombined(r)?camCombined:camSeparate).push(it);
   });
-  camCasesL.forEach((c,ci)=>{ const its = camByCase[c.id]; if(its && its.length) places.push({key:'pl|cam-case|'+c.id, name:camCaseLabel(c, ci), module:'Calibration Camera', items:its, sub:camCaseLabel(c, ci)}); });   /* sub = sub-section heading in the packing list / PDF */
+  let camHasCase = false;
+  camCasesL.forEach((c,ci)=>{ const its = camByCase[c.id]; if(its && its.length){ camHasCase = true; its.forEach(it=>{ it.sub = camCaseLabel(c, ci); }); places.push({key:'pl|cam-case|'+c.id, name:camCaseLabel(c, ci), module:'Calibration Camera', items:its, subChip:its.length+' item'+(its.length===1?'':'s')+' · ONE PLACE'}); } });   /* it.sub = sub-section heading in the packing list / PDF (BUILD 16.25: item-level) */
+  if(camHasCase){ camCombined.concat(camSeparate).forEach(it=>{ it.sub = 'Other'; }); }   /* BUILD 16.25: everything outside the cases → "OTHER" */
   if(camCombined.length) places.push({key:'pl|cam', name:'Camera', module:'Calibration Camera', items:camCombined});
   camSeparate.forEach((it,i)=> places.push({key:'pl|cam-sep|'+i, name:it.name, module:'Calibration Camera', items:[it]}));
   return places;
 }
 var _shipCollapsed = {};   /* module -> collapsed (session-only UI state) */
+/* BUILD 16.22 — click an equipment name in the packing list → open the module where it was entered and highlight
+   that exact row (the item key encodes its source: i|srv, i|bk, i|vj, i|rack|<row>, i|cam|<row>, i|proj|<id>, i|pacc|<id>…). */
+const SHIP_JUMP = { srv:['#/server-rack','server','srvN'], vj:['#/server-rack','vj','vjN'], bk:['#/server-rack','backup','bkN'],
+  rack:['#/server-rack','rack','rackN'], proj:['#/projectors','prInv','projN'], pacc:['#/projectors','prInv','paccN'],
+  spk:['#/speakers','speakers','spkN'], fan:['#/fan','fan','fanN'], cab:['#/cables','cables','cabN'], tool:['#/tools','tools','toolN'], cam:['#/camera','camera','camN'],
+  dome:['#/dome','domeSel',''], truss:['#/dome','domeSel',''], 'truss-el':['#/dome','domeSel',''], 'truss-kit':['#/dome','domeSel',''] };
+function shipGoTo(key){
+  const parts = String(key||'').split('|'); if(parts[0]!=='i') return;
+  const j = SHIP_JUMP[parts[1]]; if(!j) return;
+  const idx = parts.length>2 ? parts.slice(2).join('|') : '';
+  const focusId = (idx!=='' ? j[2]+idx : '');
+  location.hash = j[0];
+  setTimeout(function(){
+    try{
+      const el = focusId && document.getElementById(focusId);
+      const anchor = document.getElementById(j[1]);
+      const tgt = el ? (el.closest('tr') || el) : anchor;
+      if(tgt && tgt.scrollIntoView) tgt.scrollIntoView({ block:'center', behavior:'smooth' });
+      if(el){ el.focus({ preventScroll:true }); }
+      if(tgt){ tgt.classList.add('ship-hit'); setTimeout(function(){ tgt.classList.remove('ship-hit'); }, 2600); }
+    }catch(_){}
+  }, 80);
+}
 function toggleShipGroup(mi){ const mod = shipModules()[mi]; if(!mod) return; _shipCollapsed[mod] = !_shipCollapsed[mod]; rerenderKeepScroll(); }
 /* collapse / expand ALL module groups at once (button before the # column) */
 function toggleShipAllGroups(){
@@ -4842,62 +4934,209 @@ function loadJsPDF(cb){
   s.onerror = () => alert('Could not load the PDF generator — internet connection required.');
   document.head.appendChild(s);
 }
+/* BUILD 16.24 — Shipping / Packing List PDF, rebuilt as the final shipping document (A4 landscape):
+   header with project / date / status / pallets / weight / planned-packed-missing counts; a red
+   NOT PACKED section listing every unit that is not on a loaded pallet (Missing = Required − packed on all
+   pallets, computed per item KEY); then one section per pallet (dims, weight, table QTY | ITEM / MODEL |
+   CATEGORY | CASE / LOCATION | STATUS) with rows tinted green (PACKED) / red (NOT PACKED) AND labelled in
+   words. Everything comes from the common Shipping List (shipPlaces) — every module, incl. Projector
+   Accessories and camera flight cases (own sub-sections). Table header repeats on every page, a category
+   heading is never left alone at a page bottom, long names wrap, footer "Page X of Y". */
+function _shipPdfModel(){
+  const S = state.shipping, places = shipPlaces();
+  const num = v => parseFloat(String(v==null?'':v).replace(',','.')) || 0;
+  const req = {}, packedQ = {}, info = {};
+  places.forEach(pl => {
+    const palId = S.assign[pl.key] || '';
+    const pal = palId ? S.pallets.find(p => p.id === palId) : null;
+    const loaded = !!(pal && S.packed && S.packed[pl.key]);
+    pl.items.forEach(it => {
+      const q = num(it.qty) || 1;
+      req[it.key] = (req[it.key] || 0) + q;
+      if(loaded) packedQ[it.key] = (packedQ[it.key] || 0) + q;
+      info[it.key] = { it, pl, pal, loaded };
+    });
+  });
+  const units = Object.keys(req).map(k => ({ key:k, required:req[k], packed:packedQ[k] || 0, missing:Math.max(0, req[k] - (packedQ[k] || 0)), it:info[k].it, pl:info[k].pl, pal:info[k].pal, loaded:info[k].loaded }));
+  const totals = { required:0, packed:0, missing:0 };
+  units.forEach(u => { totals.required += u.required; totals.packed += u.packed; totals.missing += u.missing; });
+  const totalWt = S.pallets.reduce((s,p) => s + num(p.wt), 0);
+  return { S, places, units, totals, totalWt, num };
+}
 function genShipPDF(){
   loadJsPDF(function(JsPDF){
-    const S = state.shipping, P = state.project, items = shipItems();
-    const doc = new JsPDF({unit:'pt', format:'a4'});
-    const M = 48; let y = 58;
-    const nl = (t, size, bold, color) => {
-      if(y > 792){ doc.addPage(); y = 58; }
-      doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(size||10); doc.setTextColor(color||'#111');
-      doc.text(String(t), M, y); y += (size||10) + 6;
+    const P = state.project;
+    const Mdl = _shipPdfModel(), S = Mdl.S, units = Mdl.units, T = Mdl.totals;
+    const doc = new JsPDF({ unit:'pt', format:'a4', orientation:'landscape' });
+    const PW = doc.internal.pageSize.getWidth(), PH = doc.internal.pageSize.getHeight();
+    const M = 36, BOTTOM = PH - 40, CW = PW - 2*M;
+    const GREEN = [26,127,55], RED = [176,0,0], GREEN_BG = [230,244,234], RED_BG = [253,232,232], INK = [20,20,20], DIM = [90,90,90], LINE = [200,200,200], HEAD_BG = [235,237,240];
+    let y = M;
+    const totalPagesExp = '{total_pages_count_string}';
+    const setFont = (size, bold, color) => { doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(size); const c = color || INK; doc.setTextColor(c[0], c[1], c[2]); };
+    const footer = () => {
+      const n = doc.getNumberOfPages();
+      setFont(8, false, DIM);
+      doc.text('Shipping / Packing List — #' + (P.number||'') + ' ' + (P.title||'') + '   ·   generated ' + new Date().toLocaleString(), M, PH - 18);
+      doc.text('Page ' + n + ' of ' + totalPagesExp, PW - M, PH - 18, { align:'right' });
     };
-    doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.setTextColor('#111'); doc.text('SHIPPING / PACKING LIST', M, y); y += 26;
-    nl('Project: #' + (P.number||'') + '  ' + (P.title||''), 11, true);
-    nl('Shipping date: ' + (S.date || '—'), 10, false, '#444');
-    const places = shipPlaces();
-    const assignedPl = places.filter(pl => S.assign[pl.key]);
-    const loadedPl = places.filter(pl => S.assign[pl.key] && S.packed && S.packed[pl.key]);
-    const complete = places.length > 0 && loadedPl.length === places.length;
-    /* status banner — instantly shows whether shipping is finished */
-    y += 4;
-    if(complete) nl('STATUS: READY TO SHIP — all ' + places.length + ' places loaded', 12, true, '#1a7f37');
-    else nl('STATUS: NOT COMPLETE — ' + loadedPl.length + ' of ' + places.length + ' places loaded', 12, true, '#b00');
-    y += 6;
-    const cmtOf = it => (S.meta && S.meta[it.key] && S.meta[it.key].cmt) ? ('   [' + S.meta[it.key].cmt + ']') : '';
-    /* BUILD 16.12: items are listed UNDER their module heading (Server, Backup Server, Rack, Projectors, …)
-       in the same order as the on-screen table — not one flat pile per pallet. */
-    const listByModule = (pls) => {
-      const order = [], byMod = {};
-      /* BUILD 16.16: a place with a sub-section label (camera flight case) is listed under its own sub-heading */
-      pls.forEach(pl => { const m = pl.module || 'Other'; if(!byMod[m]){ byMod[m] = []; order.push(m); } if(pl.sub) byMod[m].push({ _sub: pl.sub, _n: pl.items.length, items: pl.items }); else byMod[m] = byMod[m].concat(pl.items); });
-      order.forEach(m => {
-        const its = byMod[m]; if(!its.length) return;
-        y += 3; nl('    ' + String(m).toUpperCase(), 10, true, '#333');
-        const line = it => nl('        - ' + it.name + (it.qty>1 ? ('  x' + it.qty) : '') + cmtOf(it), 10, false, '#222');
-        its.filter(x => !x._sub).forEach(line);
-        its.filter(x => x._sub).forEach(x => { nl('      ' + String(x._sub).toUpperCase() + '  (' + x._n + ' items, one place)', 10, true, '#555'); x.items.forEach(line); });
-      });
+    const newPage = () => { footer(); doc.addPage(); y = M; };
+    const ensure = (h) => { if(y + h > BOTTOM) newPage(); };
+    const text = (t, size, bold, color, opts) => { setFont(size, bold, color); const lines = doc.splitTextToSize(String(t), (opts && opts.w) || CW); ensure(lines.length * (size + 3)); doc.text(lines, (opts && opts.x) || M, y + size, opts && opts.align ? { align:opts.align } : undefined); y += lines.length * (size + 3) + ((opts && opts.gap) || 2); };
+    /* ---- vector status marks (Helvetica has no ✓ / ✕ glyph) ---- */
+    const mark = (kind, x, cy, color) => {
+      doc.setDrawColor(color[0], color[1], color[2]); doc.setLineWidth(1.4);
+      if(kind === 'ok'){ doc.line(x, cy, x + 3, cy + 3); doc.line(x + 3, cy + 3, x + 8, cy - 4); }
+      else { doc.line(x, cy - 3.5, x + 7, cy + 3.5); doc.line(x, cy + 3.5, x + 7, cy - 3.5); }
     };
-    let totalWt = 0;
-    S.pallets.forEach(p => {
-      const pls = places.filter(pl => S.assign[pl.key] === p.id);
-      const its = pls.reduce((a,pl)=>a.concat(pl.items),[]);
-      const anyLoaded = pls.some(pl => S.packed && S.packed[pl.key]);
-      const dims = [p.l, p.w, p.h].map(x => (x||'').trim()).filter(Boolean);
-      const dimStr = dims.length ? (dims.join('" x ') + '" (L x W x H)') : 'size —';
-      const wt = (p.wt||'').trim(); if(wt) totalWt += parseFloat(wt) || 0;
+    /* ---- generic table with wrapping, repeated header, group rows kept with their first data row ---- */
+    const FS = 9, LH = FS + 3, PAD = 4;
+    function table(cols, rows, contLabel){
+      const widths = cols.map(c => c.w);
+      const cont = () => { if(!contLabel) return; setFont(9, true, DIM); doc.text(contLabel + '  (continued)', M, y + 9); y += 14; };
+      const header = () => {
+        const h = LH + PAD * 2;
+        doc.setFillColor(HEAD_BG[0], HEAD_BG[1], HEAD_BG[2]); doc.rect(M, y, CW, h, 'F');
+        setFont(8.5, true, INK); let x = M;
+        cols.forEach((c, i) => { doc.text(c.title, c.align === 'right' ? x + widths[i] - PAD : x + PAD, y + PAD + FS, c.align === 'right' ? { align:'right' } : undefined); x += widths[i]; });
+        doc.setDrawColor(LINE[0], LINE[1], LINE[2]); doc.setLineWidth(0.5); doc.line(M, y + h, M + CW, y + h);
+        y += h;
+      };
+      const measure = (r) => {
+        if(r.group) return { h: LH + PAD * 2, lines:null };
+        setFont(FS, false);
+        const lines = r.cells.map((c, i) => doc.splitTextToSize(String(c == null ? '' : c), widths[i] - PAD * 2 - (cols[i].mark ? 12 : 0)));
+        const n = Math.max.apply(null, lines.map(l => l.length).concat([1]));
+        return { h: n * LH + PAD * 2, lines };
+      };
+      const drawRow = (r, m) => {
+        if(r.group){
+          doc.setFillColor(r.sub ? 248 : 242, r.sub ? 248 : 242, r.sub ? 248 : 242); doc.rect(M, y, CW, m.h, 'F');
+          setFont(r.sub ? 8.5 : 9, true, r.sub ? DIM : INK);
+          doc.text(String(r.group), M + PAD + (r.sub ? 14 : 0), y + PAD + FS);
+          doc.setDrawColor(LINE[0], LINE[1], LINE[2]); doc.line(M, y + m.h - 0.3, M + CW, y + m.h - 0.3);
+          y += m.h; return;
+        }
+        if(r.bg){ doc.setFillColor(r.bg[0], r.bg[1], r.bg[2]); doc.rect(M, y, CW, m.h, 'F'); }
+        let x = M;
+        cols.forEach((c, i) => {
+          const col = r.color || INK;
+          setFont(FS, !!(c.bold || (r.boldCols && r.boldCols[i])), r.cellColor && r.cellColor[i] ? r.cellColor[i] : col);
+          let tx = c.align === 'right' ? x + widths[i] - PAD : x + PAD;
+          if(c.mark && r.mark){ mark(r.mark, x + PAD, y + PAD + FS - 3.5, r.cellColor && r.cellColor[i] ? r.cellColor[i] : col); tx += 12; }
+          doc.text(m.lines[i], tx, y + PAD + FS, c.align === 'right' ? { align:'right' } : undefined);
+          x += widths[i];
+        });
+        doc.setDrawColor(LINE[0], LINE[1], LINE[2]); doc.setLineWidth(0.4); doc.line(M, y + m.h - 0.3, M + CW, y + m.h - 0.3);   /* inside the row, so the next row's fill never hides it */
+        y += m.h;
+      };
+      ensure(LH + PAD * 2 + LH + PAD * 2); header();
+      for(let i = 0; i < rows.length; i++){
+        const r = rows[i], m = measure(r);
+        let need = m.h;
+        if(r.group){ /* keep the heading with its first data row (and a sub-heading with its parent) */
+          let j = i + 1, extra = 0; while(j < rows.length && rows[j].group && rows[j].sub){ extra += measure(rows[j]).h; j++; }
+          if(j < rows.length) extra += measure(rows[j]).h; need += extra;
+        }
+        if(y + need > BOTTOM){ newPage(); cont(); header(); }
+        drawRow(r, m);
+      }
       y += 6;
-      nl('Pallet ' + (p.num||'?') + (p.name ? ('  —  ' + p.name) : '') + (pls.length ? (anyLoaded ? '   [LOADED]' : '   [NOT LOADED]') : ''), 12, true, pls.length ? (anyLoaded ? '#1a7f37' : '#b00') : '#111');
-      nl('    ' + dimStr + '     weight: ' + (wt ? wt + ' lb' : '—') + '     items: ' + its.reduce((s,it)=>s+(it.qty||1),0), 10, false, '#555');
-      if(its.length) listByModule(pls);
-      else nl('    (empty)', 10, false, '#999');
+    }
+    /* ---- helpers ---- */
+    const cmtOf = it => (S.meta && S.meta[it.key] && S.meta[it.key].cmt) ? String(S.meta[it.key].cmt).trim() : '';
+    const itemLabel = it => { let s = it.name || '—'; if(it.serial) s += '  ·  SN ' + it.serial; const c = cmtOf(it); if(c) s += '  [' + c + ']'; return s; };
+    const catOf = (it, pl) => (it.cat || '').trim() || (pl.module || '—');
+    const locOf = (it, pl) => pl.subChip ? pl.name : (pl.items.length > 1 ? pl.name : 'Own place');
+    const palLabel = p => 'PALLET ' + (p.num || '?') + (p.name ? (' — ' + p.name) : '');
+    /* merge identical units (same name / category / serial / location / status) into one row by qty */
+    const mergeRows = (list, keyFn) => { const out = [], by = {}; list.forEach(u => { const k = keyFn(u); if(by[k]){ by[k].qty += u.qty; return; } by[k] = Object.assign({}, u); out.push(by[k]); }); return out; };
+    const groupByModule = (list) => { const order = [], by = {}; list.forEach(u => { const m = u.module || 'Other'; if(!by[m]){ by[m] = []; order.push(m); } by[m].push(u); }); return order.map(m => ({ module:m, list:by[m] })); };
+
+    /* ================= HEADER ================= */
+    const complete = units.length > 0 && T.missing === 0;
+    setFont(18, true, INK); doc.text('SHIPPING / PACKING LIST', M, y + 18); y += 30;
+    setFont(11, true, INK); doc.text('Project:  #' + (P.number||'') + '  ' + (P.title||''), M, y + 11);
+    setFont(11, false, DIM); doc.text('Shipping date:  ' + (S.date || '—'), PW - M, y + 11, { align:'right' }); y += 20;
+    /* KPI strip */
+    const kpis = [
+      ['STATUS', complete ? 'COMPLETE' : 'INCOMPLETE', complete ? GREEN : RED],
+      ['PALLETS', String(S.pallets.length), INK],
+      ['TOTAL WEIGHT', Mdl.totalWt ? (Math.round(Mdl.totalWt * 10) / 10) + ' lb' : '—', INK],
+      ['PLANNED (QTY)', String(T.required), INK],
+      ['PACKED (QTY)', String(T.packed), T.packed ? GREEN : INK],
+      ['NOT PACKED (QTY)', String(T.missing), T.missing ? RED : GREEN]
+    ];
+    const kw = CW / kpis.length, kh = 40;
+    kpis.forEach((k, i) => {
+      const x = M + i * kw;
+      doc.setFillColor(246, 247, 249); doc.setDrawColor(LINE[0], LINE[1], LINE[2]); doc.setLineWidth(0.5); doc.rect(x, y, kw - 4, kh, 'FD');
+      setFont(7.5, true, DIM); doc.text(k[0], x + 8, y + 13);
+      setFont(14, true, k[2]); doc.text(k[1], x + 8, y + 31);
     });
-    const un = places.filter(pl => !S.assign[pl.key]);
-    if(un.length){ y += 8; nl('NOT ON ANY PALLET (' + un.length + ')', 12, true, '#b00'); listByModule(un); }
-    y += 14;
-    nl('Total pallets: ' + S.pallets.length + '        Total weight: ' + (totalWt ? (Math.round(totalWt*10)/10) + ' lb' : '—'), 11, true);
-    nl('Places loaded: ' + loadedPl.length + ' / ' + places.length + (complete ? '   — COMPLETE' : '   — INCOMPLETE'), 11, true, complete ? '#1a7f37' : '#b00');
+    y += kh + 12;
+    if(!complete){
+      doc.setFillColor(RED_BG[0], RED_BG[1], RED_BG[2]); doc.rect(M, y, CW, 34, 'F');
+      setFont(18, true, RED); doc.text(units.length ? 'INCOMPLETE — ITEMS NOT PACKED' : 'INCOMPLETE — NO ITEMS IN THE SHIPPING LIST', M + 10, y + 24); y += 44;
+    } else {
+      doc.setFillColor(GREEN_BG[0], GREEN_BG[1], GREEN_BG[2]); doc.rect(M, y, CW, 34, 'F');
+      setFont(18, true, GREEN); doc.text('COMPLETE — ALL ITEMS PACKED ON PALLETS', M + 10, y + 24); y += 44;
+    }
+
+    /* ================= NOT PACKED / NOT ON ANY PALLET ================= */
+    const missingUnits = units.filter(u => u.missing > 0).map(u => ({
+      qty:u.missing, name:itemLabel(u.it), cat:catOf(u.it, u.pl), module:u.pl.module || 'Other', serial:u.it.serial || '', sub:u.it.sub || '',
+      reason: u.pal ? ('On ' + palLabel(u.pal).replace('PALLET', 'Pallet') + ' — NOT LOADED (On pallet not ticked)') : 'Not assigned to any pallet'
+    }));
+    if(missingUnits.length){
+      ensure(60);
+      text('NOT PACKED / NOT ON ANY PALLET  —  ' + T.missing + ' unit' + (T.missing === 1 ? '' : 's') + ' in ' + missingUnits.length + ' position' + (missingUnits.length === 1 ? '' : 's'), 13, true, RED, { gap:4 });
+      const rows = [];
+      groupByModule(missingUnits).forEach(g => {
+        rows.push({ group:String(g.module).toUpperCase() });
+        const subsM = []; g.list.forEach(u => { const sb = u.sub || ''; if(subsM.indexOf(sb) < 0) subsM.push(sb); });
+        subsM.forEach(sb => { if(sb) rows.push({ group:sb.toUpperCase(), sub:true }); mergeRows(g.list.filter(u => (u.sub || '') === sb), u => [u.name, u.cat, u.serial, u.reason].join('|')).forEach(u => rows.push({ cells:[String(u.qty), u.name, u.cat, u.reason], bg:RED_BG, color:RED, boldCols:[true, true, false, false] })); });
+      });
+      table([{ title:'QTY', w:46, align:'right' }, { title:'ITEM / MODEL', w:CW - 46 - 150 - 250 }, { title:'CATEGORY', w:150 }, { title:'REASON', w:250 }], rows, 'NOT PACKED / NOT ON ANY PALLET');
+      y += 4;
+    }
+
+    /* ================= PALLETS ================= */
+    const cols = [{ title:'QTY', w:46, align:'right' }, { title:'ITEM / MODEL', w:CW - 46 - 130 - 190 - 110 }, { title:'CATEGORY', w:130 }, { title:'CASE / LOCATION', w:190 }, { title:'STATUS', w:110, mark:true }];
+    if(!S.pallets.length){ text('No pallets created yet.', 11, true, RED); }
+    S.pallets.forEach(p => {
+      const pu = units.filter(u => u.pal && u.pal.id === p.id);
+      const allLoaded = pu.length > 0 && pu.every(u => u.loaded), anyLoaded = pu.some(u => u.loaded);
+      const st = !pu.length ? 'EMPTY' : allLoaded ? 'PACKED' : anyLoaded ? 'PARTIALLY PACKED' : 'NOT PACKED';
+      const stCol = !pu.length ? DIM : allLoaded ? GREEN : RED;
+      const dims = [p.l, p.w, p.h].map(x => String(x || '').trim()).filter(Boolean);
+      const dimStr = dims.length === 3 ? (dims.join('" × ') + '"  (L × W × H)') : (dims.length ? dims.join('" × ') + '"' : 'size —');
+      const wt = String(p.wt || '').trim();
+      const qtyOn = pu.reduce((s,u) => s + u.required, 0), qtyPk = pu.reduce((s,u) => s + u.packed, 0);
+      ensure(70);
+      y += 4;
+      setFont(13, true, stCol); doc.text(palLabel(p) + '  —  ' + st, M, y + 13); y += 20;
+      setFont(9, false, DIM); doc.text(dimStr + '     Weight: ' + (wt ? wt + ' lb' : '—') + '     Units on pallet: ' + qtyOn + '     Packed: ' + qtyPk + '     Not packed: ' + (qtyOn - qtyPk), M, y + 9); y += 16;
+      if(!pu.length){ text('(empty — nothing assigned to this pallet)', 9, false, DIM); return; }
+      const rows = [];
+      const list = pu.map(u => ({ qty:u.required, name:itemLabel(u.it), cat:catOf(u.it, u.pl), module:u.pl.module || 'Other', sub:u.it.sub || '', onePlace:!!u.pl.subChip, serial:u.it.serial || '', loc:locOf(u.it, u.pl), loaded:u.loaded }));
+      groupByModule(list).forEach(g => {
+        rows.push({ group:String(g.module).toUpperCase() });
+        const plain = g.list.filter(u => !u.sub), cased = g.list.filter(u => u.sub);
+        const push = u => rows.push({ cells:[String(u.qty), u.name, u.cat, u.loc, u.loaded ? 'PACKED' : 'NOT PACKED'], bg:u.loaded ? GREEN_BG : RED_BG, color:INK, cellColor:[null, null, null, null, u.loaded ? GREEN : RED], mark:u.loaded ? 'ok' : 'x', boldCols:[true, false, false, false, true] });
+        mergeRows(plain, u => [u.name, u.cat, u.serial, u.loc, u.loaded].join('|')).forEach(push);
+        const subs = []; cased.forEach(u => { if(subs.indexOf(u.sub) < 0) subs.push(u.sub); });
+        subs.forEach(sb => { const its = cased.filter(u => u.sub === sb); rows.push({ group:sb.toUpperCase() + (its[0].onePlace ? '  (' + its.reduce((s,u)=>s+u.qty,0) + ' units — one place)' : ''), sub:true }); mergeRows(its, u => [u.name, u.cat, u.serial, u.loc, u.loaded].join('|')).forEach(push); });
+      });
+      table(cols, rows, palLabel(p) + '  —  ' + st);
+    });
+
+    /* ================= SUMMARY ================= */
+    ensure(50); y += 4;
+    setFont(11, true, INK); doc.text('Total pallets: ' + S.pallets.length + '        Total weight: ' + (Mdl.totalWt ? (Math.round(Mdl.totalWt * 10) / 10) + ' lb' : '—') + '        Planned: ' + T.required + '   Packed: ' + T.packed + '   Not packed: ' + T.missing, M, y + 11); y += 18;
+    setFont(11, true, complete ? GREEN : RED); doc.text(complete ? 'COMPLETE — all items are packed on pallets' : 'INCOMPLETE — ' + T.missing + ' unit' + (T.missing === 1 ? '' : 's') + ' not packed (see the red section on page 1)', M, y + 11); y += 18;
+    footer();
+    try{ doc.putTotalPages(totalPagesExp); }catch(_){}
     const fn = ('Shipping ' + (P.number||'') + ' ' + (P.title||'')).trim().replace(/[\/\\:*?"<>|]/g, '-') + '.pdf';
     doc.save(fn); flashStat('Shipping PDF generated ✓');
   });
@@ -4984,34 +5223,40 @@ function pageShipping(){
     const hdr = `<tr class="grouphdr"><td colspan="7" style="cursor:pointer" onclick="toggleShipGroup(${mi})">
       <span class="gtri">${collapsed?'▸':'▾'}</span>${esc(mod)}<span class="gled ${allPacked?'on':''}" title="${allPacked?'All items in this module are loaded on pallets':'Not all items in this module are loaded on pallets yet'}"></span></td></tr>`;
     if(collapsed){ /* still advance the running numbers so they stay consistent when expanded */ modPlaces.forEach(pl=>{ n += pl.items.length; }); return hdr; }
+    let lastSub = null;   /* BUILD 16.25: item-level sub-sections (camera cases / OTHER, Power / Video / Audio cables) — a heading row
+                             appears whenever the sub-section changes; the pallet + On-pallet cells still span the WHOLE place */
     const body = modPlaces.map(pl => {
       const plIdx = places.indexOf(pl); const pid = S.assign[pl.key]||'';
       const packed = !!(S.packed && S.packed[pl.key]);
-      /* BUILD 16.16: a place with a sub-section label (e.g. a camera flight case) gets its own heading row —
-         so it is visible that these items travel together as ONE place (one pallet cell / one loaded box) */
-      const subHdr = pl.sub ? `<tr class="subhdr"><td colspan="7" style="padding:6px 10px 6px 34px;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--ink2);background:rgba(0,0,0,.035);border-top:1px solid var(--line)">
-          <span class="chip c-mut" style="font-size:9.5px;margin-right:8px;text-transform:none;letter-spacing:0">${pl.items.length} item${pl.items.length===1?'':'s'} · ONE PLACE</span>${esc(pl.sub)}</td></tr>` : '';
-      return subHdr + pl.items.map((it, ii)=>{
-        n++;
+      /* row plan for this place: [{hdr}] and [{it}] entries; the pallet cells go on the FIRST row and span them all */
+      const plan = [];
+      pl.items.forEach((it, ii) => {
+        const sub = it.sub || '';
+        if(sub && sub !== lastSub){ plan.push({ hdr:sub, chip:(ii===0 && pl.subChip) ? pl.subChip : '' }); lastSub = sub; }
+        plan.push({ it });
+      });
+      const span = plan.length;
+      const pallCell = `<td class="tight pl-cell" rowspan="${span}" style="width:6%;vertical-align:middle"><select class="cell ${pid?'':'empty'}" title="Whole ${esc(pl.name)} place → one pallet" onchange="assignPlace(${plIdx},this.value)">${palOptions(pid)}</select></td>`;
+      const packCell = `<td class="tight pl-cell" rowspan="${span}" style="width:6%;text-align:center;vertical-align:middle"><input type="checkbox" style="width:16px;height:16px;cursor:pointer;accent-color:#2e9e5b" ${packed?'checked':''} ${pid?'':'disabled title="Assign a pallet first"'} onchange="setPacked(${plIdx},this.checked)"></td>`;
+      return plan.map((row, ri) => {
+        const cells = ri === 0 ? (pallCell + packCell) : '';
+        if(row.hdr){
+          return `<tr class="subhdr"><td colspan="5" style="padding:6px 10px 6px 34px;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--ink2);background:rgba(0,0,0,.035);border-top:1px solid var(--line)">
+          ${row.chip ? `<span class="chip c-mut" style="font-size:9.5px;margin-right:8px;text-transform:none;letter-spacing:0">${esc(row.chip)}</span>` : ''}${esc(row.hdr)}</td>${cells}</tr>`;
+        }
+        const it = row.it; n++;
         const href = shipLinkHref(it.link);
         const link = href
           ? `<a href="${esc(href)}" target="_blank" rel="noopener" title="Open purchase link" style="color:var(--fdp-red);display:inline-flex"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3"/></svg></a>`
           : `<span style="color:#c8ccd2">—</span>`;
         const cmt = (S.meta && S.meta[it.key] && S.meta[it.key].cmt) || '';
-        /* ONE pallet dropdown + ONE "on pallet" checkbox per PLACE — on the first item row, spanning the place */
-        const pallCell = ii === 0
-          ? `<td class="tight pl-cell" rowspan="${pl.items.length}" style="width:6%;vertical-align:middle"><select class="cell ${pid?'':'empty'}" title="Whole ${esc(pl.name)} place → one pallet" onchange="assignPlace(${plIdx},this.value)">${palOptions(pid)}</select></td>`
-          : '';
-        const packCell = ii === 0
-          ? `<td class="tight pl-cell" rowspan="${pl.items.length}" style="width:6%;text-align:center;vertical-align:middle"><input type="checkbox" style="width:16px;height:16px;cursor:pointer;accent-color:#2e9e5b" ${packed?'checked':''} ${pid?'':'disabled title="Assign a pallet first"'} onchange="setPacked(${plIdx},this.checked)"></td>`
-          : '';
-        return `<tr class="${ii===pl.items.length-1?'pl-last':''}">
+        return `<tr class="${ri===plan.length-1?'pl-last':''}">
           <td class="tight" style="width:4%;text-align:right;color:var(--dim)">${n}</td>
-          <td title="${esc(it.name)}">${esc(it.name)}</td>
+          <td title="${esc(it.name)} — click to open where it was entered"><span class="shipjump" onclick="shipGoTo('${esc(it.key)}')">${esc(it.name)}</span></td>
           <td class="tight" style="width:16%"><input class="cell" value="${esc(cmt)}" placeholder="—" oninput="setShipCmt('${it.key}',this.value)"></td>
           <td style="text-align:right;width:6%">${it.qty}</td>
           <td class="tight" style="width:5%;text-align:center">${link}</td>
-          ${pallCell}${packCell}
+          ${cells}
         </tr>`;
       }).join('');
     }).join('');
@@ -5398,7 +5643,8 @@ function liveSlice(d){
     fan:     { rows: (d.fan && d.fan.rows) || [], ready: !!(d.fan && d.fan.ready) },
     cables:  { rows: (d.cables && d.cables.rows) || [], ready: !!(d.cables && d.cables.ready) },
     tools:   { rows: (d.tools && d.tools.rows) || [], ready: !!(d.tools && d.tools.ready) },
-    projectors: { list: (d.projectors && d.projectors.list) || [], selId: (d.projectors && d.projectors.selId) || null, removableLens: !!(d.projectors && d.projectors.removableLens), lenses: (d.projectors && d.projectors.lenses) || [] },
+    dome:    { domeUid: (d.dome && d.dome.domeUid) || '', kitId: (d.dome && d.dome.kitId) || '', ready: !!(d.dome && d.dome.ready), snap: (d.dome && d.dome.snap) || null },   /* BUILD 16.27 */
+    projectors: { list: (d.projectors && d.projectors.list) || [], selId: (d.projectors && d.projectors.selId) || null, removableLens: !!(d.projectors && d.projectors.removableLens), lenses: (d.projectors && d.projectors.lenses) || [], acc: (d.projectors && d.projectors.acc) || [] },   /* acc = Projector Accessories (BUILD 16.19) */
     validation:   d.validation || {},                 /* dashboard test chips — live now (BUILD 12.7) */
     vjValidation: d.vjValidation || {},
     shipping: { date:(d.shipping&&d.shipping.date)||'', pallets:(d.shipping&&d.shipping.pallets)||[], assign:(d.shipping&&d.shipping.assign)||{}, meta:(d.shipping&&d.shipping.meta)||{}, packed:(d.shipping&&d.shipping.packed)||{} }   /* pallets + date + comments + loaded flags sync; docs ride in the heavy json only (BUILD 12.54) */
@@ -5438,8 +5684,9 @@ function liveApply(d, live){
   if(live.speakers){ d.speakers = d.speakers || {rows:[],ready:false,photos:[]}; setIf(d.speakers, 'rows', live.speakers.rows || []); setIf(d.speakers, 'ready', !!live.speakers.ready); }
   if(live.fan){ d.fan = d.fan || {rows:[],ready:false,photos:[]}; setIf(d.fan, 'rows', live.fan.rows || []); setIf(d.fan, 'ready', !!live.fan.ready); }
   if(live.cables){ d.cables = d.cables || {rows:[],ready:false,photos:[]}; setIf(d.cables, 'rows', live.cables.rows || []); setIf(d.cables, 'ready', !!live.cables.ready); }
+  if(live.dome){ d.dome = d.dome || {domeUid:'',kitId:'',ready:false,snap:null}; setIf(d.dome, 'domeUid', live.dome.domeUid || ''); setIf(d.dome, 'kitId', live.dome.kitId || ''); setIf(d.dome, 'ready', !!live.dome.ready); setIf(d.dome, 'snap', live.dome.snap || null); }   /* BUILD 16.27 */
   if(live.tools){ d.tools = d.tools || {rows:[],ready:false,photos:[]}; setIf(d.tools, 'rows', live.tools.rows || []); setIf(d.tools, 'ready', !!live.tools.ready); }
-  if(live.projectors){ d.projectors = d.projectors || {list:[],selId:null,models:{}}; setIf(d.projectors, 'list', live.projectors.list || []); setIf(d.projectors, 'selId', live.projectors.selId || null); if('removableLens' in live.projectors) setIf(d.projectors, 'removableLens', !!live.projectors.removableLens); if('lenses' in live.projectors) setIf(d.projectors, 'lenses', live.projectors.lenses || []); }
+  if(live.projectors){ d.projectors = d.projectors || {list:[],selId:null,models:{}}; setIf(d.projectors, 'list', live.projectors.list || []); setIf(d.projectors, 'selId', live.projectors.selId || null); if('removableLens' in live.projectors) setIf(d.projectors, 'removableLens', !!live.projectors.removableLens); if('lenses' in live.projectors) setIf(d.projectors, 'lenses', live.projectors.lenses || []); if('acc' in live.projectors) setIf(d.projectors, 'acc', live.projectors.acc || []); }
   if(live.validation)   setIf(d, 'validation',   live.validation);      /* dashboard test chips (BUILD 12.7) */
   if(live.vjValidation) setIf(d, 'vjValidation', live.vjValidation);
   if(live.shipping){ d.shipping = d.shipping || {date:'',pallets:[],assign:{},docs:[],meta:{},packed:{}}; setIf(d.shipping,'date',live.shipping.date||''); setIf(d.shipping,'pallets',live.shipping.pallets||[]); setIf(d.shipping,'assign',live.shipping.assign||{}); if('meta' in live.shipping) setIf(d.shipping,'meta',live.shipping.meta||{}); if('packed' in live.shipping) setIf(d.shipping,'packed',live.shipping.packed||{}); }
@@ -6335,7 +6582,7 @@ async function fbpBrowseMirror(e){
    Google Drive (the 13.x media layer, untouched). A full project JSON is still assembled
    locally for export/backup at any time. Master switch: `var _FS = true` (RTDB `_FBP` off). */
 const FS_PROJECT_ID = 'fulldome-psp';
-const FS_SECTIONS = ['project','server','backup','vj','rack','camera','speakers','fan','cables','tools','projectors','validation','vjValidation','shipping'];
+const FS_SECTIONS = ['project','server','backup','vj','rack','camera','speakers','fan','cables','tools','projectors','validation','vjValidation','shipping','dome'];   /* + dome (BUILD 16.27) */
 var _fsApp = null, _fsDb = null, _fsAuthObj = null, _fsCol = null, _fsUnsub = null, _fsSdkP = null;
 var _fsReady = false, _fsStarted = false, _fsApplying = false, _fsPushT = null, _fsSeededPush = false;
 var _fsLocal = {};   /* pid -> {section: sig, _seen, _done, _msig} — skip no-op section writes */
@@ -9351,6 +9598,122 @@ function pageCamera(){
   </div>`;
 }
 
+/* ---------- DOME & TRUSS MODULE (BUILD 16.27) ----------
+   The project's dome is PICKED from the shared Dome Library (a dome card with its truss); optionally one of the
+   dome's Ready Truss Kits is selected for this project. "Add New Dome" (a dome created inside the project) is
+   deferred — the button is a placeholder. state.dome = { domeUid, kitId, ready, snap } syncs as the 'dome'
+   section; snap is a small metadata copy of the card (no files) so shipping keeps working on a machine whose
+   Dome Library copy is behind. */
+function ensureDome(d){ if(!d.dome || typeof d.dome!=='object') d.dome = { domeUid:'', kitId:'', ready:false, snap:null };
+  ['domeUid','kitId'].forEach(k=>{ if(typeof d.dome[k]!=='string') d.dome[k] = String(d.dome[k]==null?'':d.dome[k]); }); d.dome.ready = !!d.dome.ready; if(d.dome.snap && typeof d.dome.snap!=='object') d.dome.snap = null; return d.dome; }
+function domeLibList(){ return ((db.domeLib||[]).filter(m => m && m.domeUid && !m.archived)).slice().sort((a,b)=>{ const n=x=>{ const v=parseFloat(String(x.size||'').replace(',','.')); return isFinite(v)?v:Infinity; }; const d=n(a)-n(b); if(d) return d; return String(a.serial||'').localeCompare(String(b.serial||''), undefined, {numeric:true}); }); }
+function projDome(){ const dm = ensureDome(state); return dm.domeUid ? (domeFind(dm.domeUid) || null) : null; }
+/* metadata snapshot of a dome card for the project (never files / photos) */
+function domeSnapOf(m){ if(!m) return null; const t = domeEnsureTruss(m);
+  return { domeUid:m.domeUid, serial:m.serial||'', size:String(m.size||''), type:m.type||'', screenType:m.screenType||'', screenTypeOther:m.screenTypeOther||'', doors:m.doors||'', doorsCustom:m.doorsCustom||'', readyToShip:!!m.readyToShip,
+    fanOpenings:String(m.fanOpenings||''), hvacOpenings:String(m.hvacOpenings||''),
+    truss:{ sn:t.sn||'', color:t.color||'', bags:t.bags||'', parts:t.parts||'', couplers:t.couplers||'',
+      elements:domeLiveEls(t).filter(e=>String(e.name||'').trim()).map(e=>({ id:e.id, cat:e.cat||'', name:e.name, qty:String(e.qty||'1') })),
+      kits:domeLiveKits(t).map(k=>({ id:k.id, num:k.num||'', status:k.status||'', items:(k.items||[]).filter(it=>it && String(it.name||'').trim()).map(it=>({ id:it.id, core:!!it.core, cat:it.cat||'', name:it.name, qty:String(it.qty||'1'), link:it.link||'' })) })) } }; }
+/* the dome data the module works with: the live library card when present, else the project's snapshot */
+function projDomeData(){ const dm = ensureDome(state); if(!dm.domeUid) return null; const m = domeFind(dm.domeUid); if(m && !m.archived) return domeSnapOf(m); return dm.snap || null; }
+function domeSnapTitle(sn){ if(!sn) return ''; const size = String(sn.size||'').replace(/\s*m$/i,'').trim(); return [size?size+' m':'', sn.type, sn.serial].filter(Boolean).join(' · ') || 'Dome'; }
+function setProjDome(uid){ const dm = ensureDome(state); const m = uid ? domeFind(uid) : null;
+  if(uid && !m){ alert('This dome is not in the Dome Library.'); return; }
+  dm.domeUid = m ? m.domeUid : ''; dm.kitId = ''; dm.snap = m ? domeSnapOf(m) : null; if(!m) dm.ready = false;
+  saveState(); renderSideProject(); rerenderKeepScroll(); if(m) flashStat('Dome added from the Dome Library ✓'); }
+function addProjDomeFromLib(){ const sel = document.getElementById('domeLibPick'); const uid = sel ? sel.value : ''; if(!uid){ alert('Pick a dome from the list first.'); return; } setProjDome(uid); }
+function rmProjDome(){ if(!confirm('Remove the dome from this project? (The Dome Library card is not affected.)')) return; setProjDome(''); }
+function setProjDomeKit(id){ const dm = ensureDome(state); dm.kitId = id || ''; saveState(); rerenderKeepScroll(); }
+function refreshProjDomeSnap(){ const m = projDome(); if(!m) return; ensureDome(state).snap = domeSnapOf(m); saveState(); rerenderKeepScroll(); flashStat('Dome data refreshed from the Dome Library ✓'); }
+/* BUILD 16.30: the module's readiness is NOT a button — it mirrors the dome card's "Ready to Ship" checkbox in the Dome
+   Library (live card when present, else the project's snapshot). Red until the dome is marked Ready to Ship there. */
+function projDomeReady(){ const sn = projDomeData(); if(!sn) return false; const m = projDome(); return m ? !!m.readyToShip : !!sn.readyToShip; }
+function toggleDomeReady(){ const m = projDome(); if(m){ flashStat('Readiness comes from the Dome Library — tick "Ready to Ship" on the dome card'); } }
+/* shipping places: Dome (1 place) + Truss (1 place: ring + elements, or the selected kit's items) */
+function domeShipPlaces(){ const sn = projDomeData(); if(!sn) return []; const dm = ensureDome(state); const out = [];
+  const domeName = 'Dome ' + domeSnapTitle(sn);
+  out.push({ key:'pl|dome', name:domeName, module:'Dome & Truss', items:[{ key:'i|dome', name:domeName, qty:1, link:'', cat:'Dome', serial:sn.serial||'' }] });
+  const t = sn.truss || {}; const kit = dm.kitId ? (t.kits||[]).find(k=>k.id===dm.kitId) : null; const items = [];
+  const ringName = String(t.sn||'').trim() ? ('Dome Truss Ring · ' + t.sn) : (String(t.color||'').trim() ? ('Dome Truss Ring · ' + t.color) : '');
+  if(kit){ kit.items.forEach(it => items.push({ key:'i|truss-kit|'+it.id, name:it.name, qty:parseFloat(it.qty)||1, link:it.link||'', cat:it.cat||(it.core?'Truss':'Truss kit'), sub:'Truss Kit '+kit.num })); }
+  else { if(ringName) items.push({ key:'i|truss', name:ringName, qty:1, link:'', cat:'Truss', serial:t.sn||'' }); (t.elements||[]).forEach(e => items.push({ key:'i|truss-el|'+e.id, name:e.name, qty:parseFloat(e.qty)||1, link:'', cat:e.cat||'Truss' })); }
+  if(items.length) out.push({ key:'pl|truss', name:'Truss' + (kit?(' — Kit '+kit.num):''), module:'Dome & Truss', items });
+  return out; }
+function domeModuleStats(){ const sn = projDomeData(); const dm = ensureDome(state); const t = (sn && sn.truss) || {}; const kit = dm.kitId ? (t.kits||[]).find(k=>k.id===dm.kitId) : null;
+  return { dome: sn ? domeSnapTitle(sn) : '', truss: sn ? (String(t.sn||'').trim() || String(t.color||'').trim() || ((t.elements||[]).length ? (t.elements.length+' elements') : '')) : '', kit: kit ? ('Kit ' + kit.num) : '', ready: projDomeReady() }; }
+function pageDome(){
+  const dm = ensureDome(state); const P = state.project; const m = projDome(); const sn = projDomeData(); const st = domeModuleStats(); const ready = st.ready;
+  const lib = domeLibList();
+  const stale = !!(dm.domeUid && !m);   /* card not in this machine's Dome Library copy (yet) → working from the snapshot */
+  const kits = (sn && sn.truss && sn.truss.kits) || [];
+  const picker = `
+    <div class="card" id="domeSel">
+      <div class="card-head"><h3>${sn ? 'Project dome' : 'Select dome'}</h3>
+        <span class="ready-btn ${ready?'on':''}" style="cursor:default" title="${ready ? 'The dome card is marked Ready to Ship in the Dome Library' : 'Red until the dome card is marked \"Ready to Ship\" in the Dome Library'}"><span class="led ${ready?'on':''}"></span><span>${ready ? 'Ready to Ship' : 'Not Ready to Ship'}</span></span></div>
+      ${sn ? `
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:4px 0 10px">
+        <div style="min-width:0;flex:1">
+          <div style="font-size:16px;font-weight:800">${esc(domeSnapTitle(sn))}</div>
+          <div style="font-size:12px;color:var(--dim);margin-top:3px">From the Dome Library${stale ? ' · <span style="color:var(--fdp-red)">card not found in this copy of the library — showing the saved snapshot</span>' : ''}</div>
+        </div>
+        ${m ? `<button class="mod-btn" style="padding:6px 12px" onclick="domeOpenCard('${esc(m.domeUid)}');location.hash='#/dome-library'">Open in Dome Library</button>
+        <button class="mod-btn" style="padding:6px 12px" title="Re-copy the card data into the project" onclick="refreshProjDomeSnap()">↻ Refresh from Library</button>` : ''}
+        <button class="mod-btn" style="padding:6px 12px;color:var(--fdp-red)" onclick="rmProjDome()">Remove</button>
+      </div>
+      ${kits.length ? `
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:12px">
+        <span style="font-size:12.5px;font-weight:700">Ready Truss Kit for this project</span>
+        <select class="cell" style="max-width:320px" onchange="setProjDomeKit(this.value)">
+          <option value="" ${!dm.kitId?'selected':''}>— None (ship the truss ring + elements)</option>
+          ${kits.map(k=>`<option value="${esc(k.id)}" ${dm.kitId===k.id?'selected':''}>Truss Kit ${esc(k.num)}${k.status?' · '+esc(k.status):''} · ${k.items.length} item${k.items.length===1?'':'s'}</option>`).join('')}
+        </select>
+        <span style="font-size:11.5px;color:var(--dim)">The selected kit's items ship in the "Truss" place; without a kit — the ring and the truss elements.</span>
+      </div>` : ''}` : `
+      <div class="hint" style="margin:-4px 0 12px;color:var(--dim);font-size:12px">Pick the dome for this project from the shared Dome Library — its passport and truss come with it and ship automatically in Equipment &amp; Shipping. The Ready indicator mirrors the card's "Ready to Ship" in the Dome Library.</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        ${lib.length ? `<select class="cell" id="domeLibPick" style="max-width:420px">${lib.map(x=>`<option value="${esc(x.domeUid)}">${esc(domeTitle(x))}${domeHasTruss(x)?' · truss':''}</option>`).join('')}</select>
+        <button class="mod-btn primary" style="padding:7px 14px" onclick="addProjDomeFromLib()">+ Add from Library</button>` : `<span style="font-size:12.5px;color:var(--dim)">The Dome Library is empty — create a dome card there first.</span> <a class="mod-btn" style="padding:7px 14px" href="#/dome-library">Open Dome Library</a>`}
+        <button class="mod-btn" style="padding:7px 14px;opacity:.55;cursor:not-allowed" title="Coming soon — a dome created inside the project" onclick="flashStat('Add New Dome — coming soon')">+ Add New Dome <span class="chip c-mut" style="font-size:9.5px;margin-left:4px">soon</span></button>
+      </div>`}
+    </div>`;
+  const passport = m ? domePassport(m) : (sn ? `
+    <div class="card"><div class="card-head"><h3>Dome data (snapshot)</h3></div>
+      <div class="dpass-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px">
+        ${[['Diameter', String(sn.size||'').trim()?sn.size+' m':'—'],['Dome Type', sn.type||'—'],['Screen Type', sn.screenType||'—'],['Doors', sn.doors||'—'],['Fan (in)', sn.fanOpenings||'—'],['HVAC (in)', sn.hvacOpenings||'—'],['Truss SN', (sn.truss&&sn.truss.sn)||'—'],['Truss colour', (sn.truss&&sn.truss.color)||'—']].map(x=>`<div class="dpass-tile"><div class="l">${x[0]}</div><div class="v">${esc(x[1])}</div></div>`).join('')}
+      </div></div>` : '');
+  const shipPl = domeShipPlaces();
+  const shipCard = sn ? `
+    <div class="card"><div class="card-head"><h3>Ships as</h3><span class="chip c-mut"><span class="cd"></span>${shipPl.length} place${shipPl.length===1?'':'s'}</span></div>
+      ${shipPl.map(pl=>`<div style="padding:8px 0;border-top:1px solid var(--line)"><div style="font-weight:700;font-size:13px">${esc(pl.name)} <span style="font-weight:400;color:var(--dim);font-size:11.5px">· ${pl.items.length} item${pl.items.length===1?'':'s'}</span></div>
+        <div style="font-size:12px;color:var(--ink2);margin-top:3px">${pl.items.map(it=>esc(it.name)+(it.qty>1?' ×'+it.qty:'')).join(' · ')}</div></div>`).join('')}
+      <div style="font-size:11.5px;color:var(--dim);margin-top:8px">These places appear automatically in Equipment &amp; Shipping under "Dome &amp; Truss".</div>
+    </div>` : '';
+  return `
+  <div class="page">
+    <div class="crumbs"><a href="#/dashboard">Dashboard</a> › <span class="cur">Dome &amp; Truss</span></div>
+    <div class="pagehead">
+      <div class="eyebrow">#${esc(P.number)} · ${esc(P.title)}${P.domeDiameter?' · '+esc(P.domeDiameter)+' m '+esc(P.domeType||''):''}</div>
+      <h1>Dome &amp; Truss</h1>
+      <div class="sub">The dome and truss for this project — picked from the Dome Library, with the dome passport and the truss configuration that ships with it.</div>
+    </div>
+    <div class="kpis">
+      <div class="kpi red"><div class="kl">Dome</div><div class="kvv" style="font-size:15px">${st.dome ? esc(st.dome) : '—'}</div></div>
+      <div class="kpi"><div class="kl">Truss</div><div class="kvv" style="font-size:15px">${st.truss ? esc(st.truss) : '—'}</div></div>
+      <div class="kpi"><div class="kl">Truss kit</div><div class="kvv" style="font-size:15px">${st.kit ? esc(st.kit) : '—'}</div></div>
+      <div class="kpi"><div class="kl">Ready to Ship</div><div class="kvv" style="font-size:15px;display:flex;align-items:center;gap:8px" title="From the Dome Library card"><span class="led ${ready?'on':''}"></span><span>${ready?'Ready':'Not Ready'}</span></div></div>
+    </div>
+    <div class="sec-title" id="dome">
+      <div class="stic">${IC.dome}</div>
+      <div><h2>Dome</h2><div class="st-sub">Selected from the shared Dome Library. Edit the card itself in the Dome Library — changes flow into every project that uses it.</div></div>
+    </div>
+    ${picker}
+    ${sn ? `<div style="margin-top:16px">${passport}</div>` : ''}
+    ${shipCard ? `<div style="margin-top:16px">${shipCard}</div>` : ''}
+    <a class="backlink" href="#/dashboard">${IC.back} Back to Dashboard</a>
+  </div>`;
+}
+
 /* ---------- PROJECTORS MODULE ----------
    Inventory (number / manufacturer / model / serial / IP), per-projector
    setup status, and saved web-interface settings (HTML / JPEG / PNG)
@@ -9401,6 +9764,47 @@ function addLens(silent){ const pr=ensureProjectors(state);
   if(!silent){ saveState(); rerenderKeepScroll(); } }
 function rmLens(i){ const pr=ensureProjectors(state); if(!pr.lenses[i]) return; pr.lenses.splice(i,1); saveState(); rerenderKeepScroll(); }
 function updLens(i,k,v){ const l=projLenses()[i]; if(!l) return; l[k]=v; saveState(); }
+/* BUILD 16.19 — Projector Accessories: item / model-part / required / source / qty to ship / packed / notes.
+   Rows are added by the user only; rows with a name and Qty to Ship > 0 ship as ONE place "Projector Accessories"
+   (module right after Projectors in the packing list / PDF). */
+const PROJ_ACC_SOURCES = ['Included','Fulldome Stock','Purchase','Other'];
+function projAcc(){ return ensureProjectors(state).acc; }
+function addProjAcc(){ projAcc().push({ id:'pa'+Date.now()+Math.floor(Math.random()*1e4), item:'', model:'', req:'', source:'', qty:'', packed:'', notes:'' }); saveState(); rerenderKeepScroll(); }
+function rmProjAcc(i){ const a=projAcc(); if(!a[i]) return; a.splice(i,1); saveState(); rerenderKeepScroll(); }
+function updProjAcc(i,k,v){ const a=projAcc()[i]; if(!a) return; a[k]=v; saveState(); }   /* BUILD 16.21: Packed column removed (packing is tracked in Shipping) */
+/* BUILD 16.20: EVERY named accessory ships (was: only rows with Qty to Ship > 0 — rows with an empty Qty were silently
+   left out). Quantity = Qty to Ship, else Required, else Packed, else 1. */
+function projAccShipQty(a){ const n = v => parseFloat(String(v==null?'':v).replace(',','.'))||0; return n(a.qty) || n(a.req) || 1; }
+function projAccShipItems(){ return projAcc().filter(a=>String(a.item||'').trim())
+  .map(a=>({ key:'i|pacc|'+a.id, name:String(a.item).trim()+(String(a.model||'').trim()?' — '+String(a.model).trim():''), qty:projAccShipQty(a), link:'' })); }
+function projAccCard(){
+  const acc = projAcc();
+  const rows = acc.map((a,i)=>`
+    <tr>
+      <td class="tight" style="width:17%"><input class="cell b" id="paccN${esc(a.id)}" value="${esc(a.item)}" placeholder="Item" oninput="updProjAcc(${i},'item',this.value)"></td>
+      <td class="tight" style="width:16%"><input class="cell" value="${esc(a.model)}" placeholder="Model / Part No." oninput="updProjAcc(${i},'model',this.value)"></td>
+      <td class="tight" style="width:8%"><input class="cell num" value="${esc(a.req)}" placeholder="—" oninput="updProjAcc(${i},'req',this.value)"></td>
+      <td class="tight" style="width:14%"><select class="cell ${!(a.source||'').trim()?'empty':''}" onchange="updProjAcc(${i},'source',this.value);this.classList.toggle('empty',!this.value)">
+        <option value="" ${!(a.source||'').trim()?'selected':''}>— Source —</option>
+        ${PROJ_ACC_SOURCES.map(s=>`<option value="${s}" ${a.source===s?'selected':''}>${s}</option>`).join('')}
+        ${(a.source||'').trim() && PROJ_ACC_SOURCES.indexOf(a.source)<0 ? `<option value="${esc(a.source)}" selected>${esc(a.source)}</option>` : ''}
+      </select></td>
+      <td class="tight" style="width:9%"><input class="cell num" value="${esc(a.qty)}" placeholder="0" title="Quantity in the packing list (empty = Required)" oninput="updProjAcc(${i},'qty',this.value)"></td>
+      <td class="tight"><input class="cell" value="${esc(a.notes)}" placeholder="Notes" oninput="updProjAcc(${i},'notes',this.value)"></td>
+      <td class="rm"><button title="Remove" onclick="rmProjAcc(${i})">×</button></td>
+    </tr>`).join('');
+  return `
+      <div class="card" style="margin:16px 0 0">
+        <div class="card-head"><h3>Projector Accessories</h3><span class="chip c-mut"><span class="cd"></span>${acc.length}</span></div>
+        <div class="hint" style="margin:-6px 0 12px;color:var(--dim);font-size:11.5px">Projector-specific accessories supplied or purchased for this project. Every named row appears automatically in the Shipping list (module "Projector Accessories") — quantity = Qty to Ship (or Required if empty).</div>
+        ${acc.length ? `
+        <table class="eq">
+          <thead><tr><th>Item</th><th>Model / Part No.</th><th style="text-align:right">Required</th><th>Source</th><th style="text-align:right">Qty to Ship</th><th>Notes</th><th></th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>` : `<div style="font-size:12.5px;color:#9aa2ad;padding:4px 2px">No accessories yet — add the first one.</div>`}
+        <button class="add-line" onclick="addProjAcc()">+ Add accessory</button>
+      </div>`;
+}
 function setSelProjector(id){ ensureProjectors(state).selId = id; saveState(); rerenderKeepScroll(); }
 function openProjectorWeb(){
   const p = selProjector();
@@ -9654,7 +10058,7 @@ function pageProjectors(){
     <tr>
       <td class="tight" style="width:9%"><input class="cell num b" value="${esc(p.num)}" placeholder="#" oninput="updProj(${i},'num',this.value)"></td>
       <td class="tight" style="width:18%"><input class="cell" value="${esc(p.mfr)}" placeholder="Manufacturer" oninput="updProj(${i},'mfr',this.value)"></td>
-      <td class="tight"><input class="cell b" value="${esc(p.model)}" placeholder="Model" oninput="updProj(${i},'model',this.value)"></td>
+      <td class="tight"><input class="cell b" id="projN${esc(p.id||i)}" value="${esc(p.model)}" placeholder="Model" oninput="updProj(${i},'model',this.value)"></td>
       <td class="tight" style="width:13%"><input class="cell" value="${esc(p.bright)}" placeholder="Brightness" oninput="updProj(${i},'bright',this.value)"></td>
       ${lensOn ? '' : `<td class="tight" style="width:10%"><input class="cell" value="${esc(p.throw)}" placeholder="Throw Ratio" oninput="updProj(${i},'throw',this.value)"></td>`}
       <td class="tight" style="width:15%"><input class="cell" value="${esc(p.serial)}" placeholder="Serial Number" oninput="updProj(${i},'serial',this.value)"></td>
@@ -9769,6 +10173,7 @@ function pageProjectors(){
       </table>` : `<div style="font-size:12.5px;color:#9aa2ad;padding:4px 2px">No projectors yet — add the first one.</div>`}
       <button class="add-line" onclick="addProjector()">+ Add projector</button>
       ${lensCard}
+      ${projAccCard()}
       </div>
     </div>
     <div style="margin-top:18px"></div>
@@ -10256,6 +10661,9 @@ const DOME_DOORS = ['WD','1D','2D','3D','Custom'];
 const DOME_DOOR_LABELS = { 'WD':'WD — Without Doors','1D':'1D — 1 Door','2D':'2D — 2 Doors','3D':'3D — 3 Doors','Custom':'Custom' };
 /* BUILD 15.08 — Components tab.  BUILD 15.09 — per-connector materials + Frame material + serial mirror */
 const DOME_COVER_KINDS = ['Cover','Screen','Inflatable Cover'];
+/* BUILD 16.34 — Cover / Inflatable Cover: colour + material (Screen keeps its Screen Type) */
+const DOME_COVER_COLORS = ['Grey','White','Printed'];
+const DOME_COVER_MATERIALS = ['Grey Fabric','Other'];
 const DOME_FRAME_MATERIALS = ['Aluminum','Steel'];
 /* BUILD 15.10 — Doors block (Components): quantity 0..3, type Rectangular/Hexagonal (+ H×W when Rectangular) */
 const DOME_DOOR_QTY = ['0','1','2','3'];
@@ -10278,12 +10686,16 @@ function domeEmptyTruss(){ return { sn:'', color:'', bags:'', parts:'', couplers
 function domeEmptyTrussEl(){ return { id:newId(), cat:'', name:'', qty:'' }; }
 function domeEmptyKitItem(){ return { id:newId(), core:false, cat:'', name:'', qty:'', price:'', comment:'', link:'' }; }
 function domeKitPad(n){ n=parseInt(n,10)||0; return (n<10?'0':'')+n; }
+/* BUILD 16.39 — deleted kits / truss elements / covers are TOMBSTONES (deleted:true kept in the list, hidden everywhere),
+   so a deletion can never be undone by a stale copy, an old build, or a concurrent edit: the merge keeps the flag sticky. */
+function domeLiveKits(t){ return ((t&&t.kits)||[]).filter(k=>k && !k.deleted); }
+function domeLiveEls(t){ return ((t&&t.elements)||[]).filter(e=>e && !e.deleted); }
 function domeNextKitNum(m){ let mx=0; ((m.truss&&m.truss.kits)||[]).forEach(k=>{ const n=parseInt(k.num,10); if(isFinite(n)&&n>mx) mx=n; }); return domeKitPad(mx+1); }
 function domeEmptyKit(num){ return { id:newId(), num:num||'01', status:'draft', items:[], created:'' }; }
 /* Candidates offered when creating a kit: the dome truss ring + couplers + every Truss element (from library). */
 function domeTrussCandidates(m){ const t=(m&&m.truss)||{}; const out=[];
   if(String(t.sn||'').trim()) out.push({ key:'truss', cat:'', name:domeTrussName(m), qty:'1', price:'', link:'' });   /* the dome truss ring exists only once the truss has a serial */
-  (Array.isArray(t.elements)?t.elements:[]).forEach(e=>{ if(e && String(e.name||'').trim()){ const hit=libFind(e.name);
+  domeLiveEls(t).forEach(e=>{ if(e && String(e.name||'').trim()){ const hit=libFind(e.name);
     out.push({ key:'el:'+e.id, cat:e.cat||'', name:e.name, qty:String(e.qty||'1'), price:(hit&&hit.price)||'', link:(hit&&hit.link)||'' }); } });
   return out; }
 function domeEnsureTruss(m){ if(!m) return null; if(!m.truss || typeof m.truss!=='object') m.truss=domeEmptyTruss(); const t=m.truss;
@@ -10304,8 +10716,8 @@ function domeEnsureTruss(m){ if(!m) return null; if(!m.truss || typeof m.truss!=
   if('kit' in t) delete t.kit;
   /* BUILD 15.21: truss elements (components that ship with the truss, from the library) */
   if(!Array.isArray(t.elements)) t.elements=[];
-  t.elements.forEach(e=>{ if(e && typeof e==='object'){ if(!e.id) e.id=newId(); ['cat','name','qty'].forEach(f=>{ if(typeof e[f]!=='string') e[f]=String(e[f]==null?'':e[f]); }); } });
-  t.kits.forEach(k=>{ if(k && typeof k==='object'){ if(!k.id) k.id=newId(); if(!k.num) k.num=domeKitPad(1);
+  t.elements.forEach(e=>{ if(e && typeof e==='object'){ if(!e.id) e.id=newId(); ['cat','name','qty'].forEach(f=>{ if(typeof e[f]!=='string') e[f]=String(e[f]==null?'':e[f]); }); e.deleted=!!e.deleted; } });
+  t.kits.forEach(k=>{ if(k && typeof k==='object'){ if(!k.id) k.id=newId(); if(!k.num) k.num=domeKitPad(1); k.deleted=!!k.deleted;
     k.status=(k.status==='saved'?'saved':'draft'); if(typeof k.created!=='string') k.created=String(k.created||'');
     if(!Array.isArray(k.items)) k.items=[];
     /* BUILD 15.21: the Required-Core bundle is gone — migrate any 15.18/15.19 core into real rows, once */
@@ -10323,7 +10735,7 @@ function domeTrussName(m){ const t=(m&&m.truss)||{}; const sn=String(t.sn||'').t
 function domeHasTruss(m){ const t=domeEnsureTruss(m);
   if(String(t.sn||'').trim()||String(t.color||'').trim()||String(t.bags||'').trim()||String(t.parts||'').trim()||String(t.couplers||'').trim()) return true;
   if(t.files.some(f=>!f.archived)) return true;
-  return t.kits.length>0; }
+  return domeLiveKits(t).length>0; }
 function domeFileKind(f){ const n=(f.name||'').toLowerCase(); if(/\.pdf$/.test(n)||/pdf/.test(f.type||'')) return 'PDF';
   if(/\.dwg$/.test(n)) return 'DWG'; if(/\.dxf$/.test(n)) return 'DXF'; const ext=(n.split('.').pop()||'').toUpperCase(); return (ext && ext!==n.toUpperCase())?ext:'FILE'; }
 function domeFileSize(n){ n=+n||0; if(n<1024) return n+' B'; if(n<1048576) return (n/1024).toFixed(0)+' KB'; return (n/1048576).toFixed(1)+' MB'; }
@@ -10332,8 +10744,8 @@ function domeTrussDoc(t){ t=t||{}; return { sn:String(t.sn||''), color:String(t.
   files:(Array.isArray(t.files)?t.files:[]).map(f=>({ id:String(f.id||''), name:String(f.name||''), type:String(f.type||''),
     size:(typeof f.size==='number'?f.size:parseInt(f.size,10)||0), notes:String(f.notes||''), driveFileId:String(f.driveFileId||''),
     added:String(f.added||''), archived:!!f.archived })),
-  elements:(Array.isArray(t.elements)?t.elements:[]).map(e=>({ id:String(e.id||''), cat:String(e.cat||''), name:String(e.name||''), qty:String(e.qty||'') })),
-  kits:(Array.isArray(t.kits)?t.kits:[]).map(k=>({ id:String(k.id||''), num:String(k.num||''), status:(k.status==='saved'?'saved':'draft'), created:String(k.created||''),
+  elements:(Array.isArray(t.elements)?t.elements:[]).map(e=>({ id:String(e.id||''), cat:String(e.cat||''), name:String(e.name||''), qty:String(e.qty||''), deleted:!!e.deleted })),
+  kits:(Array.isArray(t.kits)?t.kits:[]).map(k=>({ id:String(k.id||''), num:String(k.num||''), status:(k.status==='saved'?'saved':'draft'), created:String(k.created||''), deleted:!!k.deleted,
     items:(Array.isArray(k.items)?k.items:[]).map(it=>({ id:String(it.id||''), core:!!it.core, cat:String(it.cat||''), name:String(it.name||''), qty:String(it.qty||''),
       price:String(it.price||''), comment:String(it.comment||''), link:String(it.link||'') })) })) }; }
 /* Each connector: its own Material option list, or materials:null → no Material field (Quantity only). */
@@ -10363,11 +10775,11 @@ function domeEnsureComponents(m){
   if(!c.frame || typeof c.frame!=='object') c.frame={serial:'',tubeOuter:'',tubeWall:'',material:''};
   ['serial','tubeOuter','tubeWall','material'].forEach(f=>{ if(typeof c.frame[f]!=='string') c.frame[f]=String(c.frame[f]==null?'':c.frame[f]); });
   c.frame.serial = String(m.serial||'');   /* BUILD 15.09: Frame serial === Dome serial (single value, mirrored) */
-  if(!c.doors || typeof c.doors!=='object') c.doors={qty:'',type:'',height:'',width:''};
-  ['qty','type','height','width'].forEach(f=>{ if(typeof c.doors[f]!=='string') c.doors[f]=String(c.doors[f]==null?'':c.doors[f]); });
+  if(!c.doors || typeof c.doors!=='object') c.doors={qty:'',type:'',height:'',width:'',fabricQty:'',fabricSerial:''};
+  ['qty','type','height','width','fabricQty','fabricSerial'].forEach(f=>{ if(typeof c.doors[f]!=='string') c.doors[f]=String(c.doors[f]==null?'':c.doors[f]); });   /* fabricQty / fabricSerial — Fabric Door (BUILD 16.37) */
   if(!Array.isArray(c.covers)) c.covers=[];
   c.covers.forEach(x=>{ if(x && typeof x==='object'){ if(!x.id) x.id=newId(); if(typeof x.kind!=='string' || DOME_COVER_KINDS.indexOf(x.kind)<0) x.kind='Cover';
-    ['serial','screenType','screenTypeOther','notes'].forEach(f=>{ if(typeof x[f]!=='string') x[f]=String(x[f]==null?'':x[f]); }); x.archived=!!x.archived; } });
+    ['serial','screenType','screenTypeOther','notes','color','material','materialOther'].forEach(f=>{ if(typeof x[f]!=='string') x[f]=String(x[f]==null?'':x[f]); }); x.archived=!!x.archived; } });
   if(!c.connectors || typeof c.connectors!=='object') c.connectors={};
   DOME_CONNECTORS.forEach(cn=>{ const q=c.connectors[cn.key]; if(!q||typeof q!=='object') c.connectors[cn.key]={qty:'',material:''};
     else { ['qty','material'].forEach(f=>{ if(typeof q[f]!=='string') q[f]=String(q[f]==null?'':q[f]); }); } });
@@ -10395,9 +10807,10 @@ function domeComponentsDoc(c){
   c = c || {}; const fr = c.frame||{};
   return {
     frame: { serial:String(fr.serial||''), tubeOuter:String(fr.tubeOuter||''), tubeWall:String(fr.tubeWall||''), material:String(fr.material||'') },
-    doors: (dr=>({ qty:String(dr.qty||''), type:String(dr.type||''), height:String(dr.height||''), width:String(dr.width||'') }))(c.doors||{}),
+    doors: (dr=>({ qty:String(dr.qty||''), type:String(dr.type||''), height:String(dr.height||''), width:String(dr.width||''), fabricQty:String(dr.fabricQty||''), fabricSerial:String(dr.fabricSerial||'') }))(c.doors||{}),
     covers: (Array.isArray(c.covers)?c.covers:[]).map(x=>({ id:String(x.id||''), kind:String(x.kind||'Cover'), serial:String(x.serial||''),
-      screenType:String(x.screenType||''), screenTypeOther:String(x.screenTypeOther||''), notes:String(x.notes||''), archived:!!x.archived })),
+      screenType:String(x.screenType||''), screenTypeOther:String(x.screenTypeOther||''), notes:String(x.notes||''), archived:!!x.archived, deleted:!!x.deleted,
+      color:String(x.color||''), material:String(x.material||''), materialOther:String(x.materialOther||'') })),
     connectors: DOME_CONNECTORS.reduce((o,cn)=>{ const q=(c.connectors&&c.connectors[cn.key])||{}; o[cn.key]={ qty:String(q.qty||''), material:String(q.material||'') }; return o; }, {})
   };
 }
@@ -10468,6 +10881,11 @@ function domeFsDocRef(){ return _fsDb.collection('projects').doc(DOME_DOC_ID); }
    not touch a leaf yields to the side that did; a real conflict (same leaf changed on both) is resolved
    by rev (localNewer). Base is updated after every push and every applied snapshot. */
 function domeBaseMap(){ if(!db.domeBase || typeof db.domeBase!=='object') db.domeBase={}; return db.domeBase; }
+/* BUILD 16.28 — ROOT CAUSE of "Save Dome Card loses the truss SN / components / schematics": the merge base and the
+   live card SHARED the same nested objects (Object.assign is shallow), so editing m.truss.sn also edited base.truss.sn,
+   the 3-way merge then saw "local == base → we didn't touch it" and took the server's (old) value. Every base write
+   now stores an independent deep copy. */
+function _domeClone(x){ try{ return x === undefined ? undefined : JSON.parse(JSON.stringify(x)); }catch(_){ return x; } }
 function _domeEqj(a,b){ return JSON.stringify(a===undefined?null:a)===JSON.stringify(b===undefined?null:b); }
 function _domeIsObj(x){ return x && typeof x==='object' && !Array.isArray(x); }
 function domeMerge3(base, local, server, localNewer){
@@ -10493,6 +10911,7 @@ function domeMerge3(base, local, server, localNewer){
    keyed by id, not "newest side wins": a record present on either side is KEPT unless the base proves the other side
    deleted it. Before this, a client whose copy of a card lacked the files (older build, stale cache, no base yet)
    won the tie and the whole file list vanished for everyone. Same-id records merge field by field. */
+var _domeRevCtx = { l:0, s:0 };   /* BUILD 16.29: revs of the two cards being merged — the no-base tiebreaker for id-lists (a deleted kit must not come back from a machine that never saw the deletion) */
 function _domeIdList(a){ return Array.isArray(a) && a.every(function(x){ return x && typeof x==='object' && !Array.isArray(x) && x.id!==undefined && x.id!==''; }); }
 function _domeMergeIdLists(base, local, server, localNewer){
   const b = _domeIdList(base) ? base : [];
@@ -10501,9 +10920,9 @@ function _domeMergeIdLists(base, local, server, localNewer){
   const out=[];
   order.forEach(function(id){
     const l=lBy[id], s=sBy[id], hasB=Object.prototype.hasOwnProperty.call(bBy, id);
-    if(l && s){ out.push(domeMerge3(bBy[id], l, s, localNewer)); return; }
-    if(l && !s){ if(hasB && _domeEqj(l, bBy[id])) return;  out.push(l); return; }   /* server deleted it and we didn't change it → gone; else keep (added / edited here) */
-    if(s && !l){ if(hasB && _domeEqj(s, bBy[id])) return;  out.push(s); return; }   /* we deleted it and server didn't change it → gone; else keep */
+    if(l && s){ const m = domeMerge3(bBy[id], l, s, localNewer); if((l.deleted || s.deleted) && m && typeof m==='object'){ m.deleted = true; if('archived' in m) m.archived = true; } out.push(m); return; }   /* BUILD 16.39: deleted is sticky */
+    if(l && !s){ if(hasB ? _domeEqj(l, bBy[id]) : (_domeRevCtx.s > _domeRevCtx.l)) return;  out.push(l); return; }   /* server deleted it and we didn't change it → gone; no base: gone only if the server is STRICTLY newer; else keep */
+    if(s && !l){ if(hasB ? _domeEqj(s, bBy[id]) : (_domeRevCtx.l > _domeRevCtx.s)) return;  out.push(s); return; }   /* we deleted it and server didn't change it → gone; no base: gone only if we are STRICTLY newer; else keep (a tie never loses data) */
   });
   return out;
 }
@@ -10517,7 +10936,7 @@ function domeMergeDocs(server, local){
   const uids={}; Object.keys(sBy).forEach(u=>uids[u]=1); Object.keys(lBy).forEach(u=>uids[u]=1);
   return Object.keys(uids).map(function(u){
     const s=sBy[u], l=lBy[u];
-    if(s && l){ const m = domeMerge3(base[u], l, s, (l.rev||0) >= (s.rev||0)); m.rev = Math.max(l.rev||0, s.rev||0); _domeStickyDelete(m, l, s); return m; }
+    if(s && l){ _domeRevCtx = { l:(l.rev||0), s:(s.rev||0) }; const m = domeMerge3(base[u], l, s, (l.rev||0) >= (s.rev||0)); m.rev = Math.max(l.rev||0, s.rev||0); _domeStickyDelete(m, l, s); return m; }
     return s || l;
   });
 }
@@ -10527,17 +10946,25 @@ function domeFsApplyDoc(data){                        /* field-level merge an in
   list.forEach(function(s){
     if(!s || !s.domeUid) return;
     const uid = s.domeUid;
-    if(_domeEditId === uid) return;                  /* don't disturb an open card; base stays, push merges on save */
+    /* BUILD 16.35: an OPEN card is merged LIVE too (3-way, so unsaved local edits survive; a teammate's deletion or
+       edit shows up at once) — before this, snapshots arriving while a card was open were dropped, so a cover deleted
+       on another machine stayed on this screen. */
+    if(base[uid] && (s.rev||0) < (base[uid].rev||0)) return;   /* BUILD 16.28: an OLDER copy than what we already agreed on (stale echo) never rolls a card back */
     const i = db.domeLib.findIndex(function(m){ return m.domeUid===uid; });
-    if(i<0){ db.domeLib.push(Object.assign(domeEmptyModel(), s, { _saved:true })); base[uid]=s; ch=true; return; }
+    if(i<0){ db.domeLib.push(Object.assign(domeEmptyModel(), _domeClone(s), { _saved:true })); base[uid]=_domeClone(s); ch=true; return; }
     const localDoc = domeFsModelDoc(db.domeLib[i]);
+    _domeRevCtx = { l:(localDoc.rev||0), s:(s.rev||0) };
     const merged = domeMerge3(base[uid], localDoc, s, (localDoc.rev||0) >= (s.rev||0));
     merged.rev = Math.max(localDoc.rev||0, s.rev||0); _domeStickyDelete(merged, localDoc, s);
-    if(!_domeEqj(merged, localDoc)){ db.domeLib[i] = _domeKeepLocalBytes(db.domeLib[i], Object.assign(domeEmptyModel(), merged, { _saved:true })); ch=true; }
-    base[uid] = merged;                              /* new agreed base */
+    if(!_domeEqj(merged, localDoc)){ db.domeLib[i] = _domeKeepLocalBytes(db.domeLib[i], Object.assign(domeEmptyModel(), merged, { _saved:(db.domeLib[i]._saved !== false) })); ch=true; if(_domeEditId === uid) _domeOpenChanged = true; }
+    base[uid] = _domeClone(s);                       /* new agreed base = what the SERVER has (deep copy) — so an unsaved local edit or deletion still reads as "ours" at the next push (BUILD 16.35; was: merged) */
   });
   return ch;
 }
+/* BUILD 16.35 — the open card was changed by an incoming snapshot: refresh the screen when it is safe (not mid-typing) */
+var _domeOpenChanged = false;
+function domeRefreshOpenIfChanged(){ if(!_domeOpenChanged) return; if(typeof isTypingInInput==='function' && isTypingInInput()) return; _domeOpenChanged = false; if(location.hash==='#/dome-library'){ try{ rerenderKeepScroll(); }catch(_){} flashStat('Dome card updated by a teammate'); } }
+try{ document.addEventListener('focusout', function(){ setTimeout(domeRefreshOpenIfChanged, 60); }, true); setInterval(domeRefreshOpenIfChanged, 4000); }catch(_){}
 /* BUILD 16.16 — the shared doc carries file METADATA only; when a merged doc replaces the local card, keep the
    local file bytes (data:) for entries with the same id, so Download keeps working offline on this machine. */
 function _domeKeepLocalBytes(oldM, newM){
@@ -10556,8 +10983,8 @@ function domeAdoptMerged(list){
   const base=domeBaseMap();
   (list||[]).forEach(function(d){
     if(!d || !d.domeUid) return;
-    base[d.domeUid]=d;                               /* new agreed base */
-    if(_domeEditId===d.domeUid) return;              /* don't disturb an open card */
+    base[d.domeUid]=_domeClone(d);                   /* new agreed base — a DEEP COPY (BUILD 16.28) */
+    if(_domeEditId===d.domeUid) return;              /* don't replace the open card's model (keystrokes typed during the push would be lost); its base is updated above */
     const i=db.domeLib.findIndex(function(m){ return m.domeUid===d.domeUid; });
     const model=Object.assign(domeEmptyModel(), d, { _saved:true });
     if(i>=0) db.domeLib[i]=_domeKeepLocalBytes(db.domeLib[i], model); else db.domeLib.push(model);
@@ -10713,12 +11140,18 @@ function domeFrameUpd(field, val){ const m=domeEditing(); if(!m) return; domeEns
 function domeMirrorScreen(m){ if(!m||!m.components) return; const s=m.components.covers.find(x=>x.kind==='Screen' && !x.archived);
   m.screenType = s?(s.screenType||''):''; m.screenTypeOther = s?(s.screenTypeOther||''):''; }
 function domeAddCover(kind){ const m=domeEditing(); if(!m) return; if(DOME_COVER_KINDS.indexOf(kind)<0) kind='Cover'; domeEnsureComponents(m);
-  m.components.covers.push({ id:newId(), kind:kind, serial:'', screenType:'', screenTypeOther:'', notes:'', archived:false }); domeMirrorScreen(m); saveDomeLib(); rerenderKeepScroll(); }
+  m.components.covers.push({ id:newId(), kind:kind, serial:'', screenType:'', screenTypeOther:'', notes:'', archived:false, color:'', material:'', materialOther:'' }); domeMirrorScreen(m); saveDomeLib(); rerenderKeepScroll(); }
 function domeCoverUpd(id, field, val){ const m=domeEditing(); if(!m) return; domeEnsureComponents(m); const x=m.components.covers.find(c=>c.id===id); if(!x) return;
-  x[field]=val; domeMirrorScreen(m); saveDomeLib(); if(field==='screenType') rerenderKeepScroll(); }
+  x[field]=val; domeMirrorScreen(m); saveDomeLib(); if(field==='screenType' || field==='material') rerenderKeepScroll(); }
 function domeArchiveCover(id){ const m=domeEditing(); if(!m) return; domeEnsureComponents(m); const x=m.components.covers.find(c=>c.id===id); if(!x) return;
   if(!confirm('Archive this '+(x.kind||'item')+'? It is hidden from the card (soft-delete via archived:true, never physically deleted).')) return;
   x.archived=true; domeMirrorScreen(m); saveDomeLib(); rerenderKeepScroll(); }
+/* BUILD 16.32 — hard delete of a cover / screen / inflatable cover entry (e.g. added by mistake). Removed from the card
+   for good (the id-keyed merge honours the removal on every teammate's copy); Archive stays for items that existed. */
+function domeDeleteCover(id){ const m=domeEditing(); if(!m) return; domeEnsureComponents(m); const i=m.components.covers.findIndex(c=>c.id===id); if(i<0) return;
+  const x=m.components.covers[i]; const label=(x.kind||'item')+(String(x.serial||'').trim()?(' '+x.serial.trim()):'');
+  if(!confirm('Delete this '+label+' from the dome card? This cannot be undone (use Archive to hide it instead).')) return;
+  x.deleted=true; x.archived=true; domeMirrorScreen(m); saveDomeLib(); try{ if(m._saved) domeFsPushModel(m); }catch(_){} rerenderKeepScroll(); flashStat(label+' deleted'); }   /* BUILD 16.39: tombstone + immediate push */
 function domeConnUpd(key, field, val){ const m=domeEditing(); if(!m) return; domeEnsureComponents(m); if(!m.components.connectors[key]) return;
   m.components.connectors[key][field]=val; saveDomeLib(); }
 function domeDoorUpd(field, val){ const m=domeEditing(); if(!m) return; domeEnsureComponents(m); m.components.doors[field]=val;
@@ -10815,7 +11248,7 @@ async function domeSchemUploadFiles(m, fid){ if(!m||!m.schematics||!(_cloudOn &&
 }
 /* ---- Ready Truss Kits (BUILD 15.18): numbered kits (01,02,…), each = a dome-truss core + modular items ---- */
 var _domeKitOpen = null;   /* id of the kit currently in edit mode, or null (list view) */
-function domeKitFind(id){ const m=domeEditing(); if(!m) return null; domeEnsureTruss(m); return m.truss.kits.find(k=>k.id===id)||null; }
+function domeKitFind(id){ const m=domeEditing(); if(!m) return null; domeEnsureTruss(m); return m.truss.kits.find(k=>k.id===id && !k.deleted)||null; }
 function domeKitCreate(){ const m=domeEditing(); if(!m) return; domeEnsureTruss(m); const k=domeEmptyKit(domeNextKitNum(m)); k.created=new Date().toISOString();
   m.truss.kits.push(k); _domeKitOpen=k.id; _domeKitPick = domeTrussCandidates(m).length ? k.id : null;   /* BUILD 15.34: no picker when the truss is empty — nothing to pick */
   saveDomeLib(); rerenderKeepScroll(); }
@@ -10824,12 +11257,12 @@ function domeKitBack(){ _domeKitOpen=null; _domeKitPick=null; rerenderKeepScroll
 function domeKitRemove(id){ const m=domeEditing(); if(!m) return; domeEnsureTruss(m); const k=m.truss.kits.find(x=>x.id===id); if(!k) return;
   const code=prompt('Enter delete code to remove Truss Kit '+(k.num||'')+':');   /* BUILD 15.26: PIN-protected delete (420) */
   if(code===null) return; if(String(code).trim()!=='420'){ alert('Wrong code — Truss Kit not deleted.'); return; }
-  m.truss.kits=m.truss.kits.filter(x=>x.id!==id); if(_domeKitOpen===id) _domeKitOpen=null; saveDomeLib(); rerenderKeepScroll(); }
+  k.deleted=true; k.items=[]; if(_domeKitOpen===id) _domeKitOpen=null; saveDomeLib(); try{ if(m._saved) domeFsPushModel(m); }catch(_){} rerenderKeepScroll(); }   /* BUILD 16.39: tombstone + immediate push */
 /* Truss elements — components that ship WITH this dome's truss, picked from the Truss library */
-function domeTrussEl(iid){ const m=domeEditing(); if(!m) return null; domeEnsureTruss(m); return m.truss.elements.find(e=>e.id===iid)||null; }
+function domeTrussEl(iid){ const m=domeEditing(); if(!m) return null; domeEnsureTruss(m); return m.truss.elements.find(e=>e.id===iid && !e.deleted)||null; }
 function domeTrussElAdd(){ const m=domeEditing(); if(!m) return; domeEnsureTruss(m); m.truss.elements.push(domeEmptyTrussEl()); saveDomeLib(); rerenderKeepScroll(); }
 function domeTrussElUpd(iid, field, val){ const e=domeTrussEl(iid); if(!e) return; e[field]=val; saveDomeLib(); if(field==='cat') rerenderKeepScroll(); }
-function domeTrussElDel(iid){ const m=domeEditing(); if(!m) return; domeEnsureTruss(m); m.truss.elements=m.truss.elements.filter(e=>e.id!==iid); saveDomeLib(); rerenderKeepScroll(); }
+function domeTrussElDel(iid){ const m=domeEditing(); if(!m) return; domeEnsureTruss(m); const e=m.truss.elements.find(x=>x.id===iid); if(e){ e.deleted=true; } saveDomeLib(); rerenderKeepScroll(); }
 function domeTrussElAddToLib(iid){ const e=domeTrussEl(iid); if(!e) return; const name=(e.name||'').trim(); if(!name||libFind(name)) return;
   ensureLibGroup('truss').push({ cat:e.cat||'', name:name, price:'', link:'' }); saveState(); flashStat('Added to Truss library ✓'); rerenderKeepScroll(); }
 /* Kit create-picker: choose which truss components (ring + couplers + elements) become kit rows */
@@ -10927,11 +11360,12 @@ function domePassport(m){
   const connTbl=`<table class="dpt"><thead><tr><th>Connector</th><th>Qty</th><th>Material</th></tr></thead><tbody>${DOME_CONNECTORS.map(cn=>{const q=c.connectors[cn.key]||{};return `<tr><td>${esc(cn.label)}</td><td>${esc(String(q.qty||'').trim()||'—')}</td><td>${cn.materials?esc(q.material||'—'):'—'}</td></tr>`;}).join('')}</tbody></table>`;
   const dr=c.doors; const doorSize = dr.type==='Rectangular' ? ((String(dr.height||'').trim()||'?')+' × '+(String(dr.width||'').trim()||'?')+' mm') : '—';
   /* Truss elements */
-  const elsTbl = t.elements.length
-    ? `<table class="dpt"><thead><tr><th style="width:6%">#</th><th>Category</th><th>Item</th><th style="text-align:right;width:12%">Qty</th></tr></thead><tbody>${t.elements.map((e,i)=>`<tr><td>${i+1}</td><td>${esc(e.cat||'—')}</td><td>${esc(e.name||'—')}</td><td style="text-align:right">${esc(e.qty||'—')}</td></tr>`).join('')}</tbody></table>`
+  const liveEls = domeLiveEls(t);
+  const elsTbl = liveEls.length
+    ? `<table class="dpt"><thead><tr><th style="width:6%">#</th><th>Category</th><th>Item</th><th style="text-align:right;width:12%">Qty</th></tr></thead><tbody>${liveEls.map((e,i)=>`<tr><td>${i+1}</td><td>${esc(e.cat||'—')}</td><td>${esc(e.name||'—')}</td><td style="text-align:right">${esc(e.qty||'—')}</td></tr>`).join('')}</tbody></table>`
     : `<div class="dpass-empty">No truss components.</div>`;
   /* Truss kits */
-  const kits = t.kits.map(k=>{ const named=k.items.filter(it=>String(it.name||'').trim());
+  const kits = domeLiveKits(t).map(k=>{ const named=k.items.filter(it=>String(it.name||'').trim());
     return `<div class="dpk"><div style="font-weight:800;font-size:13px;margin-bottom:6px">Truss Kit ${esc(k.num)} <span style="font-size:11px;font-weight:600;color:${k.status==='saved'?'#2e9e5b':'var(--ink2)'}">· ${k.status==='saved'?'Saved':'Draft'}</span> <span style="color:var(--ink2);font-weight:500;font-size:11px">· ${named.length} component${named.length===1?'':'s'}</span></div>
       ${named.length?`<table class="dpt"><thead><tr><th style="width:6%">#</th><th>Category</th><th>Item</th><th style="text-align:right;width:12%">Qty</th></tr></thead><tbody>${named.map((it,i)=>`<tr class="${it.core?'dcore':''}"><td>${i+1}</td><td>${esc(it.cat||'—')}</td><td>${esc(it.name)}</td><td style="text-align:right">${esc(it.qty||'1')}</td></tr>`).join('')}</tbody></table>`:`<div class="dpass-empty">No components.</div>`}
     </div>`; }).join('') || `<div class="dpass-empty">No truss kits yet.</div>`;
@@ -11005,7 +11439,7 @@ function pageDomeLibrary(){
       <td style="text-align:center">${(String(m.hvacOpenings||'').trim()!=='')?esc(m.hvacOpenings):'—'}</td>
       <td style="text-align:center"><label class="rts-box${m.readyToShip?' on':''}" title="${m.readyToShip?'Ready to ship':'Mark as ready to ship'}" onclick="event.stopPropagation()"><input type="checkbox" ${m.readyToShip?'checked':''} onchange="domeToggleReady('${m.domeUid}',this.checked)"><span class="rts-tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5 9-11"/></svg></span></label></td>
       <td style="text-align:right;white-space:nowrap"><button class="mod-btn primary" style="padding:5px 12px" onclick="domeOpenCard('${m.domeUid}')">Open / Edit</button>
-        <button class="mod-btn" style="padding:5px 10px;margin-left:6px;color:var(--fdp-red)" title="Delete this dome everywhere — card, team sync and its Google Drive folder (code required)" onclick="event.stopPropagation();domeDeleteCard('${m.domeUid}')">Delete</button></td>
+        <button class="mod-btn" style="width:30px;height:30px;padding:0;margin-left:6px;display:inline-flex;align-items:center;justify-content:center;font-size:17px;line-height:1;color:var(--fdp-red);vertical-align:middle" title="Delete this dome everywhere — card, team sync and its Google Drive folder (code required)" onclick="event.stopPropagation();domeDeleteCard('${m.domeUid}')">×</button></td>
     </tr>${exp?`<tr class="dpass-row"><td colspan="9">${domePassport(m)}</td></tr>`:''}`; }).join('');
   const totalActive = db.domeLib.filter(m=>!m.archived).length;
   const filtered = (q!=='' || _domeFilterType || _domeFilterScreen);
@@ -11050,7 +11484,7 @@ function pageDomeCard(){
         <h1 style="margin:2px 0 0">${esc(domeTitle(m))} <span style="font-size:13px;color:var(--dim);font-weight:400">(${m._saved?'saved':'unsaved'})</span></h1></div>
       <div style="display:flex;gap:8px;flex:none">
         <button class="mod-btn" style="padding:8px 14px" onclick="domeCancelCard()">Cancel</button>
-        ${m._saved ? `<button class="mod-btn" style="padding:8px 14px;color:var(--fdp-red)" onclick="domeArchiveCard()">Archive</button>` : ''}
+        ${'' /* BUILD 16.33: Archive removed from the UI — deletion is the × (code 420) in the list; archived:true stays as the sync tombstone */}
         <button class="mod-btn primary" style="padding:8px 16px" onclick="domeSaveCard()">Save Dome Card</button>
       </div>
     </div>
@@ -11059,7 +11493,7 @@ function pageDomeCard(){
       <button class="dtab ${_domeTab==='components'?'sel':''}" data-pressec="components" onclick="domeSetTab('components')">Components</button>
       <button class="dtab ${_domeTab==='truss'?'sel':''}" data-pressec="truss" onclick="domeSetTab('truss')">Truss</button>
     </div>
-    ${ _domeTab==='components' ? domeTabComponents(m) : _domeTab==='truss' ? domeTabTruss(m) : `<div class="card">${domeTabOverview(m)}</div>${domeSchematicsCard(m)}` }
+    ${ _domeTab==='components' ? domeTabComponents(m) : _domeTab==='truss' ? `<div class="dcomp">${domeTabTruss(m)}</div>` : `<div class="dcomp"><div class="card">${domeTabOverview(m)}</div>${domeSchematicsCard(m)}</div>` }   /* BUILD 16.38: Overview + Truss use the same compact one-per-row layout as Components */
   </div>`;
 }
 function _dfld(label,inner){ return `<div class="fld"><label>${label}</label>${inner}</div>`; }
@@ -11083,7 +11517,7 @@ function domeTabOverview(m){
     ${_dfld('Fan Openings (in)', `<input class="cell num" type="number" min="0" step="1" value="${esc(m.fanOpenings)}" placeholder="0" oninput="domeUpd('fanOpenings',this.value)">`)}
     ${_dfld('HVAC Openings (in)', `<input class="cell num" type="number" min="0" step="1" value="${esc(m.hvacOpenings)}" placeholder="0" oninput="domeUpd('hvacOpenings',this.value)">`)}
   </div>
-  <div style="margin-top:12px;color:var(--dim);font-size:11.5px">Serial, Screen Type and Doors are filled in the <b>Components</b> tab and shown here read-only (Screen Type appears once a screen is added). Size, Dome Type, HVAC and Fan Openings are edited here. Card title: “&lt;size&gt; · &lt;dome type&gt; · &lt;serial&gt;”. Internal id ${esc(m.domeUid)}. Removal is Archive only (never physical delete).</div>`;
+  <div style="margin-top:12px;color:var(--dim);font-size:11.5px">Serial, Screen Type and Doors are filled in the <b>Components</b> tab and shown here read-only (Screen Type appears once a screen is added). Size, Dome Type, HVAC and Fan Openings are edited here. Card title: “&lt;size&gt; · &lt;dome type&gt; · &lt;serial&gt;”. Internal id ${esc(m.domeUid)}.</div>`;
 }
 /* BUILD 15.82 — Assembly Schematics card (Overview): three rows, each accepts one or more PDF drawings. */
 function domeSchematicsCard(m){
@@ -11129,14 +11563,22 @@ function domeCoverCard(x){
   const screenFld = isScreen ? _dfld('Screen Type',
       `<select class="cell" onchange="domeCoverUpd('${x.id}','screenType',this.value)"><option value="" ${!x.screenType?'selected':''}>—</option>${DOME_SCREEN.map(s=>`<option value="${esc(s)}" ${x.screenType===s?'selected':''}>${esc(s)}</option>`).join('')}</select>`
       + (x.screenType==='Other' ? `<input class="cell" style="margin-top:6px" placeholder="Specify screen type" value="${esc(x.screenTypeOther)}" oninput="domeCoverUpd('${x.id}','screenTypeOther',this.value)">` : '')) : '';
+  /* BUILD 16.34: Cover / Inflatable Cover → Colour (Grey / White / Printed) + Material (Grey Fabric / Other) */
+  const colorFld = !isScreen ? _dfld(x.kind + ' Colour',
+      `<select class="cell" onchange="domeCoverUpd('${x.id}','color',this.value)"><option value="" ${!x.color?'selected':''}>—</option>${DOME_COVER_COLORS.map(c=>`<option value="${esc(c)}" ${x.color===c?'selected':''}>${esc(c)}</option>`).join('')}${x.color && DOME_COVER_COLORS.indexOf(x.color)<0 ? `<option value="${esc(x.color)}" selected>${esc(x.color)}</option>` : ''}</select>`) : '';
+  const materialFld = !isScreen ? _dfld('Material',
+      `<select class="cell" onchange="domeCoverUpd('${x.id}','material',this.value)"><option value="" ${!x.material?'selected':''}>—</option>${DOME_COVER_MATERIALS.map(c=>`<option value="${esc(c)}" ${x.material===c?'selected':''}>${esc(c)}</option>`).join('')}</select>`
+      + (x.material==='Other' ? `<input class="cell" style="margin-top:6px" placeholder="Specify material" value="${esc(x.materialOther)}" oninput="domeCoverUpd('${x.id}','materialOther',this.value)">` : '')) : '';
   return `<div style="border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:0 0 10px;background:#fbfbfc">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
       <span style="font-weight:700;font-size:12px;color:var(--fdp-red);text-transform:uppercase;letter-spacing:.6px">${esc(x.kind)}</span>
-      <button class="mod-btn" style="padding:5px 12px;color:var(--fdp-red)" onclick="domeArchiveCover('${x.id}')">Archive</button>
+      <div style="display:flex;gap:6px;flex:none">
+        <button class="mod-btn" style="padding:5px 12px;color:var(--fdp-red)" title="Remove this entry for good" onclick="domeDeleteCover('${x.id}')">Delete</button>
+      </div>
     </div>
     <div class="fgrid">
       ${_dfld('Serial Number', `<input class="cell" value="${esc(x.serial)}" placeholder="e.g. SC-10-002" oninput="domeCoverUpd('${x.id}','serial',this.value)">`)}
-      ${screenFld}
+      ${screenFld}${colorFld}${materialFld}
       ${_dfld('Notes', `<textarea class="cell" placeholder="Notes" oninput="domeCoverUpd('${x.id}','notes',this.value)">${esc(x.notes)}</textarea>`)}
     </div>
   </div>`;
@@ -11182,6 +11624,12 @@ function domeTabComponents(m){
       ${_dfld('Number of Doors', `<select class="cell" onchange="domeDoorUpd('qty',this.value)"><option value="" ${!dr.qty?'selected':''}>—</option>${DOME_DOOR_QTY.map(x=>`<option value="${esc(x)}" ${dr.qty===x?'selected':''}>${esc(x)}</option>`).join('')}</select>`)}
       ${_dfld('Door Type', `<select class="cell" onchange="domeDoorUpd('type',this.value)"><option value="" ${!dr.type?'selected':''}>—</option>${DOME_DOOR_TYPES.map(x=>`<option value="${esc(x)}" ${dr.type===x?'selected':''}>${esc(x)}</option>`).join('')}</select>`)}
       ${doorDims}
+      ${_dfld('Fabric Door', `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <span style="font-size:11px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.5px">Qty</span>
+          <input class="cell num" type="number" min="0" step="1" style="max-width:90px" value="${esc(dr.fabricQty)}" placeholder="0" oninput="domeDoorUpd('fabricQty',this.value)">
+          <span style="font-size:11px;font-weight:700;color:var(--ink2);text-transform:uppercase;letter-spacing:.5px">Serial Number</span>
+          <input class="cell" style="flex:1;min-width:160px" value="${esc(dr.fabricSerial)}" placeholder="e.g. 03-1.7-WD-FD" oninput="domeDoorUpd('fabricSerial',this.value)">
+        </div>`)}
     </div>
   </div>`;
   /* 4. Connectors */
@@ -11198,7 +11646,7 @@ function domeTabComponents(m){
     <div class="card-head"><h3>Connectors</h3></div>
     ${connRows}
   </div>`;
-  return frame + covers + doors + connectors;
+  return `<div class="dcomp">` + frame + covers + doors + connectors + `</div>`;   /* BUILD 16.36: compact one-per-row layout */
 }
 
 /* ---------- Truss tab (BUILD 15.14) ---------- */
@@ -11219,7 +11667,7 @@ function domeTabTruss(m){
     </div>`).join('') || `<div style="color:var(--dim);font-size:12.5px;padding:4px 2px 10px">No files yet. Add a PDF or DWG/DXF drawing below.</div>`;
   return `<div class="card">
     <div class="card-head"><h3>Truss</h3></div>
-    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px">
+    <div class="fgrid">
       ${_dfld('Truss Serial Number (SN)', `<input class="cell" value="${esc(t.sn)}" placeholder="e.g. TR-10-001" oninput="domeTrussUpd('sn',this.value)">`)}
       ${_dfld('QTT of Parts', `<input class="cell num" type="number" min="0" step="1" value="${esc(t.parts)}" placeholder="0" oninput="domeTrussUpd('parts',this.value)">`)}
       ${_dfld('Colour', `<select class="cell" onchange="domeTrussUpd('color',this.value)"><option value="" ${!t.color?'selected':''}>—</option>${TRUSS_COLORS.map(x=>`<option value="${esc(x)}" ${t.color===x?'selected':''}>${esc(x)}</option>`).join('')}</select>`)}
@@ -11254,7 +11702,7 @@ function domeTrussElRow(e, n){
   </tr>`;
 }
 function domeTrussElementsCard(m){
-  const t=domeEnsureTruss(m); const els=t.elements;
+  const t=domeEnsureTruss(m); const els=domeLiveEls(t);
   const rows=els.map((e,i)=>domeTrussElRow(e,i+1)).join('') || `<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:14px">No components yet. Add couplers, plates, braces… that ship with this truss.</td></tr>`;
   return `<div style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px">
     <datalist id="dlTrussKit">${(db.library&&db.library.truss||[]).filter(it=>(it.name||'').trim()).map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>
@@ -11266,8 +11714,9 @@ function domeTrussElementsCard(m){
 }
 function domeKitCard(m){
   const t=domeEnsureTruss(m);
-  const openKit = _domeKitOpen ? t.kits.find(k=>k.id===_domeKitOpen) : null;
-  const listKits = openKit ? t.kits.filter(k=>k.id!==openKit.id) : t.kits;   /* BUILD 15.27: the editing kit shows below; the rest stay visible above */
+  const liveKits = domeLiveKits(t);
+  const openKit = _domeKitOpen ? liveKits.find(k=>k.id===_domeKitOpen) : null;
+  const listKits = openKit ? liveKits.filter(k=>k.id!==openKit.id) : liveKits;   /* BUILD 15.27: the editing kit shows below; the rest stay visible above */
   const cards = listKits.map(k=>{ const named=k.items.filter(it=>String(it.name||'').trim());
     const table = named.length
       ? `<table class="eq" style="background:transparent">
@@ -11385,7 +11834,8 @@ const ROUTES = {
   '#/network':       {nav:'dashboard', render:()=>pagePlaceholder('Network', IC.net, 'Switches, VLANs, IP plan and connectivity for the dome system — planned module.', 'Coming Soon')},
   '#/fan':           {nav:'dashboard', render:pageFan},
   '#/tools':         {nav:'dashboard', render:pageTools},
-  '#/shipping':      {nav:'dashboard', render:pageShipping},
+  '#/dome':          {nav:'dashboard', render:pageDome},   /* Dome & Truss (BUILD 16.27) */
+  '#/shipping':      {nav:'shipping', render:pageShipping},
   '#/admin':         {nav:'admin', render:pageAdmin, noProject:true}   /* BUILD 15.67 */
 };
 
@@ -11403,7 +11853,7 @@ function goTo(hash){
    `presence` rule is not deployed, writes are denied silently and the app behaves normally.
    ============================================================================ */
 var _presSid=null, _presHbTimer=null, _presArea=null, _presSub=null, _presDomeSub=null, _presLive=[], _presDomeLive=[], _presStyled=false;
-var PRES_ROUTE_MOD = { '#/server-rack':'server','#/projectors':'projectors','#/speakers':'speakers','#/camera':'camera','#/network':'network','#/fan':'fan','#/cables':'cables','#/tools':'tools','#/shipping':'shipping','#/equipment':'shipping','#/create':'projectInfo','#/edit':'projectInfo','#/projects':'projectInfo' };
+var PRES_ROUTE_MOD = { '#/server-rack':'server','#/projectors':'projectors','#/speakers':'speakers','#/camera':'camera','#/network':'network','#/fan':'fan','#/cables':'cables','#/tools':'tools','#/dome':'dome','#/shipping':'shipping','#/equipment':'shipping','#/create':'projectInfo','#/edit':'projectInfo','#/projects':'projectInfo' };
 function presFbUid(){ try{ return (firebase.auth().currentUser && firebase.auth().currentUser.uid) || null; }catch(_){ return null; } }
 function presReady(){ return (typeof domeFsReady==='function') && domeFsReady() && !!presFbUid(); }
 function presSid(){ if(_presSid) return _presSid; try{ _presSid = sessionStorage.getItem('psp_sid')||''; }catch(_){}
@@ -11507,7 +11957,7 @@ function presPaint(){ try{
   document.querySelectorAll('#content tr[data-presdome]').forEach(function(row){
     const uid=row.getAttribute('data-presdome'); const who=domeL.filter(function(r){return String(r.scopeKey)==='dome:'+uid;}); const r=presPick(who,me); if(!r) return;
     row.classList.add('pres-on'); row.style.setProperty('--pc', r.color||'#2e9e5b');
-    const last=row.querySelector('td:last-child'); if(last) last.insertAdjacentHTML('beforeend', ' '+presChip(r, r.sessionId===me, true));
+    const last=row.querySelector('td:last-child'); if(last) last.insertAdjacentHTML('afterbegin', presChip(r, r.sessionId===me, true)+' ');   /* BUILD 16.30: avatar goes BEFORE the buttons so Open / Edit and × never shift */
   });
   /* 3) Dome card tabs (Overview / Components / Truss) — colored dot on the tab someone edits */
   document.querySelectorAll('#content .dtab[data-pressec]').forEach(function(tab){
@@ -11539,7 +11989,7 @@ try{ window.addEventListener('beforeunload', function(){ presDeleteOwn(); try{ p
 try{ document.addEventListener('visibilitychange', function(){ if(!document.hidden){ try{ presenceOnRoute(); }catch(_){} } }); }catch(_){}
 setTimeout(function(){ try{ presenceOnRoute(); }catch(_){} }, 4000);   /* start once Firestore/auth is up */
 var _lastMod = '';   /* the module page opened most recently — its dashboard card keeps the red frame (BUILD 12.43) */
-const MODULE_ROUTES = ['#/server-rack','#/projectors','#/speakers','#/camera','#/network','#/fan','#/cables','#/tools','#/shipping'];
+const MODULE_ROUTES = ['#/server-rack','#/projectors','#/speakers','#/camera','#/network','#/fan','#/cables','#/tools','#/dome','#/shipping'];
 /* BUILD 15.66 — while the SELECTED project is a PRE-PROJECT, only its info (Projects) and the two
    shared libraries are open; every module / dashboard / documentation etc. is LOCKED until it's moved
    to In-Progress. Stage-based — applies to everyone, including access-list (edit) members. */
@@ -11567,7 +12017,7 @@ function pagePreLocked(h){
 /* BUILD 15.67 — role-based access lock. Returns replacement HTML when the current route is not
    viewable for this user (pre-project stage lock, library view perm, or the active project's bucket),
    else null. Client-side reflection of the permissions; Firestore Rules are the real gate (Stage 2). */
-var PROJ_PAGE_HASH = {'#/dashboard':1,'#/edit':1,'#/server-rack':1,'#/projectors':1,'#/camera':1,'#/cables':1,'#/speakers':1,'#/fan':1,'#/tools':1,'#/shipping':1,'#/equipment':1,'#/documentation':1};
+var PROJ_PAGE_HASH = {'#/dashboard':1,'#/edit':1,'#/server-rack':1,'#/projectors':1,'#/camera':1,'#/cables':1,'#/speakers':1,'#/fan':1,'#/tools':1,'#/dome':1,'#/shipping':1,'#/equipment':1,'#/documentation':1};
 function pageAccessRestricted(what){
   return '<div class="page" style="max-width:720px"><div class="pagehead"><div class="eyebrow">Fulldome Projection SP</div><h1 style="margin:0">Access Restricted</h1></div>'
     +'<div class="card" style="text-align:center;padding:40px 24px;border:1px solid var(--line)"><div style="color:var(--ink2);margin-bottom:10px"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div>'
@@ -11761,16 +12211,16 @@ loadState(()=>{ restoreHandles();
     }
 
     var pending=null, bar=null, stuckShown=false;
-    function showWaiting(){
-      if(bar && document.body.contains(bar)) return;
+    function showWaiting(customMsg){
+      if(bar && document.body.contains(bar)){ if(customMsg && bar._msg && bar._msg.textContent!==customMsg) bar._msg.textContent=customMsg; return; }
       bar=document.createElement('div'); bar.setAttribute('role','status');
       bar.style.cssText='position:fixed;left:0;right:0;top:0;z-index:2147483646;background:#0f5c39;color:#fff;'
         +'font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:14px;line-height:1.45;'
         +'padding:11px 16px;box-shadow:0 2px 12px rgba(0,0,0,.4);display:flex;gap:10px;align-items:center';
       var ic=document.createElement('span'); ic.textContent='⏳'; ic.style.fontSize='17px';
       var msg=document.createElement('span'); msg.style.flex='1';
-      msg.textContent='New version ready — it will apply after synchronization, or press Update now.';
-      bar.appendChild(ic); bar.appendChild(msg);
+      msg.textContent=customMsg || 'New version ready — it will apply after synchronization, or press Update now.';
+      bar.appendChild(ic); bar.appendChild(msg); bar._msg=msg;
       /* BUILD 16.07: manual "Update" button — press → reloads to the new build immediately */
       var btn=document.createElement('button'); btn.type='button'; btn.textContent='Update';
       btn.style.cssText='flex:none;background:#fff;color:#0f5c39;border:none;border-radius:6px;padding:7px 14px;font:600 13px -apple-system,Segoe UI,Roboto,Arial,sans-serif;cursor:pointer';
@@ -11787,9 +12237,20 @@ loadState(()=>{ restoreHandles();
     }
 
     /* runs often while an update is pending: reload as soon as it becomes safe */
+    /* BUILD 16.26: when the server keeps sending the OLD file right after a deploy (CDN not propagated yet), don't give
+       up after 2 quick reloads — wait 2 minutes and try again, up to ~6 rounds (~15 min), and only then ask for Ctrl+Shift+R. */
+    var ROUND_WAIT = 120000, MAX_ROUNDS = 6;
+    function staleState(){ try{ return { build: sessionStorage.getItem('fdp_upd_gaveup'), at: parseInt(sessionStorage.getItem('fdp_upd_gaveupAt')||'0',10), rounds: parseInt(sessionStorage.getItem('fdp_upd_rounds')||'0',10) }; }catch(_){ return { build:null, at:0, rounds:0 }; } }
     function readyTick(){
       if(!pending) return;
-      try{ if(pending === sessionStorage.getItem('fdp_upd_gaveup')) return; }catch(_){}   // gave up on this build -> wait for Ctrl+Shift+R
+      var st = staleState();
+      if(pending === st.build){                                                             // this build was served stale on the last attempt
+        if(st.rounds >= MAX_ROUNDS){ stuck(pending); return; }                             // long enough -> ask for a hard refresh
+        if(Date.now() - st.at < ROUND_WAIT){ showWaiting('New version b'+pending+' is published, but the server is still sending the old one — retrying automatically in a moment.'); return; }
+        if(unsynced()){ showWaiting(); return; }
+        try{ sessionStorage.removeItem('fdp_upd_gaveup'); }catch(_){}
+        hideWaiting(); reloadTo(pending); return;
+      }
       if(unsynced()){ showWaiting(); return; }                                            // still working -> keep the passive note
       hideWaiting(); reloadTo(pending);                                                   // safe moment -> update itself
     }
@@ -11808,9 +12269,15 @@ loadState(()=>{ restoreHandles();
     (function verify(){
       try{
         var target=sessionStorage.getItem('fdp_upd_target'); if(!target) return;
-        if(cmp(running, target) >= 0){ sessionStorage.removeItem('fdp_upd_target'); sessionStorage.removeItem('fdp_upd_retry'); sessionStorage.removeItem('fdp_upd_gaveup'); return; }
+        if(cmp(running, target) >= 0){ ['fdp_upd_target','fdp_upd_retry','fdp_upd_gaveup','fdp_upd_gaveupAt','fdp_upd_rounds'].forEach(function(k){ sessionStorage.removeItem(k); }); return; }
         var n=(parseInt(sessionStorage.getItem('fdp_upd_retry')||'0',10))+1;
-        if(n>2){ sessionStorage.setItem('fdp_upd_gaveup', target); sessionStorage.removeItem('fdp_upd_target'); sessionStorage.removeItem('fdp_upd_retry'); stuck(target); return; }
+        if(n>2){   // two quick reloads still got the old file -> back off (BUILD 16.26), the periodic check retries in 2 min
+          var rounds=(parseInt(sessionStorage.getItem('fdp_upd_rounds')||'0',10))+1;
+          sessionStorage.setItem('fdp_upd_gaveup', target); sessionStorage.setItem('fdp_upd_gaveupAt', String(Date.now())); sessionStorage.setItem('fdp_upd_rounds', String(rounds));
+          sessionStorage.removeItem('fdp_upd_target'); sessionStorage.removeItem('fdp_upd_retry');
+          pending=target;
+          if(rounds >= MAX_ROUNDS) stuck(target); else showWaiting('New version b'+target+' is published, but the server is still sending the old one — retrying automatically in a moment.');
+          return; }
         sessionStorage.setItem('fdp_upd_retry', String(n));
         location.replace(location.pathname + '?u=' + Date.now() + (location.hash || '#/dashboard'));
       }catch(_){}
@@ -11824,6 +12291,10 @@ loadState(()=>{ restoreHandles();
       var msg=document.createElement('span'); msg.style.flex='1';
       msg.textContent='Still loading an old cached version (wanted b'+target+', got b'+running+'). Press Ctrl+Shift+R (Mac: Cmd+Shift+R).';
       d.appendChild(ic); d.appendChild(msg);
+      var btn=document.createElement('button'); btn.type='button'; btn.textContent='Retry';
+      btn.style.cssText='flex:none;background:#fff;color:#8a5a00;border:none;border-radius:6px;padding:7px 14px;font:600 13px -apple-system,Segoe UI,Roboto,Arial,sans-serif;cursor:pointer';
+      btn.onclick=function(){ try{ ['fdp_upd_gaveup','fdp_upd_gaveupAt','fdp_upd_rounds'].forEach(function(k){ sessionStorage.removeItem(k); }); reloadTo(target); }catch(_){} };
+      d.appendChild(btn); hideWaiting();
       var m=function(){ if(document.body){ document.body.appendChild(d); document.body.style.paddingTop='56px'; } };
       if(document.body) m(); else document.addEventListener('DOMContentLoaded', m);
     }
