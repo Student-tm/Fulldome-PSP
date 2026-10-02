@@ -814,7 +814,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.50 · SYNC FIX: THE SERVER-SNAPSHOT GATE COULD STAY SHUT FOREVER (FIRST SNAPSHOT FROM THE SDK CACHE, NO "CONFIRMED" EVENT) — PROJECTS AND DOME LIBRARY LISTENERS NOW RECEIVE METADATA EVENTS + EXPLICIT SERVER READ FALLBACK · START-UP: NO FALSE "KEPT ASIDE" BANNER — A SECTION NOBODY ELSE WROTE SINCE WE LAST SAW IT IS OUR EDIT AND IS SENT; THE CONFIRMED BASE IS REFRESHED ON EVERY CONFIRMED SNAPSHOT · DOME LIBRARY FIX: A COVER / INFLATABLE / KIT / FILE ADDED ON ONE MACHINE IS NEVER DROPPED BECAUSE ANOTHER MACHINE SAVED THE CARD LATER (ADDITIONS AFTER THE AGREED BASE ARE ALWAYS KEPT) · DOME CARD: DOORS BLOCK MOVED DIRECTLY UNDER FRAME · DOME CARD: FABRIC DOOR (QTY + SERIAL) MOVED FROM DOORS TO EACH COVER ENTRY · "FABRIC DOOR INFL" ON EACH INFLATABLE COVER · DOME CARD: EVERY EDIT OF A SAVED CARD SYNCS TO THE TEAM AUTOMATICALLY (1.5 S AFTER THE LAST CHANGE — ADD COVER / INFLATABLE / SCREEN, FIELD EDITS, TRUSS) · SERVER-TIME WRITE STAMPS (wstamp = serverTimestamp) · CONFIRMED BASE ONLY FROM fromCache=false & hasPendingWrites=false OR A REAL ACK · "APPLY MY VERSION" = FIELD-LEVEL 3-WAY MERGE WITH PER-FIELD CONFLICTS · ADMIN › MAINTENANCE: STAMP ALL DOCUMENTS proto 2 · SAFE START-UP: NO WRITE BEFORE THE SERVER SNAPSHOT · PERSISTED CONFIRMED BASE + 3-WAY FIRST-SNAPSHOT MERGE (LOCAL EDITS KEPT ASIDE, NEVER LOST) · UPDATE = FLUSH THEN RELOAD · SAVING / SAVED / UPDATED STATUS · PROTOCOL STAMP proto:2 · SHADOW SECTION "ext" RESTORES CAMERA CASES + PROJECTOR ACCESSORIES WIPED BY AN OLD CLIENT · UPDATER CHECKS AT 2 S (STALE TABS RELOAD BEFORE THEIR FIRST PUSH) · CAMERA CASES SELF-HEAL (REBUILT FROM THE ROWS IF AN OLD CLIENT WIPED THE LIST) · DOME & TRUSS: "BALLAST PLATES" TABLE + PHOTOS WHILE OUTDOOR · MODULE PHOTOS (SPEAKERS / FAN / CABLES / TOOLS) NOW SYNC VIA THE MEDIA FILE · FAN MODULE: SEPARATE "INFLATABLE FAN SYSTEM" TABLE WHILE INFLATABLE = YES · PROJECT SETUP: "DOME & SYSTEM CONFIGURATION" · SCREEN TYPE · INDOOR/OUTDOOR + BALLAST SYSTEM · DOME LIBRARY: DELETED KITS / ELEMENTS / COVERS ARE STICKY TOMBSTONES (CAN NEVER COME BACK) · DOME CARD: OVERVIEW + TRUSS IN THE SAME COMPACT LAYOUT · DOORS: FABRIC DOOR (QTY + SERIAL) · COMPONENTS: COMPACT ONE-PARAMETER-PER-ROW LAYOUT · DOME LIBRARY: AN OPEN CARD NOW RECEIVES TEAMMATES' CHANGES LIVE (DELETIONS INCLUDED) · DOME CARD: COVER / INFLATABLE COVER GET COLOUR (GREY · WHITE · PRINTED) + MATERIAL · ARCHIVE BUTTONS REMOVED (DELETE ONLY) · DELETE BUTTON ON COVER / SCREEN / INFLATABLE ENTRIES · DASHBOARD: CAMERA MODEL = ALL "CAMERA" ROWS (NO LENS) · DOME & TRUSS: READY = DOME CARD "READY TO SHIP" (INDICATOR, NOT A BUTTON) · DOME LIBRARY: A DELETED TRUSS KIT / ELEMENT / FILE STAYS DELETED (NO-BASE TIEBREAKER BY REV) · DOME LIBRARY FIX: SAVE DOME CARD KEEPS TRUSS SN / COMPONENTS / SCHEMATICS (MERGE BASE WAS ALIASED TO THE LIVE CARD) · NEW MODULE: DOME & TRUSS (PICK FROM DOME LIBRARY · TRUSS KIT · SHIPS AUTOMATICALLY) · AUTO-UPDATE: RETRIES FOR ~15 MIN WHEN THE SERVER STILL SENDS THE OLD FILE · SHIPPING: SUB-SECTIONS — CAMERA CASES + OTHER, POWER / VIDEO / AUDIO CABLES (LIST + PDF) · SHIPPING PDF REBUILT (A4 LANDSCAPE · NOT-PACKED SECTION PER UNIT · GREEN/RED + WORDS · PAGE X OF Y) · SIDEBAR: EQUIPMENT & SHIPPING LINK · SHIPPING: CLICK AN ITEM NAME → JUMPS TO ITS MODULE ROW · PROJECTOR ACCESSORIES TABLE (EVERY NAMED ROW SHIPS AS ITS OWN MODULE AFTER PROJECTORS) · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.51 · NO MORE FLICKER: AN IN-PLACE RERENDER (TEAMMATE'S CHANGE, AUTO-SYNC) PATCHES THE LIVE PAGE NODE BY NODE INSTEAD OF REBUILDING IT · SYNC FIX: THE SERVER-SNAPSHOT GATE COULD STAY SHUT FOREVER (FIRST SNAPSHOT FROM THE SDK CACHE, NO "CONFIRMED" EVENT) — PROJECTS AND DOME LIBRARY LISTENERS NOW RECEIVE METADATA EVENTS + EXPLICIT SERVER READ FALLBACK · START-UP: NO FALSE "KEPT ASIDE" BANNER — A SECTION NOBODY ELSE WROTE SINCE WE LAST SAW IT IS OUR EDIT AND IS SENT; THE CONFIRMED BASE IS REFRESHED ON EVERY CONFIRMED SNAPSHOT · DOME LIBRARY FIX: A COVER / INFLATABLE / KIT / FILE ADDED ON ONE MACHINE IS NEVER DROPPED BECAUSE ANOTHER MACHINE SAVED THE CARD LATER (ADDITIONS AFTER THE AGREED BASE ARE ALWAYS KEPT) · DOME CARD: DOORS BLOCK MOVED DIRECTLY UNDER FRAME · DOME CARD: FABRIC DOOR (QTY + SERIAL) MOVED FROM DOORS TO EACH COVER ENTRY · "FABRIC DOOR INFL" ON EACH INFLATABLE COVER · DOME CARD: EVERY EDIT OF A SAVED CARD SYNCS TO THE TEAM AUTOMATICALLY (1.5 S AFTER THE LAST CHANGE — ADD COVER / INFLATABLE / SCREEN, FIELD EDITS, TRUSS) · SERVER-TIME WRITE STAMPS (wstamp = serverTimestamp) · CONFIRMED BASE ONLY FROM fromCache=false & hasPendingWrites=false OR A REAL ACK · "APPLY MY VERSION" = FIELD-LEVEL 3-WAY MERGE WITH PER-FIELD CONFLICTS · ADMIN › MAINTENANCE: STAMP ALL DOCUMENTS proto 2 · SAFE START-UP: NO WRITE BEFORE THE SERVER SNAPSHOT · PERSISTED CONFIRMED BASE + 3-WAY FIRST-SNAPSHOT MERGE (LOCAL EDITS KEPT ASIDE, NEVER LOST) · UPDATE = FLUSH THEN RELOAD · SAVING / SAVED / UPDATED STATUS · PROTOCOL STAMP proto:2 · SHADOW SECTION "ext" RESTORES CAMERA CASES + PROJECTOR ACCESSORIES WIPED BY AN OLD CLIENT · UPDATER CHECKS AT 2 S (STALE TABS RELOAD BEFORE THEIR FIRST PUSH) · CAMERA CASES SELF-HEAL (REBUILT FROM THE ROWS IF AN OLD CLIENT WIPED THE LIST) · DOME & TRUSS: "BALLAST PLATES" TABLE + PHOTOS WHILE OUTDOOR · MODULE PHOTOS (SPEAKERS / FAN / CABLES / TOOLS) NOW SYNC VIA THE MEDIA FILE · FAN MODULE: SEPARATE "INFLATABLE FAN SYSTEM" TABLE WHILE INFLATABLE = YES · PROJECT SETUP: "DOME & SYSTEM CONFIGURATION" · SCREEN TYPE · INDOOR/OUTDOOR + BALLAST SYSTEM · DOME LIBRARY: DELETED KITS / ELEMENTS / COVERS ARE STICKY TOMBSTONES (CAN NEVER COME BACK) · DOME CARD: OVERVIEW + TRUSS IN THE SAME COMPACT LAYOUT · DOORS: FABRIC DOOR (QTY + SERIAL) · COMPONENTS: COMPACT ONE-PARAMETER-PER-ROW LAYOUT · DOME LIBRARY: AN OPEN CARD NOW RECEIVES TEAMMATES' CHANGES LIVE (DELETIONS INCLUDED) · DOME CARD: COVER / INFLATABLE COVER GET COLOUR (GREY · WHITE · PRINTED) + MATERIAL · ARCHIVE BUTTONS REMOVED (DELETE ONLY) · DELETE BUTTON ON COVER / SCREEN / INFLATABLE ENTRIES · DASHBOARD: CAMERA MODEL = ALL "CAMERA" ROWS (NO LENS) · DOME & TRUSS: READY = DOME CARD "READY TO SHIP" (INDICATOR, NOT A BUTTON) · DOME LIBRARY: A DELETED TRUSS KIT / ELEMENT / FILE STAYS DELETED (NO-BASE TIEBREAKER BY REV) · DOME LIBRARY FIX: SAVE DOME CARD KEEPS TRUSS SN / COMPONENTS / SCHEMATICS (MERGE BASE WAS ALIASED TO THE LIVE CARD) · NEW MODULE: DOME & TRUSS (PICK FROM DOME LIBRARY · TRUSS KIT · SHIPS AUTOMATICALLY) · AUTO-UPDATE: RETRIES FOR ~15 MIN WHEN THE SERVER STILL SENDS THE OLD FILE · SHIPPING: SUB-SECTIONS — CAMERA CASES + OTHER, POWER / VIDEO / AUDIO CABLES (LIST + PDF) · SHIPPING PDF REBUILT (A4 LANDSCAPE · NOT-PACKED SECTION PER UNIT · GREEN/RED + WORDS · PAGE X OF Y) · SIDEBAR: EQUIPMENT & SHIPPING LINK · SHIPPING: CLICK AN ITEM NAME → JUMPS TO ITS MODULE ROW · PROJECTOR ACCESSORIES TABLE (EVERY NAMED ROW SHIPS AS ITS OWN MODULE AFTER PROJECTORS) · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1660,6 +1660,28 @@ function normalizeSort(){
   }catch(err){}
 }
 var _keepScrollTop = null;   /* while set, route() restores THIS scroll offset instead of resetting to 0 */
+/* BUILD 16.51 — minimal DOM morph: patch live node `a` to look like fresh node `b` (a DocumentFragment or element).
+   Same tag → sync attributes + form state (a focused field keeps what the user is typing), recurse; different → replace. */
+function _domMorph(a, b){
+  const ac = Array.prototype.slice.call(a.childNodes), bc = Array.prototype.slice.call(b.childNodes);
+  for(let i=0;i<bc.length;i++){
+    const x = ac[i], y = bc[i];
+    if(!x){ a.appendChild(y); continue; }
+    if(x.nodeType !== y.nodeType || (x.nodeType===1 && x.tagName !== y.tagName)){ a.replaceChild(y, x); continue; }
+    if(x.nodeType !== 1){ if(x.data !== y.data) x.data = y.data; continue; }
+    /* attributes */
+    const seen = {};
+    for(let j=0;j<y.attributes.length;j++){ const at = y.attributes[j]; seen[at.name]=1; if(x.getAttribute(at.name) !== at.value) x.setAttribute(at.name, at.value); }
+    for(let j=x.attributes.length-1;j>=0;j--){ const nm = x.attributes[j].name; if(!seen[nm]) x.removeAttribute(nm); }
+    const tag = x.tagName, focused = (x === document.activeElement);
+    if(tag === 'TEXTAREA'){ if(!focused && x.value !== y.value) x.value = y.value; continue; }   /* textarea text lives in its child node — never recurse */
+    if(tag === 'INPUT'){ if(!focused){ const ty = (y.getAttribute('type')||'').toLowerCase(); if(ty==='checkbox' || ty==='radio'){ if(x.checked !== y.checked) x.checked = y.checked; } else if(ty !== 'file' && x.value !== y.value) x.value = y.value; } continue; }
+    if(tag === 'OPTION'){ if(x.selected !== y.selected) x.selected = y.selected; }
+    _domMorph(x, y);
+    if(tag === 'SELECT' && !focused && x.value !== y.value) x.value = y.value;
+  }
+  while(a.childNodes.length > bc.length) a.removeChild(a.lastChild);
+}
 function rerenderKeepScroll(){
   const c = document.getElementById('content');
   const st = c ? c.scrollTop : 0;
@@ -11368,9 +11390,9 @@ function domeFsEnsureStarted(){
 function _domeOnSnap(snap){
       const fromServer = !(snap && snap.metadata && snap.metadata.fromCache);
       if(snap.exists){
-        const dd = snap.data(); domeFsApplyDoc(dd); saveDomeLib();
+        const dd = snap.data(); const chg = domeFsApplyDoc(dd); saveDomeLib();
         try{ _domeServerUids = {}; ((dd && dd.domes) || []).forEach(function(d){ if(d && d.domeUid) _domeServerUids[d.domeUid] = 1; }); }catch(_){}
-        if(location.hash==='#/dome-library' && !isTypingInInput()){ try{ rerenderKeepScroll(); }catch(_){} }
+        if(chg && location.hash==='#/dome-library' && !isTypingInInput()){ try{ rerenderKeepScroll(); }catch(_){} }   /* BUILD 16.51: only when something actually changed (metadata-only events arrive too now) */
       } else if(fromServer){ _domeServerUids = {}; }
       /* BUILD 16.45: the Dome Library gate — the first SERVER-confirmed snapshot opens it; only then may this machine
          write, and only if it actually holds something the server lacks (new local cards / unsynced edits) */
@@ -12466,11 +12488,23 @@ function route(){
      rerenders keep the state — route._prevHash stays '#/library'). */
   if(h === '#/library' && route._prevHash !== '#/library'){ _libCollapsed = {}; LIB_GROUPS.forEach(g=>{ _libCollapsed[g.key] = true; }); _libGroupsEdit = false; }
   if(h === '#/projects' && route._prevHash !== '#/projects'){ _projMode = 'edit'; _projTitleManual = false; _projSecState = {}; }   /* BUILD 14.41/15.53: enter Projects showing the selected project, reset section collapse */
+  const _samePage = (route._prevHash === h);   /* BUILD 16.51 */
   route._prevHash = h;
   const _lockHtml = accLockedHtml(h);   /* BUILD 15.66/15.67 */
   const _preLock = _lockHtml != null;
   renderNav(rr.nav);
-  document.getElementById('content').innerHTML = _lockHtml != null ? _lockHtml : rr.render();
+  /* BUILD 16.51: an IN-PLACE rerender of the same page (teammate's change arrived, auto-sync, blur) no longer wipes and
+     rebuilds the whole page (that was the "rows flicker while someone edits"): the fresh HTML is patched INTO the live DOM
+     node by node — unchanged rows keep their elements, only the changed cells update; an identical template is skipped.
+     Plain navigation still renders from scratch. Any problem → the old innerHTML path. */
+  const _html = _lockHtml != null ? _lockHtml : rr.render();
+  const _inPlace = (_keepScrollTop != null) && _samePage && route._lastHtml != null;
+  if(!(_inPlace && _html === route._lastHtml)){
+    let done = false;
+    if(_inPlace){ try{ const t = document.createElement('template'); t.innerHTML = _html; _domMorph(document.getElementById('content'), t.content); done = true; }catch(_){ done = false; } }
+    if(!done) document.getElementById('content').innerHTML = _html;
+  }
+  route._lastHtml = _html;
   /* normal navigation resets to top; an in-place rerender (rerenderKeepScroll) preserves the offset */
   document.getElementById('content').scrollTop = (_keepScrollTop != null ? _keepScrollTop : 0);
   if(h === '#/create' || h === '#/edit' || h === '#/projects') noAutofill();   /* BUILD 14.15/14.41: stop browser autofill in the project forms */
