@@ -814,7 +814,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.54 · SYNC ENGINE v4 (AUDIT FIXES): OWN COLLECTION TREE v3_roots/<root>/{fields,records,assets} THAT OLD CLIENTS NEVER TOUCH · ONE DOCUMENT PER RECORD / ASSET WITH ITS OWN REV + TOMBSTONE · CENTRAL SCHEMA REGISTRY (NO ARRAY HEURISTICS) · DUAL-READ OF LEGACY DOCUMENTS (OLD-TAB EDITS MERGED, NOTHING LOST) · NO DOCUMENT IS EVER DELETED (RULES: allow delete: false) · SYNC ENGINE v3: ONE REALTIME ENGINE FOR EVERY FIELD, ROW, PHOTO, DOCUMENT, DOME CARD AND LIBRARY ITEM — FIRESTORE = TRUTH (RECORD-LEVEL WRITES, TOMBSTONES, 3-WAY MERGE), GOOGLE DRIVE = ONE FILE PER PHOTO / PDF IN THE SHARED PROJECT FOLDER, DURABLE OUTBOX · NO <pid>.media.json · PRESENCE: AVATARS NO LONGER BLINK (SUBSCRIPTIONS AND THE OWN PRESENCE RECORD ARE KEPT ACROSS RERENDERS) · DOME LIST: FIXED AVATAR SLOT — THE TABLE NEVER CHANGES WIDTH · NO MORE FLICKER: AN IN-PLACE RERENDER (TEAMMATE'S CHANGE, AUTO-SYNC) PATCHES THE LIVE PAGE NODE BY NODE INSTEAD OF REBUILDING IT · SYNC FIX: THE SERVER-SNAPSHOT GATE COULD STAY SHUT FOREVER (FIRST SNAPSHOT FROM THE SDK CACHE, NO "CONFIRMED" EVENT) — PROJECTS AND DOME LIBRARY LISTENERS NOW RECEIVE METADATA EVENTS + EXPLICIT SERVER READ FALLBACK · START-UP: NO FALSE "KEPT ASIDE" BANNER — A SECTION NOBODY ELSE WROTE SINCE WE LAST SAW IT IS OUR EDIT AND IS SENT; THE CONFIRMED BASE IS REFRESHED ON EVERY CONFIRMED SNAPSHOT · DOME LIBRARY FIX: A COVER / INFLATABLE / KIT / FILE ADDED ON ONE MACHINE IS NEVER DROPPED BECAUSE ANOTHER MACHINE SAVED THE CARD LATER (ADDITIONS AFTER THE AGREED BASE ARE ALWAYS KEPT) · DOME CARD: DOORS BLOCK MOVED DIRECTLY UNDER FRAME · DOME CARD: FABRIC DOOR (QTY + SERIAL) MOVED FROM DOORS TO EACH COVER ENTRY · "FABRIC DOOR INFL" ON EACH INFLATABLE COVER · DOME CARD: EVERY EDIT OF A SAVED CARD SYNCS TO THE TEAM AUTOMATICALLY (1.5 S AFTER THE LAST CHANGE — ADD COVER / INFLATABLE / SCREEN, FIELD EDITS, TRUSS) · SERVER-TIME WRITE STAMPS (wstamp = serverTimestamp) · CONFIRMED BASE ONLY FROM fromCache=false & hasPendingWrites=false OR A REAL ACK · "APPLY MY VERSION" = FIELD-LEVEL 3-WAY MERGE WITH PER-FIELD CONFLICTS · ADMIN › MAINTENANCE: STAMP ALL DOCUMENTS proto 2 · SAFE START-UP: NO WRITE BEFORE THE SERVER SNAPSHOT · PERSISTED CONFIRMED BASE + 3-WAY FIRST-SNAPSHOT MERGE (LOCAL EDITS KEPT ASIDE, NEVER LOST) · UPDATE = FLUSH THEN RELOAD · SAVING / SAVED / UPDATED STATUS · PROTOCOL STAMP proto:2 · SHADOW SECTION "ext" RESTORES CAMERA CASES + PROJECTOR ACCESSORIES WIPED BY AN OLD CLIENT · UPDATER CHECKS AT 2 S (STALE TABS RELOAD BEFORE THEIR FIRST PUSH) · CAMERA CASES SELF-HEAL (REBUILT FROM THE ROWS IF AN OLD CLIENT WIPED THE LIST) · DOME & TRUSS: "BALLAST PLATES" TABLE + PHOTOS WHILE OUTDOOR · MODULE PHOTOS (SPEAKERS / FAN / CABLES / TOOLS) NOW SYNC VIA THE MEDIA FILE · FAN MODULE: SEPARATE "INFLATABLE FAN SYSTEM" TABLE WHILE INFLATABLE = YES · PROJECT SETUP: "DOME & SYSTEM CONFIGURATION" · SCREEN TYPE · INDOOR/OUTDOOR + BALLAST SYSTEM · DOME LIBRARY: DELETED KITS / ELEMENTS / COVERS ARE STICKY TOMBSTONES (CAN NEVER COME BACK) · DOME CARD: OVERVIEW + TRUSS IN THE SAME COMPACT LAYOUT · DOORS: FABRIC DOOR (QTY + SERIAL) · COMPONENTS: COMPACT ONE-PARAMETER-PER-ROW LAYOUT · DOME LIBRARY: AN OPEN CARD NOW RECEIVES TEAMMATES' CHANGES LIVE (DELETIONS INCLUDED) · DOME CARD: COVER / INFLATABLE COVER GET COLOUR (GREY · WHITE · PRINTED) + MATERIAL · ARCHIVE BUTTONS REMOVED (DELETE ONLY) · DELETE BUTTON ON COVER / SCREEN / INFLATABLE ENTRIES · DASHBOARD: CAMERA MODEL = ALL "CAMERA" ROWS (NO LENS) · DOME & TRUSS: READY = DOME CARD "READY TO SHIP" (INDICATOR, NOT A BUTTON) · DOME LIBRARY: A DELETED TRUSS KIT / ELEMENT / FILE STAYS DELETED (NO-BASE TIEBREAKER BY REV) · DOME LIBRARY FIX: SAVE DOME CARD KEEPS TRUSS SN / COMPONENTS / SCHEMATICS (MERGE BASE WAS ALIASED TO THE LIVE CARD) · NEW MODULE: DOME & TRUSS (PICK FROM DOME LIBRARY · TRUSS KIT · SHIPS AUTOMATICALLY) · AUTO-UPDATE: RETRIES FOR ~15 MIN WHEN THE SERVER STILL SENDS THE OLD FILE · SHIPPING: SUB-SECTIONS — CAMERA CASES + OTHER, POWER / VIDEO / AUDIO CABLES (LIST + PDF) · SHIPPING PDF REBUILT (A4 LANDSCAPE · NOT-PACKED SECTION PER UNIT · GREEN/RED + WORDS · PAGE X OF Y) · SIDEBAR: EQUIPMENT & SHIPPING LINK · SHIPPING: CLICK AN ITEM NAME → JUMPS TO ITS MODULE ROW · PROJECTOR ACCESSORIES TABLE (EVERY NAMED ROW SHIPS AS ITS OWN MODULE AFTER PROJECTORS) · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.57 · SCREEN FAN: "INFLATABLE FAN BUILDER" SECTION (SAME HEADER AS THE SCREEN FAN BUILDER) · FAN BOXES (LIKE CAMERA CASES — ROWS FROM BOTH BUILDERS MOVE IN, A BOX SHIPS AS ONE PLACE) · SPEAKERS: CATEGORY LIST = SPEAKER / AUDIO + TRUSS GROUPS OF THE EQUIPMENT LIBRARY (TRUSS ROWS PICK FROM AND SAVE TO THE TRUSS GROUP) · SYNC ENGINE v5: CANARY PER PROJECT (ADMIN › MAINTENANCE), TRANSACTIONAL PUSHES WITH PER-DOCUMENT REVISION CHECKS (A STALE TAB NEVER OVERWRITES NEWER DATA — SAME-FIELD COLLISIONS KEEP BOTH VERSIONS), OLD-TAB ROWS MATCHED BY ID / FINGERPRINT / SIMILARITY (NEVER BY POSITION) · v4 (AUDIT FIXES): OWN COLLECTION TREE v3_roots/<root>/{fields,records,assets} THAT OLD CLIENTS NEVER TOUCH · ONE DOCUMENT PER RECORD / ASSET WITH ITS OWN REV + TOMBSTONE · CENTRAL SCHEMA REGISTRY (NO ARRAY HEURISTICS) · DUAL-READ OF LEGACY DOCUMENTS (OLD-TAB EDITS MERGED, NOTHING LOST) · NO DOCUMENT IS EVER DELETED (RULES: allow delete: false) · SYNC ENGINE v3: ONE REALTIME ENGINE FOR EVERY FIELD, ROW, PHOTO, DOCUMENT, DOME CARD AND LIBRARY ITEM — FIRESTORE = TRUTH (RECORD-LEVEL WRITES, TOMBSTONES, 3-WAY MERGE), GOOGLE DRIVE = ONE FILE PER PHOTO / PDF IN THE SHARED PROJECT FOLDER, DURABLE OUTBOX · NO <pid>.media.json · PRESENCE: AVATARS NO LONGER BLINK (SUBSCRIPTIONS AND THE OWN PRESENCE RECORD ARE KEPT ACROSS RERENDERS) · DOME LIST: FIXED AVATAR SLOT — THE TABLE NEVER CHANGES WIDTH · NO MORE FLICKER: AN IN-PLACE RERENDER (TEAMMATE'S CHANGE, AUTO-SYNC) PATCHES THE LIVE PAGE NODE BY NODE INSTEAD OF REBUILDING IT · SYNC FIX: THE SERVER-SNAPSHOT GATE COULD STAY SHUT FOREVER (FIRST SNAPSHOT FROM THE SDK CACHE, NO "CONFIRMED" EVENT) — PROJECTS AND DOME LIBRARY LISTENERS NOW RECEIVE METADATA EVENTS + EXPLICIT SERVER READ FALLBACK · START-UP: NO FALSE "KEPT ASIDE" BANNER — A SECTION NOBODY ELSE WROTE SINCE WE LAST SAW IT IS OUR EDIT AND IS SENT; THE CONFIRMED BASE IS REFRESHED ON EVERY CONFIRMED SNAPSHOT · DOME LIBRARY FIX: A COVER / INFLATABLE / KIT / FILE ADDED ON ONE MACHINE IS NEVER DROPPED BECAUSE ANOTHER MACHINE SAVED THE CARD LATER (ADDITIONS AFTER THE AGREED BASE ARE ALWAYS KEPT) · DOME CARD: DOORS BLOCK MOVED DIRECTLY UNDER FRAME · DOME CARD: FABRIC DOOR (QTY + SERIAL) MOVED FROM DOORS TO EACH COVER ENTRY · "FABRIC DOOR INFL" ON EACH INFLATABLE COVER · DOME CARD: EVERY EDIT OF A SAVED CARD SYNCS TO THE TEAM AUTOMATICALLY (1.5 S AFTER THE LAST CHANGE — ADD COVER / INFLATABLE / SCREEN, FIELD EDITS, TRUSS) · SERVER-TIME WRITE STAMPS (wstamp = serverTimestamp) · CONFIRMED BASE ONLY FROM fromCache=false & hasPendingWrites=false OR A REAL ACK · "APPLY MY VERSION" = FIELD-LEVEL 3-WAY MERGE WITH PER-FIELD CONFLICTS · ADMIN › MAINTENANCE: STAMP ALL DOCUMENTS proto 2 · SAFE START-UP: NO WRITE BEFORE THE SERVER SNAPSHOT · PERSISTED CONFIRMED BASE + 3-WAY FIRST-SNAPSHOT MERGE (LOCAL EDITS KEPT ASIDE, NEVER LOST) · UPDATE = FLUSH THEN RELOAD · SAVING / SAVED / UPDATED STATUS · PROTOCOL STAMP proto:2 · SHADOW SECTION "ext" RESTORES CAMERA CASES + PROJECTOR ACCESSORIES WIPED BY AN OLD CLIENT · UPDATER CHECKS AT 2 S (STALE TABS RELOAD BEFORE THEIR FIRST PUSH) · CAMERA CASES SELF-HEAL (REBUILT FROM THE ROWS IF AN OLD CLIENT WIPED THE LIST) · DOME & TRUSS: "BALLAST PLATES" TABLE + PHOTOS WHILE OUTDOOR · MODULE PHOTOS (SPEAKERS / FAN / CABLES / TOOLS) NOW SYNC VIA THE MEDIA FILE · FAN MODULE: SEPARATE "INFLATABLE FAN SYSTEM" TABLE WHILE INFLATABLE = YES · PROJECT SETUP: "DOME & SYSTEM CONFIGURATION" · SCREEN TYPE · INDOOR/OUTDOOR + BALLAST SYSTEM · DOME LIBRARY: DELETED KITS / ELEMENTS / COVERS ARE STICKY TOMBSTONES (CAN NEVER COME BACK) · DOME CARD: OVERVIEW + TRUSS IN THE SAME COMPACT LAYOUT · DOORS: FABRIC DOOR (QTY + SERIAL) · COMPONENTS: COMPACT ONE-PARAMETER-PER-ROW LAYOUT · DOME LIBRARY: AN OPEN CARD NOW RECEIVES TEAMMATES' CHANGES LIVE (DELETIONS INCLUDED) · DOME CARD: COVER / INFLATABLE COVER GET COLOUR (GREY · WHITE · PRINTED) + MATERIAL · ARCHIVE BUTTONS REMOVED (DELETE ONLY) · DELETE BUTTON ON COVER / SCREEN / INFLATABLE ENTRIES · DASHBOARD: CAMERA MODEL = ALL "CAMERA" ROWS (NO LENS) · DOME & TRUSS: READY = DOME CARD "READY TO SHIP" (INDICATOR, NOT A BUTTON) · DOME LIBRARY: A DELETED TRUSS KIT / ELEMENT / FILE STAYS DELETED (NO-BASE TIEBREAKER BY REV) · DOME LIBRARY FIX: SAVE DOME CARD KEEPS TRUSS SN / COMPONENTS / SCHEMATICS (MERGE BASE WAS ALIASED TO THE LIVE CARD) · NEW MODULE: DOME & TRUSS (PICK FROM DOME LIBRARY · TRUSS KIT · SHIPS AUTOMATICALLY) · AUTO-UPDATE: RETRIES FOR ~15 MIN WHEN THE SERVER STILL SENDS THE OLD FILE · SHIPPING: SUB-SECTIONS — CAMERA CASES + OTHER, POWER / VIDEO / AUDIO CABLES (LIST + PDF) · SHIPPING PDF REBUILT (A4 LANDSCAPE · NOT-PACKED SECTION PER UNIT · GREEN/RED + WORDS · PAGE X OF Y) · SIDEBAR: EQUIPMENT & SHIPPING LINK · SHIPPING: CLICK AN ITEM NAME → JUMPS TO ITS MODULE ROW · PROJECTOR ACCESSORIES TABLE (EVERY NAMED ROW SHIPS AS ITS OWN MODULE AFTER PROJECTORS) · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1771,7 +1771,11 @@ function extendCats(base){
 }
 function srvCats(){ return extendCats(groupCats('server')); }
 function camCats(){ return extendCats(groupCats('cameras')); }
-function spkCats(){ return groupCats('speakers'); }   /* BUILD 14.21: speakers show ONLY speaker categories (own base + custom), NOT the cross-group extended list */
+/* BUILD 16.56: the Speakers module offers the Speaker / Audio categories AND the Truss categories of the Equipment Library (the speaker rig ships with truss) */
+function spkCatsSpk(){ return groupCats('speakers'); }
+function spkCatsTruss(){ const own = groupCats('speakers').map(normCat); return groupCats('truss').filter(function(c){ return own.indexOf(normCat(c)) < 0; }); }
+function spkCats(){ return spkCatsSpk().concat(spkCatsTruss()); }
+function spkCatIsTruss(cat){ const c = normCat(cat); return !spkCatsSpk().some(function(x){ return normCat(x) === c; }) && spkCatsTruss().some(function(x){ return normCat(x) === c; }); }
 function fanCats(){ return groupCats('fan'); }   /* BUILD 14.27: Screen Fan categories — own only */
 function cabCats(){ return groupCats('cables'); }   /* BUILD 14.31: Cables categories — own only */
 /* BUILD 14.39: which catKey stores a bucket's categories, and which bucket an item/row belongs to */
@@ -3557,6 +3561,8 @@ function adminFindUser(email){ email=String(email||'').toLowerCase();
   if(SEED_ROLES[email]) return { email:email, role:SEED_ROLES[email], perms:rolePerms(SEED_ROLES[email]), active:true, _virtual:true };
   return null; }
 function adminGo(tab){ _adminTab=tab; goTo('#/admin'); }
+async function adminV5Set(root, on){ const out=document.getElementById('adminV5Out'); try{ if(on && !confirm('Switch ' + root + ' to the v5 engine for EVERY user?\n\nIt will be migrated to v3_roots by the first 16.55 client; old tabs keep working through dual-read.')) return; await SE.setEnabled(root, on); if(out) out.textContent = (on ? 'Enabled ' : 'Back to V1: ') + root; }catch(err){ if(out) out.textContent = '⚠ ' + (err && err.message || err); } }
+async function adminV5All(on){ const out=document.getElementById('adminV5Out'); try{ if(on && !confirm('Enable the v5 engine for ALL projects, the Dome Library and the Shared Library?')) return; await SE.setAll(on); if(out) out.textContent = on ? 'Enabled for all' : 'Per-project mode'; }catch(err){ if(out) out.textContent = '⚠ ' + (err && err.message || err); } }
 async function adminStampProto(){
   if(!isAdminConsole()){ alert('Admin Console access required.'); return; }
   if(!fsReady()){ alert('Firestore is not connected.'); return; }
@@ -3647,9 +3653,22 @@ function pageAdmin(){
   } else if(_adminTab==='maint'){
     /* BUILD 16.46 — one-time, ADDITIVE stamping of every document with proto:2 + server wstamp (run BEFORE publishing the
        proto-2 Rules, once every active user is on BUILD 16.45+). Touches two fields only; nothing else is read or rewritten. */
-    body='<div class="card"><div class="card-head"><h3>Protocol stamp (proto 2)</h3></div>'
-      + '<div class="sub" style="margin:0 0 12px">Marks every LEGACY document in <b>projects</b> (projects, Shared Library, Dome Library) with <b>proto: 4</b> and a server <b>wstamp</b>. Additive only — no other field is touched. The v3 tree (<b>v3_roots</b>) is created automatically by the first BUILD 16.54 client that opens each document. Run this once after every active user shows <b>b16.54</b> or newer, before the cutover Rules are published.</div>'
-      + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="mod-btn primary" style="padding:8px 14px" onclick="adminStampProto()">Stamp all documents</button><span id="adminStampOut" class="sub" style="margin:0"></span></div></div>';
+    /* BUILD 16.55 — v5 CANARY: the engine is switched on per root through sync_config/v5 (read by every client, written only by the admin console). */
+    const _cfg = (typeof SE !== 'undefined' && SE.config) ? SE.config() : { pids:{}, all:false, seen:false };
+    const _rootRow = function(root, label){ const on = !!(_cfg.all || _cfg.pids[root]); return '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--line)"><span style="flex:1;font-size:13px">'+esc(label)+' <span class="sub" style="margin:0;display:inline">('+esc(root)+')</span></span>'
+      + '<span style="font-size:11px;font-weight:700;letter-spacing:.5px;color:'+(on?'#2e9e5b':'#8a8f99')+'">'+(on?'V5 ON':'V1')+'</span>'
+      + (_cfg.all ? '' : '<button class="mod-btn'+(on?'':' primary')+'" style="padding:4px 10px;font-size:12px" onclick="adminV5Set(\''+esc(root)+'\','+(on?'false':'true')+')">'+(on?'Back to V1':'Enable V5')+'</button>') + '</div>'; };
+    const _rows = (db.projects||[]).filter(function(e){ return e && e.data && e.data.project && fbpPid(e); }).map(function(e){ const P=e.data.project; return _rootRow(fbpPid(e), '#'+(P.number||'—')+' '+(P.title||P.name||'')); }).join('')
+      + _rootRow('dome_library', 'Dome Library') + _rootRow('shared_library', 'Shared Library');
+    const _state = (typeof SE === 'undefined') ? 'engine missing' : SE.isDenied() ? '⛔ v3_roots is NOT readable with the current Rules — publish STAGE1 first' : SE.isReady() ? '✓ v3_roots readable, listeners live' : '… waiting for the first v3 snapshot';
+    body='<div class="card"><div class="card-head"><h3>Sync engine v5 — canary</h3></div>'
+      + '<div class="sub" style="margin:0 0 10px">Status: <b>'+esc(_state)+'</b>'+(_cfg.seen?'':' · no config document yet (sync_config/v5 is created on the first switch — admin console only)')+'</div>'
+      + '<div class="sub" style="margin:0 0 12px">Each root runs on V1 until it is switched here. A switched root is migrated to <b>v3_roots/&lt;root&gt;</b> by the first 16.55 client that sees it, keeps dual-reading its legacy document (old tabs), and syncs through the engine. Switch ONE test project first, verify on two computers, then the rest. Writes to sync_config/v5 are allowed only for the admin console (Rules).</div>'
+      + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px"><button class="mod-btn'+(_cfg.all?'':' primary')+'" style="padding:6px 12px" onclick="adminV5All('+(_cfg.all?'false':'true')+')">'+(_cfg.all?'Disable "all projects" (back to per-project)':'Enable V5 for ALL projects')+'</button><span id="adminV5Out" class="sub" style="margin:0"></span></div>'
+      + '<div>'+_rows+'</div></div>'
+      + '<div class="card" style="margin-top:14px"><div class="card-head"><h3>Protocol stamp (legacy documents)</h3></div>'
+      + '<div class="sub" style="margin:0 0 12px">Marks every LEGACY document in <b>projects</b> with <b>proto: '+FS_PROTO+'</b> and a server <b>wstamp</b>. Additive only. Not a protection by itself — the STAGE2 Rules check the exact protocol on every write.</div>'
+      + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="mod-btn" style="padding:8px 14px" onclick="adminStampProto()">Stamp all documents</button><span id="adminStampOut" class="sub" style="margin:0"></span></div></div>';
   } else if(_adminTab==='drive'){
     body='<div class="sub" style="margin:0 0 10px">Google Drive access is managed separately from PSP. This is a reference view — sharing the Drive folder is done manually for now.</div>'
       + '<table class="acctbl"><thead><tr><th>User</th><th>Drive access</th><th>Note</th></tr></thead><tbody>'
@@ -4867,12 +4886,20 @@ function shipPlaces(){
   if(spkCombined.length) places.push({key:'pl|spk', name:'Speakers', module:'Speakers', items:spkCombined});
   spkSeparate.forEach((it,i)=> places.push({key:'pl|spk-sep|'+i, name:it.name, module:'Speakers', items:[it]}));
   /* ---- Screen Fan / Ventilation (BUILD 14.27) ---- */
-  const fanCombined = [], fanSeparate = [];
+  const fanCombined = [], fanSeparate = [], fanByBox = {};
   /* BUILD 16.41: inflatable-fan rows carry a sub-heading and are listed after the screen-fan rows; hidden while Project Setup → Inflatable = No */
   const fanInflOn = (typeof projInflatable==='function') && projInflatable();
+  try{ fanRepairBoxes(); }catch(_){}
+  const fanBoxesL = (state.fan&&state.fan.cases)||[];
   ((state.fan&&state.fan.rows)||[]).map((r,idx)=>({r,idx})).sort((a,b)=> (fanIsInfl(a.r)?1:0)-(fanIsInfl(b.r)?1:0) || a.idx-b.idx).forEach(({r,idx})=>{
     if(!(r.name||'').trim()) return; if(fanIsInfl(r) && !fanInflOn) return;
-    const it = mkItem(r,'i|fan|'+idx); if(fanIsInfl(r)) it.sub = 'Inflatable Fan System'; (isCombined(r)?fanCombined:fanSeparate).push(it); });
+    const it = mkItem(r,'i|fan|'+idx); if(fanIsInfl(r)) it.sub = 'Inflatable Fan Builder';
+    const bx = r.caseId && fanBoxesL.find(c=>c.id===r.caseId);
+    if(bx){ (fanByBox[bx.id] = fanByBox[bx.id] || []).push(it); return; }   /* BUILD 16.57: a fan box ships as ONE place */
+    (isCombined(r)?fanCombined:fanSeparate).push(it); });
+  let fanHasBox = false;
+  fanBoxesL.forEach((c,ci)=>{ const its = fanByBox[c.id]; if(its && its.length){ fanHasBox = true; its.forEach(it=>{ it.sub = fanBoxLabel(c, ci); }); places.push({key:'pl|fan-box|'+c.id, name:fanBoxLabel(c, ci), module:'Screen Fan', items:its, subChip:its.length+' item'+(its.length===1?'':'s')+' · ONE PLACE'}); } });
+  if(fanHasBox){ fanCombined.concat(fanSeparate).forEach(it=>{ if(!it.sub) it.sub = 'Other'; }); }
   if(fanCombined.length) places.push({key:'pl|fan', name:'Screen Fan', module:'Screen Fan', items:fanCombined});
   fanSeparate.forEach((it,i)=> places.push({key:'pl|fan-sep|'+i, name:it.name, module:'Screen Fan', items:[it]}));
   /* ---- Cables & Adapters (BUILD 14.31) ---- */
@@ -5688,14 +5715,14 @@ function liveSlice(d){
     rack:    { rows: d.rack.rows || [], heightU: d.rack.heightU || 12, slots: d.rack.slots || {}, rackId: d.rack.rackId || '', ready: !!d.rack.ready },
     camera:  { rows: (d.camera && d.camera.rows) || [], ready: !!(d.camera && d.camera.ready), cases: (d.camera && d.camera.cases) || [] },   /* BUILD 16.16: flight cases sync with the rows */
     speakers:{ rows: (d.speakers && d.speakers.rows) || [], ready: !!(d.speakers && d.speakers.ready) },
-    fan:     { rows: (d.fan && d.fan.rows) || [], ready: !!(d.fan && d.fan.ready) },
+    fan:     { rows: (d.fan && d.fan.rows) || [], ready: !!(d.fan && d.fan.ready), cases: (d.fan && d.fan.cases) || [] },   /* BUILD 16.57: fan boxes */
     cables:  { rows: (d.cables && d.cables.rows) || [], ready: !!(d.cables && d.cables.ready) },
     tools:   { rows: (d.tools && d.tools.rows) || [], ready: !!(d.tools && d.tools.ready) },
     dome:    { domeUid: (d.dome && d.dome.domeUid) || '', kitId: (d.dome && d.dome.kitId) || '', ready: !!(d.dome && d.dome.ready), snap: (d.dome && d.dome.snap) || null, ballast: { rows: (d.dome && d.dome.ballast && d.dome.ballast.rows) || [] } },   /* BUILD 16.27 · ballast rows (BUILD 16.42; photos ride in the media file) */
     /* BUILD 16.44 — 'ext' is a SHADOW of the sub-lists that live inside older sections (camera.cases, projectors.acc). A client on
        a build that predates them rewrites those sections WITHOUT the sub-list; a section only new builds write survives that,
        and liveApply restores the sub-list from here when the section arrives without it. Always derived — never edited directly. */
-    ext:     { cameraCases: (d.camera && d.camera.cases) || [], projAcc: (d.projectors && d.projectors.acc) || [] },
+    ext:     { cameraCases: (d.camera && d.camera.cases) || [], projAcc: (d.projectors && d.projectors.acc) || [], fanCases: (d.fan && d.fan.cases) || [] },
     projectors: { list: (d.projectors && d.projectors.list) || [], selId: (d.projectors && d.projectors.selId) || null, removableLens: !!(d.projectors && d.projectors.removableLens), lenses: (d.projectors && d.projectors.lenses) || [], acc: (d.projectors && d.projectors.acc) || [] },   /* acc = Projector Accessories (BUILD 16.19) */
     validation:   d.validation || {},                 /* dashboard test chips — live now (BUILD 12.7) */
     vjValidation: d.vjValidation || {},
@@ -5734,9 +5761,10 @@ function liveApply(d, live){
   if(live.rack){ setIf(d.rack, 'rows', live.rack.rows || []); setIf(d.rack, 'heightU', live.rack.heightU || 12); setIf(d.rack, 'slots', live.rack.slots || {}); if('rackId' in live.rack) setIf(d.rack, 'rackId', live.rack.rackId || ''); if('ready' in live.rack) setIf(d.rack, 'ready', !!live.rack.ready); }
   if(live.camera){ d.camera = d.camera || {rows:[],ready:false,photos:[]}; setIf(d.camera, 'rows', live.camera.rows || []); setIf(d.camera, 'ready', !!live.camera.ready); if('cases' in live.camera) setIf(d.camera, 'cases', live.camera.cases || []); }   /* BUILD 16.16: a pre-16.16 sender has no 'cases' key → keep ours */
   if(live.speakers){ d.speakers = d.speakers || {rows:[],ready:false,photos:[]}; setIf(d.speakers, 'rows', live.speakers.rows || []); setIf(d.speakers, 'ready', !!live.speakers.ready); }
-  if(live.fan){ d.fan = d.fan || {rows:[],ready:false,photos:[]}; setIf(d.fan, 'rows', live.fan.rows || []); setIf(d.fan, 'ready', !!live.fan.ready); }
+  if(live.fan){ d.fan = d.fan || {rows:[],ready:false,photos:[]}; setIf(d.fan, 'rows', live.fan.rows || []); setIf(d.fan, 'ready', !!live.fan.ready); if('cases' in live.fan) setIf(d.fan, 'cases', live.fan.cases || []); }   /* BUILD 16.57: a pre-16.57 sender has no 'cases' key → keep ours */
   if(live.cables){ d.cables = d.cables || {rows:[],ready:false,photos:[]}; setIf(d.cables, 'rows', live.cables.rows || []); setIf(d.cables, 'ready', !!live.cables.ready); }
-  if(live.ext){ d.ext = d.ext || {}; setIf(d.ext, 'cameraCases', live.ext.cameraCases || []); setIf(d.ext, 'projAcc', live.ext.projAcc || []); }   /* BUILD 16.44 */
+  if(live.ext){ d.ext = d.ext || {}; setIf(d.ext, 'cameraCases', live.ext.cameraCases || []); setIf(d.ext, 'projAcc', live.ext.projAcc || []); if('fanCases' in live.ext) setIf(d.ext, 'fanCases', live.ext.fanCases || []); }   /* BUILD 16.44 / 16.57 */
+  try{ if(live.fan && !('cases' in live.fan) && d.ext && Array.isArray(d.ext.fanCases) && d.ext.fanCases.length && !((d.fan && d.fan.cases) || []).length){ d.fan.cases = JSON.parse(JSON.stringify(d.ext.fanCases)); changed = true; } }catch(_){}
   /* BUILD 16.44: restore a sub-list an old client wiped — the section arrived WITHOUT the key, the shadow still has it */
   try{
     if(live.camera && !('cases' in live.camera) && d.ext && Array.isArray(d.ext.cameraCases) && d.ext.cameraCases.length && !((d.camera && d.camera.cases) || []).length){ d.camera = d.camera || {rows:[],ready:false,photos:[]}; d.camera.cases = JSON.parse(JSON.stringify(d.ext.cameraCases)); changed = true; }
@@ -6229,7 +6257,7 @@ async function fbpMediaFileId(pid, root){
   return best.id;
 }
 async function fbpMediaUpload(e){
-  if(SE_ON) return false;                                                /* BUILD 16.53 */
+  if(SE_ON && SE.enabled(fbpPid(e))) return false;                      /* BUILD 16.55: canary roots → engine */
   if(!_cloudOn || !_gTok) return false;
   const pid = fbpPid(e); if(!pid) return false;
   /* BUILD 15.38/15.40 — Замок 2: never upload an EMPTY still-pending copy (a cloud-materialized project
@@ -6458,13 +6486,13 @@ async function fbpMediaDelete(e){
 }
 /* pull changed media for every project whose remote msig differs from our local media */
 async function fbpMediaSync(){
-  if(SE_ON) return;                                                      /* BUILD 16.53: assets go through the engine */
   if(!(_FS || _FBP) || !_cloudOn || !_gTok || _fbpMediaBusy) return;   /* BUILD 14.2: works under Firestore too (was _FBP-only) */
   _fbpMediaBusy = true;
   let any = false;
   try{
     for(const e of db.projects){
       const pid = fbpPid(e); if(!pid) continue;
+      if(SE_ON && SE.enabled(pid)) continue;                 /* BUILD 16.55: canary roots sync assets through the engine */
       const want = e._remoteMsig; if(want === undefined || want === null) continue;
       const localSig = fbpMediaSig(e);
       if(want === localSig) continue;                       /* our media already matches the record */
@@ -6571,7 +6599,7 @@ async function _fbpResolveBrowseFolder(e, pid){
   return fid;
 }
 async function fbpBrowseMirror(e){
-  if(SE_ON) return;                                                      /* BUILD 16.53: every asset is uploaded as its own Drive file by the engine */
+  if(SE_ON && SE.enabled(fbpPid(e))) return;                            /* BUILD 16.55: canary roots → engine uploads each file itself */
   if(!_cloudOn || !_gTok) return;
   if(isPreEntry(e)) return;   /* BUILD 15.48: no browsable Drive folder for a pre-project until promoted */
   const pid = fbpPid(e); if(!pid) return;
@@ -6670,7 +6698,7 @@ var _mediaPushLock = {};   /* pid -> true while a media/browse-folder push is in
      push; both changed or no base → take server and keep the local version aside (db._fsStash) for the user.
    · Every write carries proto:2 + wstamp (the staged server-side lock for old clients lives in the Rules). */
 var _fsServerSeen = false, _fsGateQ = {}, _fsSessionSeen = {}, _fsStatMode = '';
-const FS_PROTO = 4;   /* BUILD 16.54: v3_roots document tree (proto 4) */
+const FS_PROTO = 5;   /* BUILD 16.55: v3_roots document tree, exact protocol version checked by the Rules */
 /* BUILD 16.46: the write stamp is the SERVER's clock (FieldValue.serverTimestamp()), never Date.now() — the Rules require
    wstamp == request.time on every write. Falls back to a number only when the SDK is absent (offline unit tests). */
 function _fsServerTs(){ try{ return (window.firebase && firebase.firestore && firebase.firestore.FieldValue) ? firebase.firestore.FieldValue.serverTimestamp() : Date.now(); }catch(_){ return Date.now(); } }
@@ -6692,7 +6720,7 @@ function _fsLocalFormatOf(s, val){ try{ const tmp = emptyState(); fsApplySection
 function _fsSetStat(mode, extra){ _fsStatMode = mode; _fsShowStat(extra); }
 function _fsAnyUnsent(){ try{ return (db.projects||[]).some(function(e){ const pid=fbpPid(e); return pid && e.data && e.data.project && (e._localNew || _fsHasUnsent(e, pid)); }); }catch(_){ return false; } }
 /* push everything that is unsent and wait for the ACKs (used before a reload) */
-async function _fsFlushAll(){ const list=(db.projects||[]).filter(function(e){ const pid=fbpPid(e); return pid && e.data && e.data.project && (e._localNew || _fsHasUnsent(e, pid)); }); for(const e of list){ try{ await fsPushNow(e); }catch(_){} } if(SE_ON){ try{ for(const r of ['dome_library','shared_library']){ if(SE.hasUnsent(r)) await SE.push(r); } }catch(_){} } return !_fsAnyUnsent() && !(SE_ON && (SE.hasUnsent('dome_library') || SE.hasUnsent('shared_library'))); }
+async function _fsFlushAll(){ const list=(db.projects||[]).filter(function(e){ const pid=fbpPid(e); return pid && e.data && e.data.project && (e._localNew || _fsHasUnsent(e, pid)); }); for(const e of list){ try{ await fsPushNow(e); }catch(_){} } if(SE_ON){ try{ for(const r of ['dome_library','shared_library']){ if(SE.enabled(r) && SE.hasUnsent(r)) await SE.push(r); } }catch(_){} } return !_fsAnyUnsent() && !(SE_ON && (SE.hasUnsent('dome_library') || SE.hasUnsent('shared_library'))); }
 function fsReady(){ return _FS && _fsReady && !!_fsCol; }
 /* strip `undefined` (Firestore rejects it) */
 function fsClean(v){
@@ -6757,7 +6785,7 @@ function fsFullDoc(e){
   return fsClean(doc);
 }
 function fsChangedSections(e){
-  if(SE_ON) return SE.changedSections(e);
+  if(SE_ON && SE.enabled(fbpPid(e))) return SE.changedSections(e);
   const pid = fbpPid(e), sl = fsSlice(e.data), last = _fsLocal[pid] || {};
   return FS_SECTIONS.filter(s => last[s] !== JSON.stringify(sl[s] || {}));
 }
@@ -6769,7 +6797,7 @@ function fsChangedSections(e){
    (over-includes) — here a missing baseline means "never pushed by us → nothing unpushed to protect". */
 var _F7_GUARD = true;   /* runtime kill-switch — set false (code or console) to revert to pre-14.61 behavior */
 function fsPendingSections(e){
-  if(SE_ON) return SE.changedSections(e);
+  if(SE_ON && SE.enabled(fbpPid(e))) return SE.changedSections(e);
   const pid = fbpPid(e); const last = pid && _fsLocal[pid];
   if(!last) return [];
   const sl = fsSlice(e.data);
@@ -6799,7 +6827,7 @@ function _fsShowStat(extra){ var a=[];
   if(a.length) setCloudStat(a.join('  ·  ')+'  ·  '+(_gUser||'')); }
 function _fsStampSent(){ _fsLastSent=Date.now(); if(_fsStatMode==='saving') _fsStatMode=''; _fsShowStat(); }
 function _fsStampRecv(){ _fsLastRecv=Date.now(); _fsShowStat(); }
-function _fsHasUnsent(e, pid){ if(SE_ON) return !!(e && e._localNew && SE.isReady()) || SE.hasUnsent(pid, e); const rec=_fsLocal[pid]||{}; return fsChangedSections(e).length>0 || rec._done!==(e.done?1:0); }
+function _fsHasUnsent(e, pid){ if(SE_ON && SE.enabled(pid)) return !!(e && e._localNew && SE.isReady()) || SE.hasUnsent(pid, e); const rec=_fsLocal[pid]||{}; return fsChangedSections(e).length>0 || rec._done!==(e.done?1:0); }
 function _fsScheduleRetry(pid){ clearTimeout(_fsRetryT[pid]); _fsRetryT[pid]=setTimeout(function(){ const e=(typeof fbpEntryByPid==='function'&&fbpEntryByPid(pid))||activeEntry(); if(e) fsPushNow(e).catch(function(){}); }, 4000); }
 
 /* BUILD 16.06 LIVE hotfix (Defect 1): serialized per-pid push that DRAINS until the confirmed
@@ -6829,7 +6857,7 @@ async function fsPushNow(entry){
   if(_fsHasUnsent(e, pid)) _fsScheduleRetry(pid);    /* leftover after a stop → retry later, never lost */
 }
 async function _fsPushPass(e, pid){
-  if(SE_ON) return SE.pushPass(e, pid);   /* BUILD 16.53: the sync engine — field / record level writes, assets via Drive */
+  if(SE_ON && SE.enabled(pid)) return SE.pushPass(e, pid);   /* BUILD 16.55: v5 engine for CANARY-enabled roots; everything else stays on V1 */
   const sl = fsSlice(e.data);
   const rec = _fsLocal[pid] || (_fsLocal[pid] = {});
   const changed = fsChangedSections(e);
@@ -6949,8 +6977,9 @@ async function fsDelete(e){
      Any team member (Editor) can rename the folder to "🗑 DELETED — …" even if another account owns it
      (renaming, unlike trashing, is not owner-only). */
   try{ await fbpMediaDelete(e); }catch(_){}
-  if(SE_ON){ try{ await SE.deleteRoot(pid); }catch(_){} try{ await _fsCol.doc(pid).set({ deleted: true, proto: FS_PROTO, wstamp: _fsServerTs() }, { merge: true }); }catch(_){} delete _fsLocal[pid]; return; }   /* BUILD 16.54: tombstone (Rules forbid delete) */
-  try{ await _fsCol.doc(pid).delete(); delete _fsLocal[pid]; }catch(_){}
+  if(SE_ON && SE.enabled(pid)){ try{ await SE.deleteRoot(pid); }catch(_){} }   /* BUILD 16.55: canary root → root tombstone */
+  try{ await _fsCol.doc(pid).set({ deleted: true, proto: FS_PROTO, wstamp: _fsServerTs() }, { merge: true }); }catch(_){}   /* BUILD 16.55: legacy document is tombstoned, never deleted (STAGE1 Rules deny delete) */
+  delete _fsLocal[pid];
 }
 function fsTouch(){
   if(!fsReady() || _fsApplying) return;
@@ -7154,7 +7183,7 @@ function libMerge3(base, local, server){
 }
 async function fsPushLibrary(){
   if(!fsReady() || _libPushing) return;
-  if(SE_ON){ _libDirty = false; try{ _libSigLast = libSig(); }catch(_){} await SE.push('shared_library'); return; }   /* BUILD 16.54 */
+  if(SE_ON && SE.enabled('shared_library')){ _libDirty = false; try{ _libSigLast = libSig(); }catch(_){} await SE.push('shared_library'); return; }   /* BUILD 16.55: canary */
   const local = { library:{}, cats:{} };
   LIB_GROUPS.forEach(g => { local.library[g.key] = ((db.library&&db.library[g.key])||[]).map(it => ({cat:it.cat||'', name:it.name||'', price:it.price||'', link:it.link||'', grp:it.grp||''})); });
   libCatKeys().forEach(k => { local.cats[k] = (catsOf(k)||[]).slice(); });
@@ -7199,7 +7228,7 @@ async function fsPushLibrary(){
    and we hold NO unconfirmed local edit (`_libDirty`, whose pending transaction will merge instead). */
 function fsApplyLibrary(data){
   if(!data || data.kind !== 'library') return false;
-  if(SE_ON) return SE.applyLegacy('shared_library', data);
+  if(SE_ON && SE.enabled('shared_library')) return SE.applyLegacy('shared_library', data);
   if(_libDirty) return false;                    /* unconfirmed local edit pending → our transaction merges it */
   const rrev = data.rev || 0, lrev = db.libRev || 0;
   if(rrev <= lrev) return false;                 /* server counter not newer → keep ours */
@@ -7249,19 +7278,20 @@ function fsOnSnapshot(snap){
   try{
     /* the FULL current set of pids in Firestore (snap always reflects the whole query result,
        not just the delta) — this is the authority for reconciling what should exist locally */
-    const present = {}; snap.forEach(doc => { const d = doc.data(); if(d && d.pid) present[d.pid] = 1; });
+    const present = {}; snap.forEach(doc => { const d = doc.data(); if(d && d.pid && !d.deleted) present[d.pid] = 1; });   /* BUILD 16.55: a tombstoned legacy document is not present */
     snap.docChanges().forEach(ch => {
       const data = ch.doc.data();
       _fsSnapMeta = { fromCache: !fromServer || !!(ch.doc.metadata && ch.doc.metadata.fromCache), hasPendingWrites: !!(ch.doc.metadata && ch.doc.metadata.hasPendingWrites) };   /* BUILD 16.46 */
       if(!_fsServerSeen && _fsSnapMeta.fromCache) return;   /* before the gate only SERVER data is trusted — a cached copy is neither applied nor used as a base */
       /* BUILD 14.21: the reserved shared-library doc (no pid, kind:'library') — merge it, never as a project */
       if(ch.doc.id === LIB_DOC_ID || (data && data.kind === 'library')){
-        if(ch.type !== 'removed' && (SE_ON ? SE.applyLegacy('shared_library', data) : fsApplyLibrary(data))) touched = true;   /* BUILD 16.54: dual-read of the legacy document (old tabs) */
+        if(ch.type !== 'removed' && ((SE_ON && SE.enabled('shared_library')) ? SE.applyLegacy('shared_library', data) : fsApplyLibrary(data))) touched = true;   /* BUILD 16.55: dual-read when the library is on v5 */
         return;
       }
       if(!data || !data.pid) return;
       if(ch.type === 'removed'){ if(fsRemoveLocal(data.pid)) touched = true; return; }
-      if(SE_ON){ if(SE.applyLegacy(data.pid, data)) touched = true; return; }   /* BUILD 16.54: legacy projects/<pid> is DUAL-READ only — an old tab's edit is merged positionally into the local state and flows into v3_roots */
+      if(SE_ON && SE.enabled(data.pid)){ if(SE.applyLegacy(data.pid, data)) touched = true; return; }   /* BUILD 16.55: canary root → legacy doc is DUAL-READ (old-tab edits matched row by row and merged into v3_roots) */
+      if(data.deleted){ if(fsRemoveLocal(data.pid)) touched = true; return; }   /* BUILD 16.55: projects are never deleted physically — a tombstone removes the project everywhere */
       if(fsApplyDoc(data)) touched = true;
     });
     /* DEDUPE (BUILD 14.12): drop any duplicate local entries that share a pid (keep the first) */
@@ -7277,7 +7307,7 @@ function fsOnSnapshot(snap){
       for(let i = db.projects.length - 1; i >= 0; i--){
         const e = db.projects[i], pid = fbpPid(e);
         if(!pid){ if(!e._localNew){ if(e.id===db.activeId) activeGone=true; db.projects.splice(i,1); touched=true; } continue; }
-        if(!e._localNew && !present[pid] && !(SE_ON && (SE.rootAlive(pid) || !SE.isReady()))){   /* absent from Firestore AND not a fresh user addition → drop (BUILD 16.54: v3 roots count as present) */
+        if(!e._localNew && !present[pid] && !(SE_ON && SE.enabled(pid) && (SE.rootAlive(pid) || !SE.isReady()))){   /* absent from Firestore AND not a fresh user addition → drop (BUILD 16.54: v3 roots count as present) */
           if(e.id === db.activeId) activeGone = true;
           db.projects.splice(i, 1); touched = true;
         }
@@ -7446,7 +7476,7 @@ async function fsStart(){
      and, when the server data is identical, NEVER sends the "now confirmed" event: the 16.45 gate stayed shut, every push sat in
      "Waiting for server…" and nothing new could be written by anyone. The same flag delivers the hasPendingWrites→false
      confirmation that the 16.46 base logic relies on. Fallback: an explicit server read opens the gate if no server snapshot came. */
-  if(SE_ON){ try{ SE.stop(); SE.start(); }catch(err){ fsDiag('SE start failed: ' + (err && err.message || err), true); } }   /* BUILD 16.54: v3_roots + collectionGroup listeners */
+  if(SE_ON){ try{ SE.stop(); SE.start(); await SE.waitConfig(3000); }catch(err){ fsDiag('SE start failed: ' + (err && err.message || err), true); } }   /* BUILD 16.55: canary config (sync_config/v5) is read BEFORE the legacy listener applies anything */
   _fsUnsub = _fsCol.onSnapshot({ includeMetadataChanges: true }, function(snap){ fsDiag('snapshot: ' + snap.size + ' docs, ' + snap.docChanges().length + ' changes' + (snap.metadata && snap.metadata.fromCache ? ' (cache)' : '')); fsOnSnapshot(snap); }, function(err){
     /* BUILD 15.71: plain-language, on-screen reason (no F12 needed) — permission-denied = email not in the published Rules */
     const denied = (err && (err.code === 'permission-denied' || /permission|insufficient/i.test(err.message||'')));
@@ -7470,7 +7500,7 @@ async function fsStart(){
      file and never retried until a reload (the "sync only after Ctrl+Shift+R" bug). A steady 12s
      media check makes B converge on its own — cheap: a no-op in-memory loop unless a msig differs. */
   if(_fsMediaTimer){ clearInterval(_fsMediaTimer); }
-  _fsMediaTimer = setInterval(function(){ if(SE_ON){ try{ SE.tick(); }catch(_){} return; } if(_FS && _cloudOn && _gTok) fbpMediaSync().catch(function(){}); }, 12000);   /* BUILD 16.53: engine tick — retry uploads / unsent edits, fetch images */
+  _fsMediaTimer = setInterval(function(){ if(SE_ON){ try{ SE.tick(); }catch(_){} } if(_FS && _cloudOn && _gTok) fbpMediaSync().catch(function(){}); }, 12000);   /* BUILD 16.55: engine tick for canary roots + legacy media for the rest */   /* BUILD 16.53: engine tick — retry uploads / unsent edits, fetch images */
   try{ accFsEnsureStarted(); }catch(_){}   /* BUILD 15.67: live access_users (roles/permissions) */
   setCloudStat('Firestore ✓ ' + (_gUser || ''));
 }
@@ -9257,7 +9287,7 @@ function refreshCamReadyUI(){
    without full rerender, Mark as Ready toggle, photos card (kind 'speakers').
    The rows flow into Equipment & Shipping (a "Speakers" module group). */
 const spkListId = cat => 'dlSpkCat' + Math.max(0, ciIndexOf(spkCats(), cat));
-const libSpkByCat = cat => libByGroupCat('speakers', cat);
+const libSpkByCat = cat => spkCatIsTruss(cat) ? libByGroupCat('truss', cat) : libByGroupCat('speakers', cat);   /* BUILD 16.56: truss categories pick from the Truss group */
 function spkTotal(){ return state.speakers.rows.reduce((s,r)=> s + rowSum(r), 0); }
 function addSpk(){ state.speakers.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
 function rmSpk(i){ state.speakers.rows.splice(i,1); saveState(); rerenderKeepScroll(); }
@@ -9294,9 +9324,10 @@ function addSpkRowToLib(i){
   const name = (row.name||'').trim();
   if(!name || libFind(name)) return;
   let cat = (row.cat||'').trim();
-  if(cat && !groupCats('speakers').includes(cat)) cat = '';
-  ensureLibGroup('speakers').push({cat, name, price: row.price||'', link: row.link||''});
-  sortByCat(db.library.speakers, groupCats('speakers'));
+  const grp = spkCatIsTruss(cat) ? 'truss' : 'speakers';                         /* BUILD 16.56: a truss row goes to the Truss group of the Library */
+  if(cat && !groupCats(grp).includes(cat)) cat = '';
+  ensureLibGroup(grp).push({cat, name, price: row.price||'', link: row.link||''});
+  sortByCat(db.library[grp], groupCats(grp));
   saveState(); rerenderKeepScroll();
   flashStat('Added to Library ✓');
 }
@@ -9323,7 +9354,8 @@ function pageSpeakers(){
     <tr>
       <td class="tight" style="width:17%"><select class="cell ${!(r.cat||'').trim()?'empty':''}" onchange="setSpkCat(${i},this.value);this.classList.toggle('empty',!this.value)">
         <option value="" ${!(r.cat||'').trim()?'selected':''}>— Category —</option>
-        ${spkCats().map(c=>`<option value="${c}" ${r.cat===c?'selected':''}>${c}</option>`).join('')}
+        <optgroup label="Speaker / Audio">${spkCatsSpk().map(c=>`<option value="${esc(c)}" ${r.cat===c?'selected':''}>${esc(c)}</option>`).join('')}</optgroup>
+        <optgroup label="Truss">${spkCatsTruss().map(c=>`<option value="${esc(c)}" ${r.cat===c?'selected':''}>${esc(c)}</option>`).join('')}</optgroup>
         ${(r.cat||'').trim() && ciIndexOf(spkCats(), r.cat)===-1 ? `<option value="${esc(r.cat)}" selected>${esc(r.cat)}</option>` : ''}
       </select></td>
       <td class="tight"><input class="cell b" id="spkN${i}" onfocus="dlFocus(this)" onblur="dlBlur(this)" list="${(r.cat||'').trim()?spkListId(r.cat):'dlLibAll'}" value="${esc(r.name)}" placeholder="Pick from Library or type" oninput="updSpk(${i},'name',this.value)"></td>
@@ -9359,7 +9391,7 @@ function pageSpeakers(){
     <!-- ================= SPEAKER BUILDER ================= -->
     <div class="sec-title" id="speakers">
       <div class="stic">${IC.spk}</div>
-      <div><h2>Speaker Builder</h2><div class="st-sub">Hardware is picked from the Equipment Library — Speaker / Audio System group.</div></div>
+      <div><h2>Speaker Builder</h2><div class="st-sub">Hardware is picked from the Equipment Library — Speaker / Audio System and Truss groups.</div></div>
       <div class="st-total"><div class="l">Components total</div><div class="v" id="stSpk">${fmt(spkTotal())}</div></div>
     </div>
     <div class="card">
@@ -9394,6 +9426,36 @@ function addFan(){ state.fan.rows.push(blankRow()); saveState(); rerenderKeepScr
 function fanIsInfl(r){ return !!(r && r.grp === 'inflatable'); }
 function projInflatable(){ return !!(state.project && state.project.inflatableCover === 'Yes'); }
 function addFanInfl(){ const r = blankRow(); r.grp = 'inflatable'; state.fan.rows.push(r); saveState(); rerenderKeepScroll(); }
+/* BUILD 16.57 — FAN BOXES: like the camera flight cases. A box is a transport container that ships as ONE place; rows from BOTH
+   builders (Screen Fan and Inflatable Fan) can be moved into it with the "Box" column. Stored as state.fan.cases (+ the row keeps
+   caseId / caseName, so the boxes self-heal if an old client rewrites the section without the list). */
+function fanBoxes(){ if(!state.fan) state.fan = {rows:[],ready:false,photos:[]}; if(!Array.isArray(state.fan.cases)) state.fan.cases = []; return state.fan.cases; }
+function fanBoxLabel(c, ci){ return 'Fan Box ' + (ci+1) + ((c && (c.name||'').trim()) ? ' — ' + (c.name||'').trim() : ''); }
+function fanBoxRows(id){ return state.fan.rows.map((r,i)=>({r,i})).filter(x => x.r.caseId === id); }
+function fanBoxTotal(id){ return fanBoxRows(id).reduce((s,x)=> s + rowSum(x.r), 0); }
+function addFanBox(){ fanBoxes().push({ id:newId(), name:'' }); saveState(); rerenderKeepScroll(); }
+function rmFanBox(id){
+  const cs = fanBoxes(); const ci = cs.findIndex(c=>c.id===id); if(ci<0) return;
+  const n = fanBoxRows(id).length;
+  if(n && !confirm('Remove ' + fanBoxLabel(cs[ci], ci) + '? Its ' + n + ' component(s) return to their builder table.')) return;
+  state.fan.rows.forEach(r => { if(r.caseId === id){ delete r.caseId; delete r.caseName; } });
+  cs.splice(ci,1); saveState(); rerenderKeepScroll();
+}
+function setFanBox(i, id){
+  const r = state.fan.rows[i]; if(!r) return;
+  const c = id ? fanBoxes().find(c=>c.id===id) : null;
+  if(c){ r.caseId = id; r.caseName = (c.name||''); } else { delete r.caseId; delete r.caseName; }
+  saveState(); rerenderKeepScroll();
+}
+function renFanBox(id, v){ const c = fanBoxes().find(c=>c.id===id); if(!c) return; c.name = v; state.fan.rows.forEach(r => { if(r.caseId === id) r.caseName = v; }); saveState(); const h = document.getElementById('fanBoxH'+id); if(h) h.textContent = fanBoxLabel(c, fanBoxes().indexOf(c)); }
+function fanRepairBoxes(){
+  if(!state.fan || !Array.isArray(state.fan.rows)) return false;
+  const cs = fanBoxes(), rows = state.fan.rows; let changed = false;
+  rows.forEach(r => { if(!r || !r.caseId) return; if(cs.some(c=>c.id===r.caseId)) return; cs.push({ id:r.caseId, name:String(r.caseName||'').trim() }); changed = true; });
+  cs.forEach(c => { rows.forEach(r => { if(r.caseId===c.id && r.caseName !== (c.name||'')){ r.caseName = (c.name||''); changed = true; } }); });
+  if(changed){ saveState._skipCloud = true; try{ saveState(); }finally{ saveState._skipCloud = false; } }
+  return changed;
+}
 function rmFan(i){ state.fan.rows.splice(i,1); saveState(); rerenderKeepScroll(); }
 function setFanCat(i, v){
   state.fan.rows[i].cat = v;
@@ -9453,6 +9515,13 @@ function refreshFanReadyUI(){
 function pageFan(){
   const ready = state.fan.ready;
   const P = state.project;
+  try{ fanRepairBoxes(); }catch(_){}
+  const boxes = fanBoxes(); const hasBoxes = boxes.length > 0;
+  const inBox = r => !!(r.caseId && boxes.some(c=>c.id===r.caseId));
+  const boxCell = (r,i) => !hasBoxes ? '' : `<td class="tight" style="width:11%"><select class="cell" title="Move this whole row into a fan box" onchange="setFanBox(${i},this.value)">
+        <option value="" ${!r.caseId?'selected':''}>— Table</option>
+        ${boxes.map((c,ci)=>`<option value="${esc(c.id)}" ${r.caseId===c.id?'selected':''}>${esc(fanBoxLabel(c,ci))}</option>`).join('')}
+      </select></td>`;
   const fanRowHtml = (r,i)=>`
     <tr>
       <td class="tight" style="width:17%"><select class="cell ${!(r.cat||'').trim()?'empty':''}" onchange="setFanCat(${i},this.value);this.classList.toggle('empty',!this.value)">
@@ -9460,9 +9529,10 @@ function pageFan(){
         ${fanCats().map(c=>`<option value="${c}" ${r.cat===c?'selected':''}>${c}</option>`).join('')}
         ${(r.cat||'').trim() && ciIndexOf(fanCats(), r.cat)===-1 ? `<option value="${esc(r.cat)}" selected>${esc(r.cat)}</option>` : ''}
       </select></td>
-      <td class="tight"><input class="cell b" id="fanN${i}" onfocus="dlFocus(this)" onblur="dlBlur(this)" list="${(r.cat||'').trim()?fanListId(r.cat):'dlLibAll'}" value="${esc(r.name)}" placeholder="Pick from Library or type" oninput="updFan(${i},'name',this.value)"></td>
+      <td class="tight"><div style="display:flex;align-items:center;gap:6px"><input class="cell b" id="fanN${i}" onfocus="dlFocus(this)" onblur="dlBlur(this)" list="${(r.cat||'').trim()?fanListId(r.cat):'dlLibAll'}" value="${esc(r.name)}" placeholder="Pick from Library or type" oninput="updFan(${i},'name',this.value)">${(inBox(r) && fanIsInfl(r)) ? '<span class="chip c-mut" style="flex:none" title="From the Inflatable Fan Builder">Inflatable</span>' : ''}</div></td>
       <td style="width:6%;text-align:center">${ordDot('fan', i, r)}</td>
-      ${shipChk('fan', i, r)}
+      ${inBox(r) ? '<td style="width:4%;text-align:center;opacity:.5" title="Ships inside its fan box">—</td>' : shipChk('fan', i, r)}
+      ${boxCell(r,i)}
       <td class="tight" style="width:7%"><input class="cell num" value="${esc(r.qty)}" oninput="updFan(${i},'qty',this.value)"></td>
       <td class="tight" style="width:11%"><input class="cell num" id="fanP${i}" value="${esc(r.price)}" placeholder="—" oninput="updFan(${i},'price',this.value)"></td>
       <td class="num" style="width:11%"><span id="fanRowT${i}">${fmt(priceNum(r.price)*(parseFloat(r.qty)||1) || null)}</span></td>
@@ -9471,21 +9541,44 @@ function pageFan(){
       <td class="rm"><button title="Remove" onclick="rmFan(${i})">×</button></td>
     </tr>`;
   const infl = projInflatable();
-  const fanRows = state.fan.rows.map((r,i)=> fanIsInfl(r) ? '' : fanRowHtml(r,i)).join('');
-  const inflRows = state.fan.rows.map((r,i)=> fanIsInfl(r) ? fanRowHtml(r,i) : '').join('');
+  const fanRows = state.fan.rows.map((r,i)=> (fanIsInfl(r) || inBox(r)) ? '' : fanRowHtml(r,i)).join('');
+  const inflRows = state.fan.rows.map((r,i)=> (fanIsInfl(r) && !inBox(r)) ? fanRowHtml(r,i) : '').join('');
   const inflTotal = state.fan.rows.reduce((s,r)=> s + (fanIsInfl(r) ? rowSum(r) : 0), 0);
-  const fanHead = `<thead><tr><th>Category</th><th>Hardware</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:center" title="Combine into one shipping place">Ship</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th><th>Link</th><th></th><th></th></tr></thead>`;
+  const fanCols = hasBoxes ? 11 : 10;
+  const fanHead = `<thead><tr><th>Category</th><th>Hardware</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:center" title="Combine into one shipping place">Ship</th>${hasBoxes?'<th title="Fan box">Box</th>':''}<th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th><th>Link</th><th></th><th></th></tr></thead>`;
+  /* BUILD 16.57: the Inflatable Fan Builder is a section of its own — same header style as the Screen Fan Builder */
   const inflCard = infl ? `
+    <div class="sec-title" id="fanInfl" style="margin-top:22px">
+      <div class="stic">${IC.fan}</div>
+      <div><h2>Inflatable Fan Builder</h2><div class="st-sub">Blower / fan for the inflatable cover — shown because Project Setup → Inflatable = Yes. Ships under its own "Inflatable Fan Builder" sub-heading, or inside a fan box.</div></div>
+      <div class="st-total"><div class="l">Components total</div><div class="v" id="stFanInfl">${fmt(inflTotal)}</div></div>
+    </div>
     <div class="card">
-      <div class="card-head"><h3>Inflatable Fan System</h3><span class="chip c-mut"><span class="cd"></span>${state.fan.rows.filter(r=>fanIsInfl(r) && (r.name||'').trim()).length}</span></div>
-      <div class="hint" style="margin:-6px 0 12px;color:var(--dim);font-size:11.5px">Blower / fan for the inflatable cover — shown because Project Setup → Inflatable = Yes. Ships under its own "Inflatable Fan System" sub-heading.</div>
+      <div class="card-head"><h3>Hardware configuration</h3><span class="chip c-mut"><span class="cd"></span>${state.fan.rows.filter(r=>fanIsInfl(r) && (r.name||'').trim()).length}</span></div>
       <table class="eq">
         ${fanHead}
         <tbody>${inflRows}</tbody>
-        <tfoot><tr><td colspan="6">Inflatable fan total</td><td class="num">${fmt(inflTotal)}</td><td colspan="3"></td></tr></tfoot>
+        <tfoot><tr><td colspan="${fanCols-4}">Inflatable fan total</td><td class="num" id="fanInflFoot">${fmt(inflTotal)}</td><td colspan="3"></td></tr></tfoot>
       </table>
       <button class="add-line" onclick="addFanInfl()">+ Add component</button>
     </div>` : '';
+  const boxBlocks = boxes.map((c,ci)=>{
+    const rows = fanBoxRows(c.id);
+    return `
+    <div class="card" id="fanBox${esc(c.id)}">
+      <div class="card-head" style="gap:10px;flex-wrap:wrap">
+        <h3 id="fanBoxH${esc(c.id)}" style="margin-right:4px">${esc(fanBoxLabel(c,ci))}</h3>
+        <input class="cell" style="max-width:260px" value="${esc(c.name||'')}" placeholder="Box label (e.g. Fans + controllers)" oninput="renFanBox('${esc(c.id)}',this.value)">
+        <span style="font-size:12px;opacity:.7;margin-left:auto">${rows.length} component${rows.length===1?'':'s'} · ships as one place</span>
+        <button class="mod-btn" style="padding:5px 11px;font-size:11.5px" title="Remove this box — its components return to their builder tables" onclick="rmFanBox('${esc(c.id)}')">Remove box</button>
+      </div>
+      ${rows.length ? `<table class="eq">
+        ${fanHead}
+        <tbody>${rows.map(x=>fanRowHtml(x.r,x.i)).join('')}</tbody>
+        <tfoot><tr><td colspan="${fanCols-4}">${esc(fanBoxLabel(c,ci))} total</td><td class="num">${fmt(fanBoxTotal(c.id))}</td><td colspan="3"></td></tr></tfoot>
+      </table>` : `<div style="padding:10px 14px;font-size:12.5px;opacity:.65">Empty — in a builder table below pick "${esc(fanBoxLabel(c,ci))}" in the Box column to move a row here (Screen Fan or Inflatable Fan rows).</div>`}
+    </div>`;
+  }).join('');
 
   return `
   <div class="page">
@@ -9512,15 +9605,21 @@ function pageFan(){
       <div><h2>Screen Fan Builder</h2><div class="st-sub">Hardware is picked from the Equipment Library — Screen Fan / Ventilation group.</div></div>
       <div class="st-total"><div class="l">Components total</div><div class="v" id="stFan">${fmt(fanTotal())}</div></div>
     </div>
+    <!-- BUILD 16.57: fan boxes stack here, ABOVE the builders; rows of either builder are moved in with the "Box" column -->
+    <div style="display:flex;align-items:center;gap:10px;margin:0 0 12px">
+      <button class="mod-btn" style="padding:6px 12px;font-size:12px" title="Create a fan box — then move rows into it from the Screen Fan or Inflatable Fan builder" onclick="addFanBox()">+ Add Fan Box</button>
+      <span style="font-size:12px;opacity:.65">${hasBoxes ? `${boxes.length} box${boxes.length===1?'':'es'} · each box ships as one place` : 'Fans ship in boxes — create Fan Box 1, then move rows into it from either builder.'}</span>
+    </div>
+    ${boxBlocks}
     <div class="card">
       <div class="card-head"><h3>Hardware configuration</h3><button class="mod-btn" style="padding:5px 11px;font-size:11.5px;margin-right:8px" title="Fetch fresh prices from the links" onclick="refreshPrices('fan')">↻ Prices</button>
         <button class="ready-btn ${ready?'on':''}" id="fanReadyBtn" onclick="toggleFanReady()">
           <span class="led ${ready?'on':''}" id="fanBtnLed"></span><span id="fanBtnLbl">${ready ? 'Fan Ready' : 'Mark as Ready'}</span></button>
       </div>
       <table class="eq">
-        <thead><tr><th>Category</th><th>Hardware</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:center" title="Combine into one shipping place">Ship</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th><th>Link</th><th></th><th></th></tr></thead>
+        ${fanHead}
         <tbody>${fanRows}</tbody>
-        <tfoot><tr><td colspan="6">Fan total</td><td class="num" id="fanFoot">${fmt(fanTotal())}</td><td colspan="3"></td></tr></tfoot>
+        <tfoot><tr><td colspan="${fanCols-4}">Fan total</td><td class="num" id="fanFoot">${fmt(fanTotal())}</td><td colspan="3"></td></tr></tfoot>
       </table>
       <button class="add-line" onclick="addFan()">+ Add component</button>
     </div>
@@ -11401,7 +11500,7 @@ function _domeOnSnap(snap){
       const fromServer = !(snap && snap.metadata && snap.metadata.fromCache);
       try{ _fsSnapMeta = { fromCache: !fromServer, hasPendingWrites: !!(snap && snap.metadata && snap.metadata.hasPendingWrites) }; }catch(_){}   /* BUILD 16.53: the engine takes its confirmed base only from confirmed snapshots */
       if(snap.exists){
-        const dd = snap.data(); const chg = SE_ON ? SE.applyLegacy('dome_library', dd) : domeFsApplyDoc(dd); saveDomeLib();
+        const dd = snap.data(); const chg = (SE_ON && SE.enabled('dome_library')) ? SE.applyLegacy('dome_library', dd) : domeFsApplyDoc(dd); saveDomeLib();
         try{ _domeServerUids = {}; if(dd && dd.v3 && dd.v3.domes){ Object.keys(dd.v3.domes).forEach(function(k){ if(k !== '_m') _domeServerUids[k] = 1; }); } ((dd && dd.domes) || []).forEach(function(d){ if(d && d.domeUid) _domeServerUids[d.domeUid] = 1; }); }catch(_){}
         if(chg && location.hash==='#/dome-library' && !isTypingInInput()){ try{ rerenderKeepScroll(); }catch(_){} }   /* BUILD 16.51: only when something actually changed (metadata-only events arrive too now) */
       } else if(fromServer){ _domeServerUids = {}; }
@@ -11413,11 +11512,11 @@ function _domeOnSnap(snap){
 /* write the shared dome_library doc, MERGING our cards onto the server's inside a transaction */
 var _domeServerSeen = false, _domePushQueued = false, _domeServerUids = {};
 /* does this machine hold anything the server does not have yet? (new cards, or cards whose doc differs from the confirmed base) */
-function domeLocalAhead(){ if(SE_ON) return SE.hasUnsent('dome_library'); try{ const base = domeBaseMap(); return (db.domeLib||[]).some(function(m){ if(!m || !m.domeUid) return false; if(!_domeServerUids[m.domeUid]) return !!m._saved; return !_domeEqj(domeFsModelDoc(m), base[m.domeUid]); }); }catch(_){ return false; } }
+function domeLocalAhead(){ if(SE_ON && SE.enabled('dome_library')) return SE.hasUnsent('dome_library'); try{ const base = domeBaseMap(); return (db.domeLib||[]).some(function(m){ if(!m || !m.domeUid) return false; if(!_domeServerUids[m.domeUid]) return !!m._saved; return !_domeEqj(domeFsModelDoc(m), base[m.domeUid]); }); }catch(_){ return false; } }
 async function domeFsPush(){
   if(!domeFsReady()){ setCloudStat('Dome card saved locally — sign in to sync the Dome Library'); return 0; }
   if(!_domeServerSeen){ _domePushQueued = true; setCloudStat('Dome card saved locally — waiting for the server snapshot…'); return 0; }   /* BUILD 16.45: never before the first server snapshot */
-  if(SE_ON){ const n = await SE.push('dome_library'); if(n) setCloudStat('Dome Library synced ✓ · ' + hhmm()); return n; }   /* BUILD 16.54: same engine as projects (v3_roots/dome_library) */
+  if(SE_ON && SE.enabled('dome_library')){ const n = await SE.push('dome_library'); if(n) setCloudStat('Dome Library synced ✓ · ' + hhmm()); return n; }   /* BUILD 16.55: canary */
   try{
     const ref = domeFsDocRef();
     let merged = null;
@@ -12571,7 +12670,7 @@ window.addEventListener('error', function(e){
 });
 window.addEventListener('hashchange', route);
 /* ===================================================================================================================
-   BUILD 16.54 — SYNC ENGINE v4 (audit fixes on 16.53)
+   BUILD 16.55 — SYNC ENGINE v5 (canary per project · transactional pushes with revision checks · row matcher for dual-read)
    STORAGE — its own collection tree that the old V1 code never reads or writes:
      v3_roots/<root>                         root = <pid> | dome_library | shared_library
          { kind, pid, proto, wstamp, by, rev, deleted, done, doneAt, bucket, migrated, migratedFrom, legacyRevs }
@@ -12590,7 +12689,21 @@ window.addEventListener('hashchange', route);
    =================================================================================================================== */
 var SE_ON = true;
 var SE = (function(){
-  const ROOTS = 'v3_roots';
+  const ROOTS = 'v3_roots'; const CFG_COL = 'sync_config', CFG_ID = 'v5';
+  /* CANARY: v5 is active only for the roots listed in sync_config/v5 ({ kind:'v5config', pids:{<pid>:true, dome_library:true, shared_library:true}, all:false }).
+     Readable by the team, writable only by the admin console (Rules). Everything else keeps running on V1 exactly as before. */
+  function cfgRef(){ return _fsDb.collection(CFG_COL).doc(CFG_ID); }
+  var _cfgWaiters = [];
+  function waitConfig(ms){ return new Promise(function(res){ if(cfg.seen) return res(true); const t = setTimeout(function(){ res(false); }, ms || 3000); _cfgWaiters.push(function(){ clearTimeout(t); res(true); }); }); }
+  function configSeen(){ cfg.seen = true; const w = _cfgWaiters; _cfgWaiters = []; w.forEach(function(f){ try{ f(); }catch(_){} }); }
+  var cfg = { pids: {}, all: false, seen: false };
+  var _denied = false;
+  function enabled(root){ if(!cfg.seen){ try{ const c = st().cfg; if(c && !cfg._loaded){ cfg.pids = c.pids || {}; cfg.all = !!c.all; cfg._loaded = true; } }catch(_){} } return !_denied && !!root && (cfg.all || !!cfg.pids[root]); }
+  function setConfig(d){ const before = JSON.stringify(cfg); cfg = { pids: (d && d.pids && typeof d.pids === 'object') ? d.pids : {}, all: !!(d && d.all), seen: true, _loaded: true }; try{ st().cfg = { pids: cfg.pids, all: cfg.all }; persist(); }catch(_){} if(JSON.stringify(cfg) !== before){ DIAG('v5 config: all=' + cfg.all + ' pids=' + Object.keys(cfg.pids).filter(function(k){ return cfg.pids[k]; }).join(',')); Object.keys(S.roots).forEach(scheduleApply); setTimeout(function(){ try{ flushAll(); }catch(_){} }, 300); try{ if(location.hash === '#/admin') rerenderKeepScroll(); }catch(_){} } }
+  async function ensureCfgDoc(){ const ref = cfgRef(); const snap = await ref.get(); if(!snap.exists) await ref.set({ kind: 'v5config', pids: {}, all: false, proto: FS_PROTO, wstamp: _fsServerTs(), by: _gUser || '' }); return ref; }
+  async function setEnabled(root, on){ if(!fsReady()) throw new Error('offline'); const ref = await ensureCfgDoc(); await ref.update(FP(['pids', root]), !!on, 'proto', FS_PROTO, 'wstamp', _fsServerTs(), 'by', _gUser || ''); }
+  async function setAll(on){ if(!fsReady()) throw new Error('offline'); const ref = await ensureCfgDoc(); await ref.update('all', !!on, 'proto', FS_PROTO, 'wstamp', _fsServerTs(), 'by', _gUser || ''); }
+  function config(){ return cfg; }
   const DIAG = function(m){ try{ fsDiag('[SE4] ' + m); }catch(_){ } };
   const isObj = function(x){ return !!x && typeof x === 'object' && !Array.isArray(x); };
   const isData = function(v){ return typeof v === 'string' && v.slice(0,5) === 'data:'; };
@@ -12616,7 +12729,7 @@ var SE = (function(){
         'shipping.pallets':{}, 'shipping.docs':{ asset:'data' }, 'shipping.palletPhotos/*':{ asset:'src' },
         'dome.ballast.rows':{}, 'dome.ballast.photos':{ asset:'src' },
         'rack.frontPh':{ asset:'src' }, 'rack.rearPh':{ asset:'src' }, 'docs.sitePh':{ asset:'src' }, 'docs.files/*':{ asset:'data' },
-        'ext.cameraCases':{}, 'ext.projAcc':{} };
+        'fan.cases':{}, 'ext.cameraCases':{}, 'ext.projAcc':{}, 'ext.fanCases':{} };
         PHOTO_KEYS.forEach(function(k){ L[k + '.photos'] = { asset:'src' }; }); return L; })(),
       binaries: { 'projectors.models/*': ['f','r'], 'contentList': ['data'] },
       sections: function(e){ const o = {}; Object.keys(emptyState()).forEach(function(k){ o[k] = 1; }); Object.keys(e.data || {}).forEach(function(k){ if(!skipKey(k) && k !== 'ready') o[k] = 1; }); return Object.keys(o); }
@@ -12698,7 +12811,7 @@ var SE = (function(){
         const seen = {};
         arr.forEach(function(rec, i){
           if(!isObj(rec)) return;
-          if(!recId(rec, ik) || seen[recId(rec, ik)]) rec[ik] = (firstContact && !seen['m' + i]) ? ('m' + i) : newId();
+          if(!recId(rec, ik) || seen[recId(rec, ik)]) rec[ik] = firstContact ? ('m' + i) : newId();   /* firstContact = the migrating client only (ids derived from the server copy); any other machine adopts ids by matching */
           seen[recId(rec, ik)] = 1;
           const id = recId(rec, ik), rid = ridOf(cpath, parentRid, id); out.index[rid] = rec;
           if(spec.asset){
@@ -12822,6 +12935,69 @@ var SE = (function(){
     return M;
   }
 
+
+  /* ======================= ROW MATCHER (dual-read + first contact) =======================
+     Order: 1) stable id; 2) saved legacy mapping / exact fingerprint (LCS, then moved rows — a reorder is never a deletion;
+     identical rows keep their multiplicity); 3) remaining rows paired in order only when SIMILAR (edited row);
+     4) an ambiguous pairing keeps BOTH versions (nothing overwritten, nothing deleted) and is reported as a conflict. */
+  function fpRow(r, ik){ const o = {}; Object.keys(r || {}).forEach(function(k){ if(skipKey(k) || k === ik) return; const v = r[k]; if(Array.isArray(v) && v.length && isObj(v[0])) return; o[k] = isData(v) ? ('data#' + dataHash(v)) : v; }); return djb(cj(o)); }
+  const NAMEISH = { name:1, serial:1, model:1, title:1, num:1, sn:1 };
+  function simScore(a, b, ik){ const keys = {}; [a, b].forEach(function(o){ Object.keys(o || {}).forEach(function(k){ if(!skipKey(k) && k !== ik && !isData(o[k]) && !(Array.isArray(o[k]) && o[k].length && isObj(o[k][0]))) keys[k] = 1; }); }); let same = 0, filled = 0; const ne = function(v){ return v !== undefined && v !== null && v !== '' && v !== 0 && v !== false; }; Object.keys(keys).forEach(function(k){ const av = a[k], bv = b[k]; const w = NAMEISH[k] ? 2 : 1; if(ne(av) || ne(bv)){ filled += w; if(eq(av, bv)) same += w; } }); return { same: same, filled: filled, ok: filled === 0 ? true : (same * 2 >= filled) }; }
+  function similar(a, b, ik){ return simScore(a, b, ik).ok; }
+  function lcsPairs(P, N){ const pi = [], pj = []; P.forEach(function(f, i){ if(f !== null) pi.push(i); }); N.forEach(function(f, j){ if(f !== null) pj.push(j); }); const n = pi.length, m = pj.length; if(!n || !m) return []; const dp = []; for(let a = 0; a <= n; a++){ dp.push(new Array(m + 1).fill(0)); } for(let a = n - 1; a >= 0; a--){ for(let b = m - 1; b >= 0; b--){ dp[a][b] = (P[pi[a]] === N[pj[b]]) ? dp[a + 1][b + 1] + 1 : Math.max(dp[a + 1][b], dp[a][b + 1]); } } const out = []; let a = 0, b = 0; while(a < n && b < m){ if(P[pi[a]] === N[pj[b]]){ out.push([pi[a], pj[b]]); a++; b++; } else if(dp[a + 1][b] >= dp[a][b + 1]) a++; else b++; } return out; }
+  function matchRows(prev, next, prevIds, ik){
+    const pairs = [], usedP = {}, usedN = {}, ambiguous = [];
+    next.forEach(function(n, j){ const id = recId(n, ik); if(!id) return; const i = prevIds.indexOf(id); if(i >= 0 && !usedP[i]){ pairs.push([i, j]); usedP[i] = 1; usedN[j] = 1; } });
+    const P = prev.map(function(r, i){ return usedP[i] ? null : fpRow(r, ik); }), N = next.map(function(r, j){ return usedN[j] ? null : fpRow(r, ik); });
+    lcsPairs(P, N).forEach(function(pr){ pairs.push(pr); usedP[pr[0]] = 1; usedN[pr[1]] = 1; });
+    const byFp = {}; P.forEach(function(f, i){ if(f !== null && !usedP[i]) (byFp[f] = byFp[f] || []).push(i); });
+    N.forEach(function(f, j){ if(f === null || usedN[j]) return; const list = byFp[f]; while(list && list.length){ const i = list.shift(); if(!usedP[i]){ pairs.push([i, j]); usedP[i] = 1; usedN[j] = 1; break; } } });
+    const up = [], un = []; prev.forEach(function(_, i){ if(!usedP[i]) up.push(i); }); next.forEach(function(_, j){ if(!usedN[j]) un.push(j); });
+    const inserts = [], deletes = []; const takenN = {};
+    /* edited rows: each unmatched old row takes its BEST similar candidate among the unmatched new rows (name-like fields weigh double) */
+    up.forEach(function(i){ let best = -1, bs = null; un.forEach(function(j){ if(takenN[j]) return; const sc = simScore(prev[i], next[j], ik); if(!sc.ok) return; if(!bs || sc.same > bs.same || (sc.same === bs.same && j < best)){ bs = sc; best = j; } }); if(best >= 0){ pairs.push([i, best]); takenN[best] = 1; usedP[i] = 1; } });
+    const restP = up.filter(function(i){ return !usedP[i]; }), restN = un.filter(function(j){ return !takenN[j]; });
+    if(restP.length && restN.length){ /* old rows that match nothing while new rows appeared: ambiguous → keep both, report */ restP.forEach(function(i, k){ if(k < restN.length) ambiguous.push([i, restN[k]]); else deletes.push(i); }); restN.forEach(function(j){ inserts.push(j); }); }
+    else { restP.forEach(function(i){ deletes.push(i); }); restN.forEach(function(j){ inserts.push(j); }); }
+    return { pairs: pairs, inserts: inserts, deletes: deletes, ambiguous: ambiguous };
+  }
+  function legacyMapOf(root){ const m = st(); m.legacyMap = m.legacyMap || {}; return m.legacyMap[root] || (m.legacyMap[root] = {}); }
+  /* list instances of a (legacy or local) tree: [{arr, cpath, parentRid, pattern}] */
+  function listInstances(root, tree){ const kind = kindOf(root); const out = []; Object.keys(SE_SCHEMA[kind].lists).forEach(function(pattern){ const spec = SE_SCHEMA[kind].lists[pattern]; if(spec.primitive) return; resolveLists(pattern, tree, kind, function(arr, cpath, parentRid){ out.push({ arr: arr, cpath: cpath, parentRid: parentRid || '', pattern: pattern, ik: spec.idKey || 'id' }); }, false); }); return out; }
+  /* reconcile every list of a legacy copy (prev → next) into the local state */
+  function reconcileLists(root, e, prevTree, nextTree, secs, rev){
+    const tree = localOf(root, e); if(!tree) return false; let changed = false; const lm = legacyMapOf(root); const kind = kindOf(root);
+    const prevInst = {}; listInstances(root, prevTree).forEach(function(x){ prevInst[x.cpath + '|' + x.parentRid] = x; });
+    const index = extract(root, e, false).index;
+    listInstances(root, nextTree).forEach(function(x){
+      const sec = x.cpath.split('/')[0].split('.')[0]; if(secs && secs.indexOf(sec) < 0) return;
+      const key = x.cpath + '|' + x.parentRid; const prev = (prevInst[key] && prevInst[key].arr) || []; const next = x.arr; const ik = x.ik;
+      const prevIds = lm[key] || prev.map(function(r, i){ return recId(r, ik) || ('m' + i); });
+      if(eq(prev, next) && lm[key]) return;
+      const spec = listSpec(kind, x.pattern); if(spec.asset) return;                 /* legacy binaries arrive through the media file, not here */
+      const arr = arrayAt(tree, x.cpath, x.parentRid, index, kind); if(!arr) return;
+      const byId = {}; arr.forEach(function(o){ if(isObj(o) && recId(o, ik)) byId[recId(o, ik)] = o; });
+      const m = matchRows(prev, next, prevIds, ik); const nextIds = new Array(next.length).fill(null);
+      m.pairs.forEach(function(pr){ const id = prevIds[pr[0]]; nextIds[pr[1]] = id; const obj = byId[id]; if(!obj) return; const p = prev[pr[0]], n = next[pr[1]];
+        Object.keys(n).forEach(function(f){ if(skipKey(f) || f === ik || (Array.isArray(n[f]) && n[f].length && isObj(n[f][0]))) return; if(!eq(n[f], p[f]) && !eq(obj[f], n[f])){ obj[f] = clone(n[f]); changed = true; } }); });
+      m.inserts.forEach(function(j){ const row = clone(next[j]); const id = recId(row, ik) || ('L' + djb(root + '|' + key + '|' + rev + '|' + j)); row[ik] = id; if(byId[id]) return; nextIds[j] = id; const pos = Math.min(j, arr.length); arr.splice(pos, 0, row); byId[id] = row; changed = true; });
+      m.deletes.forEach(function(i){ const id = prevIds[i]; const k = arr.findIndex(function(o){ return isObj(o) && recId(o, ik) === id; }); if(k >= 0){ arr.splice(k, 1); changed = true; } });
+      m.ambiguous.forEach(function(pr){ const id = prevIds[pr[0]]; try{ const sec2 = x.cpath.split('/')[0].split('.'); const list = _fsConflictsOf(root)[sec2[0]] || (_fsConflictsOf(root)[sec2[0]] = []); list.push({ path: sec2.slice(1).concat(['#' + id]), local: byId[id] ? strip(byId[id]) : null, server: strip(next[pr[1]]), note: 'an old tab changed this row beyond recognition — both versions kept', at: Date.now() }); }catch(_){} });
+      lm[key] = nextIds.map(function(id, j){ return id || (recId(next[j], ik) || null); });
+    });
+    if(changed) try{ setTimeout(_fsConflictBanner, 300); }catch(_){}
+    return changed;
+  }
+  /* first contact of a machine with legacy-era rows (no ids): adopt the SERVER ids by matching, never by position */
+  function adoptServerIds(root, e){
+    const kind = kindOf(root); const tree = localOf(root, e); if(!tree) return;
+    const Sv = serverSet(root); const groups = {}; Object.keys(Sv.records).forEach(function(rid){ const d = Sv.records[rid]; if(d.deleted) return; const k = d.path + '|' + (d.parent || ''); (groups[k] = groups[k] || []).push(d); });
+    listInstances(root, tree).forEach(function(x){ const key = x.cpath + '|' + x.parentRid; const docs = (groups[key] || []).sort(function(a, b){ return (a.ord || 0) - (b.ord || 0); }); if(!docs.length) return;
+      const srvRows = docs.map(function(d){ const o = clone(d.data || {}); o[x.ik] = d.id; return o; }); const srvIds = docs.map(function(d){ return d.id; });
+      const noId = x.arr.filter(function(r){ return isObj(r) && !recId(r, x.ik); }); if(!noId.length) return;
+      const m = matchRows(srvRows, noId, srvIds, x.ik); m.pairs.forEach(function(pr){ noId[pr[1]][x.ik] = srvIds[pr[0]]; }); });
+  }
+
   /* ======================= server cache + listeners ======================= */
   const S = { roots: {}, docs: {} };   /* docs[root] = {fields:{sec:doc}, records:{rid:doc}, assets:{aid:doc}} */
   const confirmedRoots = {};
@@ -12830,7 +13006,9 @@ var SE = (function(){
   function start(){
     if(_started || !_FS || !_fsDb) return; _started = true;
     const opts = { includeMetadataChanges: true };
-    const onErr = function(what){ return function(err){ DIAG(what + ' listener error: ' + (err && err.message || err)); setCloudStat('⚠ Sync (' + what + '): ' + (err && err.message || err)); }; };
+    /* the canary config FIRST — its own document, own listener; a permission error = no config → V1 everywhere */
+    _subs.push(cfgRef().onSnapshot(opts, function(snap){ const fromServer = !(snap.metadata && snap.metadata.fromCache); if(snap.exists) setConfig(snap.data() || {}); else if(fromServer) setConfig({}); if(fromServer) configSeen(); }, function(err){ DIAG('config listener error: ' + (err && err.message || err) + ' → V1 everywhere'); setConfig({}); configSeen(); }));
+    const onErr = function(what){ return function(err){ const denied = err && (err.code === 'permission-denied' || /permission|insufficient/i.test(err.message || '')); DIAG(what + ' listener error: ' + (err && err.message || err) + (denied ? ' → v5 OFF on this machine (STAGE1 Rules not published?)' : '')); if(denied){ _denied = true; _ready = true; } else setCloudStat('⚠ Sync (' + what + '): ' + (err && err.message || err)); }; };
     _subs.push(_fsDb.collection(ROOTS).onSnapshot(opts, function(snap){ const fromServer = !snap.metadata.fromCache; snap.docChanges().forEach(function(ch){ const d = ch.doc.data() || {}; const root = ch.doc.id; const conf = !ch.doc.metadata.fromCache && !ch.doc.metadata.hasPendingWrites; S.roots[root] = d; if(conf) confirmedRoots[root] = 1; scheduleApply(root); }); if(fromServer && !_readyParts.roots){ _readyParts.roots = true; checkReady(); } }, onErr('roots')));
     ['fields','records','assets'].forEach(function(col){
       _subs.push(_fsDb.collectionGroup(col).onSnapshot(opts, function(snap){ const fromServer = !snap.metadata.fromCache; snap.docChanges().forEach(function(ch){ const root = ch.doc.ref.parent.parent.id; const d = ch.doc.data() || {}; const conf = !ch.doc.metadata.fromCache && !ch.doc.metadata.hasPendingWrites; d._conf = conf; docsOf(root)[col][ch.doc.id] = d; scheduleApply(root); }); if(fromServer && !_readyParts[col]){ _readyParts[col] = true; checkReady(); } }, onErr(col)));
@@ -12840,11 +13018,13 @@ var SE = (function(){
   function stop(){ _subs.forEach(function(u){ try{ u(); }catch(_){} }); _subs = []; _started = false; _ready = false; _readyParts = { roots: false, fields: false, records: false, assets: false }; }
   function checkReady(){ if(_ready) return; if(_readyParts.roots && _readyParts.fields && _readyParts.records && _readyParts.assets){ _ready = true; DIAG('v3 server snapshot confirmed — ready'); Object.keys(S.roots).forEach(scheduleApply); setTimeout(function(){ try{ flushAll(); }catch(_){} }, 400); } }
   function isReady(){ return _ready; }
+  function isDenied(){ return _denied; }
   function scheduleApply(root){ if(_applyT[root]) return; _applyT[root] = setTimeout(function(){ delete _applyT[root]; try{ applyRoot(root); }catch(err){ DIAG('apply ' + root + ' failed: ' + (err && err.message || err)); } }, 60); }
 
   /* ======================= apply a root from the server cache ======================= */
   function serverSet(root){ const d = docsOf(root); const out = { fields: {}, records: {}, assets: {}, allConfirmed: true }; ['fields','records','assets'].forEach(function(col){ Object.keys(d[col]).forEach(function(id){ const doc = d[col][id]; out[col][id] = doc; if(!doc._conf) out.allConfirmed = false; }); }); return out; }
   function applyRoot(root){
+    if(!enabled(root)) return;
     const rd = S.roots[root]; if(!rd) return;
     const kind = kindOf(root);
     if(rd.deleted){ if(kind === 'project'){ if(fsRemoveLocalEntry(root)) _rerender(); } return; }
@@ -12853,7 +13033,8 @@ var SE = (function(){
     if(kind === 'project' && !e){ e = newEntry(root, rd); }
     if(kind === 'project' && !e) return;
     const Sv = serverSet(root); const B = baseOf(root); const first = !B;
-    const L = extract(root, e, first);
+    if(first){ try{ adoptServerIds(root, e); }catch(err){ DIAG('adopt ids failed: ' + (err && err.message || err)); } }
+    const L = extract(root, e, false);
     const recent = !!(e && e._dirtyAt && (Date.now() - e._dirtyAt) < 4000);
     const ctx = { conflicts: [], recent: recent, firstContact: first };
     const M = mergeSet(B || { fields: {}, records: {}, assets: {} }, L, Sv, ctx);
@@ -12870,7 +13051,16 @@ var SE = (function(){
   function fsRemoveLocalEntry(pid){ const i = db.projects.findIndex(function(e){ return fbpPid(e) === pid; }); if(i < 0) return false; const was = db.projects[i].id === db.activeId; db.projects.splice(i, 1); if(was){ const alt = db.projects.find(function(p){ return !p.frozen; }); db.activeId = alt ? alt.id : null; syncActive(); } persist(); return true; }
   var _rerenderT = null;
   function _rerender(){ if(_rerenderT) return; _rerenderT = setTimeout(function(){ _rerenderT = null; try{ if(!onProjectFormPage()) rerenderKeepScroll(); renderHeader(); renderSideProject(); }catch(_){} try{ if(typeof _domeOpenChanged !== 'undefined'){ _domeOpenChanged = true; domeRefreshOpenIfChanged(); } }catch(_){} try{ _fsStampRecv(); }catch(_){} }, 60); }
-  function recordConflicts(root, list){ if(!list.length || kindOf(root) !== 'project') return; try{ const by = {}; list.forEach(function(c){ let s, toks; if(c.path[0] === 'fields'){ s = c.path[1]; toks = c.path.slice(2); } else { const parts = String(c.path[1] || '').split('~'); const lp = decodeURIComponent(parts[0] || '').split('/')[0].split('.'); s = lp[0]; toks = lp.slice(1).concat(['#' + decodeURIComponent(parts[2] || '')]).concat(c.path.slice(2)); } (by[s] = by[s] || []).push({ path: toks, local: c.local, server: c.server, note: '', at: Date.now() }); }); Object.keys(by).forEach(function(s){ const arr = _fsConflictsOf(root)[s] || []; by[s].forEach(function(c){ if(!arr.some(function(x){ return cj(x.path) === cj(c.path) && cj(x.local) === cj(c.local); })) arr.push(c); }); _fsConflictsOf(root)[s] = arr; }); setTimeout(_fsConflictBanner, 300); }catch(_){} }
+  function applyConflictsLocally(root, e, list){
+    try{ const L = extract(root, e, false); const tree = localOf(root, e);
+      list.forEach(function(c){
+        if(c.col === 'fields'){ const sec = tree[c.id]; if(isObj(sec) && c.path[0] === 'data' && c.path.length > 1){ setPath(sec, c.path.slice(1).join('.'), clone(c.server)); } }
+        else if(c.col === 'records' && c.path[0] === 'data'){ const obj = L.index[c.id]; if(obj) setPath(obj, c.path.slice(1).join('.'), clone(c.server)); }
+      });
+      const mapped = list.map(function(c){ return { path: [c.col, c.id].concat(c.path[0] === 'data' ? c.path.slice(1) : c.path), local: c.local, server: c.server, note: c.note || 'changed on the server after your last sync' }; });
+      recordConflicts(root, mapped); persist(); _rerender(); }catch(err){ DIAG('conflict apply failed: ' + (err && err.message || err)); }
+  }
+  function recordConflicts(root, list){ if(!list.length || kindOf(root) !== 'project') return; try{ const by = {}; list.forEach(function(c){ let s, toks; if(c.path[0] === 'fields'){ s = c.path[1]; toks = c.path.slice(2); } else { const parts = String(c.path[1] || '').split('~'); const lp = decodeURIComponent(parts[0] || '').split('/')[0].split('.'); s = lp[0]; toks = lp.slice(1).concat(['#' + decodeURIComponent(parts[2] || '')]).concat(c.path.slice(2)); } (by[s] = by[s] || []).push({ path: toks, local: c.local, server: c.server, note: c.note || '', at: Date.now() }); }); Object.keys(by).forEach(function(s){ const arr = _fsConflictsOf(root)[s] || []; by[s].forEach(function(c){ if(!arr.some(function(x){ return cj(x.path) === cj(c.path) && cj(x.local) === cj(c.local); })) arr.push(c); }); _fsConflictsOf(root)[s] = arr; }); setTimeout(_fsConflictBanner, 300); }catch(_){} }
 
   /* ======================= diff + push ======================= */
   function diffSet(B, L, pendDel){ /* → ops: {col, id, create:doc} | {col, id, set:{dotted:val}} | {col, id, tomb:true} */
@@ -12901,7 +13091,7 @@ var SE = (function(){
   async function push(root){ if(!fsReady() || !_ready) return 0; const q = _q[root] || (_q[root] = { running: false, again: false }); if(q.running){ q.again = true; return 0; } q.running = true; try{ let guard = 0; do{ q.again = false; const r = await pushPass(null, root); if(!r.ok) break; } while((q.again || hasUnsent(root)) && ++guard < 10); } catch(err){ DIAG('push ' + root + ' failed: ' + (err && err.message || err)); setCloudStat('⚠ Sync failed: ' + (err && err.message || err)); setTimeout(function(){ push(root); }, 8000); } finally { q.running = false; } return 1; }
   async function pushPass(e, root){
     root = root || rootOf(e); const kind = kindOf(root);
-    if(!_ready) return { ok: true };
+    if(!_ready || !enabled(root)) return { ok: true };
     const rd = S.roots[root];
     if(!rd){ if(e && e._localNew){ await createRoot(root, e); } else { await migrate(root, e); } return { ok: true }; }   /* no root yet: a brand-new project is created, anything else is migrated from its legacy document (or from local when none exists) */
     if(!rd.migrated) return { ok: true };
@@ -12914,23 +13104,59 @@ var SE = (function(){
     if(kind === 'project' && e){ const m = { done: !!e.done, doneAt: e.doneAt || 0, bucket: projBucketOf(e) }; const bm = B.meta || {}; Object.keys(m).forEach(function(k){ if(bm[k] !== m[k]) rootSet[k] = m[k]; }); }
     const stillUploading = L.pending.length > 0;
     if(!ops.length && !Object.keys(rootSet).length) return { ok: !stillUploading };
-    /* batches of ≤ 450 operations */
-    const CH = 450; let i = 0;
+    /* TRANSACTIONS of ≤ 120 documents: every document is READ first; a document whose server rev is newer than our base
+       is merged field by field — a field the server changed since our base is NOT overwritten: the server value stays,
+       our value is kept as a conflict (both versions recoverable). A stale tab can never silently overwrite newer data. */
+    const CH = 120; let i = 0; const conflicts = [];
     while(i < ops.length || (i === 0 && Object.keys(rootSet).length)){
-      const part = ops.slice(i, i + CH); const batch = _fsDb.batch(); const stm = stamp();
-      part.forEach(function(op){ const ref = docRef(root, op.col, op.id);
-        if(op.create){ batch.set(ref, Object.assign({}, op.create, { rev: 1 }, stm)); return; }
-        const args = []; if(op.tomb){ args.push('deleted', true); } else { Object.keys(op.set).forEach(function(p){ args.push(FP(p.split('.')), op.set[p]); }); }
-        args.push('rev', incr(), 'proto', stm.proto, 'wstamp', _fsServerTs(), 'by', stm.by);
-        batch.update.apply(batch, [ref].concat(args)); });
-      if(i === 0){ const args = []; Object.keys(rootSet).forEach(function(k){ args.push(k, rootSet[k]); }); args.push('rev', incr(), 'proto', stm.proto, 'wstamp', _fsServerTs(), 'by', stm.by); batch.update.apply(batch, [rootRef(root)].concat(args)); }
-      try{ await batch.commit(); }
-      catch(err){ if(err && (err.code === 'not-found' || /No document to update/i.test(err.message || ''))){ DIAG('a document vanished on the server (' + root + ') — nothing is re-created'); st().base[root] = undefined; return { ok: true }; } throw err; }
-      /* ACK → base := base + what was sent */
-      part.forEach(function(op){ const b = B[op.col]; if(op.create){ b[op.id] = clone(op.create); } else if(op.tomb){ if(b[op.id]) b[op.id].deleted = true; delete pendDel[op.col + '/' + op.id]; } else { const d = b[op.id]; Object.keys(op.set).forEach(function(p){ const parts = p.split('.'); let cur = d; for(let k = 0; k < parts.length - 1; k++){ if(!isObj(cur[parts[k]])) cur[parts[k]] = {}; cur = cur[parts[k]]; } cur[parts[parts.length - 1]] = clone(op.set[p]); }); } });
+      const part = ops.slice(i, i + CH); const stm = stamp();
+      const applied = [];                                                 /* what really went to the server in this transaction */
+      try{
+        await _fsDb.runTransaction(async function(tx){
+          applied.length = 0;
+          const refs = part.map(function(op){ return docRef(root, op.col, op.id); });
+          const snaps = []; for(let k = 0; k < refs.length; k++) snaps.push(await tx.get(refs[k]));
+          const rsnap = (i === 0) ? await tx.get(rootRef(root)) : null;
+          part.forEach(function(op, k){
+            const ref = refs[k]; const srv = snaps[k].exists ? snaps[k].data() : null; const base = B[op.col][op.id];
+            if(op.create){
+              if(!srv){ tx.set(ref, Object.assign({}, op.create, { rev: 1 }, stm)); applied.push({ op: op, rev: 1 }); return; }
+              /* same id created elsewhere meanwhile → treat as an update of every differing field against the server copy */
+              const setv = {}; diffObj(srv.data || {}, op.create.data || {}, 'data', setv); if(srv.deleted && !op.create.deleted) setv.deleted = false;
+              op = { col: op.col, id: op.id, set: setv }; if(!Object.keys(setv).length) return;
+            }
+            if(!srv){ DIAG('document vanished on the server: ' + op.col + '/' + op.id); return; }
+            const newer = (typeof srv.rev === 'number') && (!base || typeof base.rev !== 'number' || srv.rev > base.rev);
+            const args = [];
+            if(op.tomb){
+              if(newer && base && !eq(srv.data, base.data)){ conflicts.push({ col: op.col, id: op.id, path: ['deleted'], local: true, server: srv.data, note: 'removed here, changed on the server' }); applied.push({ op: op, rev: srv.rev, skipped: true, srv: srv }); return; }
+              args.push('deleted', true);
+            } else {
+              const keep = {}; Object.keys(op.set).forEach(function(pth){
+                if(newer && base){ const sv = getPath(srv, pth), bv = getPath(base, pth); if(!eq(sv, bv) && !eq(sv, op.set[pth])){ conflicts.push({ col: op.col, id: op.id, path: pth.split('.'), local: op.set[pth], server: sv }); return; } }
+                keep[pth] = op.set[pth]; });
+              if(!Object.keys(keep).length){ applied.push({ op: op, rev: srv.rev, skipped: true, srv: srv }); return; }
+              Object.keys(keep).forEach(function(pth){ args.push(FP(pth.split('.')), keep[pth]); }); op = { col: op.col, id: op.id, set: keep };
+            }
+            args.push('rev', (srv.rev || 0) + 1, 'proto', stm.proto, 'wstamp', _fsServerTs(), 'by', stm.by);
+            tx.update.apply(tx, [ref].concat(args)); applied.push({ op: op, rev: (srv.rev || 0) + 1, srv: srv });
+          });
+          if(rsnap && rsnap.exists && Object.keys(rootSet).length){ const args = []; Object.keys(rootSet).forEach(function(k){ args.push(k, rootSet[k]); }); args.push('rev', ((rsnap.data() || {}).rev || 0) + 1, 'proto', stm.proto, 'wstamp', _fsServerTs(), 'by', stm.by); tx.update.apply(tx, [rootRef(root)].concat(args)); }
+        });
+      }catch(err){ if(err && (err.code === 'not-found' || /No document to update/i.test(err.message || ''))){ DIAG('a document vanished on the server (' + root + ') — nothing is re-created'); return { ok: true }; } throw err; }
+      /* ACK → base := base + what was really sent; a skipped (conflicting) field takes the SERVER value in base and in the local state */
+      applied.forEach(function(a){ const op = a.op; const b = B[op.col];
+        if(a.skipped){ if(a.srv){ b[op.id] = clone(a.srv); delete b[op.id]._conf; } if(op.tomb) delete pendDel[op.col + '/' + op.id]; return; }
+        if(op.create){ b[op.id] = clone(op.create); b[op.id].rev = 1; return; }
+        if(!b[op.id] && a.srv){ b[op.id] = clone(a.srv); }
+        const d = b[op.id] || (b[op.id] = {});
+        if(op.tomb){ d.deleted = true; delete pendDel[op.col + '/' + op.id]; }
+        else Object.keys(op.set).forEach(function(pth){ const parts = pth.split('.'); let cur = d; for(let k = 0; k < parts.length - 1; k++){ if(!isObj(cur[parts[k]])) cur[parts[k]] = {}; cur = cur[parts[k]]; } cur[parts[parts.length - 1]] = clone(op.set[pth]); });
+        d.rev = a.rev; });
       if(i === 0 && kind === 'project' && e){ B.meta = { done: !!e.done, doneAt: e.doneAt || 0, bucket: projBucketOf(e) }; }
       i += CH; if(!part.length) break;
     }
+    if(conflicts.length){ applyConflictsLocally(root, e, conflicts); }
     persist(); if(e){ e._fbSeen = true; delete e._localNew; } if(!stillUploading) _fsStampSent();
     return { ok: !stillUploading };
   }
@@ -12971,9 +13197,9 @@ var SE = (function(){
     writeRoot(root, e, { fields: L.fields, records: L.records, assets: L.assets });
     st().base[root] = { fields: {}, records: {}, assets: {}, meta: { done: !!(legacy && legacy.done), doneAt: (legacy && legacy.doneAt) || 0, bucket: (legacy && legacy.bucket) || '' } };
     await writeAll(root, L);
-    await rootRef(root).update(Object.assign({ migrated: true }, stamp()));
+    await _fsDb.runTransaction(async function(tx){ const rs = await tx.get(rootRef(root)); const cur = (rs.exists && rs.data()) || {}; tx.update(rootRef(root), Object.assign({ migrated: true, rev: (cur.rev || 0) + 1 }, stamp())); });
     S.roots[root] = Object.assign(S.roots[root] || {}, { kind: kind, pid: root, migrated: true, deleted: false, legacyRevs: (legacy && legacy.revs) || {} }); confirmedRoots[root] = 1;
-    if(legacy){ st().legacy[root] = legacyTree(root, legacy); st().legacyRevs[root] = clone(legacy.revs || {}); st().legacyMsig[root] = legacy.msig || ''; }
+    if(legacy){ st().legacy[root] = legacyTree(root, legacy); st().legacyRevs[root] = clone(legacy.revs || {}); st().legacyMsig[root] = legacy.msig || ''; const lm = legacyMapOf(root); listInstances(root, tree).forEach(function(x){ lm[x.cpath + '|' + x.parentRid] = x.arr.map(function(r){ return recId(r, x.ik) || null; }); }); }
     DIAG('migrated ' + root + ' (' + Object.keys(L.records).length + ' records, ' + Object.keys(L.assets).length + ' assets)');
     persist();
     scheduleApply(root);                                                  /* our local differences become ordinary pending edits */
@@ -12981,7 +13207,7 @@ var SE = (function(){
 
   /* ======================= DUAL-READ: legacy document changes (old tabs) ======================= */
   function applyLegacy(root, data){
-    if(!data) return false; const kind = kindOf(root); const e = entryOf(root);
+    if(!data || !enabled(root)) return false; const kind = kindOf(root); const e = entryOf(root);
     if(kind === 'project' && !data.pid) return false;
     const prev = st().legacy[root]; const prevRevs = st().legacyRevs[root] || {}; const revs = data.revs || {};
     const tree = legacyTree(root, data);
@@ -12989,7 +13215,8 @@ var SE = (function(){
     const changedSecs = Object.keys(revs).filter(function(s){ return revs[s] !== prevRevs[s]; });
     const target = localOf(root, e); let changed = false;
     if(target && changedSecs.length && S.roots[root] && S.roots[root].migrated){
-      changedSecs.forEach(function(sec){ target.__legacyRev = revs[sec]; try{ changed = positionalApply(kind, sec, prev[sec], tree[sec], target[sec] === undefined ? (target[sec] = isObj(tree[sec]) ? {} : tree[sec]) : target[sec], target) || changed; } finally { delete target.__legacyRev; } });
+      changedSecs.forEach(function(sec){ try{ changed = positionalApply(kind, sec, prev[sec], tree[sec], target[sec] === undefined ? (target[sec] = isObj(tree[sec]) ? {} : tree[sec]) : target[sec], target) || changed; }catch(err){ DIAG('legacy scalars ' + sec + ': ' + (err && err.message || err)); } });
+      try{ changed = reconcileLists(root, e, prev, tree, changedSecs, changedSecs.map(function(s){ return revs[s]; }).join('.')) || changed; }catch(err){ DIAG('legacy lists: ' + (err && err.message || err)); }
       if(changed){ DIAG('legacy edit from an old tab merged: ' + changedSecs.join(',') + ' (' + root + ')'); if(e) e._dirtyAt = Date.now(); persist(); _rerender(); queuePush(root, e); }
     }
     if(kind === 'project' && e && (data.msig || '') !== (st().legacyMsig[root] || '') && data.msig){ st().legacyMsig[root] = data.msig; importLegacyMedia(e, data.msig); }
@@ -13001,6 +13228,7 @@ var SE = (function(){
     if(isObj(nowSec) && isObj(target)){
       const P = isObj(prevSec) ? prevSec : {};
       Object.keys(nowSec).forEach(function(k){ const nv = nowSec[k], pv = P[k];
+        if(Array.isArray(nv) && nv.some(function(x){ return isObj(x); })) return;                      /* record lists → reconcileLists (matcher) */
         if(Array.isArray(nv)){ const pa = Array.isArray(pv) ? pv : []; const ta = Array.isArray(target[k]) ? target[k] : (target[k] = []);
           for(let i = 0; i < nv.length; i++){ if(isObj(nv[i])){ if(i < ta.length && isObj(ta[i])){ if(!eq(nv[i], pa[i])){ Object.keys(nv[i]).forEach(function(f){ if(f === 'id' || f === 'domeUid') return; if(!eq(nv[i][f], (pa[i] || {})[f])){ ta[i][f] = clone(nv[i][f]); ch = true; } }); } } else if(i >= ta.length && !eq(nv[i], pa[i])){ const row = clone(nv[i]); if(!row.id && !row.domeUid) row.id = 'm' + i + 'r' + String(tree.__legacyRev || 0); ta.push(row); ch = true; } } else if(!eq(nv[i], pa[i])){ if(i < ta.length){ ta[i] = clone(nv[i]); ch = true; } else { ta.push(clone(nv[i])); ch = true; } } }
           if(nv.length < pa.length && ta.length === pa.length){ ta.splice(nv.length); ch = true; }
@@ -13056,13 +13284,14 @@ var SE = (function(){
   function driveLink(rec, key){ const a = rec && rec._a && rec._a[key || 'data']; return a && a.f ? ('https://drive.google.com/file/d/' + a.f + '/view') : ''; }
 
   /* ======================= queries used by the rest of the app ======================= */
-  function hasUnsent(root, e){ try{ if(!_ready) return false; root = root || rootOf(e); if(!root) return false; const ent = e || entryOf(root); if(kindOf(root) === 'project' && !ent) return false; const B = baseOf(root); if(!B) return !!(ent && ent._localNew) || (!!S.roots[root] === false && kindOf(root) === 'project'); const L = extract(root, ent, false); if(L.pending.length) return true; return diffSet(B, L, null).length > 0; }catch(_){ return false; } }
+  function hasUnsent(root, e){ try{ if(!_ready) return false; root = root || rootOf(e); if(!root || !enabled(root)) return false; const ent = e || entryOf(root); if(kindOf(root) === 'project' && !ent) return false; const B = baseOf(root); if(!B) return !!(ent && ent._localNew) || (!!S.roots[root] === false && kindOf(root) === 'project'); const L = extract(root, ent, false); if(L.pending.length) return true; return diffSet(B, L, null).length > 0; }catch(_){ return false; } }
   function changedSections(e){ try{ const root = rootOf(e); const B = baseOf(root); if(!B) return []; const L = extract(root, e, false); const s = {}; diffSet(B, L, null).forEach(function(op){ s[op.col === 'fields' ? op.id : (op.col === 'records' ? decodeURIComponent((L.records[op.id] || B.records[op.id] || {}).path || '').split('.')[0] : (L.assets[op.id] || B.assets[op.id] || {}).path || '').split('.')[0]] = 1; }); return Object.keys(s); }catch(_){ return []; } }
-  function tick(){ try{ if(!fsReady() || !_ready) return; db.projects.forEach(function(e){ if(fbpPid(e) && hasUnsent(fbpPid(e), e)) fsPushNow(e).catch(function(){}); }); ['dome_library','shared_library'].forEach(function(r){ if(hasUnsent(r)) push(r); }); db.projects.forEach(function(e){ scheduleFetches(fbpPid(e), e); }); }catch(_){} }
-  function flushAll(){ db.projects.forEach(function(e){ const pid = fbpPid(e); if(pid && (e._localNew || hasUnsent(pid, e) || !S.roots[pid])) fsPushNow(e).catch(function(){}); }); Object.keys(st().legacy).forEach(function(r){ if(!S.roots[r] && kindOf(r) === 'project' && !entryOf(r)) migrate(r, null).catch(function(){}); }); ['dome_library','shared_library'].forEach(function(r){ if(hasUnsent(r) || !S.roots[r]) push(r); }); }
-  async function deleteRoot(root){ /* tombstone — nothing is ever deleted */ if(!S.roots[root]) return false; await rootRef(root).update(Object.assign({ deleted: true, rev: incr() }, stamp())); return true; }
+  function tick(){ try{ if(!fsReady() || !_ready) return; db.projects.forEach(function(e){ const pid = fbpPid(e); if(pid && enabled(pid) && (hasUnsent(pid, e) || !S.roots[pid])) fsPushNow(e).catch(function(){}); }); ['dome_library','shared_library'].forEach(function(r){ if(enabled(r) && (hasUnsent(r) || !S.roots[r])) push(r); }); db.projects.forEach(function(e){ if(enabled(fbpPid(e))) scheduleFetches(fbpPid(e), e); }); }catch(_){} }
+  function flushAll(){ db.projects.forEach(function(e){ const pid = fbpPid(e); if(pid && enabled(pid) && (e._localNew || hasUnsent(pid, e) || !S.roots[pid])) fsPushNow(e).catch(function(){}); }); Object.keys(st().legacy).forEach(function(r){ if(enabled(r) && !S.roots[r] && kindOf(r) === 'project' && !entryOf(r)) migrate(r, null).catch(function(){}); }); ['dome_library','shared_library'].forEach(function(r){ if(enabled(r) && (hasUnsent(r) || !S.roots[r])) push(r); }); }
+  async function deleteRoot(root){ /* tombstone — nothing is ever deleted; rev + 1 read inside the transaction */ if(!S.roots[root]) return false; await _fsDb.runTransaction(async function(tx){ const rs = await tx.get(rootRef(root)); if(!rs.exists) return; const cur = rs.data() || {}; tx.update(rootRef(root), Object.assign({ deleted: true, rev: (cur.rev || 0) + 1 }, stamp())); }); return true; }
   function rootAlive(root){ const r = S.roots[root]; return !!(r && !r.deleted); }
-  return { schema: SE_SCHEMA, start: start, stop: stop, isReady: isReady, extract: extract, hasUnsent: hasUnsent, changedSections: changedSections, pushPass: pushPass, push: push, applyLegacy: applyLegacy, applyRoot: applyRoot, openAsset: openAsset, driveLink: driveLink, tick: tick, flushAll: flushAll, deleteRoot: deleteRoot, rootAlive: rootAlive, baseOf: baseOf, isData: isData, serverState: S, uploadPending: uploadPending, scheduleFetches: scheduleFetches, migrate: migrate };
+  function rootKnown(root){ return !!S.roots[root]; }
+  return { waitConfig: waitConfig, isDenied: isDenied, enabled: enabled, setConfig: setConfig, setEnabled: setEnabled, setAll: setAll, config: config, rootKnown: rootKnown, matchRows: matchRows, schema: SE_SCHEMA, start: start, stop: stop, isReady: isReady, extract: extract, hasUnsent: hasUnsent, changedSections: changedSections, pushPass: pushPass, push: push, applyLegacy: applyLegacy, applyRoot: applyRoot, openAsset: openAsset, driveLink: driveLink, tick: tick, flushAll: flushAll, deleteRoot: deleteRoot, rootAlive: rootAlive, baseOf: baseOf, isData: isData, serverState: S, uploadPending: uploadPending, scheduleFetches: scheduleFetches, migrate: migrate };
 })();
 try{ window.SE = SE; }catch(_){}
 
