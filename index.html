@@ -814,7 +814,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.52 · PRESENCE: AVATARS NO LONGER BLINK (SUBSCRIPTIONS AND THE OWN PRESENCE RECORD ARE KEPT ACROSS RERENDERS) · DOME LIST: FIXED AVATAR SLOT — THE TABLE NEVER CHANGES WIDTH · NO MORE FLICKER: AN IN-PLACE RERENDER (TEAMMATE'S CHANGE, AUTO-SYNC) PATCHES THE LIVE PAGE NODE BY NODE INSTEAD OF REBUILDING IT · SYNC FIX: THE SERVER-SNAPSHOT GATE COULD STAY SHUT FOREVER (FIRST SNAPSHOT FROM THE SDK CACHE, NO "CONFIRMED" EVENT) — PROJECTS AND DOME LIBRARY LISTENERS NOW RECEIVE METADATA EVENTS + EXPLICIT SERVER READ FALLBACK · START-UP: NO FALSE "KEPT ASIDE" BANNER — A SECTION NOBODY ELSE WROTE SINCE WE LAST SAW IT IS OUR EDIT AND IS SENT; THE CONFIRMED BASE IS REFRESHED ON EVERY CONFIRMED SNAPSHOT · DOME LIBRARY FIX: A COVER / INFLATABLE / KIT / FILE ADDED ON ONE MACHINE IS NEVER DROPPED BECAUSE ANOTHER MACHINE SAVED THE CARD LATER (ADDITIONS AFTER THE AGREED BASE ARE ALWAYS KEPT) · DOME CARD: DOORS BLOCK MOVED DIRECTLY UNDER FRAME · DOME CARD: FABRIC DOOR (QTY + SERIAL) MOVED FROM DOORS TO EACH COVER ENTRY · "FABRIC DOOR INFL" ON EACH INFLATABLE COVER · DOME CARD: EVERY EDIT OF A SAVED CARD SYNCS TO THE TEAM AUTOMATICALLY (1.5 S AFTER THE LAST CHANGE — ADD COVER / INFLATABLE / SCREEN, FIELD EDITS, TRUSS) · SERVER-TIME WRITE STAMPS (wstamp = serverTimestamp) · CONFIRMED BASE ONLY FROM fromCache=false & hasPendingWrites=false OR A REAL ACK · "APPLY MY VERSION" = FIELD-LEVEL 3-WAY MERGE WITH PER-FIELD CONFLICTS · ADMIN › MAINTENANCE: STAMP ALL DOCUMENTS proto 2 · SAFE START-UP: NO WRITE BEFORE THE SERVER SNAPSHOT · PERSISTED CONFIRMED BASE + 3-WAY FIRST-SNAPSHOT MERGE (LOCAL EDITS KEPT ASIDE, NEVER LOST) · UPDATE = FLUSH THEN RELOAD · SAVING / SAVED / UPDATED STATUS · PROTOCOL STAMP proto:2 · SHADOW SECTION "ext" RESTORES CAMERA CASES + PROJECTOR ACCESSORIES WIPED BY AN OLD CLIENT · UPDATER CHECKS AT 2 S (STALE TABS RELOAD BEFORE THEIR FIRST PUSH) · CAMERA CASES SELF-HEAL (REBUILT FROM THE ROWS IF AN OLD CLIENT WIPED THE LIST) · DOME & TRUSS: "BALLAST PLATES" TABLE + PHOTOS WHILE OUTDOOR · MODULE PHOTOS (SPEAKERS / FAN / CABLES / TOOLS) NOW SYNC VIA THE MEDIA FILE · FAN MODULE: SEPARATE "INFLATABLE FAN SYSTEM" TABLE WHILE INFLATABLE = YES · PROJECT SETUP: "DOME & SYSTEM CONFIGURATION" · SCREEN TYPE · INDOOR/OUTDOOR + BALLAST SYSTEM · DOME LIBRARY: DELETED KITS / ELEMENTS / COVERS ARE STICKY TOMBSTONES (CAN NEVER COME BACK) · DOME CARD: OVERVIEW + TRUSS IN THE SAME COMPACT LAYOUT · DOORS: FABRIC DOOR (QTY + SERIAL) · COMPONENTS: COMPACT ONE-PARAMETER-PER-ROW LAYOUT · DOME LIBRARY: AN OPEN CARD NOW RECEIVES TEAMMATES' CHANGES LIVE (DELETIONS INCLUDED) · DOME CARD: COVER / INFLATABLE COVER GET COLOUR (GREY · WHITE · PRINTED) + MATERIAL · ARCHIVE BUTTONS REMOVED (DELETE ONLY) · DELETE BUTTON ON COVER / SCREEN / INFLATABLE ENTRIES · DASHBOARD: CAMERA MODEL = ALL "CAMERA" ROWS (NO LENS) · DOME & TRUSS: READY = DOME CARD "READY TO SHIP" (INDICATOR, NOT A BUTTON) · DOME LIBRARY: A DELETED TRUSS KIT / ELEMENT / FILE STAYS DELETED (NO-BASE TIEBREAKER BY REV) · DOME LIBRARY FIX: SAVE DOME CARD KEEPS TRUSS SN / COMPONENTS / SCHEMATICS (MERGE BASE WAS ALIASED TO THE LIVE CARD) · NEW MODULE: DOME & TRUSS (PICK FROM DOME LIBRARY · TRUSS KIT · SHIPS AUTOMATICALLY) · AUTO-UPDATE: RETRIES FOR ~15 MIN WHEN THE SERVER STILL SENDS THE OLD FILE · SHIPPING: SUB-SECTIONS — CAMERA CASES + OTHER, POWER / VIDEO / AUDIO CABLES (LIST + PDF) · SHIPPING PDF REBUILT (A4 LANDSCAPE · NOT-PACKED SECTION PER UNIT · GREEN/RED + WORDS · PAGE X OF Y) · SIDEBAR: EQUIPMENT & SHIPPING LINK · SHIPPING: CLICK AN ITEM NAME → JUMPS TO ITS MODULE ROW · PROJECTOR ACCESSORIES TABLE (EVERY NAMED ROW SHIPS AS ITS OWN MODULE AFTER PROJECTORS) · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.53 · SYNC ENGINE v3: ONE REALTIME ENGINE FOR EVERY FIELD, ROW, PHOTO, DOCUMENT, DOME CARD AND LIBRARY ITEM — FIRESTORE = TRUTH (RECORD-LEVEL WRITES, TOMBSTONES, 3-WAY MERGE), GOOGLE DRIVE = ONE FILE PER PHOTO / PDF IN THE SHARED PROJECT FOLDER, DURABLE OUTBOX · NO <pid>.media.json · PRESENCE: AVATARS NO LONGER BLINK (SUBSCRIPTIONS AND THE OWN PRESENCE RECORD ARE KEPT ACROSS RERENDERS) · DOME LIST: FIXED AVATAR SLOT — THE TABLE NEVER CHANGES WIDTH · NO MORE FLICKER: AN IN-PLACE RERENDER (TEAMMATE'S CHANGE, AUTO-SYNC) PATCHES THE LIVE PAGE NODE BY NODE INSTEAD OF REBUILDING IT · SYNC FIX: THE SERVER-SNAPSHOT GATE COULD STAY SHUT FOREVER (FIRST SNAPSHOT FROM THE SDK CACHE, NO "CONFIRMED" EVENT) — PROJECTS AND DOME LIBRARY LISTENERS NOW RECEIVE METADATA EVENTS + EXPLICIT SERVER READ FALLBACK · START-UP: NO FALSE "KEPT ASIDE" BANNER — A SECTION NOBODY ELSE WROTE SINCE WE LAST SAW IT IS OUR EDIT AND IS SENT; THE CONFIRMED BASE IS REFRESHED ON EVERY CONFIRMED SNAPSHOT · DOME LIBRARY FIX: A COVER / INFLATABLE / KIT / FILE ADDED ON ONE MACHINE IS NEVER DROPPED BECAUSE ANOTHER MACHINE SAVED THE CARD LATER (ADDITIONS AFTER THE AGREED BASE ARE ALWAYS KEPT) · DOME CARD: DOORS BLOCK MOVED DIRECTLY UNDER FRAME · DOME CARD: FABRIC DOOR (QTY + SERIAL) MOVED FROM DOORS TO EACH COVER ENTRY · "FABRIC DOOR INFL" ON EACH INFLATABLE COVER · DOME CARD: EVERY EDIT OF A SAVED CARD SYNCS TO THE TEAM AUTOMATICALLY (1.5 S AFTER THE LAST CHANGE — ADD COVER / INFLATABLE / SCREEN, FIELD EDITS, TRUSS) · SERVER-TIME WRITE STAMPS (wstamp = serverTimestamp) · CONFIRMED BASE ONLY FROM fromCache=false & hasPendingWrites=false OR A REAL ACK · "APPLY MY VERSION" = FIELD-LEVEL 3-WAY MERGE WITH PER-FIELD CONFLICTS · ADMIN › MAINTENANCE: STAMP ALL DOCUMENTS proto 2 · SAFE START-UP: NO WRITE BEFORE THE SERVER SNAPSHOT · PERSISTED CONFIRMED BASE + 3-WAY FIRST-SNAPSHOT MERGE (LOCAL EDITS KEPT ASIDE, NEVER LOST) · UPDATE = FLUSH THEN RELOAD · SAVING / SAVED / UPDATED STATUS · PROTOCOL STAMP proto:2 · SHADOW SECTION "ext" RESTORES CAMERA CASES + PROJECTOR ACCESSORIES WIPED BY AN OLD CLIENT · UPDATER CHECKS AT 2 S (STALE TABS RELOAD BEFORE THEIR FIRST PUSH) · CAMERA CASES SELF-HEAL (REBUILT FROM THE ROWS IF AN OLD CLIENT WIPED THE LIST) · DOME & TRUSS: "BALLAST PLATES" TABLE + PHOTOS WHILE OUTDOOR · MODULE PHOTOS (SPEAKERS / FAN / CABLES / TOOLS) NOW SYNC VIA THE MEDIA FILE · FAN MODULE: SEPARATE "INFLATABLE FAN SYSTEM" TABLE WHILE INFLATABLE = YES · PROJECT SETUP: "DOME & SYSTEM CONFIGURATION" · SCREEN TYPE · INDOOR/OUTDOOR + BALLAST SYSTEM · DOME LIBRARY: DELETED KITS / ELEMENTS / COVERS ARE STICKY TOMBSTONES (CAN NEVER COME BACK) · DOME CARD: OVERVIEW + TRUSS IN THE SAME COMPACT LAYOUT · DOORS: FABRIC DOOR (QTY + SERIAL) · COMPONENTS: COMPACT ONE-PARAMETER-PER-ROW LAYOUT · DOME LIBRARY: AN OPEN CARD NOW RECEIVES TEAMMATES' CHANGES LIVE (DELETIONS INCLUDED) · DOME CARD: COVER / INFLATABLE COVER GET COLOUR (GREY · WHITE · PRINTED) + MATERIAL · ARCHIVE BUTTONS REMOVED (DELETE ONLY) · DELETE BUTTON ON COVER / SCREEN / INFLATABLE ENTRIES · DASHBOARD: CAMERA MODEL = ALL "CAMERA" ROWS (NO LENS) · DOME & TRUSS: READY = DOME CARD "READY TO SHIP" (INDICATOR, NOT A BUTTON) · DOME LIBRARY: A DELETED TRUSS KIT / ELEMENT / FILE STAYS DELETED (NO-BASE TIEBREAKER BY REV) · DOME LIBRARY FIX: SAVE DOME CARD KEEPS TRUSS SN / COMPONENTS / SCHEMATICS (MERGE BASE WAS ALIASED TO THE LIVE CARD) · NEW MODULE: DOME & TRUSS (PICK FROM DOME LIBRARY · TRUSS KIT · SHIPS AUTOMATICALLY) · AUTO-UPDATE: RETRIES FOR ~15 MIN WHEN THE SERVER STILL SENDS THE OLD FILE · SHIPPING: SUB-SECTIONS — CAMERA CASES + OTHER, POWER / VIDEO / AUDIO CABLES (LIST + PDF) · SHIPPING PDF REBUILT (A4 LANDSCAPE · NOT-PACKED SECTION PER UNIT · GREEN/RED + WORDS · PAGE X OF Y) · SIDEBAR: EQUIPMENT & SHIPPING LINK · SHIPPING: CLICK AN ITEM NAME → JUMPS TO ITS MODULE ROW · PROJECTOR ACCESSORIES TABLE (EVERY NAMED ROW SHIPS AS ITS OWN MODULE AFTER PROJECTORS) · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -3560,7 +3560,7 @@ function adminGo(tab){ _adminTab=tab; goTo('#/admin'); }
 async function adminStampProto(){
   if(!isAdminConsole()){ alert('Admin Console access required.'); return; }
   if(!fsReady()){ alert('Firestore is not connected.'); return; }
-  if(!confirm('Stamp EVERY document in projects with proto: 2 + server wstamp?\n\nAdditive only (two fields). Do this once all active users are on BUILD 16.45+.')) return;
+  if(!confirm('Stamp EVERY document in projects with proto: 2 + server wstamp?\n\nAdditive only (two fields). Do this once all active users are on BUILD 16.53+.')) return;
   const out = document.getElementById('adminStampOut'); const say = function(t){ if(out) out.textContent = t; };
   say('Reading documents…');
   try{
@@ -3648,7 +3648,7 @@ function pageAdmin(){
     /* BUILD 16.46 — one-time, ADDITIVE stamping of every document with proto:2 + server wstamp (run BEFORE publishing the
        proto-2 Rules, once every active user is on BUILD 16.45+). Touches two fields only; nothing else is read or rewritten. */
     body='<div class="card"><div class="card-head"><h3>Protocol stamp (proto 2)</h3></div>'
-      + '<div class="sub" style="margin:0 0 12px">Marks every document in <b>projects</b> (projects, Shared Library, Dome Library) with <b>proto: 2</b> and a server <b>wstamp</b>. Additive only — no other field is touched. Run it once, after every active user shows <b>b16.45</b> or newer, and before the proto-2 Rules are published.</div>'
+      + '<div class="sub" style="margin:0 0 12px">Marks every document in <b>projects</b> (projects, Shared Library, Dome Library) with <b>proto: 2</b> and a server <b>wstamp</b>. Additive only — no other field is touched. Run it once, after every active user shows <b>b16.53</b> or newer, and before the proto-2 Rules are published.</div>'
       + '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="mod-btn primary" style="padding:8px 14px" onclick="adminStampProto()">Stamp all documents</button><span id="adminStampOut" class="sub" style="margin:0"></span></div></div>';
   } else if(_adminTab==='drive'){
     body='<div class="sub" style="margin:0 0 10px">Google Drive access is managed separately from PSP. This is a reference view — sharing the Drive folder is done manually for now.</div>'
@@ -5222,7 +5222,7 @@ function onShipDocPicked(ev){
     rd.readAsDataURL(f);
   });
 }
-function downloadShipDoc(i){ const f=state.shipping.docs[i]; if(!f) return; const a=document.createElement('a'); a.href=f.data; a.download=f.name||'file'; document.body.appendChild(a); a.click(); a.remove(); }
+function downloadShipDoc(i){ const f=state.shipping.docs[i]; if(!f) return; SE.openAsset(f, 'data', true); return; const a=document.createElement('a'); a.href=f.data; a.download=f.name||'file'; document.body.appendChild(a); a.click(); a.remove(); }
 function rmShipDoc(i){ const f=state.shipping.docs[i]; if(!f) return; if(!confirm('Delete "'+f.name+'"?')) return; state.shipping.docs.splice(i,1); saveState(); rerenderKeepScroll(); }
 /* ---- per-pallet photos (up to 10 each) — one gallery per pallet (BUILD 12.58) ---- */
 function palPhotos(id){ if(!state.shipping.palletPhotos) state.shipping.palletPhotos={}; if(!Array.isArray(state.shipping.palletPhotos[id])) state.shipping.palletPhotos[id]=[]; return state.shipping.palletPhotos[id]; }
@@ -6229,6 +6229,7 @@ async function fbpMediaFileId(pid, root){
   return best.id;
 }
 async function fbpMediaUpload(e){
+  if(SE_ON) return false;                                                /* BUILD 16.53 */
   if(!_cloudOn || !_gTok) return false;
   const pid = fbpPid(e); if(!pid) return false;
   /* BUILD 15.38/15.40 — Замок 2: never upload an EMPTY still-pending copy (a cloud-materialized project
@@ -6457,6 +6458,7 @@ async function fbpMediaDelete(e){
 }
 /* pull changed media for every project whose remote msig differs from our local media */
 async function fbpMediaSync(){
+  if(SE_ON) return;                                                      /* BUILD 16.53: assets go through the engine */
   if(!(_FS || _FBP) || !_cloudOn || !_gTok || _fbpMediaBusy) return;   /* BUILD 14.2: works under Firestore too (was _FBP-only) */
   _fbpMediaBusy = true;
   let any = false;
@@ -6569,6 +6571,7 @@ async function _fbpResolveBrowseFolder(e, pid){
   return fid;
 }
 async function fbpBrowseMirror(e){
+  if(SE_ON) return;                                                      /* BUILD 16.53: every asset is uploaded as its own Drive file by the engine */
   if(!_cloudOn || !_gTok) return;
   if(isPreEntry(e)) return;   /* BUILD 15.48: no browsable Drive folder for a pre-project until promoted */
   const pid = fbpPid(e); if(!pid) return;
@@ -6667,7 +6670,7 @@ var _mediaPushLock = {};   /* pid -> true while a media/browse-folder push is in
      push; both changed or no base → take server and keep the local version aside (db._fsStash) for the user.
    · Every write carries proto:2 + wstamp (the staged server-side lock for old clients lives in the Rules). */
 var _fsServerSeen = false, _fsGateQ = {}, _fsSessionSeen = {}, _fsStatMode = '';
-const FS_PROTO = 2;
+const FS_PROTO = 3;   /* BUILD 16.53: v3 record-level documents */
 /* BUILD 16.46: the write stamp is the SERVER's clock (FieldValue.serverTimestamp()), never Date.now() — the Rules require
    wstamp == request.time on every write. Falls back to a number only when the SDK is absent (offline unit tests). */
 function _fsServerTs(){ try{ return (window.firebase && firebase.firestore && firebase.firestore.FieldValue) ? firebase.firestore.FieldValue.serverTimestamp() : Date.now(); }catch(_){ return Date.now(); } }
@@ -6754,6 +6757,7 @@ function fsFullDoc(e){
   return fsClean(doc);
 }
 function fsChangedSections(e){
+  if(SE_ON) return SE.changedSections(e);
   const pid = fbpPid(e), sl = fsSlice(e.data), last = _fsLocal[pid] || {};
   return FS_SECTIONS.filter(s => last[s] !== JSON.stringify(sl[s] || {}));
 }
@@ -6765,6 +6769,7 @@ function fsChangedSections(e){
    (over-includes) — here a missing baseline means "never pushed by us → nothing unpushed to protect". */
 var _F7_GUARD = true;   /* runtime kill-switch — set false (code or console) to revert to pre-14.61 behavior */
 function fsPendingSections(e){
+  if(SE_ON) return SE.changedSections(e);
   const pid = fbpPid(e); const last = pid && _fsLocal[pid];
   if(!last) return [];
   const sl = fsSlice(e.data);
@@ -6782,6 +6787,7 @@ function fsRememberPushed(e){
 function hhmmss(t){ const d=new Date(t||Date.now()); const p=n=>('0'+n).slice(-2); return p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds()); }
 function _fsShowStat(extra){ var a=[];
   if(_fsStatMode==='saving') a.push('Saving…');
+  else if(_fsStatMode==='uploading') a.push('Uploading files to Drive…');
   else if(_fsStatMode==='waiting') a.push('Waiting for server…');
   else if(_fsStatMode==='update') a.push('Update required — pending changes will be preserved');
   else if(_fsStatMode==='updated') a.push('Updated — all changes synced');
@@ -6793,7 +6799,7 @@ function _fsShowStat(extra){ var a=[];
   if(a.length) setCloudStat(a.join('  ·  ')+'  ·  '+(_gUser||'')); }
 function _fsStampSent(){ _fsLastSent=Date.now(); if(_fsStatMode==='saving') _fsStatMode=''; _fsShowStat(); }
 function _fsStampRecv(){ _fsLastRecv=Date.now(); _fsShowStat(); }
-function _fsHasUnsent(e, pid){ const rec=_fsLocal[pid]||{}; return fsChangedSections(e).length>0 || rec._done!==(e.done?1:0); }
+function _fsHasUnsent(e, pid){ if(SE_ON) return !!(e && e._localNew) || SE.hasUnsent(e); const rec=_fsLocal[pid]||{}; return fsChangedSections(e).length>0 || rec._done!==(e.done?1:0); }
 function _fsScheduleRetry(pid){ clearTimeout(_fsRetryT[pid]); _fsRetryT[pid]=setTimeout(function(){ const e=(typeof fbpEntryByPid==='function'&&fbpEntryByPid(pid))||activeEntry(); if(e) fsPushNow(e).catch(function(){}); }, 4000); }
 
 /* BUILD 16.06 LIVE hotfix (Defect 1): serialized per-pid push that DRAINS until the confirmed
@@ -6823,6 +6829,7 @@ async function fsPushNow(entry){
   if(_fsHasUnsent(e, pid)) _fsScheduleRetry(pid);    /* leftover after a stop → retry later, never lost */
 }
 async function _fsPushPass(e, pid){
+  if(SE_ON) return SE.pushPass(e, pid);   /* BUILD 16.53: the sync engine — field / record level writes, assets via Drive */
   const sl = fsSlice(e.data);
   const rec = _fsLocal[pid] || (_fsLocal[pid] = {});
   const changed = fsChangedSections(e);
@@ -7146,6 +7153,7 @@ function libMerge3(base, local, server){
 }
 async function fsPushLibrary(){
   if(!fsReady() || _libPushing) return;
+  if(SE_ON){ _libDirty = false; try{ _libSigLast = libSig(); }catch(_){} await SE.push(LIB_DOC_ID); return; }   /* BUILD 16.53 */
   const local = { library:{}, cats:{} };
   LIB_GROUPS.forEach(g => { local.library[g.key] = ((db.library&&db.library[g.key])||[]).map(it => ({cat:it.cat||'', name:it.name||'', price:it.price||'', link:it.link||'', grp:it.grp||''})); });
   libCatKeys().forEach(k => { local.cats[k] = (catsOf(k)||[]).slice(); });
@@ -7190,6 +7198,7 @@ async function fsPushLibrary(){
    and we hold NO unconfirmed local edit (`_libDirty`, whose pending transaction will merge instead). */
 function fsApplyLibrary(data){
   if(!data || data.kind !== 'library') return false;
+  if(SE_ON) return SE.applyDoc(LIB_DOC_ID, data);
   if(_libDirty) return false;                    /* unconfirmed local edit pending → our transaction merges it */
   const rrev = data.rev || 0, lrev = db.libRev || 0;
   if(rrev <= lrev) return false;                 /* server counter not newer → keep ours */
@@ -7246,11 +7255,12 @@ function fsOnSnapshot(snap){
       if(!_fsServerSeen && _fsSnapMeta.fromCache) return;   /* before the gate only SERVER data is trusted — a cached copy is neither applied nor used as a base */
       /* BUILD 14.21: the reserved shared-library doc (no pid, kind:'library') — merge it, never as a project */
       if(ch.doc.id === LIB_DOC_ID || (data && data.kind === 'library')){
-        if(ch.type !== 'removed' && fsApplyLibrary(data)) touched = true;   /* newest-wins: adopt the remote library (adds/edits/deletes), no republish */
+        if(ch.type !== 'removed' && (SE_ON ? SE.applyDoc(LIB_DOC_ID, data) : fsApplyLibrary(data))) touched = true;   /* BUILD 16.53: same engine */
         return;
       }
       if(!data || !data.pid) return;
       if(ch.type === 'removed'){ if(fsRemoveLocal(data.pid)) touched = true; return; }
+      if(SE_ON){ const ex = fbpEntryByPid(data.pid); if(!ex){ SE.newProjectFromDoc(data); touched = true; } else if(SE.applyDoc(ex, data)) touched = true; return; }   /* BUILD 16.53 */
       if(fsApplyDoc(data)) touched = true;
     });
     /* DEDUPE (BUILD 14.12): drop any duplicate local entries that share a pid (keep the first) */
@@ -7294,7 +7304,7 @@ function fsOnSnapshot(snap){
     _fsStampRecv();
   }
   _fsApplying = false;
-  fbpMediaSync().catch(function(){});                        /* pull changed photos/docs from Drive */
+  if(!SE_ON) fbpMediaSync().catch(function(){});             /* legacy media channel (off under the v3 engine) */
   _fsShowStat();
 }
 /* BUILD 16.45 — the "kept aside" banner: local section versions that could not be merged automatically */
@@ -7407,6 +7417,7 @@ function _fsConflictBanner(){
 function _fsConflictDrop(pid, s, i){ try{ const arr = _fsConflictsOf(pid)[s]||[]; arr.splice(i,1); if(!arr.length) delete db._fsConflicts[pid][s]; saveState._skipCloud=true; try{ saveState(); }finally{ saveState._skipCloud=false; } _fsConflictBanner(); _fsShowStat(); }catch(_){} }
 function _fsConflictUseMine(pid, s, i){
   try{ const e = fbpEntryByPid(pid); const c = (_fsConflictsOf(pid)[s]||[])[i]; if(!e || !c) return;
+    if(SE_ON){ if(!c.path.length){ e.data[s] = c.local; } else { if(!e.data[s] || typeof e.data[s] !== 'object') e.data[s] = {}; _fsSetPath(e.data[s], c.path, c.local); } saveState(); _fsConflictDrop(pid, s, i); try{ rerenderKeepScroll(); }catch(_){} return; }   /* BUILD 16.53: set the one field in the live state; the engine sends only that field */
     const cur = JSON.parse(JSON.stringify(fsClean(fsSlice(e.data)[s] || {})));
     if(_fsSetPath(cur, c.path, c.local)){ fsApplySection(e.data, s, cur); fsPushNow(e).catch(function(){}); }
     _fsConflictDrop(pid, s, i); try{ rerenderKeepScroll(); }catch(_){} }catch(_){}
@@ -7457,7 +7468,7 @@ async function fsStart(){
      file and never retried until a reload (the "sync only after Ctrl+Shift+R" bug). A steady 12s
      media check makes B converge on its own — cheap: a no-op in-memory loop unless a msig differs. */
   if(_fsMediaTimer){ clearInterval(_fsMediaTimer); }
-  _fsMediaTimer = setInterval(function(){ if(_FS && _cloudOn && _gTok) fbpMediaSync().catch(function(){}); }, 12000);
+  _fsMediaTimer = setInterval(function(){ if(SE_ON){ try{ SE.tick(); }catch(_){} return; } if(_FS && _cloudOn && _gTok) fbpMediaSync().catch(function(){}); }, 12000);   /* BUILD 16.53: engine tick — retry uploads / unsent edits, fetch images */
   try{ accFsEnsureStarted(); }catch(_){}   /* BUILD 15.67: live access_users (roles/permissions) */
   setCloudStat('Firestore ✓ ' + (_gUser || ''));
 }
@@ -10227,9 +10238,7 @@ function projWebPreview(pid, i){
 }
 function projWebDownload(pid, i){
   const p = projById(pid); const f = p && p.web[i]; if(!f) return;
-  const a = document.createElement('a');
-  a.href = f.data; a.download = f.name || 'settings';
-  document.body.appendChild(a); a.click(); a.remove();
+  SE.openAsset(f, 'data', true);   /* BUILD 16.53 */
 }
 function rmProjWeb(pid, i){
   const p = projById(pid); const f = p && p.web[i]; if(!f) return;
@@ -10681,9 +10690,7 @@ function onDocFilePicked(ev){
 function downloadDocFileEntry(id, catKey, i){
   const e = db.projects.find(x=>x.id===id); if(!e) return;
   const f = entryDocFiles(e, catKey)[i]; if(!f) return;
-  const a = document.createElement('a');
-  a.href = f.data; a.download = f.name || 'file';
-  document.body.appendChild(a); a.click(); a.remove();
+  SE.openAsset(f, 'data', true);   /* BUILD 16.53: local bytes if cached, otherwise fetched from the shared Drive file */
 }
 function rmDocFileEntry(id, catKey, i){
   const e = db.projects.find(x=>x.id===id); if(!e) return;
@@ -10809,8 +10816,9 @@ function pageDocumentation(){
             <span style="color:var(--ink2);flex:none">${docFileIcon(f.name)}</span>
             <span style="font-size:12.5px;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(f.name)}">${esc(f.name)}</span>
             <span class="doctag" style="flex:none">#${esc(P.number)}</span>
-            <span style="font-size:11px;color:#9aa2ad;flex:none">${fmtSize(f.size)}${f.added?' · '+esc(f.added):''}</span>
+            <span style="font-size:11px;color:#9aa2ad;flex:none">${fmtSize(f.size)}${f.added?' · '+esc(f.added):''}${(f._a&&f._a.data&&f._a.data.f)?' · <span title="On Google Drive — synced to the team" style="color:#2e9e5b">☁ synced</span>':(SE.isData(f.data)?' · <span title="Uploading to Google Drive…" style="color:#c77d00">⏳ uploading</span>':'')}</span>
             <span style="flex:1"></span>
+            ${(f._a&&f._a.data&&f._a.data.f)?`<a class="mod-btn" style="padding:4px 9px;flex:none;text-decoration:none" title="Open in Google Drive" href="${SE.driveLink(f,'data')}" target="_blank" rel="noopener">Drive</a>`:''}
             <button class="mod-btn primary" style="padding:4px 8px;flex:none" title="Download" onclick="downloadDocFileEntry('${e.id}','${catKey}',${i})">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
             </button>
@@ -11389,9 +11397,10 @@ function domeFsEnsureStarted(){
 }
 function _domeOnSnap(snap){
       const fromServer = !(snap && snap.metadata && snap.metadata.fromCache);
+      try{ _fsSnapMeta = { fromCache: !fromServer, hasPendingWrites: !!(snap && snap.metadata && snap.metadata.hasPendingWrites) }; }catch(_){}   /* BUILD 16.53: the engine takes its confirmed base only from confirmed snapshots */
       if(snap.exists){
-        const dd = snap.data(); const chg = domeFsApplyDoc(dd); saveDomeLib();
-        try{ _domeServerUids = {}; ((dd && dd.domes) || []).forEach(function(d){ if(d && d.domeUid) _domeServerUids[d.domeUid] = 1; }); }catch(_){}
+        const dd = snap.data(); const chg = SE_ON ? SE.applyDoc('dome_library', dd) : domeFsApplyDoc(dd); saveDomeLib();
+        try{ _domeServerUids = {}; if(dd && dd.v3 && dd.v3.domes){ Object.keys(dd.v3.domes).forEach(function(k){ if(k !== '_m') _domeServerUids[k] = 1; }); } ((dd && dd.domes) || []).forEach(function(d){ if(d && d.domeUid) _domeServerUids[d.domeUid] = 1; }); }catch(_){}
         if(chg && location.hash==='#/dome-library' && !isTypingInInput()){ try{ rerenderKeepScroll(); }catch(_){} }   /* BUILD 16.51: only when something actually changed (metadata-only events arrive too now) */
       } else if(fromServer){ _domeServerUids = {}; }
       /* BUILD 16.45: the Dome Library gate — the first SERVER-confirmed snapshot opens it; only then may this machine
@@ -11402,10 +11411,11 @@ function _domeOnSnap(snap){
 /* write the shared dome_library doc, MERGING our cards onto the server's inside a transaction */
 var _domeServerSeen = false, _domePushQueued = false, _domeServerUids = {};
 /* does this machine hold anything the server does not have yet? (new cards, or cards whose doc differs from the confirmed base) */
-function domeLocalAhead(){ try{ const base = domeBaseMap(); return (db.domeLib||[]).some(function(m){ if(!m || !m.domeUid) return false; if(!_domeServerUids[m.domeUid]) return !!m._saved; return !_domeEqj(domeFsModelDoc(m), base[m.domeUid]); }); }catch(_){ return false; } }
+function domeLocalAhead(){ if(SE_ON) return SE.hasUnsent('dome_library'); try{ const base = domeBaseMap(); return (db.domeLib||[]).some(function(m){ if(!m || !m.domeUid) return false; if(!_domeServerUids[m.domeUid]) return !!m._saved; return !_domeEqj(domeFsModelDoc(m), base[m.domeUid]); }); }catch(_){ return false; } }
 async function domeFsPush(){
   if(!domeFsReady()){ setCloudStat('Dome card saved locally — sign in to sync the Dome Library'); return 0; }
   if(!_domeServerSeen){ _domePushQueued = true; setCloudStat('Dome card saved locally — waiting for the server snapshot…'); return 0; }   /* BUILD 16.45: never before the first server snapshot */
+  if(SE_ON){ const n = await SE.push('dome_library'); if(n) setCloudStat('Dome Library synced ✓ · ' + hhmm()); return n; }   /* BUILD 16.53: same engine as projects */
   try{
     const ref = domeFsDocRef();
     let merged = null;
@@ -12558,6 +12568,481 @@ window.addEventListener('error', function(e){
   try{ flashStat('⚠ Error: ' + (e.message||'unknown')); }catch(_){}
 });
 window.addEventListener('hashchange', route);
+/* ===================================================================================================================
+   BUILD 16.53 — SYNC ENGINE v3: ONE engine for every document, section, row, field, photo and file.
+   · Firestore (projects/<doc>.v3) is the single source of truth for fields, rows and file METADATA.
+   · Google Drive holds only the bytes of photos / PDFs / other binaries — one Drive file per asset, in the project's
+     shared folder, so every teammate can open it. No blob: URLs, no <pid>.media.json.
+   · IndexedDB (db) is a cache + durable outbox: an asset whose bytes are not on Drive yet, or a record the server has
+     not ACKed, stays pending across reloads and is retried — it is never a second version of the project.
+   · Shape-agnostic: any array of objects becomes a map of records keyed by a stable id ("_m" marker, "_o" order);
+     any object key holding a data: URL becomes an asset reference {f: driveFileId, n, s, t, h}; everything else is a
+     field. Future modules need NO registration — whatever lives in the project state is synced the same way.
+   · A write touches only the fields / records that changed (FieldPath updates). Never a whole section, never a
+     whole array, never "update failed → full set". A record is removed with a tombstone (_del: true), never by
+     vanishing from an array. 3-way merge (base · local · server) per field on every snapshot; the confirmed base is
+     taken only from server-confirmed snapshots or a real ACK, so a stale computer cannot overwrite newer data.
+   · Registry: SE_DOCS — projects (every e.data key), the Dome Library and the Shared Library go through the same code.
+   =================================================================================================================== */
+var SE_ON = true;
+var SE = (function(){
+  const DIAG = function(m){ try{ fsDiag('[SE] ' + m); }catch(_){ } };
+  const isObj = function(x){ return !!x && typeof x === 'object' && !Array.isArray(x); };
+  const isData = function(v){ return typeof v === 'string' && v.slice(0,5) === 'data:'; };
+  const skipKey = function(k){ return typeof k !== 'string' || k === '' || k.charAt(0) === '_' || /^__.*__$/.test(k); };
+  const cj = function(v){ return _cj(v); };
+  const eq = function(a, b){ return cj(a) === cj(b); };
+  const clone = function(v){ return v === undefined ? undefined : JSON.parse(JSON.stringify(v)); };
+  function djb(s){ let h = 5381; for(let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); }
+  function dataHash(v){ /* cheap content hash of a data: URL (sampled) */ if(!isData(v)) return ''; let s = v.length + ':'; const step = Math.max(1, Math.floor(v.length / 4096)); for(let i = 0; i < v.length; i += step) s += v.charAt(i); return djb(s); }
+  function dataMime(v){ const m = /^data:([^;,]+)/.exec(v || ''); return (m && m[1]) || 'application/octet-stream'; }
+  function dataSize(v){ try{ const i = v.indexOf(','); const b64 = v.slice(i + 1); return Math.floor(b64.length * 3 / 4) - (b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0); }catch(_){ return 0; } }
+
+  /* ---------------- registry ---------------- */
+  const SE_DOCS = {
+    project: {                                   /* projects/<pid> — every key of e.data (minus transient _keys) */
+      col: 'projects',
+      keys: function(e){ const o = {}; Object.keys(emptyState()).forEach(function(k){ o[k] = 1; }); Object.keys(e.data || {}).forEach(function(k){ if(!skipKey(k)) o[k] = 1; }); delete o.ready; return Object.keys(o); },
+      local: function(e){ return e.data; },
+      folder: function(e, path){ return projectAssetFolder(e, path); }
+    },
+    dome_library: { col: 'projects', id: 'dome_library', keys: function(){ return ['domes']; },
+      local: function(){ return { domes: (db.domeLib || []).filter(function(m){ return m && m.domeUid && m._saved !== false && m._saved !== undefined; }) }; },
+      idKey: 'domeUid',
+      write: function(tree){ /* merged tree → db.domeLib; cards never saved to the team stay local */
+        const unsaved = (db.domeLib || []).filter(function(m){ return m && !m._saved; });
+        const next = (tree.domes || []).map(function(d){ if(!d._saved){ d = Object.assign(domeEmptyModel(), d); } d._saved = true; return d; });
+        db.domeLib = next.concat(unsaved.filter(function(u){ return !next.some(function(n){ return n.domeUid === u.domeUid; }); }));
+      }
+    },
+    library: { col: 'projects', id: (typeof LIB_DOC_ID !== 'undefined' ? LIB_DOC_ID : 'library'), keys: function(){ return ['library', 'cats', 'customCats']; },
+      local: function(){ const lib = {}; LIB_GROUPS.forEach(function(g){ lib[g.key] = ((db.library && db.library[g.key]) || []).filter(function(it){ return it && String(it.name || '').trim(); }); }); const cats = {}; try{ libCatKeys().forEach(function(k){ cats[k] = (catsOf(k) || []).slice(); }); }catch(_){} return { library: lib, cats: cats, customCats: db.customCats || {} }; },
+      write: function(tree){ const blanks = {}; LIB_GROUPS.forEach(function(g){ blanks[g.key] = ((db.library && db.library[g.key]) || []).filter(function(it){ return it && !String(it.name || '').trim(); }); });
+        const lib = emptyLibrary(); LIB_GROUPS.forEach(function(g){ lib[g.key] = ((tree.library && tree.library[g.key]) || []).concat(blanks[g.key] || []); }); db.library = lib;
+        if(tree.customCats && isObj(tree.customCats)) db.customCats = tree.customCats;
+        try{ if(tree.cats && isObj(tree.cats)){ db.cats = (db.cats && typeof db.cats === 'object') ? db.cats : {}; Object.keys(tree.cats).forEach(function(k){ if(Array.isArray(tree.cats[k])) db.cats[k] = tree.cats[k].map(String); }); } }catch(_){}
+        try{ normalizeSort(); }catch(_){} try{ _libSigLast = libSig(); }catch(_){}
+      }
+    }
+  };
+  function docKind(id){ return id === 'dome_library' ? 'dome_library' : id === SE_DOCS.library.id ? 'library' : 'project'; }
+  function docIdOf(e){ return typeof e === 'string' ? e : fbpPid(e); }
+  function stateOf(){ if(!db._se || typeof db._se !== 'object') db._se = { base: {}, pendDel: {} }; if(!db._se.base) db._se.base = {}; if(!db._se.pendDel) db._se.pendDel = {}; return db._se; }
+  function baseOf(id){ return stateOf().base[id]; }
+  function setBase(id, tree){ stateOf().base[id] = tree; }
+
+  /* ---------------- ids ---------------- */
+  function idKeyOf(arr, kind){ if(kind === 'dome_library' && arr.some(function(x){ return x && x.domeUid; })) return 'domeUid'; return 'id'; }
+  function recId(x, ik){ return (x && x[ik] !== undefined && x[ik] !== null && String(x[ik]) !== '') ? String(x[ik]) : ''; }
+  function recHash(x, i){ /* deterministic id for a legacy record (same content + position on every machine) */ const o = {}; Object.keys(x).forEach(function(k){ if(skipKey(k)) return; const v = x[k]; o[k] = isData(v) ? ('data#' + dataHash(v)) : v; }); return 'm' + djb(cj(o) + '|' + i); }
+  function ensureIds(arr, ik, det){ const seen = {}; arr.forEach(function(x, i){ if(!isObj(x)) return; if(!recId(x, ik) || seen[recId(x, ik)]){ x[ik] = det ? recHash(x, i) : newId(); } seen[recId(x, ik)] = 1; }); }
+
+  /* ---------------- local tree → wire tree ---------------- */
+  /* returns the wire form; records waiting for a Drive upload are LEFT OUT (they do not exist for the server yet) */
+  function toWire(v, kind, det, pending, path){
+    if(Array.isArray(v)){
+      if(v.length && v.every(function(x){ return isObj(x); })){
+        const ik = idKeyOf(v, kind); ensureIds(v, ik, det);
+        const out = { _m: 1 }; v.forEach(function(x, i){ const id = recId(x, ik); if(!id) return; const w = toWire(x, kind, det, pending, path.concat([id])); if(w === undefined) return; w._o = i; out[id] = w; });
+        return out;
+      }
+      if(!v.length) return [];
+      return clone(v);                                           /* array of primitives → one field */
+    }
+    if(isObj(v)){
+      const out = {}; let waiting = false;
+      Object.keys(v).forEach(function(k){
+        if(skipKey(k)) return; const x = v[k];
+        if(isData(x)){                                           /* binary → asset reference */
+          const a = (v._a && v._a[k]) || null; const h = (a && a.ph) ? a.h : dataHash(x);
+          if(a && a.f && (a.ph || a.h === h)){ out[k] = { _f: a.f, n: a.n || v.name || k, s: a.s || dataSize(x), t: a.t || dataMime(x), h: a.h }; }
+          else { waiting = true; if(pending) pending.push({ path: path, obj: v, key: k }); }
+          return;
+        }
+        if(x === undefined || typeof x === 'function') return;
+        const w = toWire(x, kind, det, pending, path.concat([k])); if(w !== undefined) out[k] = w;
+      });
+      if(waiting && isAssetRecord(v)) return undefined;        /* a photo / document record waits as a whole until its bytes are on Drive */
+      return out;
+    }
+    return v === undefined ? undefined : v;
+  }
+  function isAssetRecord(v){ /* {name,size,type,data} / {src,name,caption} … — every binary-holding record */ return isObj(v) && Object.keys(v).some(function(k){ return isData(v[k]); }) && (v.name !== undefined || v.src !== undefined || v.data !== undefined); }
+
+  /* ---------------- wire tree → local tree (merging INTO the existing local objects, keeping bytes) ---------------- */
+  function isMap(w){ return isObj(w) && w._m === 1; }
+  function fromWire(w, local, kind, path){
+    if(isMap(w)){
+      const ik = (kind === 'dome_library' && path.length === 1) ? 'domeUid' : (Array.isArray(local) && local.length && local.every(function(x){ return isObj(x); })) ? idKeyOf(local, kind) : 'id';
+      const byId = {}; (Array.isArray(local) ? local : []).forEach(function(x){ if(isObj(x)){ const id = recId(x, ik); if(id) byId[id] = x; } });
+      const ids = Object.keys(w).filter(function(k){ return k !== '_m' && !w[k]._del; });
+      ids.sort(function(a, b){ const oa = w[a]._o || 0, ob = w[b]._o || 0; return oa - ob || (a < b ? -1 : a > b ? 1 : 0); });
+      const out = ids.map(function(id){ const rec = fromWire(w[id], byId[id] || {}, kind, path.concat([id])); if(!recId(rec, ik)) rec[ik] = id; return rec; });
+      /* records that exist only locally because their bytes are still uploading: keep them (at their old position) */
+      (Array.isArray(local) ? local : []).forEach(function(x, i){ if(!isObj(x)) return; const id = recId(x, ik); if(id && w[id] === undefined && hasPendingBinary(x)){ out.splice(Math.min(i, out.length), 0, x); } });
+      return out;
+    }
+    if(isObj(w)){
+      if(w._f !== undefined && typeof w._f === 'string' && Object.keys(w).every(function(k){ return ['_f','n','s','t','h'].indexOf(k) >= 0; })) return w;   /* asset ref handled by the parent */
+      const tgt = isObj(local) ? local : {};
+      Object.keys(w).forEach(function(k){
+        if(k === '_o' || k === '_del') return; const x = w[k];
+        if(isObj(x) && typeof x._f === 'string' && Object.keys(x).every(function(kk){ return ['_f','n','s','t','h'].indexOf(kk) >= 0; })){
+          tgt._a = tgt._a || {}; const cur = tgt._a[k];
+          if(!cur || cur.f !== x._f || cur.h !== x.h){ tgt._a[k] = { f: x._f, n: x.n, s: x.s, t: x.t, h: x.h, ph: !(isData(tgt[k]) && dataHash(tgt[k]) === x.h) }; if(tgt._a[k].ph){ tgt[k] = placeholderFor(x.t, x.n); } }
+          return;
+        }
+        tgt[k] = fromWire(x, tgt[k], kind, path.concat([k]));
+      });
+      Object.keys(tgt).forEach(function(k){ if(skipKey(k)) return; if(w[k] === undefined && !isData(tgt[k])) delete tgt[k]; });   /* a key the server no longer has */
+      return tgt;
+    }
+    return w;
+  }
+  function hasPendingBinary(x){ return isObj(x) && Object.keys(x).some(function(k){ if(!isData(x[k])) return false; const a = x._a && x._a[k]; return !(a && a.f && (a.ph || a.h === dataHash(x[k]))); }); }
+  const PH_IMG = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="90"><rect width="120" height="90" fill="#e6e8ec"/><text x="60" y="50" font-family="Arial" font-size="11" text-anchor="middle" fill="#8a8f99">loading…</text></svg>');
+  const PH_BIN = 'data:application/octet-stream;base64,';
+  function placeholderFor(mime, name){ return /^image\//.test(mime || '') ? PH_IMG : PH_BIN; }   /* a stand-in until the bytes are fetched: images show a grey tile, documents are fetched on demand */
+
+  /* ---------------- diff (base wire → local wire) → FieldPath updates ---------------- */
+  function diff(b, l, path, out, pendDel){
+    if(isMap(l) || isMap(b)){
+      const L = isMap(l) ? l : { _m: 1 }, B = isMap(b) ? b : {};
+      if(!isMap(b)){ out.push({ p: path, v: L }); return; }           /* the list did not exist yet → the whole map (small: ids + fields) */
+      Object.keys(L).forEach(function(id){ if(id === '_m') return; if(B[id] === undefined || B[id]._del){ out.push({ p: path.concat([id]), v: L[id] }); } else diff(B[id], L[id], path.concat([id]), out, pendDel); });
+      Object.keys(B).forEach(function(id){ if(id === '_m' || B[id]._del) return; if(L[id] === undefined){ out.push({ p: path.concat([id, '_del']), v: true }); if(pendDel) pendDel[path.concat([id]).join('/')] = 1; } });
+      return;
+    }
+    if(isObj(l) && isObj(b) && l._f === undefined && b._f === undefined){
+      const keys = {}; Object.keys(l).forEach(function(k){ keys[k] = 1; }); Object.keys(b).forEach(function(k){ keys[k] = 1; });
+      Object.keys(keys).forEach(function(k){
+        if(l[k] === undefined){ out.push({ p: path.concat([k]), v: '__DELETE__' }); return; }
+        if(b[k] === undefined){ out.push({ p: path.concat([k]), v: l[k] }); return; }
+        diff(b[k], l[k], path.concat([k]), out, pendDel);
+      });
+      return;
+    }
+    if(Array.isArray(b) && Array.isArray(l) && b.every(function(x){ return !isObj(x); }) && l.every(function(x){ return !isObj(x); })){   /* lists of primitives: server-side arrayUnion / arrayRemove — two machines adding at once both land */
+      const has = function(arr, x){ return arr.some(function(y){ return y === x; }); };
+      const added = l.filter(function(x){ return !has(b, x); }), removed = b.filter(function(x){ return !has(l, x); });
+      if(added.length) out.push({ p: path, union: added });
+      if(removed.length) out.push({ p: path, remove: removed });
+      return;
+    }
+    if(!eq(b, l)) out.push({ p: path, v: l });
+  }
+  function applyOps(tree, ops){ /* base := base + what we sent */ ops.forEach(function(op){ let cur = tree; for(let i = 0; i < op.p.length - 1; i++){ const k = op.p[i]; if(!isObj(cur[k])) cur[k] = {}; cur = cur[k]; } const last = op.p[op.p.length - 1];
+    if(op.union){ const arr = Array.isArray(cur[last]) ? cur[last] : []; op.union.forEach(function(x){ if(arr.indexOf(x) < 0) arr.push(x); }); cur[last] = arr; return; }
+    if(op.remove){ cur[last] = (Array.isArray(cur[last]) ? cur[last] : []).filter(function(x){ return op.remove.indexOf(x) < 0; }); return; }
+    if(op.v === '__DELETE__') delete cur[last]; else cur[last] = clone(op.v); }); return tree; }
+  function opValue(op){ try{ const FV = firebase.firestore.FieldValue; if(op.union) return FV.arrayUnion.apply(FV, op.union); if(op.remove) return FV.arrayRemove.apply(FV, op.remove); }catch(_){} if(op.union) return op.union; if(op.remove) return []; return op.v === '__DELETE__' ? DEL() : op.v; }
+
+  /* ---------------- 3-way merge of wire trees ---------------- */
+  function merge(b, l, s, path, ctx){
+    if(s === undefined) return l;
+    if(l === undefined) return s;
+    if(isMap(s) || isMap(l)){
+      const L = isMap(l) ? l : { _m: 1 }, S = isMap(s) ? s : { _m: 1 }, B = isMap(b) ? b : { _m: 1 };
+      const out = { _m: 1 }; const ids = {}; Object.keys(L).forEach(function(k){ ids[k] = 1; }); Object.keys(S).forEach(function(k){ ids[k] = 1; }); delete ids._m;
+      Object.keys(ids).forEach(function(id){
+        const sl = S[id], ll = L[id], bl = B[id]; const key = path.concat([id]).join('/');
+        if(sl && sl._del){ out[id] = sl; return; }                       /* tombstone on the server → gone everywhere */
+        if(ll && !sl){ if(bl && !bl._del && !ctx.pendingLocal){ /* was confirmed on the server and is not there now: someone removed it without a tombstone (legacy) → honour */ return; } out[id] = ll; return; }
+        if(sl && !ll){ if(bl && !bl._del){ out[id] = { _del: true, _o: sl._o }; return; }   /* we removed it; the tombstone is on its way */ out[id] = sl; return; }
+        const m = merge(bl, ll, sl, path.concat(['#' + id]), ctx); if(m && m._o === undefined && sl._o !== undefined) m._o = sl._o; out[id] = m;
+      });
+      return out;
+    }
+    if(isObj(s) && isObj(l) && s._f === undefined && l._f === undefined){
+      const B = isObj(b) ? b : {}; const out = {}; const keys = {}; Object.keys(l).forEach(function(k){ keys[k] = 1; }); Object.keys(s).forEach(function(k){ keys[k] = 1; }); Object.keys(B).forEach(function(k){ keys[k] = 1; });
+      Object.keys(keys).forEach(function(k){
+        const sv = s[k], lv = l[k], bv = B[k];
+        if(sv === undefined && lv === undefined) return;
+        if(sv === undefined){ if(bv !== undefined && eq(lv, bv)) return; out[k] = lv; return; }   /* server dropped a key we never changed → drop; else keep ours */
+        if(lv === undefined){ if(bv !== undefined && eq(sv, bv)) return; out[k] = sv; return; }   /* we dropped a key the server did not change → stays dropped */
+        const m = merge(bv, lv, sv, path.concat([k]), ctx); if(m !== undefined) out[k] = m;
+      });
+      return out;
+    }
+    if(eq(l, s)) return s;
+    if(Array.isArray(l) && Array.isArray(s) && l.every(function(x){ return !isObj(x); }) && s.every(function(x){ return !isObj(x); })){   /* lists of primitives (categories, tags…) merge as SETS */
+      const B = Array.isArray(b) ? b : []; const key = function(x){ return String(x).toLowerCase(); };
+      const has = function(arr, x){ return arr.some(function(y){ return key(y) === key(x); }); };
+      const res = s.filter(function(x){ return !(has(B, x) && !has(l, x)); });              /* our removals (in base, not in local) */
+      l.forEach(function(x){ if(!has(res, x) && !(has(B, x) && !has(s, x))) res.push(x); });  /* our additions (not in base) */
+      return res;
+    }
+    if(b !== undefined && eq(l, b)) return s;                            /* we did not touch it */
+    if(b !== undefined && eq(s, b)) return l;                            /* server did not touch it → ours (pending push) */
+    /* changed on both sides (or no base): the user who is editing right now keeps the field; otherwise the server wins and
+       the local value is recorded as a per-field conflict (both versions kept, decided in the conflict bar) */
+    if(ctx.recent) return l;
+    ctx.conflicts.push({ path: path, local: l, server: s });
+    return s;
+  }
+
+  /* ---------------- FieldPath helpers ---------------- */
+  function FP(parts){ try{ const F = firebase.firestore.FieldPath; return new (Function.prototype.bind.apply(F, [null].concat(parts)))(); }catch(_){ return parts.join('.'); } }
+  function DEL(){ try{ return firebase.firestore.FieldValue.delete(); }catch(_){ return null; } }
+
+  /* ---------------- assets: upload pending bytes to Drive, fetch missing images ---------------- */
+  const PHOTO_DIR_BY_KEY = (function(){ const o = {}; try{ PHOTO_DIRS.forEach(function(p){ o[p[0]] = p[1]; }); }catch(_){} return o; })();
+  function projectAssetFolder(e, path){
+    /* Photos/<Dir> for photo lists, Documentation/<Category> for documents, Files/<section> otherwise */
+    const s = path[0] || 'files';
+    if(s === 'docs' && path[1] === 'files') return ['Documentation', docCatLabel(path[2] || '')];
+    if(s === 'docs' && path[1] === 'sitePh') return ['Photos', 'Site'];
+    if(path.indexOf('frontPh') >= 0) return ['Photos', 'Rack Front']; if(path.indexOf('rearPh') >= 0) return ['Photos', 'Rack Rear'];
+    if(s === 'dome' && path[1] === 'ballast') return ['Photos', 'Ballast Plates'];
+    if(s === 'shipping' && path[1] === 'palletPhotos') return ['Photos', 'Pallet ' + (path[2] || '')];
+    if(s === 'shipping' && path[1] === 'docs') return ['Documentation', 'Shipping Documents'];
+    if(s === 'projectors') return (path[1] === 'models') ? ['Photos', 'Projectors'] : ['Files', 'Projectors'];
+    if(path[1] === 'photos' && PHOTO_DIR_BY_KEY[s]) return ['Photos', PHOTO_DIR_BY_KEY[s]];
+    if(s === 'contentList') return ['Documentation', 'Content List'];
+    return ['Files', s];
+  }
+  const _folderCache = {};
+  async function ensureFolderPath(e, parts){
+    const pid = fbpPid(e); const key = pid + '|' + parts.join('/');
+    if(_folderCache[key]) return _folderCache[key];
+    let fid = await fbpBrowseFolder(e); if(!fid) throw new Error('no project folder');
+    for(const p of parts){ if(!p) continue; fid = await driveEnsureFolder(p, fid); }
+    _folderCache[key] = fid; return fid;
+  }
+  function pendingUploads(e){ const out = []; const kind = docKind(docIdOf(e)); const local = SE_DOCS[kind].local(e); toWire(local, kind, false, out, []); return out; }
+  var _upBusy = {}, _upFails = {}, _upNext = {};
+  async function uploadPending(e){
+    const id = docIdOf(e); if(_upBusy[id]) return false; if(!(_cloudOn && _gTok)) return false;
+    const jobs = pendingUploads(e); if(!jobs.length) return false;
+    if(_upNext[id] && Date.now() < _upNext[id]){ _fsStatMode = 'saving'; return false; }   /* back-off after failures (5 s → 10 → 20 … max 60 s) */
+    _upBusy[id] = true; let n = 0, fail = 0;
+    try{
+      for(const j of jobs){
+        const v = j.obj[j.key]; if(!isData(v)) continue;
+        const name = String(j.obj.name || j.obj.n || (j.key + '-' + Date.now())).replace(/[\/\\:*?"<>|]/g, '-') || 'file';
+        const mime = j.obj.type || dataMime(v);
+        try{
+          _fsSetStat('uploading'); setCloudStat('Uploading ' + name + ' (' + (n + 1) + '/' + jobs.length + ')…');
+          const kind = docKind(id); const folderParts = SE_DOCS[kind].folder ? SE_DOCS[kind].folder(e, j.path) : ['Files'];
+          const folderId = await ensureFolderPath(e, folderParts);
+          const ex = await driveFindFile(name, folderId).catch(function(){ return null; });
+          const fid = await driveUpload(name, folderId, dataUrlToBytes(v), mime, ex || undefined);
+          if(!fid) throw new Error('no file id');
+          j.obj._a = j.obj._a || {}; j.obj._a[j.key] = { f: fid, n: name, s: dataSize(v), t: mime, h: dataHash(v), ph: false };
+          j.obj.by = _gUser || ''; j.obj.ts = Date.now(); n++;
+          saveState._skipCloud = true; try{ saveState(); }finally{ saveState._skipCloud = false; }
+        }catch(err){ fail++; DIAG('upload failed: ' + name + ' — ' + (err && err.message || err)); }
+      }
+    } finally { _upBusy[id] = false; }
+    if(fail){ _upFails[id] = (_upFails[id] || 0) + 1; _upNext[id] = Date.now() + Math.min(60000, 5000 * Math.pow(2, _upFails[id] - 1)); setCloudStat('⚠ ' + fail + ' file' + (fail === 1 ? '' : 's') + ' did not upload to Drive — will retry'); } else { _upFails[id] = 0; _upNext[id] = 0; }
+    if(_fsStatMode === 'uploading') _fsStatMode = pendingUploads(e).length ? 'saving' : '';   /* files still waiting → never "Saved" */
+    return n > 0;
+  }
+  var _fetchQ = [], _fetchBusy = 0;
+  function scheduleFetches(e){
+    const kind = docKind(docIdOf(e)); const local = SE_DOCS[kind].local(e);
+    walk(local, function(obj){ if(!obj._a) return; Object.keys(obj._a).forEach(function(k){ const a = obj._a[k]; if(a && a.f && a.ph && /^image\//.test(a.t || '') && !a.q){ a.q = 1; _fetchQ.push({ obj: obj, key: k, a: a }); } }); });
+    pumpFetch();
+  }
+  function walk(v, fn){ if(Array.isArray(v)) v.forEach(function(x){ walk(x, fn); }); else if(isObj(v)){ fn(v); Object.keys(v).forEach(function(k){ if(!skipKey(k)) walk(v[k], fn); }); } }
+  function pumpFetch(){
+    while(_fetchBusy < 2 && _fetchQ.length){
+      const j = _fetchQ.shift(); _fetchBusy++;
+      fetchDataUrl(j.a.f).then(function(du){ if(du){ j.obj[j.key] = du; j.a.ph = false; j.a.h = dataHash(du); saveState._skipCloud = true; try{ saveState(); }finally{ saveState._skipCloud = false; } _rerender(); } })
+        .catch(function(){}).then(function(){ delete j.a.q; _fetchBusy--; pumpFetch(); });
+    }
+  }
+  async function fetchDataUrl(fileId){
+    if(!(_cloudOn && _gTok)) return null;
+    const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media&supportsAllDrives=true');
+    const blob = await r.blob();
+    return await new Promise(function(res, rej){ const rd = new FileReader(); rd.onload = function(){ res(rd.result); }; rd.onerror = rej; rd.readAsDataURL(blob); });
+  }
+  /* open / download an asset record's bytes (local cache first, Drive otherwise); key = the binary key ('data' / 'src') */
+  async function openAsset(rec, key, download){
+    key = key || 'data';
+    const a = rec && rec._a && rec._a[key];
+    let url = null, revoke = false;
+    if(isData(rec[key]) && !(a && a.ph)) url = rec[key];
+    else if(a && a.f){ try{ setCloudStat('Fetching ' + (a.n || rec.name || 'file') + ' from Drive…'); const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + a.f + '?alt=media&supportsAllDrives=true'); const blob = await r.blob(); url = URL.createObjectURL(blob); revoke = true; }catch(err){ alert('Could not fetch the file from Google Drive: ' + (err && err.message || err) + '\n\nOpen it in Drive instead: ' + driveLink(rec, key)); return false; } }
+    if(!url) return false;
+    const el = document.createElement('a'); el.href = url; if(download !== false) el.download = rec.name || (a && a.n) || 'file'; else el.target = '_blank';
+    document.body.appendChild(el); el.click(); el.remove(); if(revoke) setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
+    _fsShowStat(); return true;
+  }
+  function driveLink(rec, key){ const a = rec && rec._a && rec._a[key || 'data']; return a && a.f ? ('https://drive.google.com/file/d/' + a.f + '/view') : ''; }
+
+  /* ---------------- push ---------------- */
+  function hasUnsent(e){
+    try{ const id = docIdOf(e); if(!id) return false; const kind = docKind(id); const base = baseOf(id); if(!base) return e && e.data && !!e._localNew;
+      const pend = []; const L = toWire(SE_DOCS[kind].local(e), kind, false, pend, []); if(pend.length) return true;
+      const ops = []; diff(base, L, [], ops, null); return ops.length > 0; }catch(_){ return false; }
+  }
+  function changedSections(e){
+    try{ const id = docIdOf(e); const kind = docKind(id); const base = baseOf(id); if(!base) return [];
+      const L = toWire(SE_DOCS[kind].local(e), kind, false, [], []); const ops = []; diff(base, L, [], ops, null);
+      const s = {}; ops.forEach(function(o){ s[o.p[0]] = 1; }); return Object.keys(s); }catch(_){ return []; }
+  }
+  async function pushPass(e, pid){
+    const id = docIdOf(e); const kind = docKind(id); const ref = _fsCol.doc(id);
+    if(stateOf().migrate && stateOf().migrate[id]){ await migrateDoc(e, id, kind); return { ok: true }; }
+    try{ await uploadPending(e); }catch(_){}
+    const base = baseOf(id);
+    if(!base){
+      if(kind === 'project' && e._localNew){                           /* brand-new project → create the document (this is a create, not a fallback) */
+        const L = toWire(SE_DOCS[kind].local(e), kind, false, [], []);
+        const doc = { pid: pid, proto: FS_PROTO, wstamp: _fsServerTs(), updatedBy: _gUser || '', bucket: projBucketOf(e), done: !!e.done, doneAt: e.doneAt || 0, revs: {}, v3: L };
+        await ref.set(doc); setBase(id, clone(L)); e._fbSeen = true; delete e._localNew; persist(); _fsStampSent(); return { ok: true };
+      }
+      if(kind !== 'project'){                                           /* shared docs (Dome Library / Shared Library): create when the server has none, else adopt the server copy first */
+        let created = null, found = null;
+        await _fsDb.runTransaction(async function(tx){                  /* create-if-absent inside a transaction: two machines can never both create it */
+          const snap = await tx.get(ref); created = null; found = null;
+          if(snap.exists){ found = snap.data(); return; }
+          const L = toWire(SE_DOCS[kind].local(e), kind, false, [], []);
+          tx.set(ref, { kind: kind === 'library' ? 'library' : 'dome_library', proto: FS_PROTO, wstamp: _fsServerTs(), updatedBy: _gUser || '', rev: 1, v3: L }); created = L;
+        });
+        if(created){ setBase(id, clone(created)); persist(); _fsStampSent(); return { ok: true }; }
+        const prev = _fsSnapMeta; _fsSnapMeta = { fromCache: false, hasPendingWrites: false }; try{ applyDoc(id, found); } finally { _fsSnapMeta = prev; }
+        if(!baseOf(id)) return { ok: true };                               /* legacy doc → migration is queued by applyDoc */
+        return pushPass(e, pid);
+      }
+      return { ok: true };                                              /* nothing confirmed yet → the first snapshot will set the base */
+    }
+    const pend = []; const L = toWire(SE_DOCS[kind].local(e), kind, false, pend, []);
+    const ops = []; const pendDel = stateOf().pendDel[id] || (stateOf().pendDel[id] = {}); diff(base, L, [], ops, pendDel);
+    const metaOps = [];
+    if(kind === 'project'){ const b = stateOf().meta && stateOf().meta[id] || {}; const m = { done: !!e.done, doneAt: e.doneAt || 0, bucket: projBucketOf(e) }; Object.keys(m).forEach(function(k){ if(b[k] !== m[k]) metaOps.push([k, m[k]]); }); }
+    const stillUploading = pendingUploads(e).length > 0;
+    if(!ops.length && !metaOps.length) return { ok: !stillUploading };
+    const CH = 400; const chunks = []; { let cur = [], seen = {}; ops.forEach(function(op){ const key = op.p.join('/'); if(cur.length >= CH || seen[key]){ chunks.push(cur); cur = []; seen = {}; } cur.push(op); seen[key] = 1; }); chunks.push(cur); }   /* one write may name a path only once */
+    for(let i = 0; i < chunks.length; i++){
+      const part = chunks[i]; const args = [];
+      part.forEach(function(op){ args.push(FP(['v3'].concat(op.p)), opValue(op)); });
+      args.push('proto', FS_PROTO, 'wstamp', _fsServerTs(), 'updatedBy', _gUser || '');
+      if(i === 0 && kind === 'project'){ args.push('pid', pid); metaOps.forEach(function(m){ args.push(m[0], m[1]); }); }
+      try{ await ref.update.apply(ref, args); }
+      catch(err){
+        if(err && (err.code === 'not-found' || /No document to update/i.test(err.message || ''))){ DIAG('document ' + id + ' is gone on the server — nothing is re-created'); return { ok: true }; }
+        throw err;                                                      /* transient / permission → stays queued, retried; never a full set */
+      }
+      applyOps(baseOf(id), part); part.forEach(function(op){ if(op.p[op.p.length - 1] === '_del') delete pendDel[op.p.slice(0, -1).join('/')]; });
+    }
+    if(kind === 'project'){ stateOf().meta = stateOf().meta || {}; stateOf().meta[id] = { done: !!e.done, doneAt: e.doneAt || 0, bucket: projBucketOf(e) }; }
+    persist(); if(typeof e === 'object'){ e._fbSeen = true; delete e._localNew; } if(!stillUploading) _fsStampSent();
+    return { ok: !stillUploading };                                     /* files still waiting for Drive → "Saving…" stays, retried */
+  }
+  function persist(){ try{ const _sk = saveState._skipCloud; saveState._skipCloud = true; saveState(); saveState._skipCloud = _sk; }catch(_){} }
+  async function push(idOrE){ const e = typeof idOrE === 'string' ? idOrE : idOrE; if(typeof e === 'string'){ /* dome / library docs */ if(!fsReady()) return 0; try{ await pushPass(e, e); return 1; }catch(err){ DIAG('push ' + e + ' failed: ' + (err && err.message || err)); setCloudStat('⚠ Sync failed: ' + (err && err.message || err)); setTimeout(function(){ push(e); }, 8000); return 0; } } return fsPushNow(e); }
+
+  /* ---------------- migration of a legacy (pre-v3) document ---------------- */
+  function legacyToTree(kind, data){
+    if(kind === 'project'){ const d = emptyState(); FS_SECTIONS.forEach(function(s){ if(data[s] !== undefined) try{ fsApplySection(d, s, data[s]); }catch(_){} }); if(!d.project) d.project = {}; d.project.pid = data.pid; return d; }
+    if(kind === 'dome_library') return { domes: (data.domes || []).filter(function(m){ return m && m.domeUid; }) };
+    return { library: data.library || {}, cats: data.cats || {}, customCats: data.customCats || {} };
+  }
+  async function migrateDoc(e, id, kind){
+    const ref = _fsCol.doc(id);
+    let won = false, serverTree = null;
+    await _fsDb.runTransaction(async function(tx){
+      const snap = await tx.get(ref); const data = (snap.exists && snap.data()) || {};
+      if(data.v3){ serverTree = data.v3; return; }                      /* another machine migrated first → we only adopt */
+      const tree = toWire(legacyToTree(kind, data), kind, true, [], []);  /* deterministic ids: every machine derives the same ids for the same rows */
+      serverTree = tree; won = true;
+      tx.update(ref, { v3: tree, proto: FS_PROTO, wstamp: _fsServerTs(), updatedBy: _gUser || '' });
+    });
+    if(stateOf().migrate) delete stateOf().migrate[id];
+    DIAG('migrated ' + id + (won ? ' (written by this machine)' : ' (adopted)'));
+    setBase(id, clone(serverTree)); persist();
+    if(won) try{ fsDiag('v3 written for ' + id); }catch(_){}
+    /* our local differences versus the confirmed tree are ordinary pending edits now */
+    setTimeout(function(){ try{ if(kind === 'project') fsPushNow(e).catch(function(){}); else push(id); }catch(_){} }, 200);
+  }
+
+  /* ---------------- apply an incoming document ---------------- */
+  var _rerenderT = null;
+  function _rerender(){ if(_rerenderT) return; _rerenderT = setTimeout(function(){ _rerenderT = null; try{ if(!onProjectFormPage()) rerenderKeepScroll(); renderHeader(); renderSideProject(); }catch(_){} try{ if(typeof _domeOpenChanged !== 'undefined' && _domeOpenChanged) domeRefreshOpenIfChanged(); }catch(_){} }, 60); }
+  function applyDoc(idOrE, data){
+    const e = (typeof idOrE === 'string') ? idOrE : idOrE; const id = docIdOf(e); const kind = docKind(id);
+    if(!data) return false;
+    const confirmed = _fsSnapConfirmed();
+    if(!data.v3){                                                      /* legacy document → the confirmed legacy content becomes the base; migration runs after the gate */
+      const legacyTree = toWire(legacyToTree(kind, data), kind, true, [], []);
+      if(!baseOf(id)){
+        /* local legacy rows get the same deterministic ids, so unchanged rows line up with the server's */
+        const local = SE_DOCS[kind].local(e);
+        const lb = legacyBaseTree(e, id, kind);
+        const ctx = { conflicts: [], recent: false, pendingLocal: !lb };
+        const merged = merge(lb, toWire(local, kind, true, [], []), legacyTree, [], ctx);
+        writeLocal(e, kind, merged, []);
+        if(confirmed){ setBase(id, clone(legacyTree)); stateOf().migrate = stateOf().migrate || {}; stateOf().migrate[id] = 1; persist(); if(kind === 'project') _fsGateQ[fbpPid(e)] = true; else queueNonProject(id); }
+        recordConflicts(id, kind, ctx.conflicts);
+        _rerender(); return true;
+      }
+      return false;
+    }
+    const S = data.v3; let B = baseOf(id); let det = !B;
+    if(!B){ B = legacyBaseTree(e, id, kind); }                           /* first contact with v3: the last confirmed legacy content (if any) is the base */
+    const local = SE_DOCS[kind].local(e); const pend = []; const L = toWire(local, kind, det, pend, []);
+    const recent = (typeof e === 'object' && e._dirtyAt && (Date.now() - e._dirtyAt) < 4000);
+    const ctx = { conflicts: [], recent: !!recent, pendingLocal: !B };
+    const M = merge(B, L, S, [], ctx);
+    const changed = !eq(M, L);
+    if(changed) writeLocal(e, kind, M, []);
+    if(confirmed){ setBase(id, clone(S)); if(kind === 'project'){ stateOf().meta = stateOf().meta || {}; stateOf().meta[id] = { done: !!data.done, doneAt: data.doneAt || 0, bucket: data.bucket || '' }; } }
+    if(kind === 'project' && typeof e === 'object'){ if(!!data.done !== !!e.done){ if(data.done){ e.done = true; e.doneAt = data.doneAt || Date.now(); } else { delete e.done; delete e.doneAt; } } if(data.browseFid) e._browseFid = data.browseFid; e._fbSeen = true; }
+    recordConflicts(id, kind, ctx.conflicts);
+    if(!B || !eq(M, S)){ /* we hold additions / pending edits → push after the gate */ if(kind === 'project') { if(_fsServerSeen) setTimeout(function(){ fsPushNow(e).catch(function(){}); }, 150); else _fsGateQ[fbpPid(e)] = true; } else queueNonProject(id); }
+    persist();
+    try{ scheduleFetches(e); }catch(_){}
+    if(changed) _rerender();
+    return changed;
+  }
+  function queueNonProject(id){ if(id === 'dome_library'){ if(_domeServerSeen) setTimeout(function(){ push(id); }, 300); else _domePushQueued = true; } else { setTimeout(function(){ push(id); }, 300); } }
+  function legacyBaseTree(e, id, kind){
+    if(kind !== 'project') return undefined;
+    try{ const bv = db._fsBaseVal && db._fsBaseVal[id]; if(!bv) return undefined; const d = emptyState(); Object.keys(bv).forEach(function(s){ try{ fsApplySection(d, s, bv[s]); }catch(_){} }); return toWire(d, kind, true, [], []); }catch(_){ return undefined; }
+  }
+  function writeLocal(e, kind, M, path){
+    if(kind === 'project'){
+      const d = e.data; const keys = {}; Object.keys(M).forEach(function(k){ keys[k] = 1; });
+      Object.keys(keys).forEach(function(k){ if(k === '_m') return; const cur = d[k]; const nv = fromWire(M[k], cur, kind, [k]); if(k === 'project'){ d.project = Object.assign(d.project || {}, nv); } else d[k] = nv; });
+      try{ if(typeof camRepairCases === 'function') camRepairCases(); }catch(_){}
+      return;
+    }
+    const tree = fromWire(M, SE_DOCS[kind].local(e), kind, []);
+    if(kind === 'dome_library'){ const open = (typeof _domeEditId !== 'undefined') ? _domeEditId : null; const before = open ? cj(toWire({ domes: (db.domeLib || []).filter(function(m){ return m.domeUid === open; }) }, kind, false, [], [])) : ''; SE_DOCS[kind].write(tree); if(open){ const after = cj(toWire({ domes: (db.domeLib || []).filter(function(m){ return m.domeUid === open; }) }, kind, false, [], [])); if(before !== after) _domeOpenChanged = true; } }
+    else SE_DOCS[kind].write(tree);
+  }
+  function recordConflicts(id, kind, list){
+    if(!list.length || kind !== 'project') return;
+    try{ const by = {}; list.forEach(function(c){ const s = c.path[0]; (by[s] = by[s] || []).push({ path: c.path.slice(1), local: c.local, server: c.server, note: '', at: Date.now() }); });
+      Object.keys(by).forEach(function(s){ const arr = _fsConflictsOf(id)[s] || []; by[s].forEach(function(c){ if(!arr.some(function(x){ return cj(x.path) === cj(c.path) && cj(x.local) === cj(c.local); })) arr.push(c); }); _fsConflictsOf(id)[s] = arr; });
+      setTimeout(_fsConflictBanner, 300); }catch(_){}
+  }
+  function newProjectFromDoc(data){
+    const d = emptyState(); d.project = { pid: data.pid };
+    const e = { id: newId(), frozen: false, data: d, _fbSeen: true, _fsRev: {}, _browseFid: data.browseFid || '' };
+    if(data.done){ e.done = true; e.doneAt = data.doneAt || Date.now(); }
+    db.projects.push(e);
+    if(data.v3){ writeLocal(e, 'project', data.v3, []); if(_fsSnapConfirmed()){ setBase(data.pid, clone(data.v3)); } }
+    else { writeLocal(e, 'project', toWire(legacyToTree('project', data), 'project', true, [], []), []); if(_fsSnapConfirmed()){ setBase(data.pid, clone(toWire(legacyToTree('project', data), 'project', true, [], []))); stateOf().migrate = stateOf().migrate || {}; stateOf().migrate[data.pid] = 1; _fsGateQ[data.pid] = true; } }
+    if(!e.data.project.pid) e.data.project.pid = data.pid;
+    try{ scheduleFetches(e); }catch(_){}
+    return e;
+  }
+  function tick(){ /* 12 s: retry pending uploads / unsent edits, fetch missing images */
+    try{ if(!fsReady() || !_fsServerSeen) return;
+      db.projects.forEach(function(e){ if(fbpPid(e) && hasUnsent(e)) fsPushNow(e).catch(function(){}); });
+      if(_domeServerSeen && hasUnsent('dome_library')) push('dome_library');
+      if(hasUnsent(SE_DOCS.library.id)) push(SE_DOCS.library.id);
+      db.projects.forEach(function(e){ scheduleFetches(e); });
+    }catch(_){}
+  }
+  return { docs: SE_DOCS, toWire: toWire, fromWire: fromWire, diff: diff, merge: merge, hasUnsent: hasUnsent, changedSections: changedSections, pushPass: pushPass, push: push, applyDoc: applyDoc, newProjectFromDoc: newProjectFromDoc, openAsset: openAsset, driveLink: driveLink, tick: tick, pendingUploads: pendingUploads, baseOf: baseOf, setBase: setBase, uploadPending: uploadPending, scheduleFetches: scheduleFetches, legacyToTree: legacyToTree, recHash: recHash, isData: isData };
+})();
+try{ window.SE = SE; }catch(_){}
+
 (function(){
   const foot = document.querySelector('.side-foot div');
   const tag = foot ? foot.textContent.trim() : '';
