@@ -819,7 +819,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.72 · SHIPPING LIST: HOVERING AN ITEM SHOWS ONLY ITS CATEGORY · SIDEBAR: THE GOLD GLINT ON THE SELECTED CARD IS A GPU TRANSFORM NOW (NO STUTTER / FREEZE / JUMPS) · UPDATE BUTTON CAN NO LONGER HANG AT "Saving…" (8 s LIMIT, SECOND PRESS = UPDATE NOW) · AUTO-UPDATE: A TAB THAT STAYS "UNSYNCED" FOR 3 MINUTES UPDATES ANYWAY (LOCAL EDITS ARE KEPT AND RECONCILED AT START — A STUCK PUSH CAN NO LONGER PIN A TAB TO AN OLD BUILD) · FIELD CONFLICTS DEFAULT TO THE SERVER VALUE SILENTLY (NO "USE MINE / KEEP SERVER" BANNER); THE SAVE STAMP project._rev IS NEVER A CONFLICT · SIDEBAR: THE PROJECT CARDS ARE PATCHED IN PLACE (NO RESTARTING GOLD GLINT) AND THE STATUS LINE HAS A FIXED HEIGHT (NO JUMPING TEXT) · SHIPPING LIST: A SMALL DOT BEFORE THE ITEM NUMBER SHOWS THE PURCHASE STATUS OF THE ROW — YELLOW = ORDERED (WAITING), GREEN = RECEIVED; NOT-ORDERED ROWS SHOW NOTHING · SYNC FIX (V1): A PUSH READS THE SERVER FIRST (TRANSACTION) AND MERGES OUR EDIT ONTO A TEAMMATE'S NEWER COPY OF THE SAME SECTION — A ROW THEY ADDED WHILE THIS TAB WAS TYPING IS NEVER OVERWRITTEN; A FIELD BOTH CHANGED = CONFLICT (BOTH VERSIONS KEPT) · SYNC FIX (V1): A SECTION WRITTEN BY AN OLDER BUILD WITHOUT A SUB-LIST IT DOES NOT KNOW (PROJECTOR MOUNT, FAN BOXES, ACCESSORIES…) NO LONGER LEAVES THE SERVER WITHOUT IT — THE MACHINE THAT HOLDS THE ROWS RE-SENDS THEM AT ONCE (THE "SOMEBODY WIPED MY TABLE" CASE); ext SHADOW NOW RESTORES FAN BOXES + PROJECTOR MOUNT TOO · PROJECTOR ACCESSORIES: COLUMNS ITEM · QTY · MODEL / PART NO. · UNIT PRICE · LINK · NOTES · PROJECTORS: "PROJECTOR ACCESSORIES" NOW ABOVE LENSES; NEW "PROJECTOR MOUNT" TABLE UNDER LENSES — RIGGING HARDWARE PICKED FROM THE TRUSS GROUP OF THE EQUIPMENT LIBRARY (CATEGORY → ITEM, QTY, PRICE, SERIAL, LINK; SHIPS AS ONE PLACE "PROJECTOR MOUNT") · ONE ASSET-DELETE PIPELINE (V1 + v5, DOCUMENTS + PHOTOS): DELETING A FILE WRITES A PERMANENT DELETION JOB (assetId · fileId · folder · owner · requestedBy · status) TO THE SERVER; EVERY MACHINE WORKS IT WITH ITS OWN DRIVE RIGHTS — OWNER → TRASH, TEAMMATE → DETACHED FROM THE PROJECT FOLDER — AND WRITES THE STATUS ONLY AFTER GOOGLE CONFIRMS; FAILURES STAY QUEUED ("Drive cleanup pending") AND RETRY; ONLY THE EXACT fileId IS EVER TOUCHED, NO FOLDER SWEEPS; A V1 FILE WITHOUT A RECORDED ID IS RESOLVED BY ONE EXACT NAME MATCH OR LEFT ALONE; ONE-TIME RECOVERY OF EARLIER V1 DELETIONS FROM THE MEDIA FILE HISTORY · NO DUPLICATE DOCUMENTS: THE ENGINE ADOPTS THE PRE-CANARY FLAT Documentation/ COPY INSTEAD OF UPLOADING A SECOND FILE · DOME LIBRARY: "READY TO SHIP" TICKED IN THE LIST NOW SYNCS TO THE TEAM (IT WAS SAVED ONLY LOCALLY — NO OPEN CARD, NO PUSH) · DASHBOARD › PROJECT SETUP: "PURCHASED — ALL MODULES" TOTAL (ORDERED / RECEIVED ROWS OF EVERY MODULE; HOVER = PER-MODULE BREAKDOWN) · SCREEN FAN: "INFLATABLE FAN BUILDER" SECTION (SAME HEADER AS THE SCREEN FAN BUILDER) · FAN BOXES (LIKE CAMERA CASES — ROWS FROM BOTH BUILDERS MOVE IN, A BOX SHIPS AS ONE PLACE) · SPEAKERS: CATEGORY LIST = SPEAKER / AUDIO + TRUSS GROUPS OF THE EQUIPMENT LIBRARY (TRUSS ROWS PICK FROM AND SAVE TO THE TRUSS GROUP) · SYNC ENGINE v5: CANARY PER PROJECT (ADMIN › MAINTENANCE), TRANSACTIONAL PUSHES WITH PER-DOCUMENT REVISION CHECKS (A STALE TAB NEVER OVERWRITES NEWER DATA — SAME-FIELD COLLISIONS KEEP BOTH VERSIONS), OLD-TAB ROWS MATCHED BY ID / FINGERPRINT / SIMILARITY (NEVER BY POSITION) · v4 (AUDIT FIXES): OWN COLLECTION TREE v3_roots/<root>/{fields,records,assets} THAT OLD CLIENTS NEVER TOUCH · ONE DOCUMENT PER RECORD / ASSET WITH ITS OWN REV + TOMBSTONE · CENTRAL SCHEMA REGISTRY (NO ARRAY HEURISTICS) · DUAL-READ OF LEGACY DOCUMENTS (OLD-TAB EDITS MERGED, NOTHING LOST) · NO DOCUMENT IS EVER DELETED (RULES: allow delete: false) · SYNC ENGINE v3: ONE REALTIME ENGINE FOR EVERY FIELD, ROW, PHOTO, DOCUMENT, DOME CARD AND LIBRARY ITEM — FIRESTORE = TRUTH (RECORD-LEVEL WRITES, TOMBSTONES, 3-WAY MERGE), GOOGLE DRIVE = ONE FILE PER PHOTO / PDF IN THE SHARED PROJECT FOLDER, DURABLE OUTBOX · NO <pid>.media.json · PRESENCE: AVATARS NO LONGER BLINK (SUBSCRIPTIONS AND THE OWN PRESENCE RECORD ARE KEPT ACROSS RERENDERS) · DOME LIST: FIXED AVATAR SLOT — THE TABLE NEVER CHANGES WIDTH · NO MORE FLICKER: AN IN-PLACE RERENDER (TEAMMATE'S CHANGE, AUTO-SYNC) PATCHES THE LIVE PAGE NODE BY NODE INSTEAD OF REBUILDING IT · SYNC FIX: THE SERVER-SNAPSHOT GATE COULD STAY SHUT FOREVER (FIRST SNAPSHOT FROM THE SDK CACHE, NO "CONFIRMED" EVENT) — PROJECTS AND DOME LIBRARY LISTENERS NOW RECEIVE METADATA EVENTS + EXPLICIT SERVER READ FALLBACK · START-UP: NO FALSE "KEPT ASIDE" BANNER — A SECTION NOBODY ELSE WROTE SINCE WE LAST SAW IT IS OUR EDIT AND IS SENT; THE CONFIRMED BASE IS REFRESHED ON EVERY CONFIRMED SNAPSHOT · DOME LIBRARY FIX: A COVER / INFLATABLE / KIT / FILE ADDED ON ONE MACHINE IS NEVER DROPPED BECAUSE ANOTHER MACHINE SAVED THE CARD LATER (ADDITIONS AFTER THE AGREED BASE ARE ALWAYS KEPT) · DOME CARD: DOORS BLOCK MOVED DIRECTLY UNDER FRAME · DOME CARD: FABRIC DOOR (QTY + SERIAL) MOVED FROM DOORS TO EACH COVER ENTRY · "FABRIC DOOR INFL" ON EACH INFLATABLE COVER · DOME CARD: EVERY EDIT OF A SAVED CARD SYNCS TO THE TEAM AUTOMATICALLY (1.5 S AFTER THE LAST CHANGE — ADD COVER / INFLATABLE / SCREEN, FIELD EDITS, TRUSS) · SERVER-TIME WRITE STAMPS (wstamp = serverTimestamp) · CONFIRMED BASE ONLY FROM fromCache=false & hasPendingWrites=false OR A REAL ACK · "APPLY MY VERSION" = FIELD-LEVEL 3-WAY MERGE WITH PER-FIELD CONFLICTS · ADMIN › MAINTENANCE: STAMP ALL DOCUMENTS proto 2 · SAFE START-UP: NO WRITE BEFORE THE SERVER SNAPSHOT · PERSISTED CONFIRMED BASE + 3-WAY FIRST-SNAPSHOT MERGE (LOCAL EDITS KEPT ASIDE, NEVER LOST) · UPDATE = FLUSH THEN RELOAD · SAVING / SAVED / UPDATED STATUS · PROTOCOL STAMP proto:2 · SHADOW SECTION "ext" RESTORES CAMERA CASES + PROJECTOR ACCESSORIES WIPED BY AN OLD CLIENT · UPDATER CHECKS AT 2 S (STALE TABS RELOAD BEFORE THEIR FIRST PUSH) · CAMERA CASES SELF-HEAL (REBUILT FROM THE ROWS IF AN OLD CLIENT WIPED THE LIST) · DOME & TRUSS: "BALLAST PLATES" TABLE + PHOTOS WHILE OUTDOOR · MODULE PHOTOS (SPEAKERS / FAN / CABLES / TOOLS) NOW SYNC VIA THE MEDIA FILE · FAN MODULE: SEPARATE "INFLATABLE FAN SYSTEM" TABLE WHILE INFLATABLE = YES · PROJECT SETUP: "DOME & SYSTEM CONFIGURATION" · SCREEN TYPE · INDOOR/OUTDOOR + BALLAST SYSTEM · DOME LIBRARY: DELETED KITS / ELEMENTS / COVERS ARE STICKY TOMBSTONES (CAN NEVER COME BACK) · DOME CARD: OVERVIEW + TRUSS IN THE SAME COMPACT LAYOUT · DOORS: FABRIC DOOR (QTY + SERIAL) · COMPONENTS: COMPACT ONE-PARAMETER-PER-ROW LAYOUT · DOME LIBRARY: AN OPEN CARD NOW RECEIVES TEAMMATES' CHANGES LIVE (DELETIONS INCLUDED) · DOME CARD: COVER / INFLATABLE COVER GET COLOUR (GREY · WHITE · PRINTED) + MATERIAL · ARCHIVE BUTTONS REMOVED (DELETE ONLY) · DELETE BUTTON ON COVER / SCREEN / INFLATABLE ENTRIES · DASHBOARD: CAMERA MODEL = ALL "CAMERA" ROWS (NO LENS) · DOME & TRUSS: READY = DOME CARD "READY TO SHIP" (INDICATOR, NOT A BUTTON) · DOME LIBRARY: A DELETED TRUSS KIT / ELEMENT / FILE STAYS DELETED (NO-BASE TIEBREAKER BY REV) · DOME LIBRARY FIX: SAVE DOME CARD KEEPS TRUSS SN / COMPONENTS / SCHEMATICS (MERGE BASE WAS ALIASED TO THE LIVE CARD) · NEW MODULE: DOME & TRUSS (PICK FROM DOME LIBRARY · TRUSS KIT · SHIPS AUTOMATICALLY) · AUTO-UPDATE: RETRIES FOR ~15 MIN WHEN THE SERVER STILL SENDS THE OLD FILE · SHIPPING: SUB-SECTIONS — CAMERA CASES + OTHER, POWER / VIDEO / AUDIO CABLES (LIST + PDF) · SHIPPING PDF REBUILT (A4 LANDSCAPE · NOT-PACKED SECTION PER UNIT · GREEN/RED + WORDS · PAGE X OF Y) · SIDEBAR: EQUIPMENT & SHIPPING LINK · SHIPPING: CLICK AN ITEM NAME → JUMPS TO ITS MODULE ROW · PROJECTOR ACCESSORIES TABLE (EVERY NAMED ROW SHIPS AS ITS OWN MODULE AFTER PROJECTORS) · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.73 · NEW MODULE "SAFETY EQUIPMENT" (EXIT SIGNS · FIRE EXTINGUISHERS · VESTS · HARD HATS · HARNESSES · FIRST AID…): EQUIPMENT LIBRARY GROUP, STANDARD BUILDER TABLE ON THE DASHBOARD, SHIPS AS ONE PLACE IN THE SHIPPING LIST + PDF, OWN REALTIME SECTION (V1) + v5 REGISTRY ENTRY, STABLE ROW IDS · SHIPPING LIST: HOVERING AN ITEM SHOWS ONLY ITS CATEGORY · SIDEBAR: THE GOLD GLINT ON THE SELECTED CARD IS A GPU TRANSFORM NOW (NO STUTTER / FREEZE / JUMPS) · UPDATE BUTTON CAN NO LONGER HANG AT "Saving…" (8 s LIMIT, SECOND PRESS = UPDATE NOW) · AUTO-UPDATE: A TAB THAT STAYS "UNSYNCED" FOR 3 MINUTES UPDATES ANYWAY (LOCAL EDITS ARE KEPT AND RECONCILED AT START — A STUCK PUSH CAN NO LONGER PIN A TAB TO AN OLD BUILD) · FIELD CONFLICTS DEFAULT TO THE SERVER VALUE SILENTLY (NO "USE MINE / KEEP SERVER" BANNER); THE SAVE STAMP project._rev IS NEVER A CONFLICT · SIDEBAR: THE PROJECT CARDS ARE PATCHED IN PLACE (NO RESTARTING GOLD GLINT) AND THE STATUS LINE HAS A FIXED HEIGHT (NO JUMPING TEXT) · SHIPPING LIST: A SMALL DOT BEFORE THE ITEM NUMBER SHOWS THE PURCHASE STATUS OF THE ROW — YELLOW = ORDERED (WAITING), GREEN = RECEIVED; NOT-ORDERED ROWS SHOW NOTHING · SYNC FIX (V1): A PUSH READS THE SERVER FIRST (TRANSACTION) AND MERGES OUR EDIT ONTO A TEAMMATE'S NEWER COPY OF THE SAME SECTION — A ROW THEY ADDED WHILE THIS TAB WAS TYPING IS NEVER OVERWRITTEN; A FIELD BOTH CHANGED = CONFLICT (BOTH VERSIONS KEPT) · SYNC FIX (V1): A SECTION WRITTEN BY AN OLDER BUILD WITHOUT A SUB-LIST IT DOES NOT KNOW (PROJECTOR MOUNT, FAN BOXES, ACCESSORIES…) NO LONGER LEAVES THE SERVER WITHOUT IT — THE MACHINE THAT HOLDS THE ROWS RE-SENDS THEM AT ONCE (THE "SOMEBODY WIPED MY TABLE" CASE); ext SHADOW NOW RESTORES FAN BOXES + PROJECTOR MOUNT TOO · PROJECTOR ACCESSORIES: COLUMNS ITEM · QTY · MODEL / PART NO. · UNIT PRICE · LINK · NOTES · PROJECTORS: "PROJECTOR ACCESSORIES" NOW ABOVE LENSES; NEW "PROJECTOR MOUNT" TABLE UNDER LENSES — RIGGING HARDWARE PICKED FROM THE TRUSS GROUP OF THE EQUIPMENT LIBRARY (CATEGORY → ITEM, QTY, PRICE, SERIAL, LINK; SHIPS AS ONE PLACE "PROJECTOR MOUNT") · ONE ASSET-DELETE PIPELINE (V1 + v5, DOCUMENTS + PHOTOS): DELETING A FILE WRITES A PERMANENT DELETION JOB (assetId · fileId · folder · owner · requestedBy · status) TO THE SERVER; EVERY MACHINE WORKS IT WITH ITS OWN DRIVE RIGHTS — OWNER → TRASH, TEAMMATE → DETACHED FROM THE PROJECT FOLDER — AND WRITES THE STATUS ONLY AFTER GOOGLE CONFIRMS; FAILURES STAY QUEUED ("Drive cleanup pending") AND RETRY; ONLY THE EXACT fileId IS EVER TOUCHED, NO FOLDER SWEEPS; A V1 FILE WITHOUT A RECORDED ID IS RESOLVED BY ONE EXACT NAME MATCH OR LEFT ALONE; ONE-TIME RECOVERY OF EARLIER V1 DELETIONS FROM THE MEDIA FILE HISTORY · NO DUPLICATE DOCUMENTS: THE ENGINE ADOPTS THE PRE-CANARY FLAT Documentation/ COPY INSTEAD OF UPLOADING A SECOND FILE · DOME LIBRARY: "READY TO SHIP" TICKED IN THE LIST NOW SYNCS TO THE TEAM (IT WAS SAVED ONLY LOCALLY — NO OPEN CARD, NO PUSH) · DASHBOARD › PROJECT SETUP: "PURCHASED — ALL MODULES" TOTAL (ORDERED / RECEIVED ROWS OF EVERY MODULE; HOVER = PER-MODULE BREAKDOWN) · SCREEN FAN: "INFLATABLE FAN BUILDER" SECTION (SAME HEADER AS THE SCREEN FAN BUILDER) · FAN BOXES (LIKE CAMERA CASES — ROWS FROM BOTH BUILDERS MOVE IN, A BOX SHIPS AS ONE PLACE) · SPEAKERS: CATEGORY LIST = SPEAKER / AUDIO + TRUSS GROUPS OF THE EQUIPMENT LIBRARY (TRUSS ROWS PICK FROM AND SAVE TO THE TRUSS GROUP) · SYNC ENGINE v5: CANARY PER PROJECT (ADMIN › MAINTENANCE), TRANSACTIONAL PUSHES WITH PER-DOCUMENT REVISION CHECKS (A STALE TAB NEVER OVERWRITES NEWER DATA — SAME-FIELD COLLISIONS KEEP BOTH VERSIONS), OLD-TAB ROWS MATCHED BY ID / FINGERPRINT / SIMILARITY (NEVER BY POSITION) · v4 (AUDIT FIXES): OWN COLLECTION TREE v3_roots/<root>/{fields,records,assets} THAT OLD CLIENTS NEVER TOUCH · ONE DOCUMENT PER RECORD / ASSET WITH ITS OWN REV + TOMBSTONE · CENTRAL SCHEMA REGISTRY (NO ARRAY HEURISTICS) · DUAL-READ OF LEGACY DOCUMENTS (OLD-TAB EDITS MERGED, NOTHING LOST) · NO DOCUMENT IS EVER DELETED (RULES: allow delete: false) · SYNC ENGINE v3: ONE REALTIME ENGINE FOR EVERY FIELD, ROW, PHOTO, DOCUMENT, DOME CARD AND LIBRARY ITEM — FIRESTORE = TRUTH (RECORD-LEVEL WRITES, TOMBSTONES, 3-WAY MERGE), GOOGLE DRIVE = ONE FILE PER PHOTO / PDF IN THE SHARED PROJECT FOLDER, DURABLE OUTBOX · NO <pid>.media.json · PRESENCE: AVATARS NO LONGER BLINK (SUBSCRIPTIONS AND THE OWN PRESENCE RECORD ARE KEPT ACROSS RERENDERS) · DOME LIST: FIXED AVATAR SLOT — THE TABLE NEVER CHANGES WIDTH · NO MORE FLICKER: AN IN-PLACE RERENDER (TEAMMATE'S CHANGE, AUTO-SYNC) PATCHES THE LIVE PAGE NODE BY NODE INSTEAD OF REBUILDING IT · SYNC FIX: THE SERVER-SNAPSHOT GATE COULD STAY SHUT FOREVER (FIRST SNAPSHOT FROM THE SDK CACHE, NO "CONFIRMED" EVENT) — PROJECTS AND DOME LIBRARY LISTENERS NOW RECEIVE METADATA EVENTS + EXPLICIT SERVER READ FALLBACK · START-UP: NO FALSE "KEPT ASIDE" BANNER — A SECTION NOBODY ELSE WROTE SINCE WE LAST SAW IT IS OUR EDIT AND IS SENT; THE CONFIRMED BASE IS REFRESHED ON EVERY CONFIRMED SNAPSHOT · DOME LIBRARY FIX: A COVER / INFLATABLE / KIT / FILE ADDED ON ONE MACHINE IS NEVER DROPPED BECAUSE ANOTHER MACHINE SAVED THE CARD LATER (ADDITIONS AFTER THE AGREED BASE ARE ALWAYS KEPT) · DOME CARD: DOORS BLOCK MOVED DIRECTLY UNDER FRAME · DOME CARD: FABRIC DOOR (QTY + SERIAL) MOVED FROM DOORS TO EACH COVER ENTRY · "FABRIC DOOR INFL" ON EACH INFLATABLE COVER · DOME CARD: EVERY EDIT OF A SAVED CARD SYNCS TO THE TEAM AUTOMATICALLY (1.5 S AFTER THE LAST CHANGE — ADD COVER / INFLATABLE / SCREEN, FIELD EDITS, TRUSS) · SERVER-TIME WRITE STAMPS (wstamp = serverTimestamp) · CONFIRMED BASE ONLY FROM fromCache=false & hasPendingWrites=false OR A REAL ACK · "APPLY MY VERSION" = FIELD-LEVEL 3-WAY MERGE WITH PER-FIELD CONFLICTS · ADMIN › MAINTENANCE: STAMP ALL DOCUMENTS proto 2 · SAFE START-UP: NO WRITE BEFORE THE SERVER SNAPSHOT · PERSISTED CONFIRMED BASE + 3-WAY FIRST-SNAPSHOT MERGE (LOCAL EDITS KEPT ASIDE, NEVER LOST) · UPDATE = FLUSH THEN RELOAD · SAVING / SAVED / UPDATED STATUS · PROTOCOL STAMP proto:2 · SHADOW SECTION "ext" RESTORES CAMERA CASES + PROJECTOR ACCESSORIES WIPED BY AN OLD CLIENT · UPDATER CHECKS AT 2 S (STALE TABS RELOAD BEFORE THEIR FIRST PUSH) · CAMERA CASES SELF-HEAL (REBUILT FROM THE ROWS IF AN OLD CLIENT WIPED THE LIST) · DOME & TRUSS: "BALLAST PLATES" TABLE + PHOTOS WHILE OUTDOOR · MODULE PHOTOS (SPEAKERS / FAN / CABLES / TOOLS) NOW SYNC VIA THE MEDIA FILE · FAN MODULE: SEPARATE "INFLATABLE FAN SYSTEM" TABLE WHILE INFLATABLE = YES · PROJECT SETUP: "DOME & SYSTEM CONFIGURATION" · SCREEN TYPE · INDOOR/OUTDOOR + BALLAST SYSTEM · DOME LIBRARY: DELETED KITS / ELEMENTS / COVERS ARE STICKY TOMBSTONES (CAN NEVER COME BACK) · DOME CARD: OVERVIEW + TRUSS IN THE SAME COMPACT LAYOUT · DOORS: FABRIC DOOR (QTY + SERIAL) · COMPONENTS: COMPACT ONE-PARAMETER-PER-ROW LAYOUT · DOME LIBRARY: AN OPEN CARD NOW RECEIVES TEAMMATES' CHANGES LIVE (DELETIONS INCLUDED) · DOME CARD: COVER / INFLATABLE COVER GET COLOUR (GREY · WHITE · PRINTED) + MATERIAL · ARCHIVE BUTTONS REMOVED (DELETE ONLY) · DELETE BUTTON ON COVER / SCREEN / INFLATABLE ENTRIES · DASHBOARD: CAMERA MODEL = ALL "CAMERA" ROWS (NO LENS) · DOME & TRUSS: READY = DOME CARD "READY TO SHIP" (INDICATOR, NOT A BUTTON) · DOME LIBRARY: A DELETED TRUSS KIT / ELEMENT / FILE STAYS DELETED (NO-BASE TIEBREAKER BY REV) · DOME LIBRARY FIX: SAVE DOME CARD KEEPS TRUSS SN / COMPONENTS / SCHEMATICS (MERGE BASE WAS ALIASED TO THE LIVE CARD) · NEW MODULE: DOME & TRUSS (PICK FROM DOME LIBRARY · TRUSS KIT · SHIPS AUTOMATICALLY) · AUTO-UPDATE: RETRIES FOR ~15 MIN WHEN THE SERVER STILL SENDS THE OLD FILE · SHIPPING: SUB-SECTIONS — CAMERA CASES + OTHER, POWER / VIDEO / AUDIO CABLES (LIST + PDF) · SHIPPING PDF REBUILT (A4 LANDSCAPE · NOT-PACKED SECTION PER UNIT · GREEN/RED + WORDS · PAGE X OF Y) · SIDEBAR: EQUIPMENT & SHIPPING LINK · SHIPPING: CLICK AN ITEM NAME → JUMPS TO ITS MODULE ROW · PROJECTOR ACCESSORIES TABLE (EVERY NAMED ROW SHIPS AS ITS OWN MODULE AFTER PROJECTORS) · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -963,14 +963,15 @@ const emptyState = () => ({
   speakers: { rows: [], ready: false, photos: [] },   /* Speaker / Audio System module (mirrors camera builder) — BUILD 14.20 */
   fan: { rows: [], ready: false, photos: [] },   /* Screen Fan / Ventilation module (mirrors speakers) — BUILD 14.27 */
   cables: { rows: [], ready: false, photos: [] },   /* Cables & Adapters module (mirrors fan) — BUILD 14.31 */
-  tools: { rows: [], ready: false, photos: [] }   /* Tools & Installation Hardware module (mirrors cables) — BUILD 14.37 */
+  tools: { rows: [], ready: false, photos: [] },   /* Tools & Installation Hardware module (mirrors cables) — BUILD 14.37 */
+  safety: { rows: [], ready: false, photos: [] }   /* Safety Equipment module — BUILD 16.73 */
 });
 
 /* Multi-project database: creating a new project ADDS an entry,
    it never overwrites existing ones. A project can be frozen —
    a frozen project cannot be selected or edited (mistake guard
    when several projects are in work at the same time). */
-const emptyLibrary = () => ({ server: [], rack: [], cameras: [], speakers: [], fan: [], video: [], cables: [], tools: [], truss: [] });
+const emptyLibrary = () => ({ server: [], rack: [], cameras: [], speakers: [], fan: [], video: [], cables: [], tools: [], truss: [], safety: [] });
 var db = { projects: [], activeId: null, library: emptyLibrary(), customCats: {}, domeLib: [] };   // projects: [{id, frozen, data}]; domeLib: Dome Library cache (BUILD 15.0)
 var state = emptyState();                    // always points to the ACTIVE project data
 
@@ -1042,6 +1043,12 @@ function syncActive(){
   if(!state.tools || typeof state.tools!=='object') state.tools = { rows:[], ready:false, photos:[] };   /* BUILD 14.37 */
   if(!Array.isArray(state.tools.rows)) state.tools.rows = [];
   if(!Array.isArray(state.tools.photos)) state.tools.photos = [];
+  /* BUILD 16.73: Safety Equipment — rows carry a STABLE id from the moment they are created; nothing here ever rebuilds,
+     reorders or drops a row: the list is only changed by the user's own add / edit / remove */
+  if(!state.safety || typeof state.safety!=='object') state.safety = { rows:[], ready:false, photos:[] };
+  if(!Array.isArray(state.safety.rows)) state.safety.rows = [];
+  if(!Array.isArray(state.safety.photos)) state.safety.photos = [];
+  state.safety.rows.forEach(r=>{ if(r && !r.id) r.id = 'sf' + newId(); });
   if(typeof migrateToolCats==='function') migrateToolCats();   /* BUILD 14.38 */
   if(!state.ready || typeof state.ready!=='object') state.ready = {};   /* readiness lights per module (BUILD 12.15) */
   if(state.project) ensureProjectFields(state);   /* BUILD 14.41: backfill Project Information fields */
@@ -1055,7 +1062,7 @@ function syncActive(){
 const READY_MODULES = [
   ['server','Dome Server'], ['rack','Server Rack'], ['camera','Camera'],
   ['speakers','Speakers'],  ['net','Network'],      ['cables','Cables'],
-  ['fan','Screen Fan'],     ['tools','Tools']
+  ['fan','Screen Fan'],     ['tools','Tools'],    ['safety','Safety']
 ];
 /* data presence per module, computed from ANY project's data object (default: active) */
 function readyModuleHasData(key, d){
@@ -1073,6 +1080,7 @@ function readyModuleHasData(key, d){
     case 'fan':      return rows('fan').some(r=>(r.name||'').trim());
     case 'cables':   return rows('cables').some(r=>(r.name||'').trim());   /* BUILD 14.31 */
     case 'tools':    return rows('tools').some(r=>(r.name||'').trim());   /* BUILD 14.37 */
+    case 'safety':   return rows('safety').some(r=>(r.name||'').trim());   /* BUILD 16.73 */
     default:         return false;   /* net has no section yet */
   }
 }
@@ -1085,6 +1093,7 @@ function readyModuleGreen(key, d){
   if(key==='fan')      return !!(d.fan && d.fan.ready);   /* BUILD 14.27 */
   if(key==='cables')   return !!(d.cables && d.cables.ready);   /* BUILD 14.31 */
   if(key==='tools')    return !!(d.tools && d.tools.ready);   /* BUILD 14.37 */
+  if(key==='safety')   return !!(d.safety && d.safety.ready);   /* BUILD 16.73 */
   if(key==='rack')     return !!(d.rack && d.rack.ready);   /* BUILD 14.65 */
   if(key==='vj')     return !!(d.vj && d.vj.ready);
   return false;
@@ -1431,13 +1440,14 @@ const IC = {
   spk:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="2"/><circle cx="12" cy="14" r="3.5"/><circle cx="12" cy="6.5" r="1.2"/></svg>',
   net:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="16" y="16" width="6" height="6" rx="1"/><path d="M12 8v4M5 16v-2h14v2M12 12v2"/></svg>',
   fan:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1.6"/><path d="M12 10.4c-.6-2.5.2-4.9 1.9-6.1 1.4.9 1.7 3.6-1.9 6.1zM13.6 12c2.5-.6 4.9.2 6.1 1.9-.9 1.4-3.6 1.7-6.1-1.9zM12 13.6c.6 2.5-.2 4.9-1.9 6.1-1.4-.9-1.7-3.6 1.9-6.1zM10.4 12c-2.5.6-4.9-.2-6.1-1.9.9-1.4 3.6-1.7 6.1 1.9z"/></svg>',
+  safety:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/></svg>',
   tool:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a4 4 0 00-5.2 5.2l-6 6a1.5 1.5 0 002.1 2.1l6-6a4 4 0 005.2-5.2l-2.4 2.4-2.2-.6-.6-2.2z"/></svg>',
   ship:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 3h13v13H1z"/><path d="M14 8h5l3 3v5h-8"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="19" r="2"/></svg>'
 };
 
 /* BUILD 14.48: Equipment Library group icons — a square badge per group (server/rack/camera/…),
    RED while the group is collapsed, GREEN while expanded. */
-const LIB_ICONS = { server:IC.server, rack:IC.rack, cameras:IC.cam, speakers:IC.spk, fan:IC.fan, video:IC.beam, cables:IC.cable, tools:IC.tool, truss:IC.rack };
+const LIB_ICONS = { server:IC.server, rack:IC.rack, cameras:IC.cam, speakers:IC.spk, fan:IC.fan, video:IC.beam, cables:IC.cable, tools:IC.tool, truss:IC.rack, safety:IC.safety };
 function libGroupIcon(key, collapsed){
   const ic = LIB_ICONS[key] || IC.lib;
   const bg = collapsed ? '#fdeeee' : '#e7f7ee';
@@ -1488,7 +1498,7 @@ function projectPurchased(){
   const parts = [];
   const add = (label, fn) => { let v = 0; try{ v = fn() || 0; }catch(_){ v = 0; } if(v) parts.push({ label, v }); };
   add('Dome Server', serverTotal); add('VJ Server', () => (state.project && state.project.vjRequired) ? vjTotal() : 0); add('Backup Server', () => (state.backup && state.backup.enabled) ? backupTotal() : 0);
-  add('Rack', rackTotal); add('Camera', camTotal); add('Speakers', spkTotal); add('Screen Fan', fanTotal); add('Cables', cabTotal); add('Tools', toolTotal);
+  add('Rack', rackTotal); add('Camera', camTotal); add('Speakers', spkTotal); add('Screen Fan', fanTotal); add('Cables', cabTotal); add('Tools', toolTotal); add('Safety', safTotal);
   return { parts, total: parts.reduce((s,x)=> s + x.v, 0) };
 }
 const totalItems  = () => activeSrvRows().reduce((s,r)=>s+(parseFloat(r.qty)||1),0) + state.rack.rows.filter(r=>(r.name||'').trim()).reduce((s,r)=>s+(parseFloat(r.qty)||1),0);
@@ -1579,6 +1589,7 @@ const RACK_CATS = [];   /* rack categories are fully user-defined via "+ Categor
 const CAM_CATS  = ['Camera','Lens','Mount','Filter','Accessory','Other'];
 const VID_CATS  = ['HDBT Module','Splitter','Extender','Switcher','Converter','Scaler','Other'];
 const CAB_CATS  = ['Power','Network','HDBT','HDMI','DisplayPort','USB','Fiber','Audio','Adapter','Other'];
+const SAFETY_CATS = ['Exit Signs','Fire Extinguishers','Safety Vests','Hard Hats','Safety Harnesses','First Aid','Safety Signage','Barriers & Tape','Other'];   /* BUILD 16.73 */
 const SPK_CATS  = ['Main Speaker','Subwoofer','Amplifier','Audio Processor','Audio Interface','Speaker Mount','Audio Cable','Other'];
 const FAN_CATS  = ['Fan Unit','Fan Controller','Ducting','Fan Mount','Power Supply','Filter','Cable','Other'];
 const TOOL_CAT_RIGGING = ['Ropes','Crane Slings','Ratchet Straps','Shackles','Carabiners','Zip Ties'];   /* BUILD 14.38: Ropes, Slings & Rigging sub-table categories */
@@ -1609,7 +1620,8 @@ const LIB_GROUPS = [
   {key:'fan',     label:'Screen Fan / Ventilation',   cats:FAN_CATS,  hint:'Fan units, controllers, ducting, mounts, power supplies and filters for the dome screen'},
   {key:'video',   label:'Video Equipment & Splitters',cats:VID_CATS,  hint:'HDBT modules, splitters, extenders, switchers, converters'},
   {key:'cables',  label:'Cables & Adapters',          cats:CAB_CATS,  hint:'Power, network, HDMI, DP, USB, fiber, audio cables and adapters'},
-  {key:'tools',   label:'Tools & Installation Hardware',cats:TOOL_CATS,hint:'Rigging & straps, hand tools, power tools, fasteners & hardware for installation'}
+  {key:'tools',   label:'Tools & Installation Hardware',cats:TOOL_CATS,hint:'Rigging & straps, hand tools, power tools, fasteners & hardware for installation'},
+  {key:'safety',  label:'Safety Equipment',           cats:SAFETY_CATS,hint:'Exit signs, fire extinguishers, safety vests, hard hats, harnesses, first aid and other site safety equipment'}   /* BUILD 16.73 */
 ];
 const blankLibItem = () => ({cat:'', name:'', price:'', link:''});
 
@@ -1796,6 +1808,7 @@ function spkCats(){ return spkCatsSpk().concat(spkCatsTruss()); }
 function spkCatIsTruss(cat){ const c = normCat(cat); return !spkCatsSpk().some(function(x){ return normCat(x) === c; }) && spkCatsTruss().some(function(x){ return normCat(x) === c; }); }
 function fanCats(){ return groupCats('fan'); }   /* BUILD 14.27: Screen Fan categories — own only */
 function cabCats(){ return groupCats('cables'); }   /* BUILD 14.31: Cables categories — own only */
+function safCats(){ return groupCats('safety'); }   /* BUILD 16.73: Safety Equipment categories */
 /* BUILD 14.39: which catKey stores a bucket's categories, and which bucket an item/row belongs to */
 function toolCatKey(grp){ const b = TOOL_BUCKETS.find(x=>x.key===grp); return b ? b.catKey : 'tools'; }
 function toolBucketCats(grp){ return groupCats(toolCatKey(grp)); }
@@ -1865,7 +1878,7 @@ function _snapNameFromLib(name, items){
 function fixHalfNamesFromLibrary(){
   try{
     const e = activeEntry(); if(!e || !e.data) return 0; const d = e.data; let n = 0;
-    const groups = [['server','server'],['backup','server'],['vj','server'],['rack','rack'],['camera','camera'],['speakers','speakers'],['fan','fan'],['cables','cables'],['tools','tools']];
+    const groups = [['server','server'],['backup','server'],['vj','server'],['rack','rack'],['camera','camera'],['speakers','speakers'],['fan','fan'],['cables','cables'],['tools','tools'],['safety','safety']];
     groups.forEach(function(g){ const mod = g[0], grp = g[1]; const rows = (d[mod] && d[mod].rows) || [];
       rows.forEach(function(r){
         if(!r || !(r.name || '').trim()) return;
@@ -2504,8 +2517,8 @@ function docPhotoCount(){
 function docContentListCount(){ return docScope().filter(e=>e.data.contentList).length; }
 
 /* ---------- photos (server: max 6, rack: max 4) ---------- */
-const PHOTO_MAX = { server: 10, vj: 10, backup: 10, rack: 10, front: 1, rear: 1, site: 20, camera: 10, speakers: 10, fan: 10, cables: 10, tools: 10, ballast: 10 };   /* ballast — Ballast Plates (BUILD 16.42) */
-var photoEdit = { server: false, vj: false, backup: false, rack: false, views: false, site: false, projviews: false, camera: false, speakers: false, fan: false, cables: false, tools: false };   /* Edit mode: shows delete crosses */
+const PHOTO_MAX = { server: 10, vj: 10, backup: 10, rack: 10, front: 1, rear: 1, site: 20, camera: 10, speakers: 10, fan: 10, cables: 10, tools: 10, ballast: 10, safety: 10 };   /* ballast — Ballast Plates (BUILD 16.42) */
+var photoEdit = { server: false, vj: false, backup: false, rack: false, views: false, site: false, projviews: false, camera: false, speakers: false, fan: false, cables: false, tools: false, safety: false };   /* Edit mode: shows delete crosses */
 function togglePhotoEdit(kind){ photoEdit[kind] = !photoEdit[kind]; rerenderKeepScroll(); }
 function photosOf(kind){
   if(kind==='site'){ return ensureDocs(state).sitePh; }
@@ -2515,6 +2528,7 @@ function photosOf(kind){
   if(kind==='ballast'){ const b = ensureDome(state).ballast; return b.photos; }   /* BUILD 16.42 */
   if(kind==='cables'){ if(!state.cables) state.cables={rows:[],ready:false,photos:[]}; if(!Array.isArray(state.cables.photos)) state.cables.photos=[]; return state.cables.photos; }
   if(kind==='tools'){ if(!state.tools) state.tools={rows:[],ready:false,photos:[]}; if(!Array.isArray(state.tools.photos)) state.tools.photos=[]; return state.tools.photos; }
+  if(kind==='safety'){ if(!state.safety) state.safety={rows:[],ready:false,photos:[]}; if(!Array.isArray(state.safety.photos)) state.safety.photos=[]; return state.safety.photos; }   /* BUILD 16.73 */
   if(kind==='vj'){ if(!state.vj) state.vj={rows:[],ready:false,photos:[]}; if(!Array.isArray(state.vj.photos)) state.vj.photos=[]; return state.vj.photos; }
   if(kind==='backup'){ if(!state.backup) state.backup={rows:[],ready:false,photos:[],caseSize:'',name:'',enabled:false}; if(!Array.isArray(state.backup.photos)) state.backup.photos=[]; return state.backup.photos; }
   if(kind==='front'){ if(!Array.isArray(state.rack.frontPh)) state.rack.frontPh=[]; return state.rack.frontPh; }
@@ -2537,6 +2551,7 @@ function entryPhotos(e, kind){
   if(kind==='fan') return (d.fan && d.fan.photos) || [];
   if(kind==='cables') return (d.cables && d.cables.photos) || [];
   if(kind==='tools') return (d.tools && d.tools.photos) || [];
+  if(kind==='safety') return (d.safety && d.safety.photos) || [];   /* BUILD 16.73 */
   if(kind==='ballast') return (d.dome && d.dome.ballast && d.dome.ballast.photos) || [];   /* BUILD 16.42 */
   return [];
 }
@@ -2641,7 +2656,7 @@ function openLightboxProj(id, kind, i){
   const p = entryPhotos(e, kind)[i];
   if(p){
     const P = e.data.project || {};
-    const lbl = kind==='server' ? 'Dome Server' : kind==='vj' ? 'VJ Server' : kind==='backup' ? 'Backup Server' : kind==='front' ? 'Rack — Front' : kind==='rear' ? 'Rack — Rear' : kind==='site' ? 'Site' : kind==='camera' ? 'Camera' : kind==='speakers' ? 'Speakers' : kind==='fan' ? 'Screen Fan' : kind==='cables' ? 'Cables' : kind==='tools' ? 'Tools' : 'Rack';
+    const lbl = kind==='server' ? 'Dome Server' : kind==='vj' ? 'VJ Server' : kind==='backup' ? 'Backup Server' : kind==='front' ? 'Rack — Front' : kind==='rear' ? 'Rack — Rear' : kind==='site' ? 'Site' : kind==='camera' ? 'Camera' : kind==='speakers' ? 'Speakers' : kind==='fan' ? 'Screen Fan' : kind==='cables' ? 'Cables' : kind==='tools' ? 'Tools' : kind==='safety' ? 'Safety' : 'Rack';
     openLightbox(p.src, lbl + ' — #' + (P.number||'') + ' · ' + (p.caption||p.name||''));
   }
 }
@@ -3459,7 +3474,8 @@ const CONSTRUCT_MODULES = [
   {key:'speakers',   label:'Speakers / Audio',   ic:IC.spk},
   {key:'fan',        label:'Screen Fan',         ic:IC.fan},
   {key:'cables',     label:'Cables & Adapters',  ic:IC.cable},
-  {key:'tools',      label:'Tools',              ic:IC.tool}
+  {key:'tools',      label:'Tools',              ic:IC.tool},
+  {key:'safety',     label:'Safety Equipment',   ic:IC.safety}
 ];
 var _constrExpand = {};   /* which source projects are expanded (session-only) */
 function constructCount(data, key){
@@ -4162,6 +4178,18 @@ function pageDashboard(){
           <div class="ms"><span class="k">Tools Build</span><span class="v" style="display:inline-flex;align-items:center;gap:6px"><span class="led sm ${state.tools.ready?'on':''}"></span>${state.tools.ready?'Ready':'Not Ready'}</span></div>
         </div>
         <a class="mod-btn primary" href="#/tools">Open Module ${IC.open}</a>
+      </div>
+      <div class="mod active${_lastMod==='#/safety'?' lastmod':''}">
+        <div class="mod-top"><div class="mod-ic">${IC.safety}</div>
+          <div><div class="mod-name">Safety Equipment</div>${modActiveBadge(_named(state.safety.rows))}</div></div>
+        <div class="mod-desc">Exit signs, fire extinguishers, safety vests, hard hats, harnesses, first aid and other site safety equipment, picked from the Equipment Library, with photos and Ready check.</div>
+        <div class="mod-stats">
+          <div class="ms"><span class="k">Components</span><span class="v ${state.safety.rows.filter(r=>(r.name||'').trim()).length?'ok':''}">${state.safety.rows.filter(r=>(r.name||'').trim()).length || 'None'}</span></div>
+          <div class="ms"><span class="k">Components Cost</span><span class="v">${fmt(safTotal())}</span></div>
+          <div class="ms"><span class="k">Photos</span><span class="v">${photosOf('safety').length} / ${PHOTO_MAX.safety}</span></div>
+          <div class="ms"><span class="k">Safety Build</span><span class="v" style="display:inline-flex;align-items:center;gap:6px"><span class="led sm ${state.safety.ready?'on':''}"></span>${state.safety.ready?'Ready':'Not Ready'}</span></div>
+        </div>
+        <a class="mod-btn primary" href="#/safety">Open Module ${IC.open}</a>
       </div>
 
       <div class="mod active${_lastMod==='#/dome'?' lastmod':''}">
@@ -4938,6 +4966,11 @@ function shipPlaces(){
   ((state.tools&&state.tools.rows)||[]).forEach((r,idx)=>{ if(!(r.name||'').trim()) return; (isCombined(r)?toolCombined:toolSeparate).push(mkItem(r,'i|tool|'+idx)); });
   if(toolCombined.length) places.push({key:'pl|tool', name:'Tools', module:'Tools', items:toolCombined});
   toolSeparate.forEach((it,i)=> places.push({key:'pl|tool-sep|'+i, name:it.name, module:'Tools', items:[it]}));
+  /* ---- Safety Equipment (BUILD 16.73) — ships as one "Safety Equipment" place; unchecked rows ship separately ---- */
+  const safCombined = [], safSeparate = [];
+  ((state.safety&&state.safety.rows)||[]).forEach((r,idx)=>{ if(!(r.name||'').trim()) return; (isCombined(r)?safCombined:safSeparate).push(mkItem(r,'i|saf|'+idx)); });
+  if(safCombined.length) places.push({key:'pl|saf', name:'Safety Equipment', module:'Safety Equipment', items:safCombined});
+  safSeparate.forEach((it,i)=> places.push({key:'pl|saf-sep|'+i, name:it.name, module:'Safety Equipment', items:[it]}));
   /* ---- Dome & Truss (BUILD 16.27) — the dome picked from the Dome Library + its truss (ring + elements, or the selected kit) ---- */
   try{ const dm = domeShipPlaces(); dm.forEach(pl => places.push(pl)); }catch(_){}
   /* ---- Camera ---- */
@@ -4963,7 +4996,7 @@ var _shipCollapsed = {};   /* module -> collapsed (session-only UI state) */
    that exact row (the item key encodes its source: i|srv, i|bk, i|vj, i|rack|<row>, i|cam|<row>, i|proj|<id>, i|pacc|<id>…). */
 const SHIP_JUMP = { srv:['#/server-rack','server','srvN'], vj:['#/server-rack','vj','vjN'], bk:['#/server-rack','backup','bkN'],
   rack:['#/server-rack','rack','rackN'], proj:['#/projectors','prInv','projN'], pacc:['#/projectors','prInv','paccN'],
-  spk:['#/speakers','speakers','spkN'], fan:['#/fan','fan','fanN'], cab:['#/cables','cables','cabN'], tool:['#/tools','tools','toolN'], cam:['#/camera','camera','camN'],
+  spk:['#/speakers','speakers','spkN'], fan:['#/fan','fan','fanN'], cab:['#/cables','cables','cabN'], tool:['#/tools','tools','toolN'], saf:['#/safety','safety','safN'], cam:['#/camera','camera','camN'],
   dome:['#/dome','domeSel',''], truss:['#/dome','domeSel',''], 'truss-el':['#/dome','domeSel',''], 'truss-kit':['#/dome','domeSel',''], ballast:['#/dome','ballastCard','ballN'] };
 function shipGoTo(key){
   const parts = String(key||'').split('|'); if(parts[0]!=='i') return;
@@ -5739,6 +5772,7 @@ function liveSlice(d){
     fan:     { rows: (d.fan && d.fan.rows) || [], ready: !!(d.fan && d.fan.ready), cases: (d.fan && d.fan.cases) || [] },   /* BUILD 16.57: fan boxes */
     cables:  { rows: (d.cables && d.cables.rows) || [], ready: !!(d.cables && d.cables.ready) },
     tools:   { rows: (d.tools && d.tools.rows) || [], ready: !!(d.tools && d.tools.ready) },
+    safety:  { rows: (d.safety && d.safety.rows) || [], ready: !!(d.safety && d.safety.ready) },   /* BUILD 16.73 */
     dome:    { domeUid: (d.dome && d.dome.domeUid) || '', kitId: (d.dome && d.dome.kitId) || '', ready: !!(d.dome && d.dome.ready), snap: (d.dome && d.dome.snap) || null, ballast: { rows: (d.dome && d.dome.ballast && d.dome.ballast.rows) || [] } },   /* BUILD 16.27 · ballast rows (BUILD 16.42; photos ride in the media file) */
     /* BUILD 16.44 — 'ext' is a SHADOW of the sub-lists that live inside older sections (camera.cases, projectors.acc). A client on
        a build that predates them rewrites those sections WITHOUT the sub-list; a section only new builds write survives that,
@@ -5800,6 +5834,7 @@ function liveApply(d, live){
   if(live.dome){ d.dome = d.dome || {domeUid:'',kitId:'',ready:false,snap:null}; setIf(d.dome, 'domeUid', live.dome.domeUid || ''); setIf(d.dome, 'kitId', live.dome.kitId || ''); setIf(d.dome, 'ready', !!live.dome.ready); setIf(d.dome, 'snap', live.dome.snap || null);
     if(live.dome.ballast && Array.isArray(live.dome.ballast.rows)){ if(!d.dome.ballast || typeof d.dome.ballast!=='object') d.dome.ballast = {rows:[],photos:[]}; setIf(d.dome.ballast, 'rows', live.dome.ballast.rows); } }   /* BUILD 16.27 / 16.42 */
   if(live.tools){ d.tools = d.tools || {rows:[],ready:false,photos:[]}; setIf(d.tools, 'rows', live.tools.rows || []); setIf(d.tools, 'ready', !!live.tools.ready); }
+  if(live.safety){ d.safety = d.safety || {rows:[],ready:false,photos:[]}; setIf(d.safety, 'rows', live.safety.rows || []); setIf(d.safety, 'ready', !!live.safety.ready); }   /* BUILD 16.73 */
   if(live.projectors){ d.projectors = d.projectors || {list:[],selId:null,models:{}}; setIf(d.projectors, 'list', live.projectors.list || []); setIf(d.projectors, 'selId', live.projectors.selId || null); if('removableLens' in live.projectors) setIf(d.projectors, 'removableLens', !!live.projectors.removableLens); if('lenses' in live.projectors) setIf(d.projectors, 'lenses', live.projectors.lenses || []); if('acc' in live.projectors) setIf(d.projectors, 'acc', live.projectors.acc || []); if('mounts' in live.projectors) setIf(d.projectors, 'mounts', live.projectors.mounts || []); }
   if(live.validation)   setIf(d, 'validation',   live.validation);      /* dashboard test chips (BUILD 12.7) */
   if(live.vjValidation) setIf(d, 'vjValidation', live.vjValidation);
@@ -6216,7 +6251,7 @@ function fbpMediaPayload(e){
     vj:{ photos:(d.vj&&d.vj.photos)||[] },
     rack:{ photos:(d.rack&&d.rack.photos)||[], frontPh:(d.rack&&d.rack.frontPh)||[], rearPh:(d.rack&&d.rack.rearPh)||[] },
     camera:{ photos:(d.camera&&d.camera.photos)||[] },
-    speakers:{ photos:(d.speakers&&d.speakers.photos)||[] }, fan:{ photos:(d.fan&&d.fan.photos)||[] }, cables:{ photos:(d.cables&&d.cables.photos)||[] }, tools:{ photos:(d.tools&&d.tools.photos)||[] },   /* BUILD 16.42: these modules' photos now travel too */
+    speakers:{ photos:(d.speakers&&d.speakers.photos)||[] }, fan:{ photos:(d.fan&&d.fan.photos)||[] }, cables:{ photos:(d.cables&&d.cables.photos)||[] }, tools:{ photos:(d.tools&&d.tools.photos)||[] }, safety:{ photos:(d.safety&&d.safety.photos)||[] },   /* BUILD 16.42: these modules' photos now travel too · + safety (16.73) */
     ballast:{ photos:(d.dome&&d.dome.ballast&&d.dome.ballast.photos)||[] },
     docs:{ sitePh:(d.docs&&d.docs.sitePh)||[], files:(d.docs&&d.docs.files)||{} },
     projectors:{ models:(d.projectors&&d.projectors.models)||{} },
@@ -6232,7 +6267,7 @@ function fbpMediaIsEmpty(e){
   const anyArr = a => Array.isArray(a) && a.length > 0;
   const photoSets = [ m.server&&m.server.photos, m.backup&&m.backup.photos, m.vj&&m.vj.photos,
     m.rack&&m.rack.photos, m.rack&&m.rack.frontPh, m.rack&&m.rack.rearPh, m.camera&&m.camera.photos,
-    m.speakers&&m.speakers.photos, m.fan&&m.fan.photos, m.cables&&m.cables.photos, m.tools&&m.tools.photos, m.ballast&&m.ballast.photos,
+    m.speakers&&m.speakers.photos, m.fan&&m.fan.photos, m.cables&&m.cables.photos, m.tools&&m.tools.photos, m.safety&&m.safety.photos, m.ballast&&m.ballast.photos,
     m.docs&&m.docs.sitePh ];
   if(photoSets.some(anyArr)) return false;
   if(m.projectors && m.projectors.models && Object.keys(m.projectors.models).length) return false;
@@ -6702,7 +6737,7 @@ async function fbpBrowseMirror(e){
    Google Drive (the 13.x media layer, untouched). A full project JSON is still assembled
    locally for export/backup at any time. Master switch: `var _FS = true` (RTDB `_FBP` off). */
 const FS_PROJECT_ID = 'fulldome-psp';
-const FS_SECTIONS = ['project','server','backup','vj','rack','camera','speakers','fan','cables','tools','projectors','validation','vjValidation','shipping','dome','ext'];   /* + dome (BUILD 16.27) · + ext (BUILD 16.44: shadow copy of sub-lists an OLD client can wipe) */
+const FS_SECTIONS = ['project','server','backup','vj','rack','camera','speakers','fan','cables','tools','safety','projectors','validation','vjValidation','shipping','dome','ext'];   /* + dome (BUILD 16.27) · + ext (BUILD 16.44: shadow copy of sub-lists an OLD client can wipe) */
 var _fsApp = null, _fsDb = null, _fsAuthObj = null, _fsCol = null, _fsUnsub = null, _fsSdkP = null;
 var _fsReady = false, _fsStarted = false, _fsApplying = false, _fsPushT = null, _fsSeededPush = false;
 var _fsLocal = {};   /* pid -> {section: sig, _seen, _done, _msig} — skip no-op section writes */
@@ -8460,6 +8495,7 @@ const PHOTO_DIRS = [
   ['fan', 'Screen Fan'],
   ['cables', 'Cables'],
   ['tools', 'Tools'],
+  ['safety', 'Safety Equipment'],
   ['ballast', 'Ballast Plates']
 ];
 function cloudPhotoJobs(e){
@@ -8528,7 +8564,7 @@ function applyPhotosFrom(d, s){
   if(s.vj){ d.vj = d.vj || {rows:[],ready:false,photos:[]}; setA(d.vj, 'photos', s.vj.photos); }
   if(s.rack){ setA(d.rack, 'photos', s.rack.photos); setA(d.rack, 'frontPh', s.rack.frontPh); setA(d.rack, 'rearPh', s.rack.rearPh); }
   if(s.camera){ d.camera = d.camera || {rows:[],ready:false,photos:[]}; setA(d.camera, 'photos', s.camera.photos); }
-  ['speakers','fan','cables','tools'].forEach(k => { if(s[k]){ d[k] = d[k] || {rows:[],ready:false,photos:[]}; setA(d[k], 'photos', s[k].photos); } });   /* BUILD 16.42 */
+  ['speakers','fan','cables','tools','safety'].forEach(k => { if(s[k]){ d[k] = d[k] || {rows:[],ready:false,photos:[]}; setA(d[k], 'photos', s[k].photos); } });   /* BUILD 16.42 · + safety (16.73) */
   if(s.ballast){ ensureDome(d); setA(d.dome.ballast, 'photos', s.ballast.photos); }
   if(s.docs){ d.docs = d.docs || {}; setA(d.docs, 'sitePh', s.docs.sitePh); }
   if(s.projectors && s.projectors.models){ d.projectors = d.projectors || {}; const inM=s.projectors.models, loM=d.projectors.models||{}; if(!(Object.keys(inM).length===0 && Object.keys(loM).length>0) && JSON.stringify(loM) !== JSON.stringify(inM)){ d.projectors.models = inM; ch = true; } }
@@ -9077,7 +9113,7 @@ var _pfBusy = false;
 async function refreshPrices(kind){
   if(_pfBusy){ flashStat('Price update already running…'); return; }
   const rows = ordRowsOf(kind);
-  const pid = kind==='rack' ? 'rackP' : kind==='vj' ? 'vjP' : kind==='backup' ? 'bkP' : kind==='camera' ? 'camP' : kind==='speakers' ? 'spkP' : kind==='fan' ? 'fanP' : kind==='cables' ? 'cabP' : kind==='tools' ? 'toolP' : 'srvP';
+  const pid = kind==='rack' ? 'rackP' : kind==='vj' ? 'vjP' : kind==='backup' ? 'bkP' : kind==='camera' ? 'camP' : kind==='speakers' ? 'spkP' : kind==='fan' ? 'fanP' : kind==='cables' ? 'cabP' : kind==='tools' ? 'toolP' : kind==='safety' ? 'safP' : 'srvP';
   const targets = rows.map((r,i)=>({r,i})).filter(t => lpUrlOf({value:t.r.link||''}));
   if(!targets.length){ flashStat('No links in this table'); return; }
   _pfBusy = true;
@@ -9227,7 +9263,7 @@ function lpHide(){
    place, no rerender. */
 const ORD_TITLES = ['Not ordered', 'Ordered', 'Received'];
 function ordRowsOf(kind){
-  return kind==='rack' ? state.rack.rows : kind==='vj' ? state.vj.rows : kind==='backup' ? state.backup.rows : kind==='camera' ? state.camera.rows : kind==='speakers' ? state.speakers.rows : kind==='fan' ? state.fan.rows : kind==='cables' ? state.cables.rows : kind==='tools' ? state.tools.rows : state.server.rows;
+  return kind==='rack' ? state.rack.rows : kind==='vj' ? state.vj.rows : kind==='backup' ? state.backup.rows : kind==='camera' ? state.camera.rows : kind==='speakers' ? state.speakers.rows : kind==='fan' ? state.fan.rows : kind==='cables' ? state.cables.rows : kind==='tools' ? state.tools.rows : kind==='safety' ? state.safety.rows : state.server.rows;
 }
 function ordDot(kind, i, r){
   const s = parseInt(r.ord)||0;
@@ -9237,7 +9273,7 @@ function ordDot(kind, i, r){
    checked = this item ships in its module's combined place; unchecked = its own place.
    Default: checked, EXCEPT tripods (they ship separately). */
 function isCombined(r){ if(!r) return false; return (r.ship===undefined) ? !/tripod/i.test(r.name||'') : !!r.ship; }
-function shipRowsOf(kind){ return kind==='server'?state.server.rows : kind==='vj'?(state.vj&&state.vj.rows||[]) : kind==='backup'?(state.backup&&state.backup.rows||[]) : kind==='rack'?state.rack.rows : kind==='camera'?(state.camera&&state.camera.rows||[]) : kind==='speakers'?(state.speakers&&state.speakers.rows||[]) : kind==='fan'?(state.fan&&state.fan.rows||[]) : kind==='cables'?(state.cables&&state.cables.rows||[]) : kind==='tools'?(state.tools&&state.tools.rows||[]) : []; }
+function shipRowsOf(kind){ return kind==='server'?state.server.rows : kind==='vj'?(state.vj&&state.vj.rows||[]) : kind==='backup'?(state.backup&&state.backup.rows||[]) : kind==='rack'?state.rack.rows : kind==='camera'?(state.camera&&state.camera.rows||[]) : kind==='speakers'?(state.speakers&&state.speakers.rows||[]) : kind==='fan'?(state.fan&&state.fan.rows||[]) : kind==='cables'?(state.cables&&state.cables.rows||[]) : kind==='tools'?(state.tools&&state.tools.rows||[]) : kind==='safety'?(state.safety&&state.safety.rows||[]) : []; }
 function toggleShip(kind, i, checked){ const rows=shipRowsOf(kind); if(!rows[i]) return; rows[i].ship = !!checked; saveState(); }
 function shipChk(kind, i, r){ return `<td style="width:4%;text-align:center" title="Shipping — combine into one place (uncheck = ships as its own place)"><input type="checkbox" style="width:15px;height:15px;cursor:pointer;accent-color:#2e9e5b" ${isCombined(r)?'checked':''} onchange="toggleShip('${kind}',${i},this.checked)"></td>`; }
 function cycOrd(kind, i, el){
@@ -9860,6 +9896,134 @@ function pageCables(){
     ${CAB_GROUPS.map(cabTable).join('')}
 
     ${photoCard('cables','Cable Photos','Cabling and connector photos — up to '+PHOTO_MAX.cables+'. Shown in Documentation as "Cables — #'+esc(P.number)+'".')}
+
+    <a class="backlink" href="#/dashboard">${IC.back} Back to Dashboard</a>
+  </div>`;
+}
+
+/* ---------- SAFETY EQUIPMENT MODULE (BUILD 16.73) ----------
+   The standard builder table: rows picked from the Equipment Library "Safety Equipment" group (SAFETY_CATS — exit signs,
+   fire extinguishers, vests, hard hats, harnesses, first aid…), Order status, Ship flag, qty / unit price / total / link,
+   Mark as Ready, photos card (kind 'safety'). Rows flow into Equipment & Shipping as one "Safety Equipment" place
+   (unchecked rows ship separately) and into the Shipping PDF like every other module.
+   STABLE ROWS: every row gets an id when the user adds it; nothing rebuilds, reorders, resets or removes rows on load,
+   on an app update or when the Library changes — a row changes only through the user's own edit or ×. Sync: its own
+   V1 section `safety` (field-level, read-before-write merge) and the v5 registry entry `safety.rows` + `safety.photos`. */
+const safListId = cat => 'dlSafCat' + Math.max(0, ciIndexOf(safCats(), cat));
+const libSafByCat = cat => libByGroupCat('safety', cat);
+function safTotal(){ return ((state.safety&&state.safety.rows)||[]).reduce((s,r)=> s + rowSum(r), 0); }
+function refreshSafTotals(){ const g = fmt(safTotal()); ['kSaf','stSaf','safFoot'].forEach(id=>{const e=document.getElementById(id); if(e) e.textContent=g;}); }
+function addSaf(){ const r=blankRow(); r.id = 'sf' + newId(); state.safety.rows.push(r); saveState(); rerenderKeepScroll(); }
+function rmSaf(i){ state.safety.rows.splice(i,1); saveState(); rerenderKeepScroll(); }
+function setSafCat(i, v){
+  state.safety.rows[i].cat = v;
+  if(autoFillFromCat(state.safety.rows[i], libSafByCat(v))) flashStat('Filled from Library ✓');
+  saveState(); rerenderKeepScroll();
+}
+function updSaf(i, k, v){
+  state.safety.rows[i][k] = v;
+  if(k === 'link') schedAutoPrice('safety', i);
+  if(k === 'name'){
+    const it = libFind(v);
+    if(it){
+      if(!(String(state.safety.rows[i].price||'').trim()) && String(it.price||'').trim()){ state.safety.rows[i].price = it.price; const pe = document.getElementById('safP'+i); if(pe) pe.value = it.price; }
+      if(!(String(state.safety.rows[i].link||'').trim()) && (it.link||'').trim()){ state.safety.rows[i].link = it.link; const le = document.getElementById('safL'+i); if(le) le.value = it.link; }
+    }
+  }
+  saveState();
+  const r = state.safety.rows[i];
+  const t = priceNum(r.price)*(parseFloat(r.qty)||1);
+  const cell = document.getElementById('safRowT'+i); if(cell) cell.textContent = t ? fmt(t) : '—';
+  refreshSafTotals();
+}
+function addSafRowToLib(i){
+  const row = state.safety.rows[i]; if(!row) return;
+  const name = (row.name||'').trim();
+  if(!name || libFind(name)) return;
+  let cat = (row.cat||'').trim();
+  if(cat && !groupCats('safety').includes(cat)) cat = '';
+  ensureLibGroup('safety').push({cat, name, price: row.price||'', link: row.link||''});
+  sortByCat(db.library.safety, groupCats('safety'));
+  try{ _libDirty = true; }catch(_){}
+  saveState(); rerenderKeepScroll();
+  flashStat('Added to Library ✓');
+}
+function toggleSafReady(){
+  if(state.safety.ready){ state.safety.ready = false; saveState(); refreshSafReadyUI(); renderSideProject(); return; }
+  if(!state.safety.rows.some(r=>(r.name||'').trim())){ alert('Add at least one safety item before marking Ready.'); return; }
+  state.safety.ready = true; saveState(); refreshSafReadyUI(); renderSideProject();
+}
+function refreshSafReadyUI(){
+  const ready = state.safety.ready;
+  const set = (id,fn)=>{const e=document.getElementById(id); if(e) fn(e);};
+  set('safBtnLed', e=>e.classList.toggle('on',ready));
+  set('kSafLed', e=>e.classList.toggle('on',ready));
+  set('safReadyBtn', e=>e.classList.toggle('on',ready));
+  set('safBtnLbl', e=>e.textContent = ready?'Safety Ready':'Mark as Ready');
+  set('kSafLedTxt', e=>e.textContent = ready?'Ready':'Not Ready');
+}
+function safRowHtml(r, i){
+  return `
+    <tr>
+      <td class="tight" style="width:17%"><select class="cell ${!(r.cat||'').trim()?'empty':''}" onchange="setSafCat(${i},this.value);this.classList.toggle('empty',!this.value)">
+        <option value="" ${!(r.cat||'').trim()?'selected':''}>— Category —</option>
+        ${safCats().map(c=>`<option value="${esc(c)}" ${r.cat===c?'selected':''}>${esc(c)}</option>`).join('')}
+        ${(r.cat||'').trim() && ciIndexOf(safCats(), r.cat)===-1 ? `<option value="${esc(r.cat)}" selected>${esc(r.cat)}</option>` : ''}
+      </select></td>
+      <td class="tight"><input class="cell b" id="safN${i}" onfocus="dlFocus(this)" onblur="dlBlur(this)" list="${(r.cat||'').trim()?safListId(r.cat):'dlLibAll'}" value="${esc(r.name)}" placeholder="Pick from Library or type" oninput="updSaf(${i},'name',this.value)"></td>
+      <td style="width:6%;text-align:center">${ordDot('safety', i, r)}</td>
+      ${shipChk('safety', i, r)}
+      <td class="tight" style="width:7%"><input class="cell num" value="${esc(r.qty)}" oninput="updSaf(${i},'qty',this.value)"></td>
+      <td class="tight" style="width:11%"><input class="cell num" id="safP${i}" value="${esc(r.price)}" placeholder="—" oninput="updSaf(${i},'price',this.value)"></td>
+      <td class="num" style="width:11%"><span id="safRowT${i}">${fmt(priceNum(r.price)*(parseFloat(r.qty)||1) || null)}</span></td>
+      <td class="tight" style="width:15%"><div style="display:flex;align-items:center;gap:4px"><input class="cell" id="safL${i}" onmouseenter="lpShow(this)" onmouseleave="lpHide()" value="${esc(r.link)}" placeholder="https://" oninput="updSaf(${i},'link',this.value)"><button class="mod-btn" style="padding:4px 7px;flex:none" title="Copy link" onclick="copyRowLink('safL${i}', this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button></div></td>
+      <td class="tolib">${(r.name||'').trim() && !libFind(r.name) ? `<button title="Add to Library" onclick="addSafRowToLib(${i})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M9 9.5h6M12 6.5v6"/></svg></button>` : ''}</td>
+      <td class="rm"><button title="Remove" onclick="rmSaf(${i})">×</button></td>
+    </tr>`;
+}
+function pageSafety(){
+  const ready = state.safety.ready;
+  const P = state.project;
+  const rowsHtml = state.safety.rows.map((r,i)=>safRowHtml(r,i)).join('');
+  return `
+  <div class="page">
+    <div class="crumbs"><a href="#/dashboard">Dashboard</a> › <span class="cur">Safety Equipment</span></div>
+    <datalist id="dlLibAll">${libAllItems().map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>
+    ${safCats().map((c,ci)=>`<datalist id="dlSafCat${ci}">${libSafByCat(c).map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>`).join('')}
+    <div class="pagehead">
+      <div class="eyebrow">#${esc(P.number)} · ${esc(P.title)}${P.type?' · System: '+esc(P.type):''}${P.domeDiameter?' · '+esc(P.domeDiameter)+' m '+esc(P.domeType||''):''}</div>
+      <h1>Safety Equipment</h1>
+      <div class="sub">Assemble and document the site safety kit — exit signs, fire extinguishers, safety vests, hard hats, harnesses, first aid and signage — picked from the Equipment Library.</div>
+    </div>
+
+    <div class="kpis">
+      <div class="kpi red"><div class="kl">Safety equipment cost</div><div class="kvv" id="kSaf">${fmt(safTotal())}</div></div>
+      <div class="kpi"><div class="kl">Components</div><div class="kvv">${state.safety.rows.filter(r=>(r.name||'').trim()).length}</div></div>
+      <div class="kpi"><div class="kl">Photos</div><div class="kvv">${photosOf('safety').length} <small>/ ${PHOTO_MAX.safety}</small></div></div>
+      <div class="kpi"><div class="kl">Safety build</div>
+        <div class="kvv" style="font-size:15px;display:flex;align-items:center;gap:8px"><span class="led ${ready?'on':''}" id="kSafLed"></span><span id="kSafLedTxt">${ready?'Ready':'Not Ready'}</span></div></div>
+    </div>
+
+    <!-- ================= SAFETY BUILDER ================= -->
+    <div class="sec-title" id="safety">
+      <div class="stic">${IC.safety}</div>
+      <div><h2>Safety Builder</h2><div class="st-sub">Hardware is picked from the Equipment Library — Safety Equipment group. Ships as one "Safety Equipment" place.</div></div>
+      <div class="st-total"><div class="l">Components total</div><div class="v" id="stSaf">${fmt(safTotal())}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Hardware configuration</h3><button class="mod-btn" style="padding:5px 11px;font-size:11.5px;margin-right:8px" title="Fetch fresh prices from the links" onclick="refreshPrices('safety')">↻ Prices</button>
+        <button class="ready-btn ${ready?'on':''}" id="safReadyBtn" onclick="toggleSafReady()">
+          <span class="led ${ready?'on':''}" id="safBtnLed"></span><span id="safBtnLbl">${ready ? 'Safety Ready' : 'Mark as Ready'}</span></button>
+      </div>
+      <table class="eq">
+        <thead><tr><th>Category</th><th>Hardware</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:center" title="Combine into one shipping place">Ship</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th><th>Link</th><th></th><th></th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+        <tfoot><tr><td colspan="6">Safety total</td><td class="num" id="safFoot">${fmt(safTotal())}</td><td colspan="3"></td></tr></tfoot>
+      </table>
+      <button class="add-line" onclick="addSaf()">+ Add safety item</button>
+    </div>
+
+    ${photoCard('safety','Safety Photos','Safety equipment photos — up to '+PHOTO_MAX.safety+'. Shown in Documentation as "Safety Equipment — #'+esc(P.number)+'".')}
 
     <a class="backlink" href="#/dashboard">${IC.back} Back to Dashboard</a>
   </div>`;
@@ -10973,6 +11137,7 @@ function pageDocumentation(){
     const fan = mk(entryPhotos(e,'fan'), 'fan', '', 'Screen Fan');
     const cab = mk(entryPhotos(e,'cables'), 'cables', '', 'Cables');
     const tls = mk(entryPhotos(e,'tools'), 'tools', '', 'Tools');
+    const saf = mk(entryPhotos(e,'safety'), 'safety', '', 'Safety Equipment');
     /* Shipping — pallet photos, one label per pallet */
     const pp = (e.data.shipping && e.data.shipping.palletPhotos) || {};
     const pals = (e.data.shipping && e.data.shipping.pallets) || [];
@@ -10991,15 +11156,15 @@ function pageDocumentation(){
           </div>
         </div>`; });
     });
-    if(!srv && !vjp && !rck && !fr && !rr && !cam && !spk && !fan && !cab && !tls && !ship) return '';
-    const modCount = entryPhotos(e,'server').length + entryPhotos(e,'vj').length + entryPhotos(e,'rack').length + entryPhotos(e,'front').length + entryPhotos(e,'rear').length + entryPhotos(e,'camera').length + entryPhotos(e,'speakers').length + entryPhotos(e,'fan').length + entryPhotos(e,'cables').length + entryPhotos(e,'tools').length + shipN;
+    if(!srv && !vjp && !rck && !fr && !rr && !cam && !spk && !fan && !cab && !tls && !saf && !ship) return '';
+    const modCount = entryPhotos(e,'server').length + entryPhotos(e,'vj').length + entryPhotos(e,'rack').length + entryPhotos(e,'front').length + entryPhotos(e,'rear').length + entryPhotos(e,'camera').length + entryPhotos(e,'speakers').length + entryPhotos(e,'fan').length + entryPhotos(e,'cables').length + entryPhotos(e,'tools').length + entryPhotos(e,'safety').length + shipN;
     return `
     <div class="card docsec">
       <div class="card-head"><h3>#${esc(P.number)} — ${esc(P.title||'')}</h3>
         <span class="chip c-mut"><span class="cd"></span>${modCount} photos</span>
         <span style="flex:1"></span>
         <button class="mod-btn ${_docGalEdit?'primary':''}" style="padding:4px 12px;font-size:12px" onclick="toggleDocGalEdit()">${_docGalEdit?'Done':'Edit'}</button></div>
-      <div class="phgrid">${fr}${rr}${srv}${vjp}${rck}${cam}${spk}${fan}${cab}${tls}${ship}</div>
+      <div class="phgrid">${fr}${rr}${srv}${vjp}${rck}${cam}${spk}${fan}${cab}${tls}${saf}${ship}</div>
     </div>`;
   }).filter(Boolean).join('');
 
@@ -12481,6 +12646,7 @@ const ROUTES = {
   '#/projectors':    {nav:'dashboard', render:pageProjectors},
   '#/camera':        {nav:'dashboard', render:pageCamera},
   '#/cables':        {nav:'dashboard', render:pageCables},
+  '#/safety':        {nav:'dashboard', render:pageSafety},   /* BUILD 16.73 */
   '#/equipment':     {nav:'dashboard', render:pageShipping},   /* merged into Equipment & Shipping (BUILD 12.46) — alias kept for old links */
   '#/speakers':      {nav:'dashboard', render:pageSpeakers},
   '#/network':       {nav:'dashboard', render:()=>pagePlaceholder('Network', IC.net, 'Switches, VLANs, IP plan and connectivity for the dome system — planned module.', 'Coming Soon')},
@@ -12505,7 +12671,7 @@ function goTo(hash){
    `presence` rule is not deployed, writes are denied silently and the app behaves normally.
    ============================================================================ */
 var _presSid=null, _presHbTimer=null, _presArea=null, _presSub=null, _presDomeSub=null, _presLive=[], _presDomeLive=[], _presStyled=false;
-var PRES_ROUTE_MOD = { '#/server-rack':'server','#/projectors':'projectors','#/speakers':'speakers','#/camera':'camera','#/network':'network','#/fan':'fan','#/cables':'cables','#/tools':'tools','#/dome':'dome','#/shipping':'shipping','#/equipment':'shipping','#/create':'projectInfo','#/edit':'projectInfo','#/projects':'projectInfo' };
+var PRES_ROUTE_MOD = { '#/server-rack':'server','#/projectors':'projectors','#/speakers':'speakers','#/camera':'camera','#/network':'network','#/fan':'fan','#/cables':'cables','#/tools':'tools','#/safety':'safety','#/dome':'dome','#/shipping':'shipping','#/equipment':'shipping','#/create':'projectInfo','#/edit':'projectInfo','#/projects':'projectInfo' };
 function presFbUid(){ try{ return (firebase.auth().currentUser && firebase.auth().currentUser.uid) || null; }catch(_){ return null; } }
 function presReady(){ return (typeof domeFsReady==='function') && domeFsReady() && !!presFbUid(); }
 function presSid(){ if(_presSid) return _presSid; try{ _presSid = sessionStorage.getItem('psp_sid')||''; }catch(_){}
@@ -12649,7 +12815,7 @@ try{ window.addEventListener('beforeunload', function(){ presDeleteOwn(); try{ p
 try{ document.addEventListener('visibilitychange', function(){ if(!document.hidden){ try{ presenceOnRoute(); }catch(_){} } }); }catch(_){}
 setTimeout(function(){ try{ presenceOnRoute(); }catch(_){} }, 4000);   /* start once Firestore/auth is up */
 var _lastMod = '';   /* the module page opened most recently — its dashboard card keeps the red frame (BUILD 12.43) */
-const MODULE_ROUTES = ['#/server-rack','#/projectors','#/speakers','#/camera','#/network','#/fan','#/cables','#/tools','#/dome','#/shipping'];
+const MODULE_ROUTES = ['#/server-rack','#/projectors','#/speakers','#/camera','#/network','#/fan','#/cables','#/tools','#/safety','#/dome','#/shipping'];
 /* BUILD 15.66 — while the SELECTED project is a PRE-PROJECT, only its info (Projects) and the two
    shared libraries are open; every module / dashboard / documentation etc. is LOCKED until it's moved
    to In-Progress. Stage-based — applies to everyone, including access-list (edit) members. */
@@ -12677,7 +12843,7 @@ function pagePreLocked(h){
 /* BUILD 15.67 — role-based access lock. Returns replacement HTML when the current route is not
    viewable for this user (pre-project stage lock, library view perm, or the active project's bucket),
    else null. Client-side reflection of the permissions; Firestore Rules are the real gate (Stage 2). */
-var PROJ_PAGE_HASH = {'#/dashboard':1,'#/edit':1,'#/server-rack':1,'#/projectors':1,'#/camera':1,'#/cables':1,'#/speakers':1,'#/fan':1,'#/tools':1,'#/dome':1,'#/shipping':1,'#/equipment':1,'#/documentation':1};
+var PROJ_PAGE_HASH = {'#/dashboard':1,'#/edit':1,'#/server-rack':1,'#/projectors':1,'#/camera':1,'#/cables':1,'#/speakers':1,'#/fan':1,'#/tools':1,'#/safety':1,'#/dome':1,'#/shipping':1,'#/equipment':1,'#/documentation':1};
 function pageAccessRestricted(what){
   return '<div class="page" style="max-width:720px"><div class="pagehead"><div class="eyebrow">Fulldome Projection SP</div><h1 style="margin:0">Access Restricted</h1></div>'
     +'<div class="card" style="text-align:center;padding:40px 24px;border:1px solid var(--line)"><div style="color:var(--ink2);margin-bottom:10px"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div>'
@@ -12853,11 +13019,11 @@ var SE = (function(){
   /* ======================= CENTRAL REGISTRY (schema) ======================= */
   /* list patterns: segments separated by '/', a segment is a dotted key path; '#' = inside every record of the list before it;
      '*' = every key of the map before it. asset:'<key>' marks a list of binaries (the key that holds the data: URL). */
-  const PHOTO_KEYS = ['server','backup','vj','rack','camera','speakers','fan','cables','tools'];
+  const PHOTO_KEYS = ['server','backup','vj','rack','camera','speakers','fan','cables','tools','safety'];   /* + safety (BUILD 16.73) */
   const SE_SCHEMA = {
     project: {
       lists: (function(){ const L = {
-        'server.rows':{}, 'backup.rows':{}, 'vj.rows':{}, 'rack.rows':{}, 'camera.rows':{}, 'camera.cases':{}, 'speakers.rows':{}, 'fan.rows':{}, 'fan.cases':{}, 'cables.rows':{}, 'tools.rows':{},
+        'server.rows':{}, 'backup.rows':{}, 'vj.rows':{}, 'rack.rows':{}, 'camera.rows':{}, 'camera.cases':{}, 'speakers.rows':{}, 'fan.rows':{}, 'fan.cases':{}, 'cables.rows':{}, 'tools.rows':{}, 'safety.rows':{},
         'projectors.list':{}, 'projectors.list/#/web':{ asset:'data' }, 'projectors.lenses':{}, 'projectors.acc':{}, 'projectors.mounts':{},
         'shipping.pallets':{}, 'shipping.docs':{ asset:'data' }, 'shipping.palletPhotos/*':{ asset:'src' },
         'dome.ballast.rows':{}, 'dome.ballast.photos':{ asset:'src' },
