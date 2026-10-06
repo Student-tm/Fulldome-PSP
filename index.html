@@ -814,7 +814,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.60 · DRIVE FOLLOWS DELETES: A PHOTO / PDF REMOVED IN THE APP (×) GOES TO THE DRIVE TRASH ON EVERY MACHINE THAT SEES THE TOMBSTONE (OWNER TRASHES, TEAMMATES DETACH) · NO DUPLICATE DOCUMENTS: THE ENGINE ADOPTS THE PRE-CANARY FLAT Documentation/ COPY INSTEAD OF UPLOADING A SECOND FILE · DOME LIBRARY: "READY TO SHIP" TICKED IN THE LIST NOW SYNCS TO THE TEAM (IT WAS SAVED ONLY LOCALLY — NO OPEN CARD, NO PUSH) · DASHBOARD › PROJECT SETUP: "PURCHASED — ALL MODULES" TOTAL (ORDERED / RECEIVED ROWS OF EVERY MODULE; HOVER = PER-MODULE BREAKDOWN) · SCREEN FAN: "INFLATABLE FAN BUILDER" SECTION (SAME HEADER AS THE SCREEN FAN BUILDER) · FAN BOXES (LIKE CAMERA CASES — ROWS FROM BOTH BUILDERS MOVE IN, A BOX SHIPS AS ONE PLACE) · SPEAKERS: CATEGORY LIST = SPEAKER / AUDIO + TRUSS GROUPS OF THE EQUIPMENT LIBRARY (TRUSS ROWS PICK FROM AND SAVE TO THE TRUSS GROUP) · SYNC ENGINE v5: CANARY PER PROJECT (ADMIN › MAINTENANCE), TRANSACTIONAL PUSHES WITH PER-DOCUMENT REVISION CHECKS (A STALE TAB NEVER OVERWRITES NEWER DATA — SAME-FIELD COLLISIONS KEEP BOTH VERSIONS), OLD-TAB ROWS MATCHED BY ID / FINGERPRINT / SIMILARITY (NEVER BY POSITION) · v4 (AUDIT FIXES): OWN COLLECTION TREE v3_roots/<root>/{fields,records,assets} THAT OLD CLIENTS NEVER TOUCH · ONE DOCUMENT PER RECORD / ASSET WITH ITS OWN REV + TOMBSTONE · CENTRAL SCHEMA REGISTRY (NO ARRAY HEURISTICS) · DUAL-READ OF LEGACY DOCUMENTS (OLD-TAB EDITS MERGED, NOTHING LOST) · NO DOCUMENT IS EVER DELETED (RULES: allow delete: false) · SYNC ENGINE v3: ONE REALTIME ENGINE FOR EVERY FIELD, ROW, PHOTO, DOCUMENT, DOME CARD AND LIBRARY ITEM — FIRESTORE = TRUTH (RECORD-LEVEL WRITES, TOMBSTONES, 3-WAY MERGE), GOOGLE DRIVE = ONE FILE PER PHOTO / PDF IN THE SHARED PROJECT FOLDER, DURABLE OUTBOX · NO <pid>.media.json · PRESENCE: AVATARS NO LONGER BLINK (SUBSCRIPTIONS AND THE OWN PRESENCE RECORD ARE KEPT ACROSS RERENDERS) · DOME LIST: FIXED AVATAR SLOT — THE TABLE NEVER CHANGES WIDTH · NO MORE FLICKER: AN IN-PLACE RERENDER (TEAMMATE'S CHANGE, AUTO-SYNC) PATCHES THE LIVE PAGE NODE BY NODE INSTEAD OF REBUILDING IT · SYNC FIX: THE SERVER-SNAPSHOT GATE COULD STAY SHUT FOREVER (FIRST SNAPSHOT FROM THE SDK CACHE, NO "CONFIRMED" EVENT) — PROJECTS AND DOME LIBRARY LISTENERS NOW RECEIVE METADATA EVENTS + EXPLICIT SERVER READ FALLBACK · START-UP: NO FALSE "KEPT ASIDE" BANNER — A SECTION NOBODY ELSE WROTE SINCE WE LAST SAW IT IS OUR EDIT AND IS SENT; THE CONFIRMED BASE IS REFRESHED ON EVERY CONFIRMED SNAPSHOT · DOME LIBRARY FIX: A COVER / INFLATABLE / KIT / FILE ADDED ON ONE MACHINE IS NEVER DROPPED BECAUSE ANOTHER MACHINE SAVED THE CARD LATER (ADDITIONS AFTER THE AGREED BASE ARE ALWAYS KEPT) · DOME CARD: DOORS BLOCK MOVED DIRECTLY UNDER FRAME · DOME CARD: FABRIC DOOR (QTY + SERIAL) MOVED FROM DOORS TO EACH COVER ENTRY · "FABRIC DOOR INFL" ON EACH INFLATABLE COVER · DOME CARD: EVERY EDIT OF A SAVED CARD SYNCS TO THE TEAM AUTOMATICALLY (1.5 S AFTER THE LAST CHANGE — ADD COVER / INFLATABLE / SCREEN, FIELD EDITS, TRUSS) · SERVER-TIME WRITE STAMPS (wstamp = serverTimestamp) · CONFIRMED BASE ONLY FROM fromCache=false & hasPendingWrites=false OR A REAL ACK · "APPLY MY VERSION" = FIELD-LEVEL 3-WAY MERGE WITH PER-FIELD CONFLICTS · ADMIN › MAINTENANCE: STAMP ALL DOCUMENTS proto 2 · SAFE START-UP: NO WRITE BEFORE THE SERVER SNAPSHOT · PERSISTED CONFIRMED BASE + 3-WAY FIRST-SNAPSHOT MERGE (LOCAL EDITS KEPT ASIDE, NEVER LOST) · UPDATE = FLUSH THEN RELOAD · SAVING / SAVED / UPDATED STATUS · PROTOCOL STAMP proto:2 · SHADOW SECTION "ext" RESTORES CAMERA CASES + PROJECTOR ACCESSORIES WIPED BY AN OLD CLIENT · UPDATER CHECKS AT 2 S (STALE TABS RELOAD BEFORE THEIR FIRST PUSH) · CAMERA CASES SELF-HEAL (REBUILT FROM THE ROWS IF AN OLD CLIENT WIPED THE LIST) · DOME & TRUSS: "BALLAST PLATES" TABLE + PHOTOS WHILE OUTDOOR · MODULE PHOTOS (SPEAKERS / FAN / CABLES / TOOLS) NOW SYNC VIA THE MEDIA FILE · FAN MODULE: SEPARATE "INFLATABLE FAN SYSTEM" TABLE WHILE INFLATABLE = YES · PROJECT SETUP: "DOME & SYSTEM CONFIGURATION" · SCREEN TYPE · INDOOR/OUTDOOR + BALLAST SYSTEM · DOME LIBRARY: DELETED KITS / ELEMENTS / COVERS ARE STICKY TOMBSTONES (CAN NEVER COME BACK) · DOME CARD: OVERVIEW + TRUSS IN THE SAME COMPACT LAYOUT · DOORS: FABRIC DOOR (QTY + SERIAL) · COMPONENTS: COMPACT ONE-PARAMETER-PER-ROW LAYOUT · DOME LIBRARY: AN OPEN CARD NOW RECEIVES TEAMMATES' CHANGES LIVE (DELETIONS INCLUDED) · DOME CARD: COVER / INFLATABLE COVER GET COLOUR (GREY · WHITE · PRINTED) + MATERIAL · ARCHIVE BUTTONS REMOVED (DELETE ONLY) · DELETE BUTTON ON COVER / SCREEN / INFLATABLE ENTRIES · DASHBOARD: CAMERA MODEL = ALL "CAMERA" ROWS (NO LENS) · DOME & TRUSS: READY = DOME CARD "READY TO SHIP" (INDICATOR, NOT A BUTTON) · DOME LIBRARY: A DELETED TRUSS KIT / ELEMENT / FILE STAYS DELETED (NO-BASE TIEBREAKER BY REV) · DOME LIBRARY FIX: SAVE DOME CARD KEEPS TRUSS SN / COMPONENTS / SCHEMATICS (MERGE BASE WAS ALIASED TO THE LIVE CARD) · NEW MODULE: DOME & TRUSS (PICK FROM DOME LIBRARY · TRUSS KIT · SHIPS AUTOMATICALLY) · AUTO-UPDATE: RETRIES FOR ~15 MIN WHEN THE SERVER STILL SENDS THE OLD FILE · SHIPPING: SUB-SECTIONS — CAMERA CASES + OTHER, POWER / VIDEO / AUDIO CABLES (LIST + PDF) · SHIPPING PDF REBUILT (A4 LANDSCAPE · NOT-PACKED SECTION PER UNIT · GREEN/RED + WORDS · PAGE X OF Y) · SIDEBAR: EQUIPMENT & SHIPPING LINK · SHIPPING: CLICK AN ITEM NAME → JUMPS TO ITS MODULE ROW · PROJECTOR ACCESSORIES TABLE (EVERY NAMED ROW SHIPS AS ITS OWN MODULE AFTER PROJECTORS) · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 16.64 · PROJECTOR ACCESSORIES: COLUMNS ITEM · QTY · MODEL / PART NO. · UNIT PRICE · LINK · NOTES · PROJECTORS: "PROJECTOR ACCESSORIES" NOW ABOVE LENSES; NEW "PROJECTOR MOUNT" TABLE UNDER LENSES — RIGGING HARDWARE PICKED FROM THE TRUSS GROUP OF THE EQUIPMENT LIBRARY (CATEGORY → ITEM, QTY, PRICE, SERIAL, LINK; SHIPS AS ONE PLACE "PROJECTOR MOUNT") · ONE ASSET-DELETE PIPELINE (V1 + v5, DOCUMENTS + PHOTOS): DELETING A FILE WRITES A PERMANENT DELETION JOB (assetId · fileId · folder · owner · requestedBy · status) TO THE SERVER; EVERY MACHINE WORKS IT WITH ITS OWN DRIVE RIGHTS — OWNER → TRASH, TEAMMATE → DETACHED FROM THE PROJECT FOLDER — AND WRITES THE STATUS ONLY AFTER GOOGLE CONFIRMS; FAILURES STAY QUEUED ("Drive cleanup pending") AND RETRY; ONLY THE EXACT fileId IS EVER TOUCHED, NO FOLDER SWEEPS; A V1 FILE WITHOUT A RECORDED ID IS RESOLVED BY ONE EXACT NAME MATCH OR LEFT ALONE; ONE-TIME RECOVERY OF EARLIER V1 DELETIONS FROM THE MEDIA FILE HISTORY · NO DUPLICATE DOCUMENTS: THE ENGINE ADOPTS THE PRE-CANARY FLAT Documentation/ COPY INSTEAD OF UPLOADING A SECOND FILE · DOME LIBRARY: "READY TO SHIP" TICKED IN THE LIST NOW SYNCS TO THE TEAM (IT WAS SAVED ONLY LOCALLY — NO OPEN CARD, NO PUSH) · DASHBOARD › PROJECT SETUP: "PURCHASED — ALL MODULES" TOTAL (ORDERED / RECEIVED ROWS OF EVERY MODULE; HOVER = PER-MODULE BREAKDOWN) · SCREEN FAN: "INFLATABLE FAN BUILDER" SECTION (SAME HEADER AS THE SCREEN FAN BUILDER) · FAN BOXES (LIKE CAMERA CASES — ROWS FROM BOTH BUILDERS MOVE IN, A BOX SHIPS AS ONE PLACE) · SPEAKERS: CATEGORY LIST = SPEAKER / AUDIO + TRUSS GROUPS OF THE EQUIPMENT LIBRARY (TRUSS ROWS PICK FROM AND SAVE TO THE TRUSS GROUP) · SYNC ENGINE v5: CANARY PER PROJECT (ADMIN › MAINTENANCE), TRANSACTIONAL PUSHES WITH PER-DOCUMENT REVISION CHECKS (A STALE TAB NEVER OVERWRITES NEWER DATA — SAME-FIELD COLLISIONS KEEP BOTH VERSIONS), OLD-TAB ROWS MATCHED BY ID / FINGERPRINT / SIMILARITY (NEVER BY POSITION) · v4 (AUDIT FIXES): OWN COLLECTION TREE v3_roots/<root>/{fields,records,assets} THAT OLD CLIENTS NEVER TOUCH · ONE DOCUMENT PER RECORD / ASSET WITH ITS OWN REV + TOMBSTONE · CENTRAL SCHEMA REGISTRY (NO ARRAY HEURISTICS) · DUAL-READ OF LEGACY DOCUMENTS (OLD-TAB EDITS MERGED, NOTHING LOST) · NO DOCUMENT IS EVER DELETED (RULES: allow delete: false) · SYNC ENGINE v3: ONE REALTIME ENGINE FOR EVERY FIELD, ROW, PHOTO, DOCUMENT, DOME CARD AND LIBRARY ITEM — FIRESTORE = TRUTH (RECORD-LEVEL WRITES, TOMBSTONES, 3-WAY MERGE), GOOGLE DRIVE = ONE FILE PER PHOTO / PDF IN THE SHARED PROJECT FOLDER, DURABLE OUTBOX · NO <pid>.media.json · PRESENCE: AVATARS NO LONGER BLINK (SUBSCRIPTIONS AND THE OWN PRESENCE RECORD ARE KEPT ACROSS RERENDERS) · DOME LIST: FIXED AVATAR SLOT — THE TABLE NEVER CHANGES WIDTH · NO MORE FLICKER: AN IN-PLACE RERENDER (TEAMMATE'S CHANGE, AUTO-SYNC) PATCHES THE LIVE PAGE NODE BY NODE INSTEAD OF REBUILDING IT · SYNC FIX: THE SERVER-SNAPSHOT GATE COULD STAY SHUT FOREVER (FIRST SNAPSHOT FROM THE SDK CACHE, NO "CONFIRMED" EVENT) — PROJECTS AND DOME LIBRARY LISTENERS NOW RECEIVE METADATA EVENTS + EXPLICIT SERVER READ FALLBACK · START-UP: NO FALSE "KEPT ASIDE" BANNER — A SECTION NOBODY ELSE WROTE SINCE WE LAST SAW IT IS OUR EDIT AND IS SENT; THE CONFIRMED BASE IS REFRESHED ON EVERY CONFIRMED SNAPSHOT · DOME LIBRARY FIX: A COVER / INFLATABLE / KIT / FILE ADDED ON ONE MACHINE IS NEVER DROPPED BECAUSE ANOTHER MACHINE SAVED THE CARD LATER (ADDITIONS AFTER THE AGREED BASE ARE ALWAYS KEPT) · DOME CARD: DOORS BLOCK MOVED DIRECTLY UNDER FRAME · DOME CARD: FABRIC DOOR (QTY + SERIAL) MOVED FROM DOORS TO EACH COVER ENTRY · "FABRIC DOOR INFL" ON EACH INFLATABLE COVER · DOME CARD: EVERY EDIT OF A SAVED CARD SYNCS TO THE TEAM AUTOMATICALLY (1.5 S AFTER THE LAST CHANGE — ADD COVER / INFLATABLE / SCREEN, FIELD EDITS, TRUSS) · SERVER-TIME WRITE STAMPS (wstamp = serverTimestamp) · CONFIRMED BASE ONLY FROM fromCache=false & hasPendingWrites=false OR A REAL ACK · "APPLY MY VERSION" = FIELD-LEVEL 3-WAY MERGE WITH PER-FIELD CONFLICTS · ADMIN › MAINTENANCE: STAMP ALL DOCUMENTS proto 2 · SAFE START-UP: NO WRITE BEFORE THE SERVER SNAPSHOT · PERSISTED CONFIRMED BASE + 3-WAY FIRST-SNAPSHOT MERGE (LOCAL EDITS KEPT ASIDE, NEVER LOST) · UPDATE = FLUSH THEN RELOAD · SAVING / SAVED / UPDATED STATUS · PROTOCOL STAMP proto:2 · SHADOW SECTION "ext" RESTORES CAMERA CASES + PROJECTOR ACCESSORIES WIPED BY AN OLD CLIENT · UPDATER CHECKS AT 2 S (STALE TABS RELOAD BEFORE THEIR FIRST PUSH) · CAMERA CASES SELF-HEAL (REBUILT FROM THE ROWS IF AN OLD CLIENT WIPED THE LIST) · DOME & TRUSS: "BALLAST PLATES" TABLE + PHOTOS WHILE OUTDOOR · MODULE PHOTOS (SPEAKERS / FAN / CABLES / TOOLS) NOW SYNC VIA THE MEDIA FILE · FAN MODULE: SEPARATE "INFLATABLE FAN SYSTEM" TABLE WHILE INFLATABLE = YES · PROJECT SETUP: "DOME & SYSTEM CONFIGURATION" · SCREEN TYPE · INDOOR/OUTDOOR + BALLAST SYSTEM · DOME LIBRARY: DELETED KITS / ELEMENTS / COVERS ARE STICKY TOMBSTONES (CAN NEVER COME BACK) · DOME CARD: OVERVIEW + TRUSS IN THE SAME COMPACT LAYOUT · DOORS: FABRIC DOOR (QTY + SERIAL) · COMPONENTS: COMPACT ONE-PARAMETER-PER-ROW LAYOUT · DOME LIBRARY: AN OPEN CARD NOW RECEIVES TEAMMATES' CHANGES LIVE (DELETIONS INCLUDED) · DOME CARD: COVER / INFLATABLE COVER GET COLOUR (GREY · WHITE · PRINTED) + MATERIAL · ARCHIVE BUTTONS REMOVED (DELETE ONLY) · DELETE BUTTON ON COVER / SCREEN / INFLATABLE ENTRIES · DASHBOARD: CAMERA MODEL = ALL "CAMERA" ROWS (NO LENS) · DOME & TRUSS: READY = DOME CARD "READY TO SHIP" (INDICATOR, NOT A BUTTON) · DOME LIBRARY: A DELETED TRUSS KIT / ELEMENT / FILE STAYS DELETED (NO-BASE TIEBREAKER BY REV) · DOME LIBRARY FIX: SAVE DOME CARD KEEPS TRUSS SN / COMPONENTS / SCHEMATICS (MERGE BASE WAS ALIASED TO THE LIVE CARD) · NEW MODULE: DOME & TRUSS (PICK FROM DOME LIBRARY · TRUSS KIT · SHIPS AUTOMATICALLY) · AUTO-UPDATE: RETRIES FOR ~15 MIN WHEN THE SERVER STILL SENDS THE OLD FILE · SHIPPING: SUB-SECTIONS — CAMERA CASES + OTHER, POWER / VIDEO / AUDIO CABLES (LIST + PDF) · SHIPPING PDF REBUILT (A4 LANDSCAPE · NOT-PACKED SECTION PER UNIT · GREEN/RED + WORDS · PAGE X OF Y) · SIDEBAR: EQUIPMENT & SHIPPING LINK · SHIPPING: CLICK AN ITEM NAME → JUMPS TO ITS MODULE ROW · PROJECTOR ACCESSORIES TABLE (EVERY NAMED ROW SHIPS AS ITS OWN MODULE AFTER PROJECTORS) · DOME LIBRARY: DELETE DOME (CODE 420 — CARD + TEAM SYNC + DRIVE FOLDER → TRASH) · DOME SCHEMATICS: FILE LISTS ARE MERGED AS SETS (A STALE CLIENT CAN NO LONGER WIPE THEM) · "CHECK DRIVE" RE-ATTACHES PDFs FROM DRIVE · CAMERA FLIGHT CASES (Case 1, 2… above the table · move whole rows in/out · each case ships as one place) · DRIVE MEDIA FOLDER RE-VALIDATED AGAINST SHARED ROOT · SHIPPING PDF GROUPED BY MODULE · LIVE-SYNC HOTFIX (V1: serialized push · no-drop snapshot · receive never wipes rows/categories) · MEDIA: A CLIENT THAT IS BEHIND NEVER OVERWRITES SHARED FILES · UPDATE BUTTON · SHIPPING DOCS SYNC · SHIPPING LABEL PDFs · LIBRARY NAME SNAP · SAFE AUTO-UPDATE — A NEWER BUILD RELOADS THE TAB ONLY AT A SAFE MOMENT (NO TYPING, NOTHING UNSAVED / UNSYNCED); OTHERWISE IT WAITS AND UPDATES ITSELF AFTER SYNC · SYNC V2 STAGED (OFF)</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1040,6 +1040,7 @@ function syncActive(){
   if(typeof migrateToolCats==='function') migrateToolCats();   /* BUILD 14.38 */
   if(!state.ready || typeof state.ready!=='object') state.ready = {};   /* readiness lights per module (BUILD 12.15) */
   if(state.project) ensureProjectFields(state);   /* BUILD 14.41: backfill Project Information fields */
+  try{ if(typeof AD !== 'undefined') AD.baseline(); }catch(_){}   /* BUILD 16.62: the newly active project's file inventory is recorded BEFORE any edit can be read as a deletion */
 }
 /* ---------- MODULE READINESS (BUILD 12.29) — DATA-DRIVEN, read-only in the bar.
    red (empty) → yellow (has data) → green (its own module's "Mark as Ready" pressed).
@@ -1128,7 +1129,10 @@ function ensureProjectors(d){
   if(d.projectors.selModel==null) d.projectors.selModel = '';
   /* BUILD 16.19 — Projector Accessories table (user-filled, nothing pre-filled) */
   if(!Array.isArray(d.projectors.acc)) d.projectors.acc = [];
-  d.projectors.acc.forEach(a=>{ ['item','model','req','source','qty','packed','notes'].forEach(k=>{ if(a[k]==null) a[k]=''; }); if(!a.id) a.id='pa'+Date.now()+Math.floor(Math.random()*1e4); });
+  d.projectors.acc.forEach(a=>{ ['item','model','req','source','qty','packed','notes','price','link'].forEach(k=>{ if(a[k]==null) a[k]=''; }); if(!a.id) a.id='pa'+Date.now()+Math.floor(Math.random()*1e4); });
+  /* BUILD 16.63 — Projector Mount table: hardware picked from the Truss group of the Equipment Library */
+  if(!Array.isArray(d.projectors.mounts)) d.projectors.mounts = [];
+  d.projectors.mounts.forEach(m=>{ ['cat','name','qty','price','link','serial'].forEach(k=>{ if(m[k]==null) m[k]=''; }); if(!m.id) m.id='pm'+Date.now()+Math.floor(Math.random()*1e4); });
   if(!d.projectors.models || typeof d.projectors.models!=='object') d.projectors.models = {};
   /* project-level model data (photos, specs) RIDES IN THE PROJECT FILE.
      Self-heal: models used in this project pull their photos from the global
@@ -1342,6 +1346,7 @@ function loadState(done){
 var storageBroken = false;
 var _savePending = false, _saveQueued = false;
 function saveState(){
+  try{ if(typeof AD !== 'undefined') AD.onSave(!!saveState._skipCloud); }catch(_){}   /* BUILD 16.62: a user edit that removed a file → deletion job; a sync-apply only refreshes the inventory */
   /* a genuine local edit (not a cloud-apply) time-stamps the active project so a Drive
      poll won't overwrite a change you JUST made before it's pushed (fixes "renamed,
      reopened, old name is back", BUILD 12.38). TIME-BOXED (BUILD 12.41): the guard only
@@ -4889,6 +4894,8 @@ function shipPlaces(){
   ((state.projectors&&state.projectors.list)||[]).forEach((p,i)=>{ const nm=((p.mfr||'')+' '+(p.model||'')).trim(); if(!nm) return; places.push({key:'pl|proj|'+(p.id||i), name: nm + (p.serial?(' · SN '+p.serial):(p.num?(' #'+p.num):'')), module:'Projectors', items:[{key:'i|proj|'+(p.id||i), name:nm, qty:1, link:'', cat:'Projector', serial:(p.serial||'').trim()}]}); });   /* serial → PDF (BUILD 16.24) */
   /* ---- Projector Accessories (BUILD 16.19) — user-filled table on the Projectors page; ships as ONE place ---- */
   try{ const pacc = projAccShipItems(); if(pacc.length) places.push({key:'pl|pacc', name:'Projector Accessories', module:'Projector Accessories', items:pacc}); }catch(_){}
+  /* ---- Projector Mount (BUILD 16.63) — truss / rigging hardware for the projectors; ships as ONE place ---- */
+  try{ const pm = projMountShipItems(); if(pm.length) places.push({key:'pl|pmount', name:'Projector Mount', module:'Projector Mount', items:pm}); }catch(_){}
   /* ---- Speakers / Audio (BUILD 14.20) ---- */
   const spkCombined = [], spkSeparate = [];
   ((state.speakers&&state.speakers.rows)||[]).forEach((r,idx)=>{ if(!(r.name||'').trim()) return; (isCombined(r)?spkCombined:spkSeparate).push(mkItem(r,'i|spk|'+idx)); });
@@ -5731,8 +5738,8 @@ function liveSlice(d){
     /* BUILD 16.44 — 'ext' is a SHADOW of the sub-lists that live inside older sections (camera.cases, projectors.acc). A client on
        a build that predates them rewrites those sections WITHOUT the sub-list; a section only new builds write survives that,
        and liveApply restores the sub-list from here when the section arrives without it. Always derived — never edited directly. */
-    ext:     { cameraCases: (d.camera && d.camera.cases) || [], projAcc: (d.projectors && d.projectors.acc) || [], fanCases: (d.fan && d.fan.cases) || [] },
-    projectors: { list: (d.projectors && d.projectors.list) || [], selId: (d.projectors && d.projectors.selId) || null, removableLens: !!(d.projectors && d.projectors.removableLens), lenses: (d.projectors && d.projectors.lenses) || [], acc: (d.projectors && d.projectors.acc) || [] },   /* acc = Projector Accessories (BUILD 16.19) */
+    ext:     { cameraCases: (d.camera && d.camera.cases) || [], projAcc: (d.projectors && d.projectors.acc) || [], fanCases: (d.fan && d.fan.cases) || [], projMounts: (d.projectors && d.projectors.mounts) || [] },   /* + projMounts (BUILD 16.63) */
+    projectors: { list: (d.projectors && d.projectors.list) || [], selId: (d.projectors && d.projectors.selId) || null, removableLens: !!(d.projectors && d.projectors.removableLens), lenses: (d.projectors && d.projectors.lenses) || [], acc: (d.projectors && d.projectors.acc) || [], mounts: (d.projectors && d.projectors.mounts) || [] },   /* acc = Projector Accessories (BUILD 16.19) · mounts = Projector Mount (BUILD 16.63) */
     validation:   d.validation || {},                 /* dashboard test chips — live now (BUILD 12.7) */
     vjValidation: d.vjValidation || {},
     shipping: { date:(d.shipping&&d.shipping.date)||'', pallets:(d.shipping&&d.shipping.pallets)||[], assign:(d.shipping&&d.shipping.assign)||{}, meta:(d.shipping&&d.shipping.meta)||{}, packed:(d.shipping&&d.shipping.packed)||{} }   /* pallets + date + comments + loaded flags sync; docs ride in the heavy json only (BUILD 12.54) */
@@ -5772,8 +5779,9 @@ function liveApply(d, live){
   if(live.speakers){ d.speakers = d.speakers || {rows:[],ready:false,photos:[]}; setIf(d.speakers, 'rows', live.speakers.rows || []); setIf(d.speakers, 'ready', !!live.speakers.ready); }
   if(live.fan){ d.fan = d.fan || {rows:[],ready:false,photos:[]}; setIf(d.fan, 'rows', live.fan.rows || []); setIf(d.fan, 'ready', !!live.fan.ready); if('cases' in live.fan) setIf(d.fan, 'cases', live.fan.cases || []); }   /* BUILD 16.57: a pre-16.57 sender has no 'cases' key → keep ours */
   if(live.cables){ d.cables = d.cables || {rows:[],ready:false,photos:[]}; setIf(d.cables, 'rows', live.cables.rows || []); setIf(d.cables, 'ready', !!live.cables.ready); }
-  if(live.ext){ d.ext = d.ext || {}; setIf(d.ext, 'cameraCases', live.ext.cameraCases || []); setIf(d.ext, 'projAcc', live.ext.projAcc || []); if('fanCases' in live.ext) setIf(d.ext, 'fanCases', live.ext.fanCases || []); }   /* BUILD 16.44 / 16.57 */
+  if(live.ext){ d.ext = d.ext || {}; setIf(d.ext, 'cameraCases', live.ext.cameraCases || []); setIf(d.ext, 'projAcc', live.ext.projAcc || []); if('fanCases' in live.ext) setIf(d.ext, 'fanCases', live.ext.fanCases || []); if('projMounts' in live.ext) setIf(d.ext, 'projMounts', live.ext.projMounts || []); }   /* BUILD 16.44 / 16.57 / 16.63 */
   try{ if(live.fan && !('cases' in live.fan) && d.ext && Array.isArray(d.ext.fanCases) && d.ext.fanCases.length && !((d.fan && d.fan.cases) || []).length){ d.fan.cases = JSON.parse(JSON.stringify(d.ext.fanCases)); changed = true; } }catch(_){}
+  try{ if(live.projectors && !('mounts' in live.projectors) && d.ext && Array.isArray(d.ext.projMounts) && d.ext.projMounts.length && !((d.projectors && d.projectors.mounts) || []).length){ d.projectors = d.projectors || {list:[],selId:null,models:{}}; d.projectors.mounts = JSON.parse(JSON.stringify(d.ext.projMounts)); changed = true; } }catch(_){}   /* BUILD 16.63: an old client rewrote projectors without mounts */
   /* BUILD 16.44: restore a sub-list an old client wiped — the section arrived WITHOUT the key, the shadow still has it */
   try{
     if(live.camera && !('cases' in live.camera) && d.ext && Array.isArray(d.ext.cameraCases) && d.ext.cameraCases.length && !((d.camera && d.camera.cases) || []).length){ d.camera = d.camera || {rows:[],ready:false,photos:[]}; d.camera.cases = JSON.parse(JSON.stringify(d.ext.cameraCases)); changed = true; }
@@ -5784,7 +5792,7 @@ function liveApply(d, live){
   if(live.dome){ d.dome = d.dome || {domeUid:'',kitId:'',ready:false,snap:null}; setIf(d.dome, 'domeUid', live.dome.domeUid || ''); setIf(d.dome, 'kitId', live.dome.kitId || ''); setIf(d.dome, 'ready', !!live.dome.ready); setIf(d.dome, 'snap', live.dome.snap || null);
     if(live.dome.ballast && Array.isArray(live.dome.ballast.rows)){ if(!d.dome.ballast || typeof d.dome.ballast!=='object') d.dome.ballast = {rows:[],photos:[]}; setIf(d.dome.ballast, 'rows', live.dome.ballast.rows); } }   /* BUILD 16.27 / 16.42 */
   if(live.tools){ d.tools = d.tools || {rows:[],ready:false,photos:[]}; setIf(d.tools, 'rows', live.tools.rows || []); setIf(d.tools, 'ready', !!live.tools.ready); }
-  if(live.projectors){ d.projectors = d.projectors || {list:[],selId:null,models:{}}; setIf(d.projectors, 'list', live.projectors.list || []); setIf(d.projectors, 'selId', live.projectors.selId || null); if('removableLens' in live.projectors) setIf(d.projectors, 'removableLens', !!live.projectors.removableLens); if('lenses' in live.projectors) setIf(d.projectors, 'lenses', live.projectors.lenses || []); if('acc' in live.projectors) setIf(d.projectors, 'acc', live.projectors.acc || []); }
+  if(live.projectors){ d.projectors = d.projectors || {list:[],selId:null,models:{}}; setIf(d.projectors, 'list', live.projectors.list || []); setIf(d.projectors, 'selId', live.projectors.selId || null); if('removableLens' in live.projectors) setIf(d.projectors, 'removableLens', !!live.projectors.removableLens); if('lenses' in live.projectors) setIf(d.projectors, 'lenses', live.projectors.lenses || []); if('acc' in live.projectors) setIf(d.projectors, 'acc', live.projectors.acc || []); if('mounts' in live.projectors) setIf(d.projectors, 'mounts', live.projectors.mounts || []); }
   if(live.validation)   setIf(d, 'validation',   live.validation);      /* dashboard test chips (BUILD 12.7) */
   if(live.vjValidation) setIf(d, 'vjValidation', live.vjValidation);
   if(live.shipping){ d.shipping = d.shipping || {date:'',pallets:[],assign:{},docs:[],meta:{},packed:{}}; setIf(d.shipping,'date',live.shipping.date||''); setIf(d.shipping,'pallets',live.shipping.pallets||[]); setIf(d.shipping,'assign',live.shipping.assign||{}); if('meta' in live.shipping) setIf(d.shipping,'meta',live.shipping.meta||{}); if('packed' in live.shipping) setIf(d.shipping,'packed',live.shipping.packed||{}); }
@@ -6615,11 +6623,12 @@ async function fbpBrowseMirror(e){
   const d = e.data, rec = mediaMap()[pid] || (mediaMap()[pid] = {});
   const fid = await fbpBrowseFolder(e); if(!fid) return;
   let _mirrorFail = false;   /* BUILD 14.62: surface silent Drive upload failures in the status line */
-  const _upFile = async (name, folderId, dataUrl) => {
-    try{ const ex = await driveFindFile(name, folderId); const mime = (dataUrl.match(/^data:([^;]+)/)||[])[1] || 'application/octet-stream'; await driveUpload(name, folderId, dataUrlToBytes(dataUrl), mime, ex); return true; }catch(_){ return false; }
-  };
-  const _reconcile = async (folderId, keepNames) => {
-    try{ const ex = await backupList(folderId); for(const x of ex){ if(x.mimeType === 'application/vnd.google-apps.folder') continue; if(!keepNames.has(x.name)){ try{ await driveTrash(x.id); }catch(_){} } } }catch(_){}
+  /* BUILD 16.62: the uploaded file's Drive id is recorded on the record itself (`_a`, the same shape the v5 engine uses),
+     so a later deletion carries the EXACT fileId. The old name-based folder sweep is gone — deletions go through AD. */
+  const _upFile = async (name, folderId, dataUrl, rec0) => {
+    try{ const ex = await driveFindFile(name, folderId); const mime = (dataUrl.match(/^data:([^;]+)/)||[])[1] || 'application/octet-stream'; const id = await driveUpload(name, folderId, dataUrlToBytes(dataUrl), mime, ex);
+      if(rec0 && id){ try{ rec0._a = rec0._a || {}; rec0._a.data = { f: id, n: name, s: (rec0.size || 0), t: (rec0.type || mime), h: SE.dataHash(dataUrl), ph: false }; if(!rec0.uploadedBy) rec0.uploadedBy = _gUser || ''; }catch(_){} }
+      return true; }catch(_){ return false; }
   };
   /* ---- Documentation/ (+ TOOL DATABASES subfolder) ---- */
   try{
@@ -6631,9 +6640,8 @@ async function fbpBrowseMirror(e){
       let docFail = false;
       if(rootFiles.length || tdFiles.length){
         const docId = await driveEnsureFolder('Documentation', fid);
-        for(const f of rootFiles){ if(!(await _upFile(f.name, docId, f.data))) docFail = true; }
-        await _reconcile(docId, new Set(rootFiles.map(f=>f.name)));
-        if(tdFiles.length){ const tdId = await driveEnsureFolder(TOOL_DB_SUBFOLDER, docId); for(const f of tdFiles){ if(!(await _upFile(f.name, tdId, f.data))) docFail = true; } await _reconcile(tdId, new Set(tdFiles.map(f=>f.name))); }
+        for(const f of rootFiles){ if(!(await _upFile(f.name, docId, f.data, f))) docFail = true; }
+        if(tdFiles.length){ const tdId = await driveEnsureFolder(TOOL_DB_SUBFOLDER, docId); for(const f of tdFiles){ if(!(await _upFile(f.name, tdId, f.data, f))) docFail = true; } }
       }
       if(!docFail) rec.browseDsig = curDsig;                    /* BUILD 14.58: retry next push if a doc failed to upload */
       if(docFail) _mirrorFail = true;
@@ -6656,7 +6664,7 @@ async function fbpBrowseMirror(e){
         setCloudStat('Uploading photo ' + (k+1) + '/' + todo.length + ' — ' + j.dir);
         try{ if(!dirIds[j.dir]) dirIds[j.dir] = await driveEnsureFolder(j.dir, photosRoot); const ex = await driveFindFile(j.name, dirIds[j.dir]); const mime = (j.data.match(/^data:([^;]+)/)||[,'image/jpeg'])[1]; await driveUpload(j.name, dirIds[j.dir], dataUrlToBytes(j.data), mime, ex); }catch(_){ photoFail = true; }
       }
-      for(const rp of removed){ try{ const folderId = await driveFindFolder(rp.dir, photosRoot); if(!folderId) continue; const fileId = await driveFindFile(rp.name, folderId); if(fileId) await driveTrash(fileId); }catch(_){} }
+      /* BUILD 16.62: removed photos are no longer trashed by name here — the deletion job (AD) removes the exact file */
     }
     if(!photoFail){                                            /* only remember as fully mirrored when every file landed */
       rec.browsePhotoSig = psig;
@@ -6832,6 +6840,7 @@ function _fsShowStat(extra){ var a=[];
   if(_fsLastRecv) a.push('Recv ↓ '+hhmmss(_fsLastRecv));
   const st=_fsStashCount(); if(st) a.push('⚠ '+st+' local change'+(st===1?'':'s')+' kept aside');
   const cf=_fsConflictCount(); if(cf) a.push('⚠ '+cf+' field conflict'+(cf===1?'':'s'));
+  try{ const dj = AD.pendingLabel(); if(dj) a.push(dj); }catch(_){}   /* BUILD 16.62 */
   if(extra) a.push(extra);
   if(a.length) setCloudStat(a.join('  ·  ')+'  ·  '+(_gUser||'')); }
 function _fsStampSent(){ _fsLastSent=Date.now(); if(_fsStatMode==='saving') _fsStatMode=''; _fsShowStat(); }
@@ -7105,7 +7114,7 @@ function fsApplyDoc(data){
   });
   /* BUILD 16.45: a section only new builds write (ext / dome) vanished from the doc → an old client did a whole-document
      set. Our copy is intact: drop its baseline so the next push re-adds it (runs after the gate; never a full set). */
-  try{ ['ext','dome'].forEach(function(s){ if(data[s] !== undefined) return; const v = fsSlice(e.data)[s] || {}; const nonEmpty = (s==='ext') ? ((v.cameraCases||[]).length || (v.projAcc||[]).length) : (!!v.domeUid || ((v.ballast&&v.ballast.rows)||[]).length); if(nonEmpty && _fsLocal[pid]){ delete _fsLocal[pid][s]; _fsGateQ[pid] = true; } }); }catch(_){}
+  try{ ['ext','dome'].forEach(function(s){ if(data[s] !== undefined) return; const v = fsSlice(e.data)[s] || {}; const nonEmpty = (s==='ext') ? ((v.cameraCases||[]).length || (v.projAcc||[]).length || (v.projMounts||[]).length) : (!!v.domeUid || ((v.ballast&&v.ballast.rows)||[]).length); if(nonEmpty && _fsLocal[pid]){ delete _fsLocal[pid][s]; _fsGateQ[pid] = true; } }); }catch(_){}
   /* BUILD 16.03 — make sure this existing project has a push-baseline, so its first edit this session
      updates only the changed section instead of overwriting the whole cloud document. */
   try{ if(!_fsLocal[pid]){ const rec={ _seen:true, _done:e.done?1:0, _msig:e._remoteMsig||'' }; const sl0=fsSlice(e.data); FS_SECTIONS.forEach(function(s){ rec[s]=JSON.stringify(sl0[s]||{}); }); _fsLocal[pid]=rec; } }catch(_){}
@@ -7292,6 +7301,8 @@ function fsOnSnapshot(snap){
       const data = ch.doc.data();
       _fsSnapMeta = { fromCache: !fromServer || !!(ch.doc.metadata && ch.doc.metadata.fromCache), hasPendingWrites: !!(ch.doc.metadata && ch.doc.metadata.hasPendingWrites) };   /* BUILD 16.46 */
       if(!_fsServerSeen && _fsSnapMeta.fromCache) return;   /* before the gate only SERVER data is trusted — a cached copy is neither applied nor used as a base */
+      if(ch.type !== 'removed' && data && data.driveJobs && typeof data.driveJobs === 'object'){ try{ AD.onServerJobs(ch.doc.id, data.driveJobs); }catch(_){} }   /* BUILD 16.62: deletion jobs ride on the legacy document of every root */
+      if(data && data.kind === 'drivejobs') return;                                                   /* BUILD 16.62: a jobs-only document (root without a legacy copy) is never a project */
       /* BUILD 14.21: the reserved shared-library doc (no pid, kind:'library') — merge it, never as a project */
       if(ch.doc.id === LIB_DOC_ID || (data && data.kind === 'library')){
         if(ch.type !== 'removed' && ((SE_ON && SE.enabled('shared_library')) ? SE.applyLegacy('shared_library', data) : fsApplyLibrary(data))) touched = true;   /* BUILD 16.55: dual-read when the library is on v5 */
@@ -7509,7 +7520,7 @@ async function fsStart(){
      file and never retried until a reload (the "sync only after Ctrl+Shift+R" bug). A steady 12s
      media check makes B converge on its own — cheap: a no-op in-memory loop unless a msig differs. */
   if(_fsMediaTimer){ clearInterval(_fsMediaTimer); }
-  _fsMediaTimer = setInterval(function(){ if(SE_ON){ try{ SE.tick(); }catch(_){} } if(_FS && _cloudOn && _gTok) fbpMediaSync().catch(function(){}); }, 12000);   /* BUILD 16.55: engine tick for canary roots + legacy media for the rest */   /* BUILD 16.53: engine tick — retry uploads / unsent edits, fetch images */
+  _fsMediaTimer = setInterval(function(){ if(SE_ON){ try{ SE.tick(); }catch(_){} } try{ AD.tick(); }catch(_){} if(_FS && _cloudOn && _gTok) fbpMediaSync().catch(function(){}); }, 12000);   /* BUILD 16.55: engine tick for canary roots + legacy media for the rest */   /* BUILD 16.53: engine tick — retry uploads / unsent edits, fetch images */
   try{ accFsEnsureStarted(); }catch(_){}   /* BUILD 15.67: live access_users (roles/permissions) */
   setCloudStat('Firestore ✓ ' + (_gUser || ''));
 }
@@ -10258,40 +10269,83 @@ function updLens(i,k,v){ const l=projLenses()[i]; if(!l) return; l[k]=v; saveSta
    (module right after Projectors in the packing list / PDF). */
 const PROJ_ACC_SOURCES = ['Included','Fulldome Stock','Purchase','Other'];
 function projAcc(){ return ensureProjectors(state).acc; }
-function addProjAcc(){ projAcc().push({ id:'pa'+Date.now()+Math.floor(Math.random()*1e4), item:'', model:'', req:'', source:'', qty:'', packed:'', notes:'' }); saveState(); rerenderKeepScroll(); }
+function addProjAcc(){ projAcc().push({ id:'pa'+Date.now()+Math.floor(Math.random()*1e4), item:'', model:'', req:'', source:'', qty:'', packed:'', notes:'', price:'', link:'' }); saveState(); rerenderKeepScroll(); }
 function rmProjAcc(i){ const a=projAcc(); if(!a[i]) return; a.splice(i,1); saveState(); rerenderKeepScroll(); }
 function updProjAcc(i,k,v){ const a=projAcc()[i]; if(!a) return; a[k]=v; saveState(); }   /* BUILD 16.21: Packed column removed (packing is tracked in Shipping) */
 /* BUILD 16.20: EVERY named accessory ships (was: only rows with Qty to Ship > 0 — rows with an empty Qty were silently
    left out). Quantity = Qty to Ship, else Required, else Packed, else 1. */
 function projAccShipQty(a){ const n = v => parseFloat(String(v==null?'':v).replace(',','.'))||0; return n(a.qty) || n(a.req) || 1; }
 function projAccShipItems(){ return projAcc().filter(a=>String(a.item||'').trim())
-  .map(a=>({ key:'i|pacc|'+a.id, name:String(a.item).trim()+(String(a.model||'').trim()?' — '+String(a.model).trim():''), qty:projAccShipQty(a), link:'' })); }
+  .map(a=>({ key:'i|pacc|'+a.id, name:String(a.item).trim()+(String(a.model||'').trim()?' — '+String(a.model).trim():''), qty:projAccShipQty(a), link:a.link||'' })); }
 function projAccCard(){
   const acc = projAcc();
+  /* BUILD 16.64: columns = Item · Qty · Model / Part No. · Unit Price · Link · Notes (Required / Source retired from the table, data kept) */
   const rows = acc.map((a,i)=>`
     <tr>
-      <td class="tight" style="width:17%"><input class="cell b" id="paccN${esc(a.id)}" value="${esc(a.item)}" placeholder="Item" oninput="updProjAcc(${i},'item',this.value)"></td>
-      <td class="tight" style="width:16%"><input class="cell" value="${esc(a.model)}" placeholder="Model / Part No." oninput="updProjAcc(${i},'model',this.value)"></td>
-      <td class="tight" style="width:8%"><input class="cell num" value="${esc(a.req)}" placeholder="—" oninput="updProjAcc(${i},'req',this.value)"></td>
-      <td class="tight" style="width:14%"><select class="cell ${!(a.source||'').trim()?'empty':''}" onchange="updProjAcc(${i},'source',this.value);this.classList.toggle('empty',!this.value)">
-        <option value="" ${!(a.source||'').trim()?'selected':''}>— Source —</option>
-        ${PROJ_ACC_SOURCES.map(s=>`<option value="${s}" ${a.source===s?'selected':''}>${s}</option>`).join('')}
-        ${(a.source||'').trim() && PROJ_ACC_SOURCES.indexOf(a.source)<0 ? `<option value="${esc(a.source)}" selected>${esc(a.source)}</option>` : ''}
-      </select></td>
-      <td class="tight" style="width:9%"><input class="cell num" value="${esc(a.qty)}" placeholder="0" title="Quantity in the packing list (empty = Required)" oninput="updProjAcc(${i},'qty',this.value)"></td>
+      <td class="tight" style="width:24%"><input class="cell b" id="paccN${esc(a.id)}" value="${esc(a.item)}" placeholder="Item" oninput="updProjAcc(${i},'item',this.value)"></td>
+      <td class="tight" style="width:7%"><input class="cell num" value="${esc(a.qty)}" placeholder="1" title="Quantity (also the quantity in the packing list)" oninput="updProjAcc(${i},'qty',this.value)"></td>
+      <td class="tight" style="width:20%"><input class="cell" value="${esc(a.model)}" placeholder="Model / Part No." oninput="updProjAcc(${i},'model',this.value)"></td>
+      <td class="tight" style="width:11%"><input class="cell num" value="${esc(a.price)}" placeholder="—" oninput="updProjAcc(${i},'price',this.value)"></td>
+      <td class="tight" style="width:14%"><input class="cell" value="${esc(a.link)}" placeholder="https://" oninput="updProjAcc(${i},'link',this.value)"></td>
       <td class="tight"><input class="cell" value="${esc(a.notes)}" placeholder="Notes" oninput="updProjAcc(${i},'notes',this.value)"></td>
       <td class="rm"><button title="Remove" onclick="rmProjAcc(${i})">×</button></td>
     </tr>`).join('');
   return `
       <div class="card" style="margin:16px 0 0">
         <div class="card-head"><h3>Projector Accessories</h3><span class="chip c-mut"><span class="cd"></span>${acc.length}</span></div>
-        <div class="hint" style="margin:-6px 0 12px;color:var(--dim);font-size:11.5px">Projector-specific accessories supplied or purchased for this project. Every named row appears automatically in the Shipping list (module "Projector Accessories") — quantity = Qty to Ship (or Required if empty).</div>
+        <div class="hint" style="margin:-6px 0 12px;color:var(--dim);font-size:11.5px">Projector-specific accessories supplied or purchased for this project. Every named row appears automatically in the Shipping list (module "Projector Accessories") — quantity = Qty.</div>
         ${acc.length ? `
         <table class="eq">
-          <thead><tr><th>Item</th><th>Model / Part No.</th><th style="text-align:right">Required</th><th>Source</th><th style="text-align:right">Qty to Ship</th><th>Notes</th><th></th></tr></thead>
+          <thead><tr><th>Item</th><th style="text-align:right">Qty</th><th>Model / Part No.</th><th style="text-align:right">Unit Price</th><th>Link</th><th>Notes</th><th></th></tr></thead>
           <tbody>${rows}</tbody>
         </table>` : `<div style="font-size:12.5px;color:#9aa2ad;padding:4px 2px">No accessories yet — add the first one.</div>`}
         <button class="add-line" onclick="addProjAcc()">+ Add accessory</button>
+      </div>`;
+}
+/* BUILD 16.63 — Projector Mount: rigging hardware for the projectors, picked from the TRUSS group of the Equipment Library
+   (category → items of that category; a typed name that is not in the Library can be added to the Truss group with the
+   book icon). Every named row ships as part of ONE place "Projector Mount" (module right after Projector Accessories). */
+function projMounts(){ return ensureProjectors(state).mounts; }
+function projMountCats(){ return groupCats('truss'); }
+const projMountListId = cat => 'dlPmCat' + Math.max(0, ciIndexOf(projMountCats(), cat));
+function addProjMount(){ projMounts().push({ id:'pm'+Date.now()+Math.floor(Math.random()*1e4), cat:'', name:'', qty:'', price:'', link:'', serial:'' }); saveState(); rerenderKeepScroll(); }
+function rmProjMount(i){ const a=projMounts(); if(!a[i]) return; a.splice(i,1); saveState(); rerenderKeepScroll(); }
+function updProjMount(i,k,v){ const m=projMounts()[i]; if(!m) return; m[k]=v; saveState(); if(k==='qty'||k==='price'){ const t=document.getElementById('pmRowT'+i); if(t) t.textContent = fmt(priceNum(m.price)*(parseFloat(m.qty)||1) || null); const f=document.getElementById('pmFoot'); if(f) f.textContent = fmt(projMountTotal()); } }
+function setProjMountCat(i, v){ const m=projMounts()[i]; if(!m) return; m.cat = v; if(autoFillFromCat(m, libByGroupCat('truss', v))) flashStat('Filled from Library ✓'); saveState(); rerenderKeepScroll(); }
+function projMountTotal(){ return projMounts().reduce((s,m)=> s + (priceNum(m.price)*(parseFloat(m.qty)||1) || 0), 0); }
+function projMountShipItems(){ return projMounts().filter(m=>String(m.name||'').trim()).map(m=>({ key:'i|pmount|'+m.id, name:String(m.name).trim()+(String(m.serial||'').trim()?' · SN '+String(m.serial).trim():''), qty:(parseFloat(m.qty)||1), link:m.link||'' })); }
+function addProjMountToLib(i){ const m=projMounts()[i]; if(!m || !(m.name||'').trim()) return; const cat=(m.cat||'').trim(); if(!db.library.truss) db.library.truss=[]; if(libFind(m.name)){ flashStat('Already in the Library'); return; } db.library.truss.push({ cat:cat, name:m.name.trim(), price:m.price||'', link:m.link||'' }); try{ _libDirty = true; }catch(_){} saveState(); flashStat('Added to the Library (Truss) ✓'); rerenderKeepScroll(); }
+function projMountCard(){
+  const list = projMounts(); const cats = projMountCats();
+  const rows = list.map((m,i)=>`
+    <tr>
+      <td class="tight" style="width:16%"><select class="cell ${!(m.cat||'').trim()?'empty':''}" onchange="setProjMountCat(${i},this.value);this.classList.toggle('empty',!this.value)">
+        <option value="" ${!(m.cat||'').trim()?'selected':''}>— Category —</option>
+        ${cats.map(c=>`<option value="${esc(c)}" ${m.cat===c?'selected':''}>${esc(c)}</option>`).join('')}
+        ${(m.cat||'').trim() && ciIndexOf(cats, m.cat)===-1 ? `<option value="${esc(m.cat)}" selected>${esc(m.cat)}</option>` : ''}
+      </select></td>
+      <td class="tight"><input class="cell b" id="pmN${i}" onfocus="dlFocus(this)" onblur="dlBlur(this)" list="${(m.cat||'').trim()?projMountListId(m.cat):'dlLibTruss'}" value="${esc(m.name)}" placeholder="Pick from Library (Truss) or type" oninput="updProjMount(${i},'name',this.value)"></td>
+      <td class="tight" style="width:12%"><input class="cell" value="${esc(m.serial)}" placeholder="Serial Number" oninput="updProjMount(${i},'serial',this.value)"></td>
+      <td class="tight" style="width:7%"><input class="cell num" value="${esc(m.qty)}" placeholder="1" oninput="updProjMount(${i},'qty',this.value)"></td>
+      <td class="tight" style="width:11%"><input class="cell num" value="${esc(m.price)}" placeholder="—" oninput="updProjMount(${i},'price',this.value)"></td>
+      <td class="num" style="width:11%"><span id="pmRowT${i}">${fmt(priceNum(m.price)*(parseFloat(m.qty)||1) || null)}</span></td>
+      <td class="tight" style="width:11%"><input class="cell" value="${esc(m.link)}" placeholder="https://" oninput="updProjMount(${i},'link',this.value)"></td>
+      <td class="tolib">${(m.name||'').trim() && !libFind(m.name) ? `<button title="Add to Library (Truss)" onclick="addProjMountToLib(${i})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M9 9.5h6M12 6.5v6"/></svg></button>` : ''}</td>
+      <td class="rm"><button title="Remove" onclick="rmProjMount(${i})">×</button></td>
+    </tr>`).join('');
+  return `
+      <datalist id="dlLibTruss">${((db.library&&db.library.truss)||[]).map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>
+      ${cats.map((c,ci)=>`<datalist id="dlPmCat${ci}">${libByGroupCat('truss', c).map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>`).join('')}
+      <div class="card" style="margin:16px 0 0">
+        <div class="card-head"><h3>Projector Mount</h3><span class="chip c-mut"><span class="cd"></span>${list.length}</span></div>
+        <div class="hint" style="margin:-6px 0 12px;color:var(--dim);font-size:11.5px">Rigging hardware for the projectors — picked from the Truss group of the Equipment Library (choose a category, then the item). Every named row ships automatically in the Shipping list (place "Projector Mount").</div>
+        ${list.length ? `
+        <table class="eq">
+          <thead><tr><th>Category</th><th>Hardware</th><th>Serial Number</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Total</th><th>Link</th><th></th><th></th></tr></thead>
+          <tbody>${rows}</tbody>
+          <tfoot><tr><td colspan="5">Mount total</td><td class="num" id="pmFoot">${fmt(projMountTotal())}</td><td colspan="3"></td></tr></tfoot>
+        </table>` : `<div style="font-size:12.5px;color:#9aa2ad;padding:4px 2px">No mount hardware yet — add the first item.</div>`}
+        <button class="add-line" onclick="addProjMount()">+ Add mount item</button>
       </div>`;
 }
 function setSelProjector(id){ ensureProjectors(state).selId = id; saveState(); rerenderKeepScroll(); }
@@ -10659,8 +10713,9 @@ function pageProjectors(){
         <tbody>${invRows}</tbody>
       </table>` : `<div style="font-size:12.5px;color:#9aa2ad;padding:4px 2px">No projectors yet — add the first one.</div>`}
       <button class="add-line" onclick="addProjector()">+ Add projector</button>
-      ${lensCard}
       ${projAccCard()}
+      ${lensCard}
+      ${projMountCard()}
       </div>
     </div>
     <div style="margin-top:18px"></div>
@@ -12738,12 +12793,12 @@ var SE = (function(){
   const SE_SCHEMA = {
     project: {
       lists: (function(){ const L = {
-        'server.rows':{}, 'backup.rows':{}, 'vj.rows':{}, 'rack.rows':{}, 'camera.rows':{}, 'camera.cases':{}, 'speakers.rows':{}, 'fan.rows':{}, 'cables.rows':{}, 'tools.rows':{},
-        'projectors.list':{}, 'projectors.list/#/web':{ asset:'data' }, 'projectors.lenses':{}, 'projectors.acc':{},
+        'server.rows':{}, 'backup.rows':{}, 'vj.rows':{}, 'rack.rows':{}, 'camera.rows':{}, 'camera.cases':{}, 'speakers.rows':{}, 'fan.rows':{}, 'fan.cases':{}, 'cables.rows':{}, 'tools.rows':{},
+        'projectors.list':{}, 'projectors.list/#/web':{ asset:'data' }, 'projectors.lenses':{}, 'projectors.acc':{}, 'projectors.mounts':{},
         'shipping.pallets':{}, 'shipping.docs':{ asset:'data' }, 'shipping.palletPhotos/*':{ asset:'src' },
         'dome.ballast.rows':{}, 'dome.ballast.photos':{ asset:'src' },
         'rack.frontPh':{ asset:'src' }, 'rack.rearPh':{ asset:'src' }, 'docs.sitePh':{ asset:'src' }, 'docs.files/*':{ asset:'data' },
-        'ext.cameraCases':{}, 'ext.projAcc':{} };
+        'ext.cameraCases':{}, 'ext.projAcc':{}, 'ext.fanCases':{}, 'ext.projMounts':{} };
         PHOTO_KEYS.forEach(function(k){ L[k + '.photos'] = { asset:'src' }; }); return L; })(),
       binaries: { 'projectors.models/*': ['f','r'], 'contentList': ['data'] },
       sections: function(e){ const o = {}; Object.keys(emptyState()).forEach(function(k){ o[k] = 1; }); Object.keys(e.data || {}).forEach(function(k){ if(!skipKey(k) && k !== 'ready') o[k] = 1; }); return Object.keys(o); }
@@ -13056,7 +13111,6 @@ var SE = (function(){
     if(kind === 'project' && e){ if(!!rd.done !== !!e.done){ if(rd.done){ e.done = true; e.doneAt = rd.doneAt || Date.now(); } else { delete e.done; delete e.doneAt; } } if(rd.browseFid) e._browseFid = rd.browseFid; e._fbSeen = true; }
     if(Sv.allConfirmed && confirmedRoots[root]){ const nb = { fields: {}, records: {}, assets: {} }; ['fields','records','assets'].forEach(function(col){ if(B && B[col]) Object.keys(B[col]).forEach(function(id){ if(Sv[col][id] === undefined) nb[col][id] = B[col][id]; }); /* ACKed by us, not yet echoed by the listener */ Object.keys(Sv[col]).forEach(function(id){ const d = clone(Sv[col][id]); delete d._conf; nb[col][id] = d; }); }); nb.meta = { done: !!rd.done, doneAt: rd.doneAt || 0, bucket: rd.bucket || '' }; st().base[root] = nb; }
     recordConflicts(root, ctx.conflicts);
-    try{ queueTombstoneCleanup(root, M); }catch(_){}
     persist();
     try{ scheduleFetches(root, e); }catch(_){}
     _rerender();
@@ -13172,7 +13226,6 @@ var SE = (function(){
       i += CH; if(!part.length) break;
     }
     if(conflicts.length){ applyConflictsLocally(root, e, conflicts); }
-    try{ queueTombstoneCleanup(root, B); setTimeout(function(){ pumpTrash(); }, 50); }catch(_){}
     persist(); if(e){ e._fbSeen = true; delete e._localNew; } if(!stillUploading) _fsStampSent();
     return { ok: !stillUploading };
   }
@@ -13299,55 +13352,249 @@ var SE = (function(){
     if(!url) return false; const el = document.createElement('a'); el.href = url; if(download !== false) el.download = rec.name || (a && a.n) || 'file'; else el.target = '_blank'; document.body.appendChild(el); el.click(); el.remove(); if(revoke) setTimeout(function(){ URL.revokeObjectURL(url); }, 60000); _fsShowStat(); return true; }
   function driveLink(rec, key){ const a = rec && rec._a && rec._a[key || 'data']; return a && a.f ? ('https://drive.google.com/file/d/' + a.f + '/view') : ''; }
 
-  /* ======================= BUILD 16.60: Google Drive follows the tombstones ======================= */
-  /* Deleting a photo / PDF in the app tombstones its asset document (nothing in Firestore is ever deleted) — but until now
-     the Drive file the engine had uploaded stayed in the project folder forever. Now every machine that sees an asset
-     tombstone moves that file to the Drive TRASH (recoverable for 30 days — nothing is destroyed). Google lets only the
-     file's OWNER trash a "My Drive" file, so a teammate's attempt may be refused (403): then the file is at least detached
-     from the project folder, and the uploader's own machine trashes it when it next sees the tombstone. A file is never
-     touched while any live asset (any root, any machine's state) still points at it. For a Documentation file the legacy
-     V1 mirror copy (flat Documentation/<name>, written by pre-canary builds) is cleaned up too, unless a live document of
-     the project still carries that name. The queue lives in db._se4.trash = { <fileId | flat|pid|name>: {…} }. */
-  function trashQ(){ const s = st(); if(!s.trash || typeof s.trash !== 'object') s.trash = {}; return s.trash; }
-  function fileInUse(fileId, ownAid){ let used = false; try{ Object.keys(S.docs).forEach(function(r){ const A = S.docs[r].assets || {}; Object.keys(A).forEach(function(id){ const a = A[id]; if(id === ownAid) return; if(a && !a.deleted && a.fileId === fileId) used = true; }); }); }catch(_){}
-    if(!used){ try{ const scan = function(tree){ walk(tree, function(o){ if(o && o._a) Object.keys(o._a).forEach(function(k){ if(o._a[k] && o._a[k].f === fileId) used = true; }); }); }; (db.projects || []).forEach(function(e){ if(e && e.data) scan(e.data); }); scan(db.domeLib || []); }catch(_){} }
-    return used; }
-  function docNameInUse(pid, name){ try{ const e = entryOf(pid); const files = e && e.data && e.data.docs && e.data.docs.files; if(!files) return false; return Object.keys(files).some(function(cat){ return (files[cat] || []).some(function(f){ return f && f.name === name; }); }); }catch(_){ return false; } }
-  function queueTombstoneCleanup(root, M){ if(!M || !M.assets) return; const q = trashQ(); let added = 0;
-    Object.keys(M.assets).forEach(function(id){ const a = M.assets[id]; if(!a || !a.deleted || !a.fileId) return;
-      if(!q[a.fileId]){ q[a.fileId] = { n: a.name || '', aid: id, tries: 0, next: 0 }; added++; }
-      if(kindOf(root) === 'project' && a.name && String(a.path || '').indexOf('docs.files') === 0){ const fk = 'flat|' + root + '|' + a.name; if(!q[fk]){ q[fk] = { kind: 'flat', pid: root, n: a.name, tries: 0, next: 0 }; added++; } } });
-    if(added){ persist(); setTimeout(function(){ pumpTrash(); }, 50); } }
-  async function detachFromFolder(fileId, parentId){ let parents = parentId ? [parentId] : []; if(!parents.length){ const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?fields=parents'); const j = await r.json(); parents = (j && j.parents) || []; } if(!parents.length) return false; await gFetch('https://www.googleapis.com/drive/v3/files/' + fileId + '?removeParents=' + encodeURIComponent(parents.join(',')) + '&fields=id', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: '{}' }); return true; }
-  async function trashOrDetach(fileId, parentId){ try{ await driveTrash(fileId); return 'trashed'; }catch(err){ const msg = String(err && err.message || err); if(/Drive 404/.test(msg)) return 'gone'; if(!/403|permission|insufficient|owner/i.test(msg)) throw err; await detachFromFolder(fileId, parentId); return 'detached'; } }
+  /* ======================= BUILD 16.62: Drive clean-up of deleted files is the shared AD pipeline (below the engine) ======================= */
   async function projectFolder(e){ try{ return e ? await fbpBrowseFolder(e) : null; }catch(_){ return null; } }
-  async function cleanFlatCopy(t){ if(docNameInUse(t.pid, t.n)) return 'in-use'; const e = entryOf(t.pid); const pf = await projectFolder(e); if(!pf) return 'no-folder'; const docId = await driveFindFolder('Documentation', pf); if(!docId) return 'no-folder'; const flat = await driveFindFile(t.n, docId); if(!flat) return 'gone'; if(fileInUse(flat)) return 'in-use'; return await trashOrDetach(flat, docId); }
-  var _trashBusy = false;
-  async function pumpTrash(){ if(_trashBusy || !(_cloudOn && _gTok) || !_ready) return; try{ if(_rateLimitedUntil && Date.now() < _rateLimitedUntil) return; }catch(_){}
-    _trashBusy = true;
-    try{ const q = trashQ(); const due = Object.keys(q).filter(function(k){ const t = q[k]; return t && !t.done && (t.next || 0) <= Date.now(); }).slice(0, 3);
-      for(const k of due){ const t = q[k]; t.tries = (t.tries || 0) + 1;
-        try{ let res; if(t.kind === 'flat') res = await cleanFlatCopy(t); else if(fileInUse(k, t.aid)) res = 'in-use'; else res = await trashOrDetach(k, null);
-          if(res === 'in-use' && t.tries < 8){ t.next = Date.now() + 600e3; t.err = 'still referenced — re-checked later'; } else { t.done = res; delete t.err; } DIAG('Drive clean-up: "' + (t.n || k) + '" → ' + res); }
-        catch(err){ const msg = String(err && err.message || err); t.err = msg.slice(0, 140); t.next = Date.now() + Math.min(6 * 3600e3, 300e3 * Math.pow(2, t.tries - 1)); if(t.tries >= 8) t.done = 'gave-up'; DIAG('Drive clean-up failed: "' + (t.n || k) + '" — ' + msg); }
-        persist(); } }
-    finally { _trashBusy = false; } }
   /* a pre-canary build mirrored every document FLAT into Documentation/<name>; the engine files it under Documentation/<Category>/.
      On the first engine upload of such a file the flat copy is MOVED into the category folder and updated in place —
      one file on Drive, not two. Best effort: if Google refuses the move, the upload proceeds as before. */
   async function adoptLegacyCopy(e, name, parts, folderId){ try{ if(!parts || parts[0] !== 'Documentation' || !parts[1]) return null; const pf = await projectFolder(e); if(!pf) return null; const docId = await driveFindFolder('Documentation', pf); if(!docId || docId === folderId) return null; const flat = await driveFindFile(name, docId); if(!flat) return null; await gFetch('https://www.googleapis.com/drive/v3/files/' + flat + '?addParents=' + encodeURIComponent(folderId) + '&removeParents=' + encodeURIComponent(docId) + '&fields=id', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: '{}' }); DIAG('Drive: legacy copy of "' + name + '" moved into ' + parts.join('/')); return flat; }catch(err){ DIAG('Drive: legacy copy of "' + name + '" not adopted — ' + (err && err.message || err)); return null; } }
 
+  /* ======================= BUILD 16.62: asset inventory (read-only) ======================= */
+  /* Every photo / PDF / file the local state of a root holds, keyed by a stable asset id — the schema registry decides
+     what is an asset, nothing is guessed from array shapes and NOTHING in the state is modified. A record that already
+     carries an id (v5) keeps the engine's asset id; a bare V1 record is keyed by content (path · name · size · hash).
+     `v1` = where the pre-canary mirror put the file on Drive (flat Documentation/ or Photos/<dir>/ with the mirror's
+     composed photo name) so a deletion can be resolved to ONE exact Drive file even when no fileId was ever recorded. */
+  function inventory(root, e){
+    const kind = kindOf(root), tree = localOf(root, e), out = {}; if(!tree) return out;
+    const schema = SE_SCHEMA[kind]; let v1jobs = null;
+    const v1photo = function(src){ if(kind !== 'project') return null; if(!v1jobs){ v1jobs = []; try{ v1jobs = cloudPhotoJobs(e) || []; }catch(_){} } const j = v1jobs.find(function(x){ return x && x.data === src; }); return j ? { parts: ['Photos'].concat(String(j.dir).split('/')), name: j.name } : null; };
+    const add = function(cpath, parentRid, id, obj, key){
+      const v = obj[key]; const ref = assetRef(obj, key); const hasBin = isData(v); if(!ref && !hasBin) return;
+      const name = String(obj.name || (ref && ref.n) || ''); const size = Number(obj.size || (ref && ref.s) || (hasBin ? dataSize(v) : 0)) || 0; const hash = (ref && ref.h) || (hasBin ? dataHash(v) : '');
+      const aid = ridOf(cpath, parentRid, id || ('~' + djb(cpath + '|' + key + '|' + name + '|' + size + '|' + hash)));
+      let v1 = null;
+      if(kind === 'project'){ const segs = cpath.split('/');
+        if(segs[0] === 'docs.files'){ v1 = { parts: (TOOL_DB_CATS.indexOf(segs[1]) >= 0) ? ['Documentation', TOOL_DB_SUBFOLDER] : ['Documentation'], name: name }; }
+        else if(cpath === 'contentList'){ v1 = { parts: ['Documentation'], name: name }; }
+        else if(key === 'src' || segs[0] === 'projectors.models'){ v1 = hasBin ? v1photo(v) : null; } }
+      out[aid] = { aid: aid, cpath: cpath, key: key, name: name, size: size, hash: hash, fileId: (ref && ref.f) || '', owner: String(obj.uploadedBy || ''), v1: (v1 && v1.name) ? v1 : null };
+    };
+    Object.keys(schema.lists).forEach(function(pattern){ const spec = schema.lists[pattern]; if(!spec.asset) return; const ik = spec.idKey || 'id';
+      resolveLists(pattern, tree, kind, function(arr, cpath, parentRid){ const seen = {}; arr.forEach(function(rec){ if(!isObj(rec)) return; let id = recId(rec, ik); if(!id || seen[id]) id = ''; else seen[id] = 1; add(cpath, parentRid, id, rec, spec.asset); }); }); });
+    Object.keys(schema.binaries || {}).forEach(function(pattern){ const keys = schema.binaries[pattern]; resolveObjs(pattern, tree, function(obj, cpath){ keys.forEach(function(key){ add(cpath, '', key, obj, key); }); }); });
+    return out;
+  }
+
   /* ======================= queries used by the rest of the app ======================= */
   function hasUnsent(root, e){ try{ if(!_ready) return false; root = root || rootOf(e); if(!root || !enabled(root)) return false; const ent = e || entryOf(root); if(kindOf(root) === 'project' && !ent) return false; const B = baseOf(root); if(!B) return !!(ent && ent._localNew) || (!!S.roots[root] === false && kindOf(root) === 'project'); const L = extract(root, ent, false); if(L.pending.length) return true; return diffSet(B, L, null).length > 0; }catch(_){ return false; } }
   function changedSections(e){ try{ const root = rootOf(e); const B = baseOf(root); if(!B) return []; const L = extract(root, e, false); const s = {}; diffSet(B, L, null).forEach(function(op){ s[op.col === 'fields' ? op.id : (op.col === 'records' ? decodeURIComponent((L.records[op.id] || B.records[op.id] || {}).path || '').split('.')[0] : (L.assets[op.id] || B.assets[op.id] || {}).path || '').split('.')[0]] = 1; }); return Object.keys(s); }catch(_){ return []; } }
-  function tick(){ try{ if(!fsReady() || !_ready) return; db.projects.forEach(function(e){ const pid = fbpPid(e); if(pid && enabled(pid) && (hasUnsent(pid, e) || !S.roots[pid])) fsPushNow(e).catch(function(){}); }); ['dome_library','shared_library'].forEach(function(r){ if(enabled(r) && (hasUnsent(r) || !S.roots[r])) push(r); }); db.projects.forEach(function(e){ if(enabled(fbpPid(e))) scheduleFetches(fbpPid(e), e); }); pumpTrash(); }catch(_){} }
+  function tick(){ try{ if(!fsReady() || !_ready) return; db.projects.forEach(function(e){ const pid = fbpPid(e); if(pid && enabled(pid) && (hasUnsent(pid, e) || !S.roots[pid])) fsPushNow(e).catch(function(){}); }); ['dome_library','shared_library'].forEach(function(r){ if(enabled(r) && (hasUnsent(r) || !S.roots[r])) push(r); }); db.projects.forEach(function(e){ if(enabled(fbpPid(e))) scheduleFetches(fbpPid(e), e); }); }catch(_){} }
   function flushAll(){ db.projects.forEach(function(e){ const pid = fbpPid(e); if(pid && enabled(pid) && (e._localNew || hasUnsent(pid, e) || !S.roots[pid])) fsPushNow(e).catch(function(){}); }); Object.keys(st().legacy).forEach(function(r){ if(enabled(r) && !S.roots[r] && kindOf(r) === 'project' && !entryOf(r)) migrate(r, null).catch(function(){}); }); ['dome_library','shared_library'].forEach(function(r){ if(enabled(r) && (hasUnsent(r) || !S.roots[r])) push(r); }); }
   async function deleteRoot(root){ /* tombstone — nothing is ever deleted; rev + 1 read inside the transaction */ if(!S.roots[root]) return false; await _fsDb.runTransaction(async function(tx){ const rs = await tx.get(rootRef(root)); if(!rs.exists) return; const cur = rs.data() || {}; tx.update(rootRef(root), Object.assign({ deleted: true, rev: (cur.rev || 0) + 1 }, stamp())); }); return true; }
   function rootAlive(root){ const r = S.roots[root]; return !!(r && !r.deleted); }
   function rootKnown(root){ return !!S.roots[root]; }
-  return { waitConfig: waitConfig, isDenied: isDenied, enabled: enabled, setConfig: setConfig, setEnabled: setEnabled, setAll: setAll, config: config, rootKnown: rootKnown, matchRows: matchRows, schema: SE_SCHEMA, start: start, stop: stop, isReady: isReady, extract: extract, hasUnsent: hasUnsent, changedSections: changedSections, pushPass: pushPass, push: push, applyLegacy: applyLegacy, applyRoot: applyRoot, openAsset: openAsset, driveLink: driveLink, tick: tick, flushAll: flushAll, deleteRoot: deleteRoot, pumpTrash: pumpTrash, trashQueue: trashQ, rootAlive: rootAlive, baseOf: baseOf, isData: isData, serverState: S, uploadPending: uploadPending, scheduleFetches: scheduleFetches, migrate: migrate };
+  return { waitConfig: waitConfig, isDenied: isDenied, enabled: enabled, setConfig: setConfig, setEnabled: setEnabled, setAll: setAll, config: config, rootKnown: rootKnown, matchRows: matchRows, schema: SE_SCHEMA, start: start, stop: stop, isReady: isReady, extract: extract, hasUnsent: hasUnsent, changedSections: changedSections, pushPass: pushPass, push: push, applyLegacy: applyLegacy, applyRoot: applyRoot, openAsset: openAsset, driveLink: driveLink, tick: tick, flushAll: flushAll, deleteRoot: deleteRoot, inventory: inventory, dataHash: dataHash, rootAlive: rootAlive, baseOf: baseOf, isData: isData, serverState: S, uploadPending: uploadPending, scheduleFetches: scheduleFetches, migrate: migrate };
 })();
 try{ window.SE = SE; }catch(_){}
+/* ===================================================================================================================
+   BUILD 16.62 — AD: ONE asset-delete pipeline for every file (Documentation, photos, any future asset), V1 and v5 alike.
+   · Delete in the app = the file leaves the local state (as before) AND a permanent DELETION JOB is written to the
+     server: projects/<root>.driveJobs.<assetId> = { aid, root, section, name, size, hash, fileId, folderId, owner,
+     by, at, status, tries, err, v1, driveCleanupStatus }. Nothing about the file is forgotten.
+   · Every online machine receives the job with the next snapshot and works on it with ITS OWN Drive rights:
+       capabilities.canTrash               → the file goes to the Trash (the uploader / owner)
+       else capabilities.canRemoveMyDriveParent → the file is DETACHED from the project folder (any teammate)
+     After each call the file is read back: trashed == true, or none of its former parents left → only then the
+     status is written (trash / removed). An error leaves the job queued (status unchanged, err + tries recorded,
+     exponential back-off) and the status line shows "Drive cleanup pending".
+   · Jobs are processed at start-up (first server snapshot), right after every snapshot that carries jobs, on the
+     12-second sync tick (back-off permitting) and immediately by the machine that requested the deletion.
+   · ONLY the exact fileId of a job is ever touched. No folder is swept. A V1 file that never had a fileId recorded
+     is resolved by its exact name inside its exact folder: one match → that file; none → nothing to clean ("gone");
+     more than one → "ambiguous", nothing is deleted, the job waits for a human.
+   · Which files were deleted is decided from LOCAL edits only: the inventory of the active project is re-read on
+     every user save and compared with the inventory recorded at the previous save; every sync-apply refreshes the
+     inventory silently. A file this machine merely has not received yet can therefore never become a deletion.
+   · One-time recovery (legacy V1 deletions made before this build): the names an earlier version of the project's
+     _media/<pid>.media.json listed that the project no longer has become ordinary jobs — resolved by exact name.
+   =================================================================================================================== */
+var AD = (function(){
+  const MAX_TRIES_FAILED = 8;
+  function st(){ if(!db._ad || typeof db._ad !== 'object') db._ad = {}; const s = db._ad; s.inv = s.inv || {}; s.outbox = s.outbox || {}; s.once = s.once || {}; return s; }
+  function LOG(m){ try{ if(typeof DIAG === 'function') DIAG('[AD] ' + m); else console.log('[AD] ' + m); }catch(_){} }
+  function fsOk(){ try{ return (typeof fsReady === 'function') && fsReady() && !!_fsDb; }catch(_){ return false; } }
+  function driveOk(){ return !!(_cloudOn && _gTok); }
+  function watched(){ const r = []; try{ const e = activeEntry(); const pid = e && fbpPid(e); if(pid && e.data && e.data.project) r.push([pid, e]); }catch(_){} return r; }
+  function invOf(root, e){ try{ return SE.inventory(root, e); }catch(err){ LOG('inventory failed: ' + (err && err.message || err)); return null; } }
+
+  /* ======================= local edits → deletion jobs ======================= */
+  var _inSave = false, _lastRoot = '';
+  function onSave(skipCloud){
+    if(_inSave) return; _inSave = true;
+    try{ watched().forEach(function(p){ const root = p[0], inv = invOf(root, p[1]); if(!inv) return; const prev = st().inv[root];
+      const fresh = (root === _lastRoot); _lastRoot = root;                                  /* the first look at a (re)activated project only records its inventory — never a diff against a stale one */
+      if(prev && fresh && !skipCloud){ Object.keys(prev).forEach(function(aid){ if(inv[aid]) return; const it = prev[aid];
+        if(it.fileId && Object.keys(inv).some(function(k){ return inv[k].fileId === it.fileId; })) return;                       /* the same Drive file is still referenced (moved / re-keyed) */
+        if(it.v1 && Object.keys(inv).some(function(k){ const o = inv[k].v1; return o && o.name === it.v1.name && o.parts.join('/') === it.v1.parts.join('/'); })) return;   /* another live file keeps that Drive name */
+        request(root, it, p[1]); }); }
+      st().inv[root] = inv; }); }
+    finally{ _inSave = false; }
+  }
+  function baseline(){ onSave(true); }
+  function folderIdOf(root, e){ try{ return (e && e._browseFid) || ((mediaMap()[root] || {}).browseFid) || ''; }catch(_){ return ''; } }
+  function request(root, it, e){
+    const job = { aid: it.aid, root: root, section: it.cpath, key: it.key, name: it.name || '', size: it.size || 0, hash: it.hash || '', fileId: it.fileId || '', folderId: folderIdOf(root, e), owner: it.owner || '', by: _gUser || '', at: Date.now(), status: 'pending', tries: 0, err: '', v1: it.v1 || null, driveCleanupStatus: 'pending' };
+    if(!job.fileId && !job.v1){ LOG('no Drive copy known for "' + job.name + '" (' + job.section + ') — nothing to clean'); return; }
+    st().outbox[root] = st().outbox[root] || {}; st().outbox[root][job.aid] = job;
+    LOG('deletion requested: "' + job.name + '" (' + job.section + ')' + (job.fileId ? ' fileId ' + job.fileId : ' by name'));
+    setTimeout(function(){ flushOutbox().catch(function(){}); }, 50);
+  }
+  var _flushing = false;
+  async function flushOutbox(){
+    if(_flushing || !fsOk()) return; _flushing = true;
+    try{ const ob = st().outbox; let wrote = 0;
+      for(const root of Object.keys(ob)){ for(const aid of Object.keys(ob[root] || {})){ const job = ob[root][aid];
+        try{ await writeJob(root, job, false); delete ob[root][aid]; wrote++; }catch(err){ LOG('job write failed (' + root + '): ' + (err && err.message || err)); } }
+        if(!Object.keys(ob[root] || {}).length) delete ob[root]; }
+      if(wrote){ persistQuiet(); setTimeout(function(){ process().catch(function(){}); }, 100); } }
+    finally{ _flushing = false; }
+  }
+  function fp(){ return firebase.firestore.FieldPath; }
+  function docRef(root){ return _fsDb.collection('projects').doc(root); }
+  /* create-if-absent (a deletion requested on two machines at once stays ONE job); overwrite = status update */
+  async function writeJob(root, job, overwrite){
+    await _fsDb.runTransaction(async function(tx){
+      const snap = await tx.get(docRef(root));
+      if(!snap.exists){ const d = { pid: root, kind: 'drivejobs', driveJobs: {}, proto: FS_PROTO, wstamp: _fsServerTs() }; d.driveJobs[job.aid] = job; tx.set(docRef(root), d); return; }
+      const cur = ((snap.data() || {}).driveJobs || {})[job.aid];
+      if(cur && !overwrite) return;
+      tx.update(docRef(root), new (fp())('driveJobs', job.aid), job, 'proto', FS_PROTO, 'wstamp', _fsServerTs());
+    });
+    _server[root] = _server[root] || {}; _server[root][job.aid] = job;
+  }
+
+  /* ======================= server jobs → local queue ======================= */
+  const _server = {};   /* root → { aid: job } as last seen in the Firestore snapshot */
+  const _next = {};     /* root|aid → earliest next attempt on THIS machine */
+  var _procT = null;
+  function onServerJobs(root, jobs){ if(!root) return; _server[root] = (jobs && typeof jobs === 'object') ? jobs : {}; if(Object.keys(_server[root]).some(function(k){ return open(_server[root][k]); })){ clearTimeout(_procT); _procT = setTimeout(function(){ _procT = null; process().catch(function(){}); }, 1500); } try{ _fsShowStat(); }catch(_){} }
+  function open(j){ return !!(j && j.driveCleanupStatus !== 'completed' && j.driveCleanupStatus !== 'manual'); }
+  function pendingCount(root){ let n = 0; const roots = root ? [root] : Object.keys(_server); roots.forEach(function(r){ Object.keys(_server[r] || {}).forEach(function(k){ if(open(_server[r][k])) n++; }); }); Object.keys(st().outbox || {}).forEach(function(r){ if(!root || r === root) n += Object.keys(st().outbox[r] || {}).length; }); return n; }
+  function pendingLabel(){ const e = activeEntry(); const pid = e && fbpPid(e); if(!pid) return ''; const n = pendingCount(pid); const amb = Object.keys(_server[pid] || {}).filter(function(k){ const j = _server[pid][k]; return j && j.status === 'ambiguous'; }).length; return n ? ('Drive cleanup pending (' + n + ')') : amb ? ('Drive cleanup: ' + amb + ' need' + (amb === 1 ? 's' : '') + ' a manual check') : ''; }
+
+  /* ======================= Drive calls ======================= */
+  async function getFile(fileId){ const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '?fields=id,name,trashed,parents,owners(emailAddress),capabilities(canTrash,canRemoveMyDriveParent)&supportsAllDrives=true'); if(r.status === 404) return null; return await r.json(); }
+  async function removeParents(fileId, parents){ await gFetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(fileId) + '?removeParents=' + encodeURIComponent(parents.join(',')) + '&fields=id&supportsAllDrives=true', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: '{}' }); }
+  async function listByName(name, folderId){ const q = encodeURIComponent("name = '" + String(name).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "' and '" + folderId + "' in parents and trashed = false"); const r = await gFetch('https://www.googleapis.com/drive/v3/files?q=' + q + '&fields=files(id,name,owners(emailAddress))&pageSize=10'); const j = await r.json(); return (j && j.files) || []; }
+  async function folderByParts(root, j){
+    let fid = j.folderId || ''; if(!fid){ const e = fbpEntryByPid(root); fid = folderIdOf(root, e); }
+    if(!fid) return null;
+    for(const p of (j.v1.parts || [])){ if(!p) continue; const sub = await driveFindFolder(p, fid); if(!sub) return null; fid = sub; }
+    return fid;
+  }
+  /* a V1 job without fileId: exactly one file of that name in that folder → its id; none → gone; several → ambiguous */
+  async function resolveV1(root, j){
+    if(!j.v1 || !j.v1.name) return { status: 'gone', err: 'no Drive copy was ever recorded' };
+    const folder = await folderByParts(root, j); if(!folder) return { status: 'gone', err: 'folder ' + j.v1.parts.join('/') + ' not found' };
+    const files = await listByName(j.v1.name, folder);
+    if(files.length === 1) return { id: files[0].id, owner: (files[0].owners && files[0].owners[0] && files[0].owners[0].emailAddress) || '' };
+    if(!files.length) return { status: 'gone', err: 'no file named "' + j.v1.name + '" in ' + j.v1.parts.join('/') };
+    return { status: 'ambiguous', err: files.length + ' files named "' + j.v1.name + '" in ' + j.v1.parts.join('/') + ' — nothing deleted' };
+  }
+  function backoff(tries){ return Math.min(6 * 3600e3, 60e3 * Math.pow(2, Math.max(0, (tries || 1) - 1))); }
+
+  /* ======================= processing ======================= */
+  var _busy = false;
+  async function process(){
+    if(_busy || !driveOk() || !fsOk()) return 0; try{ if(typeof _rateLimitedUntil !== 'undefined' && _rateLimitedUntil && Date.now() < _rateLimitedUntil) return 0; }catch(_){}
+    _busy = true; let n = 0;
+    try{ for(const root of Object.keys(_server)){ for(const aid of Object.keys(_server[root])){ const j = _server[root][aid]; if(!open(j)) continue; const key = root + '|' + aid; if((_next[key] || 0) > Date.now()) continue;
+        if(j.status === 'removed' && j.owner && j.owner !== (_gUser || '')){ _next[key] = Date.now() + 6 * 3600e3; continue; }   /* out of the folder already — only the owner can finish it */
+        try{ await step(root, j); n++; }catch(err){ LOG('step failed: ' + (err && err.message || err)); } } } }
+    finally{ _busy = false; }
+    try{ _fsShowStat(); }catch(_){}
+    return n;
+  }
+  async function save(root, j, up){ const job = Object.assign({}, j, up); await writeJob(root, job, true); return job; }
+  async function step(root, j){
+    const key = root + '|' + j.aid; const up = {};
+    try{
+      let fileId = j.fileId;
+      if(!fileId){ const r = await resolveV1(root, j);
+        if(r.id){ fileId = r.id; up.fileId = r.id; if(r.owner && !j.owner) up.owner = r.owner; }
+        else { if(r.status === 'gone'){ Object.assign(up, { status: 'gone', driveCleanupStatus: 'completed', doneAt: Date.now(), doneBy: _gUser || '', err: r.err || '' }); }
+               else { Object.assign(up, { status: 'ambiguous', driveCleanupStatus: 'manual', err: r.err || '' }); }
+               await save(root, j, up); LOG('"' + j.name + '": ' + up.status + (up.err ? ' — ' + up.err : '')); return; } }
+      const info = await getFile(fileId);
+      if(!info){ await save(root, j, Object.assign(up, { status: 'gone', driveCleanupStatus: 'completed', doneAt: Date.now(), doneBy: _gUser || '', err: '' })); LOG('"' + j.name + '": already gone from Drive'); return; }
+      if(!j.owner && !up.owner && info.owners && info.owners[0]) up.owner = info.owners[0].emailAddress || '';
+      if(info.trashed){ await save(root, j, Object.assign(up, { status: 'trash', driveCleanupStatus: 'completed', doneAt: Date.now(), doneBy: _gUser || '', err: '' })); LOG('"' + j.name + '": in the Trash ✓'); return; }
+      const cap = info.capabilities || {}; const parents = info.parents || [];
+      if(cap.canTrash){
+        await driveTrash(fileId); const chk = await getFile(fileId);
+        if(!chk || chk.trashed){ await save(root, j, Object.assign(up, { status: 'trash', driveCleanupStatus: 'completed', doneAt: Date.now(), doneBy: _gUser || '', tries: 0, err: '' })); LOG('"' + j.name + '" → Trash ✓'); setCloudStat('Drive: "' + (j.name || fileId) + '" moved to the Trash · ' + hhmm()); return; }
+        throw new Error('Google did not confirm the trash');
+      }
+      if(parents.length && cap.canRemoveMyDriveParent !== false){
+        await removeParents(fileId, parents); const chk = await getFile(fileId);
+        const left = chk && (chk.parents || []).filter(function(p){ return parents.indexOf(p) >= 0; });
+        if(!chk || !left.length){ await save(root, j, Object.assign(up, { status: 'removed', removedAt: Date.now(), removedBy: _gUser || '', tries: 0, err: '' })); _next[key] = Date.now() + 6 * 3600e3; LOG('"' + j.name + '" detached from the project folder ✓ (owner trashes it next)'); setCloudStat('Drive: "' + (j.name || fileId) + '" removed from the project folder · ' + hhmm()); return; }
+        throw new Error('Google did not confirm the detach');
+      }
+      if(!parents.length){ if(Object.keys(up).length) await save(root, j, up); _next[key] = Date.now() + 6 * 3600e3; LOG('"' + j.name + '": already out of every folder — waiting for the owner'); return; }
+      throw new Error('no right to trash or detach this file (owner ' + (up.owner || j.owner || '?') + ')');
+    }catch(err){
+      const tries = (j.tries || 0) + 1; const msg = String(err && err.message || err).slice(0, 160);
+      try{ await save(root, j, Object.assign(up, { status: (j.status === 'removed') ? 'removed' : (tries >= MAX_TRIES_FAILED ? 'failed' : (j.status || 'pending')), tries: tries, err: msg, lastTryBy: _gUser || '', lastTryAt: Date.now() })); }catch(_){}
+      _next[key] = Date.now() + backoff(tries); LOG('"' + j.name + '" clean-up failed (' + tries + '): ' + msg);
+    }
+  }
+
+  /* ======================= one-time recovery of pre-16.62 V1 deletions ======================= */
+  /* Earlier revisions of the project's _media/<pid>.media.json are a saved record of the files the project once listed.
+     Names present in a recent revision but absent from the project now (and not re-added since) become jobs that are
+     resolved by EXACT name in the exact folder — a single match or nothing. Runs once per project per machine. */
+  const REC_MAX_REV = 4, REC_MAX_BYTES = 30 * 1024 * 1024, REC_MAX_AGE = 30 * 86400e3;
+  async function recover(e){
+    const pid = fbpPid(e); if(!pid || !driveOk() || !fsOk()) return 0;
+    if(st().once['rec:' + pid]) return 0;
+    if(SE_ON && SE.enabled(pid)) { st().once['rec:' + pid] = Date.now(); return 0; }
+    if(e._mediaPending || !_fsServerSeen) return 0;
+    try{ if(fbpMediaSig(e) !== (e._remoteMsig || '')) return 0; }catch(_){ return 0; }   /* only when fully caught up with the shared media */
+    const rec = mediaMap()[pid] || {}; const mid = rec.fileId; if(!mid){ st().once['rec:' + pid] = Date.now(); return 0; }
+    st().once['rec:' + pid] = Date.now(); persistQuiet();
+    let made = 0;
+    try{
+      const r = await gFetch('https://www.googleapis.com/drive/v3/files/' + mid + '/revisions?fields=revisions(id,modifiedTime,size)&pageSize=200'); const j = await r.json();
+      const revs = ((j && j.revisions) || []).filter(function(x){ return x && x.id && (!x.modifiedTime || (Date.now() - Date.parse(x.modifiedTime)) < REC_MAX_AGE); });
+      if(revs.length < 2) return 0;
+      const earlier = revs.slice(0, -1).slice(-REC_MAX_REV).reverse();   /* newest earlier revision first, the current one excluded */
+      const have = {}; const d = e.data || {};
+      if(d.docs && d.docs.files) Object.keys(d.docs.files).forEach(function(cat){ (d.docs.files[cat] || []).forEach(function(f){ if(f && f.name) have[f.name] = 1; }); });
+      if(d.contentList && d.contentList.name) have[d.contentList.name] = 1;
+      const seen = {}; let bytes = 0;
+      for(const rv of earlier){ if(Number(rv.size || 0) > REC_MAX_BYTES) continue; bytes += Number(rv.size || 0); if(bytes > 2 * REC_MAX_BYTES) break;
+        let m = null; try{ const rr = await gFetch('https://www.googleapis.com/drive/v3/files/' + mid + '/revisions/' + rv.id + '?alt=media'); m = JSON.parse(await rr.text()); }catch(_){ continue; }
+        const files = (m && m.docs && m.docs.files) || {};
+        Object.keys(files).forEach(function(cat){ (files[cat] || []).forEach(function(f){ if(!f || !f.name || have[f.name] || seen[f.name]) return; seen[f.name] = { cat: cat, size: f.size || 0 }; }); });
+        if(m && m.contentList && m.contentList.name && !have[m.contentList.name] && !seen[m.contentList.name]) seen[m.contentList.name] = { cat: '', size: m.contentList.size || 0 }; }
+      for(const name of Object.keys(seen)){ const it = seen[name]; const parts = (it.cat && TOOL_DB_CATS.indexOf(it.cat) >= 0) ? ['Documentation', TOOL_DB_SUBFOLDER] : ['Documentation'];
+        const aid = 'rec~' + encodeURIComponent(parts.join('/') + '/' + name); if((_server[pid] || {})[aid]) continue; if(Object.keys(_server[pid] || {}).some(function(k){ const j = _server[pid][k]; return j && j.name === name; })) continue;   /* a job for that name exists already */
+        request(pid, { aid: aid, cpath: it.cat ? ('docs.files/' + it.cat) : 'contentList', key: 'data', name: name, size: it.size, hash: '', fileId: '', owner: '', v1: { parts: parts, name: name } }, e); made++; }
+      if(made) LOG('recovery: ' + made + ' earlier deletion' + (made === 1 ? '' : 's') + ' of "' + ((d.project && d.project.title) || pid) + '" queued from the media file history');
+    }catch(err){ LOG('recovery skipped: ' + (err && err.message || err)); }
+    return made;
+  }
+
+  /* ======================= periodic ======================= */
+  function tick(){ try{ if(!fsOk()) return; flushOutbox().catch(function(){}); if(!driveOk()) return; process().catch(function(){}); const e = activeEntry(); if(e && fbpPid(e)) recover(e).catch(function(){}); }catch(_){} }
+  function persistQuiet(){ try{ const sk = saveState._skipCloud; saveState._skipCloud = true; saveState(); saveState._skipCloud = sk; }catch(_){} }
+  function jobs(root){ return root ? (_server[root] || {}) : _server; }
+  function resetBackoff(){ Object.keys(_next).forEach(function(k){ delete _next[k]; }); }
+  return { resetBackoff: resetBackoff, onSave: onSave, baseline: baseline, onServerJobs: onServerJobs, process: process, tick: tick, flushOutbox: flushOutbox, recover: recover, pendingCount: pendingCount, pendingLabel: pendingLabel, jobs: jobs, request: request };
+})();
+try{ window.AD = AD; }catch(_){}
 
 (function(){
   const foot = document.querySelector('.side-foot div');
