@@ -151,6 +151,9 @@
   /* red frame now means "hovered" or "the module you last opened" — not the ACTIVE status (BUILD 12.43) */
   .mod:hover{border-color:var(--fdp-red);box-shadow:0 2px 12px rgba(211,47,47,.10)}
   .mod.lastmod{border-color:var(--fdp-red);box-shadow:0 2px 14px rgba(211,47,47,.14)}
+  .mod.ship-alert{border-color:var(--fdp-red);box-shadow:0 2px 14px rgba(211,47,47,.18)}   /* BUILD 17.20: a red row in Shipping */
+  .mod.ship-alert .mod-ic{background:#fdeeee;color:var(--fdp-red)}
+  .mod-badge.ship-alert-badge{color:var(--fdp-red);background:#fdecec;border:1px solid #f2b8b8}
   .mod.lastmod .mod-ic{background:#fdeeee;color:var(--fdp-red)}
   .mod-top{display:flex;align-items:flex-start;gap:12px}
   .mod-ic{flex:0 0 40px;height:40px;border-radius:9px;background:#f1f3f6;color:var(--ink2);display:flex;align-items:center;justify-content:center}
@@ -827,7 +830,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.19 · Shipping: rows added after packing are outlined red — click to add · Library: stable rows · Drive uploads verified</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.20 · Shipping: red rows + "not on pallet" alert on the dashboard card · Library: stable rows · Drive uploads verified</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -4264,18 +4267,19 @@ function pageDashboard(){
         <a class="mod-btn primary" href="#/dome">Open Module ${IC.open}</a>
       </div>
 
-      <div class="mod active${_lastMod==='#/shipping'?' lastmod':''}">
+      ${(()=>{ const _nop = shipNotOnPalletCount(); return `
+      <div class="mod active${_lastMod==='#/shipping'?' lastmod':''}${_nop?' ship-alert':''}">
         <div class="mod-top"><div class="mod-ic">${IC.ship}</div>
-          <div><div class="mod-name">Equipment &amp; Shipping</div>${modActiveBadge(shipItems().length>0)}</div></div>
+          <div><div class="mod-name">Equipment &amp; Shipping</div><div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">${modActiveBadge(shipItems().length>0)}${_nop?`<span class="mod-badge ship-alert-badge" title="Rows added or changed after their place was packed — open the module and click the red rows"><svg viewBox="0 0 24 24" fill="currentColor" style="width:12px;height:12px"><path d="M12 2L1 21h22L12 2zm1 15h-2v2h2v-2zm0-7h-2v5h2v-5z"/></svg>${_nop} item${_nop===1?'':'s'} not on pallet</span>`:''}</div></div></div>
         <div class="mod-desc">Full equipment inventory, pallet packing, shipping date and shipping documents.</div>
         <div class="mod-stats">
           <div class="ms"><span class="k">Total Equipment</span><span class="v ${shipItems().length?'ok':''}">${shipItems().length || '—'} items</span></div>
+          ${_nop?`<div class="ms"><span class="k" style="color:var(--fdp-red);font-weight:700">Not on pallet</span><span class="v" style="color:var(--fdp-red)">${_nop} item${_nop===1?'':'s'}</span></div>`:''}
           <div class="ms"><span class="k">Places</span><span class="v">${shipPlaces().length}</span></div>
           <div class="ms"><span class="k">Pallets</span><span class="v">${state.shipping.pallets.length}</span></div>
-          <div class="ms"><span class="k">Shipping Date</span><span class="v ${state.shipping.date?'ok':''}">${state.shipping.date ? esc(state.shipping.date) : '—'}</span></div>
         </div>
         <a class="mod-btn primary" href="#/shipping">Open Module ${IC.open}</a>
-      </div>
+      </div>`; })()}
     </div>
 
     <div class="sumgrid">
@@ -5130,6 +5134,8 @@ function shipPlaceReview(pl, places){
   Object.keys(M.rows).forEach(rid => { if(!seen[rid]){ const e = M.rows[rid] || {}; out.removed.push({ rid, n:e.n || '—', q:e.q }); out.issues++; } });
   return out;
 }
+/* BUILD 17.20: how many red rows the Shipping list shows right now (flagged items + "removed — still on the pallet?" lines). Pure. */
+function shipNotOnPalletCount(){ try{ return shipPlaces().reduce((a, pl) => { const rv = shipPlaceReview(pl); return a + Object.keys(rv.items).length + rv.removed.length; }, 0); }catch(_){ return 0; } }
 function shipPlaceClean(pl){ const rv = shipPlaceReview(pl); return rv.state === 'ok' && !rv.issues; }
 /* USER ACTION ONLY: give every row of the place a rowId (copies inside the place get a fresh one) and follow a key change of a
    separately shipped legacy row (index key → rowId key) so its pallet assignment and tick move with it. Returns the fresh place. */
