@@ -777,13 +777,7 @@ tr.ship-late>td{background:#fff4f4;box-shadow:inset 0 2px 0 var(--fdp-red),inset
 tr.ship-late>td:first-child{box-shadow:inset 2px 2px 0 var(--fdp-red),inset 2px -2px 0 var(--fdp-red)}
 tr.ship-late>td:last-child{box-shadow:inset -2px 2px 0 var(--fdp-red),inset -2px -2px 0 var(--fdp-red)}
 tr.ship-late:hover>td{background:#ffe9e9}
-tr.ship-rv,tr.ship-rv-place{cursor:pointer}   /* BUILD 17.18: REVIEW (amber) — qty / model / serial / place changed, row taken off, or a pre-manifest tick */
-tr.ship-rv>td,tr.ship-rv-place>td{background:#fff8e6;box-shadow:inset 0 2px 0 #d99a00,inset 0 -2px 0 #d99a00}
-tr.ship-rv>td:first-child,tr.ship-rv-place>td:first-child{box-shadow:inset 2px 2px 0 #d99a00,inset 2px -2px 0 #d99a00}
-tr.ship-rv:hover>td,tr.ship-rv-place:hover>td{background:#fff0c9}
-tr.ship-rv-place>td{font-size:12px;font-weight:700;color:#8a5a00;padding:7px 10px}
-.ship-rv-tag{display:inline-block;margin-left:8px;font-size:10px;font-weight:800;letter-spacing:.4px;color:#fff;background:#c98a00;border-radius:5px;padding:1px 7px;white-space:nowrap;vertical-align:middle}
-tr.ship-rv-place .ship-rv-tag{margin-left:0;margin-right:6px}
+
 .ship-late-tag{display:inline-block;margin-left:10px;font-size:10px;font-weight:800;letter-spacing:.5px;color:#fff;background:var(--fdp-red);border-radius:5px;padding:1px 7px;white-space:nowrap;vertical-align:middle}.shipjump:hover{color:var(--fdp-red);border-bottom-color:var(--fdp-red)}
 tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0%,45%{background:#fff3c4;box-shadow:inset 0 -2px 0 #e8b400}100%{background:transparent;box-shadow:none}}
 </style>
@@ -833,7 +827,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.18 · Shipping: packing manifests (rowId) — new / changed rows flagged · Library: stable rows · Drive uploads verified</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.19 · Shipping: rows added after packing are outlined red — click to add · Library: stable rows · Drive uploads verified</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -4060,7 +4054,7 @@ async function driveRenameProjectFolders(e, oldName){
   setCloudStat(bfid ? ('Drive folder renamed ✓ · ' + hhmm()) : ('Renamed (folder will follow) · ' + hhmm()));
 }
 const blankRow = () => ({cat:'', name:'', qty:1, price:'', link:'', rowId:newRowId(), ts:Date.now()});   /* BUILD 17.18: rowId = immutable row identity (Shipping manifests); ts = history only */
-const blankRackRow = () => ({cat:'', name:'', u:'', qty:1, price:'', link:''});
+const blankRackRow = () => ({cat:'', name:'', u:'', qty:1, price:'', link:'', rowId:newRowId()});
 
 function loadDemo(){
   const data = emptyState();
@@ -4674,7 +4668,7 @@ function setVjCat(i, v){
   sortByCat(state.vj.rows, srvCats());
   saveState(); rerenderKeepScroll();
 }
-function addVj(){ state.vj.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
+function addVj(){ shipSealLegacy(); state.vj.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
 function rmVj(i){ state.vj.rows.splice(i,1); revalidateVjReady(); saveState(); rerenderKeepScroll(); }
 function toggleVjReady(){
   if(state.vj.ready){ state.vj.ready=false; saveState(); refreshVjReadyUI(); renderSideProject(); const b=document.getElementById('vjProbBox'); if(b) b.classList.remove('show'); return; }
@@ -4786,9 +4780,9 @@ function refreshReadyUI(){
   set('kLedTxt', e=>e.textContent = ready?'Ready':'Not Ready');
   renderHeader();
 }
-function addSrv(){ state.server.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
+function addSrv(){ shipSealLegacy(); state.server.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
 function rmSrv(i){ state.server.rows.splice(i,1); revalidateReady(); saveState(); rerenderKeepScroll(); }
-function addRack(){ state.rack.rows.push(blankRackRow()); saveState(); rerenderKeepScroll(); }
+function addRack(){ shipSealLegacy(); state.rack.rows.push(blankRackRow()); saveState(); rerenderKeepScroll(); }
 function rmRack(i){ state.rack.rows.splice(i,1); if(!state.rack.rows.some(r=>(r.name||'').trim())) state.rack.ready=false; saveState(); rerenderKeepScroll(); }
 
 function toggleReady(){
@@ -4853,7 +4847,7 @@ function removeBackupServer(){ if(!confirm('Remove the backup server and its har
 function setBkName(v){ state.backup.name = v; saveState(); }
 function setBkCase(v){ state.backup.caseSize = v || ''; saveState(); rerenderKeepScroll(); }
 function refreshBkTotals(){ const t = fmt(backupTotal()); ['kBk','stBk','bkFoot'].forEach(id=>{const e=document.getElementById(id); if(e) e.textContent=t;}); }
-function addBk(){ state.backup.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
+function addBk(){ shipSealLegacy(); state.backup.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
 function rmBk(i){ state.backup.rows.splice(i,1); saveState(); rerenderKeepScroll(); }
 function setBkCat(i, v){
   updBk(i, 'cat', v);
@@ -5117,8 +5111,7 @@ function shipPlaceReview(pl, places){
   const S = state.shipping, out = { state:'none', items:{}, removed:[], issues:0 };
   if(!(S.packed && S.packed[pl.key])) return out;
   const M = shipManifests()[pl.key];
-  if(!M || !M.rows || typeof M.rows !== 'object'){ out.state = 'legacy'; out.issues = 1; return out; }
-  if((M.palletId || '') !== (S.assign[pl.key] || '')){ out.state = 'pallet'; out.issues = 1; return out; }
+  if(!M || !M.rows || typeof M.rows !== 'object'){ out.state = 'legacy'; return out; }   /* 17.19: ticked by an older build — sealed silently by the next "add row" action, no banner */
   out.state = 'ok';
   const seen = {};
   pl.items.forEach(it => {
@@ -5150,6 +5143,13 @@ function shipEnsureIds(pl){
   if(np && np.key !== pl.key) shipRekey(pl.key, np.key);
   return np || pl;
 }
+/* BUILD 17.19 — places ticked by an older build have no manifest. No banner: the moment the user ADDS a row anywhere (a user action),
+   every such place is sealed with exactly the rows it holds at that moment (rowIds assigned), BEFORE the new row exists — so the new
+   row is the first thing that turns red. Nothing is guessed at start-up, nothing is written by rendering or by a snapshot. */
+function shipSealLegacy(){ try{ const S = state && state.shipping; if(!S || !S.packed || _booting) return; let n = 0;
+  shipPlaces().map(p => p.key).forEach(k => { if(!S.packed[k]) return; const M = S.manifests && S.manifests[k]; if(M && M.rows) return;
+    const pl = shipPlaces().find(p => p.key === k); if(!pl) return; const p2 = shipEnsureIds(pl); shipOpenCycle(p2); n++; });
+  if(n){ try{ fsDiag('shipping: ' + n + ' place(s) ticked by an older build sealed with their current rows'); }catch(_){} } }catch(_){} }
 function shipEntry(it){ return { q:shipQty(it), s:shipSig(it), n:String(it.name || '').trim(), at:Date.now(), by:_gUser || '' }; }
 function shipOpenCycle(pl){ const S = state.shipping; if(!S.manifests || typeof S.manifests !== 'object') S.manifests = {};
   const rows = {}; pl.items.forEach(it => { if(it.rid) rows[it.rid] = shipEntry(it); });
@@ -5166,11 +5166,11 @@ function shipRowClick(ev, plKey, itemKey){ try{ const t = ev && ev.target; if(t 
   const rv = shipPlaceReview(pl); const f = rv.items[it.key]; if(!f) return;
   const M = shipManifests()[pl.key]; const pal = shipPalletLabel(M && M.palletId);
   let q;
-  if(f.st === 'new') q = '"' + it.name + '" is NOT on ' + pal + ' — it was added to ' + pl.name + ' after packing.\n\nIs it on the pallet now?';
-  else if(f.kind === 'qty') q = '"' + it.name + '": ' + f.q0 + ' packed, now ' + shipQty(it) + ' required.\n\nAre ' + shipQty(it) + ' on ' + pal + ' now?';
-  else if(f.kind === 'moved') q = '"' + it.name + '" was ' + f.why + ' after packing.\n\nIs it in ' + pl.name + ' on ' + pal + '?';
-  else q = '"' + it.name + '" changed after packing (' + f.why + ').\n\nIs the CURRENT item on ' + pal + '?';
-  if(!window.confirm(q)){ flashStat('Not confirmed — the row stays marked'); return; }
+  if(f.st === 'new') q = '"' + it.name + '" is not on ' + pal + '.\n\nAdd it to the pallet?';
+  else if(f.kind === 'qty') q = '"' + it.name + '": ' + f.q0 + ' on ' + pal + ', now ' + shipQty(it) + '.\n\nAdd the rest to the pallet?';
+  else if(f.kind === 'moved') q = '"' + it.name + '" was ' + f.why + '.\n\nAdd it to ' + pal + ' here?';
+  else q = '"' + it.name + '" was changed (' + f.why + ').\n\nAdd the current item to ' + pal + '?';
+  if(!window.confirm(q)){ flashStat('Not on the pallet — the row stays red'); return; }
   /* identity: a row without rowId, or a copy whose rowId belongs to another live row, gets its own now */
   if(it._r){ const id = rowIdOf(it._r); const dup = !id || shipPlaces().some(p => p.items.some(x => x !== it && x._r && x._r !== it._r && x.rid === id)); if(dup){ it._r.rowId = newRowId(); } }
   const fresh = shipPlaces(); const np = it._r ? fresh.find(p => p.items.some(x => x._r === it._r)) : fresh.find(p => p.key === plKey);
@@ -5179,12 +5179,8 @@ function shipRowClick(ev, plKey, itemKey){ try{ const t = ev && ev.target; if(t 
   M2.rows[it2.rid] = shipEntry(it2);
   saveState(); rerenderKeepScroll(); }
 function shipRemovedClick(plKey, rid){ const M = shipManifests()[plKey]; if(!M || !M.rows || !M.rows[rid]) return; const e = M.rows[rid];
-  if(!window.confirm('"' + (e.n || '—') + '" was packed in ' + (M.place || 'this place') + ' but is no longer in it.\n\nWas it taken off ' + shipPalletLabel(M.palletId) + '?')){ flashStat('Not confirmed — the line stays'); return; }
+  if(!window.confirm('"' + (e.n || '—') + '" was removed from the list but was packed on ' + shipPalletLabel(M.palletId) + '.\n\nTaken off the pallet?')){ flashStat('Still on the pallet — the row stays red'); return; }
   delete M.rows[rid]; saveState(); rerenderKeepScroll(); }
-function shipConfirmPlace(plKey){ let pl = shipPlaces().find(p => p.key === plKey); if(!pl) return; const S = state.shipping; if(!(S.packed && S.packed[pl.key])) return;
-  const pal = shipPalletLabel(S.assign[pl.key]);
-  if(!window.confirm('Review & confirm current pallet contents\n\n' + pl.name + ' → ' + pal + '\n' + pl.items.map(it => '• ' + shipQty(it) + ' × ' + it.name).join('\n') + '\n\nAre ALL of these on the pallet now?')){ flashStat('Not confirmed — untick the place if it is not packed'); return; }
-  pl = shipEnsureIds(pl); shipOpenCycle(pl); saveState(); rerenderKeepScroll(); }
 /* flat list in render order — running number & item counts */
 function shipItems(){ const out=[]; shipPlaces().forEach(pl=>pl.items.forEach(it=>out.push(it))); return out; }
 /* module order for the table headers, derived from the places actually present */
@@ -5244,7 +5240,7 @@ function _shipPdfModel(){
       const q = num(it.qty) || 1;
       req[it.key] = (req[it.key] || 0) + q;
       const f = rv && rv.items[it.key];
-      const pq = !loaded || (rv && rv.state === 'pallet') ? 0 : (!f ? q : (f.kind === 'qty' ? Math.min(q, f.q0 || 0) : 0));
+      const pq = !loaded ? 0 : (!f ? q : (f.kind === 'qty' ? Math.min(q, f.q0 || 0) : 0));
       if(pq) packedQ[it.key] = (packedQ[it.key] || 0) + pq;
       info[it.key] = { it, pl, pal, loaded };
     });
@@ -5525,8 +5521,6 @@ function pageShipping(){
       const rv = shipPlaceReview(pl);   /* BUILD 17.18 — manifest review (pure) */
       /* row plan for this place: [{hdr}] and [{it}] entries; the pallet cells go on the FIRST row and span them all */
       const plan = [];
-      if(rv.state === 'legacy') plan.push({ notice:'legacy' });
-      if(rv.state === 'pallet') plan.push({ notice:'pallet' });
       pl.items.forEach((it, ii) => {
         const sub = it.sub || '';
         if(sub && sub !== lastSub){ plan.push({ hdr:sub, chip:(ii===0 && pl.subChip) ? pl.subChip : '' }); lastSub = sub; }
@@ -5538,12 +5532,8 @@ function pageShipping(){
       const packCell = `<td class="tight pl-cell" rowspan="${span}" style="width:6%;text-align:center;vertical-align:middle"><input type="checkbox" style="width:16px;height:16px;cursor:pointer;accent-color:#2e9e5b" ${packed?'checked':''} ${pid?'':'disabled title="Assign a pallet first"'} onchange="setPacked(${plIdx},this.checked)"></td>`;
       return plan.map((row, ri) => {
         const cells = ri === 0 ? (pallCell + packCell) : '';
-        if(row.notice){
-          const txt = row.notice === 'legacy' ? 'Ticked before packing manifests existed — Review &amp; confirm current pallet contents' : 'The pallet was changed after packing — Review &amp; confirm current pallet contents';
-          return `<tr class="ship-rv-place" onclick="shipConfirmPlace('${esc(pl.key)}')" title="Click to confirm what is on the pallet"><td colspan="5"><span class="ship-rv-tag">REVIEW</span> ${txt}</td>${cells}</tr>`;
-        }
         if(row.removed){
-          return `<tr class="ship-rv" onclick="shipRemovedClick('${esc(pl.key)}','${esc(row.removed.rid)}')" title="Click: was it taken off the pallet?"><td></td><td colspan="4"><span style="text-decoration:line-through;color:var(--dim)">${esc(row.removed.n)}</span> <span class="ship-rv-tag">REVIEW · no longer in this place (packed ${esc(row.removed.q)})</span></td>${cells}</tr>`;
+          return `<tr class="ship-late" onclick="shipRemovedClick('${esc(pl.key)}','${esc(row.removed.rid)}')" title="Click to confirm"><td></td><td colspan="4"><span style="text-decoration:line-through;color:var(--dim)">${esc(row.removed.n)}</span> <span class="ship-late-tag">REMOVED — STILL ON THE PALLET?</span></td>${cells}</tr>`;
         }
         if(row.hdr){
           return `<tr class="subhdr"><td colspan="5" style="padding:6px 10px 6px 34px;font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--ink2);background:rgba(0,0,0,.035);border-top:1px solid var(--line)">
@@ -5556,8 +5546,8 @@ function pageShipping(){
           : `<span style="color:#c8ccd2">—</span>`;
         const cmt = (S.meta && S.meta[it.key] && S.meta[it.key].cmt) || '';
         const f = rv.items[it.key];
-        const fCls = f ? (f.st === 'new' ? ' ship-late' : ' ship-rv') : '';
-        const fTag = f ? (f.st === 'new' ? ` <span class="ship-late-tag">NOT ON THE PALLET</span>` : ` <span class="ship-rv-tag">REVIEW · ${esc(f.why)}</span>`) : '';
+        const fCls = f ? ' ship-late' : '';   /* 17.19: one look for every flag — the row outlined red */
+        const fTag = f ? ` <span class="ship-late-tag">NOT ON THE PALLET${f.kind === 'qty' ? ' · ' + esc(f.why.toUpperCase()) : f.kind === 'changed' ? ' · CHANGED' : f.kind === 'moved' ? ' · MOVED' : ''}</span>` : '';
         return `<tr class="${ri===plan.length-1?'pl-last':''}${fCls}"${f?` onclick="shipRowClick(event,'${esc(pl.key)}','${esc(it.key)}')" title="Click to confirm"`:''}>
           <td class="tight" style="width:5%;text-align:right;color:var(--dim);white-space:nowrap">${it.ord===2?'<span class="odot o2 sh-ord" title="Received"></span>':it.ord===1?'<span class="odot o1 sh-ord" title="Ordered — waiting"></span>':''}${n}</td>
           <td${(it.cat||'').trim()?` title="${esc(it.cat)}"`:''}><span class="shipjump" onclick="shipGoTo('${esc(it.key)}')">${esc(it.name)}</span>${fTag}</td>
@@ -9664,7 +9654,7 @@ function cycOrd(kind, i, el){
 const camListId = cat => 'dlCamCat' + Math.max(0, ciIndexOf(camCats(), cat));
 const libCamByCat = cat => libByGroupCat('cameras', cat);
 function camTotal(){ return state.camera.rows.reduce((s,r)=> s + rowSum(r), 0); }
-function addCam(){ state.camera.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
+function addCam(){ shipSealLegacy(); state.camera.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
 function rmCam(i){ state.camera.rows.splice(i,1); saveState(); rerenderKeepScroll(); }
 /* ---- Camera flight cases (BUILD 16.16) ----
    The camera kit ships in flight cases. A case is a named group ABOVE the hardware table; a row is
@@ -9769,7 +9759,7 @@ function refreshCamReadyUI(){
 const spkListId = cat => 'dlSpkCat' + Math.max(0, ciIndexOf(spkCats(), cat));
 const libSpkByCat = cat => spkCatIsTruss(cat) ? libByGroupCat('truss', cat) : libByGroupCat('speakers', cat);   /* BUILD 16.56: truss categories pick from the Truss group */
 function spkTotal(){ return state.speakers.rows.reduce((s,r)=> s + rowSum(r), 0); }
-function addSpk(){ state.speakers.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
+function addSpk(){ shipSealLegacy(); state.speakers.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
 function rmSpk(i){ state.speakers.rows.splice(i,1); saveState(); rerenderKeepScroll(); }
 function setSpkCat(i, v){
   state.speakers.rows[i].cat = v;
@@ -9900,12 +9890,12 @@ function pageSpeakers(){
 const fanListId = cat => 'dlFanCat' + Math.max(0, ciIndexOf(fanCats(), cat));
 const libFanByCat = cat => libByGroupCat('fan', cat);
 function fanTotal(){ return state.fan.rows.reduce((s,r)=> s + rowSum(r), 0); }
-function addFan(){ state.fan.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
+function addFan(){ shipSealLegacy(); state.fan.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
 /* BUILD 16.41 — Inflatable Fan System: a SECOND table in the Fan module (rows tagged grp:'inflatable'), shown only
    while Project Setup → Inflatable = Yes; one module, one total, one Ready, ships under a sub-heading. */
 function fanIsInfl(r){ return !!(r && r.grp === 'inflatable'); }
 function projInflatable(){ return !!(state.project && state.project.inflatableCover === 'Yes'); }
-function addFanInfl(){ const r = blankRow(); r.grp = 'inflatable'; state.fan.rows.push(r); saveState(); rerenderKeepScroll(); }
+function addFanInfl(){ shipSealLegacy(); const r = blankRow(); r.grp = 'inflatable'; state.fan.rows.push(r); saveState(); rerenderKeepScroll(); }
 /* BUILD 16.57 — FAN BOXES: like the camera flight cases. A box is a transport container that ships as ONE place; rows from BOTH
    builders (Screen Fan and Inflatable Fan) can be moved into it with the "Box" column. Stored as state.fan.cases (+ the row keeps
    caseId / caseName, so the boxes self-heal if an old client rewrites the section without the list). */
@@ -10129,7 +10119,7 @@ function refreshCabTotals(){
   ['kCab','stCab'].forEach(id=>{const e=document.getElementById(id); if(e) e.textContent=g;});
   CAB_GROUPS.forEach(b=>{ const e=document.getElementById('cabFoot_'+b.key); if(e) e.textContent=fmt(cabSubTotal(b.key)); });
 }
-function addCab(grp){ const r=blankRow(); r.grp = (grp&&CAB_GROUPS.some(b=>b.key===grp))?grp:'power'; state.cables.rows.push(r); saveState(); rerenderKeepScroll(); }
+function addCab(grp){ shipSealLegacy(); const r=blankRow(); r.grp = (grp&&CAB_GROUPS.some(b=>b.key===grp))?grp:'power'; state.cables.rows.push(r); saveState(); rerenderKeepScroll(); }
 function rmCab(i){ state.cables.rows.splice(i,1); saveState(); rerenderKeepScroll(); }
 function setCabCat(i, v){
   state.cables.rows[i].cat = v;
@@ -10273,7 +10263,7 @@ const safListId = cat => 'dlSafCat' + Math.max(0, ciIndexOf(safCats(), cat));
 const libSafByCat = cat => libByGroupCat('safety', cat);
 function safTotal(){ return ((state.safety&&state.safety.rows)||[]).reduce((s,r)=> s + rowSum(r), 0); }
 function refreshSafTotals(){ const g = fmt(safTotal()); ['kSaf','stSaf','safFoot'].forEach(id=>{const e=document.getElementById(id); if(e) e.textContent=g;}); }
-function addSaf(){ const r=blankRow(); r.id = 'sf' + newId(); state.safety.rows.push(r); saveState(); rerenderKeepScroll(); }
+function addSaf(){ shipSealLegacy(); const r=blankRow(); r.id = 'sf' + newId(); state.safety.rows.push(r); saveState(); rerenderKeepScroll(); }
 function rmSaf(i){ state.safety.rows.splice(i,1); saveState(); rerenderKeepScroll(); }
 function setSafCat(i, v){
   state.safety.rows[i].cat = v;
@@ -10411,7 +10401,7 @@ function refreshToolTotals(){
   ['kTool','stTool'].forEach(id=>{const e=document.getElementById(id); if(e) e.textContent=g;});
   TOOL_GROUPS.forEach(b=>{ const e=document.getElementById('toolFoot_'+b.key); if(e) e.textContent=fmt(toolSubTotal(b.key)); });
 }
-function addTool(grp){ const r=blankRow(); r.grp = (grp&&TOOL_GROUPS.some(b=>b.key===grp))?grp:'rigging'; state.tools.rows.push(r); saveState(); rerenderKeepScroll(); }
+function addTool(grp){ shipSealLegacy(); const r=blankRow(); r.grp = (grp&&TOOL_GROUPS.some(b=>b.key===grp))?grp:'rigging'; state.tools.rows.push(r); saveState(); rerenderKeepScroll(); }
 function rmTool(i){ state.tools.rows.splice(i,1); saveState(); rerenderKeepScroll(); }
 function setToolCat(i, v){
   state.tools.rows[i].cat = v;
@@ -10687,7 +10677,7 @@ function toggleDomeReady(){ const m = projDome(); if(m){ flashStat('Readiness co
 /* ---- Ballast Plates (BUILD 16.42): shown in Dome & Truss only while Project Setup → Indoor/Outdoor = Outdoor ---- */
 function projOutdoor(){ return !!(state.project && state.project.indoorOutdoor === 'Outdoor'); }
 function ballastRows(){ return ensureDome(state).ballast.rows; }
-function addBallastRow(){ ballastRows().push({ id:'bl'+Date.now()+Math.floor(Math.random()*1e4), name:'', fast:'', qty:'', notes:'' }); saveState(); rerenderKeepScroll(); }
+function addBallastRow(){ shipSealLegacy(); ballastRows().push({ id:'bl'+Date.now()+Math.floor(Math.random()*1e4), name:'', fast:'', qty:'', notes:'' }); saveState(); rerenderKeepScroll(); }
 function rmBallastRow(i){ const a=ballastRows(); if(!a[i]) return; a.splice(i,1); saveState(); rerenderKeepScroll(); }
 function updBallast(i,k,v){ const r=ballastRows()[i]; if(!r) return; r[k]=v; saveState(); }
 function ballastCard(){
@@ -10817,7 +10807,7 @@ function projLabel(p){
   const s = [(p.num||'').trim() ? '#'+p.num : '', p.mfr, p.model].filter(x=>(x||'').trim()).join(' ').trim();
   return s || 'Projector';
 }
-function addProjector(){
+function addProjector(){ shipSealLegacy();
   const pr = ensureProjectors(state);
   const p = { id:'pr'+Date.now()+Math.floor(Math.random()*1e4), num:String(pr.list.length+1), mfr:'', model:'', bright:'', throw:'', serial:'', ip:nextProjIP(), inst:'', conf:'', notes:'', web:[] };
   pr.list.push(p);
@@ -10847,7 +10837,7 @@ function projLenses(){ return ensureProjectors(state).lenses; }
 function projToggleLens(v){ const pr=ensureProjectors(state); pr.removableLens=!!v;
   if(pr.removableLens && !pr.lenses.length) addLens(true);   /* start with one empty lens row */
   saveState(); rerenderKeepScroll(); }
-function addLens(silent){ const pr=ensureProjectors(state);
+function addLens(silent){ shipSealLegacy(); const pr=ensureProjectors(state);
   pr.lenses.push({ id:'ln'+Date.now()+Math.floor(Math.random()*1e4), model:'', ratio:'', serial:'', qty:'', ts:Date.now() });
   if(!silent){ saveState(); rerenderKeepScroll(); } }
 function rmLens(i){ const pr=ensureProjectors(state); if(!pr.lenses[i]) return; pr.lenses.splice(i,1); saveState(); rerenderKeepScroll(); }
@@ -10857,7 +10847,7 @@ function updLens(i,k,v){ const l=projLenses()[i]; if(!l) return; l[k]=v; saveSta
    (module right after Projectors in the packing list / PDF). */
 const PROJ_ACC_SOURCES = ['Included','Fulldome Stock','Purchase','Other'];
 function projAcc(){ return ensureProjectors(state).acc; }
-function addProjAcc(){ projAcc().push({ id:'pa'+Date.now()+Math.floor(Math.random()*1e4), item:'', model:'', req:'', source:'', qty:'', packed:'', notes:'', price:'', link:'', ts:Date.now() }); saveState(); rerenderKeepScroll(); }
+function addProjAcc(){ shipSealLegacy(); projAcc().push({ id:'pa'+Date.now()+Math.floor(Math.random()*1e4), item:'', model:'', req:'', source:'', qty:'', packed:'', notes:'', price:'', link:'', ts:Date.now() }); saveState(); rerenderKeepScroll(); }
 function rmProjAcc(i){ const a=projAcc(); if(!a[i]) return; a.splice(i,1); saveState(); rerenderKeepScroll(); }
 function updProjAcc(i,k,v){ const a=projAcc()[i]; if(!a) return; a[k]=v; saveState(); }   /* BUILD 16.21: Packed column removed (packing is tracked in Shipping) */
 /* BUILD 16.20: EVERY named accessory ships (was: only rows with Qty to Ship > 0 — rows with an empty Qty were silently
@@ -10899,7 +10889,7 @@ function projAccCard(){
 function projMounts(){ return ensureProjectors(state).mounts; }
 function projMountCats(){ return groupCats('truss'); }
 const projMountListId = cat => 'dlPmCat' + Math.max(0, ciIndexOf(projMountCats(), cat));
-function addProjMount(){ projMounts().push({ id:'pm'+Date.now()+Math.floor(Math.random()*1e4), cat:'', name:'', qty:'', price:'', link:'', serial:'', ts:Date.now() }); saveState(); rerenderKeepScroll(); }
+function addProjMount(){ shipSealLegacy(); projMounts().push({ id:'pm'+Date.now()+Math.floor(Math.random()*1e4), cat:'', name:'', qty:'', price:'', link:'', serial:'', ts:Date.now() }); saveState(); rerenderKeepScroll(); }
 function rmProjMount(i){ const a=projMounts(); if(!a[i]) return; a.splice(i,1); saveState(); rerenderKeepScroll(); }
 function updProjMount(i,k,v){ const m=projMounts()[i]; if(!m) return; m[k]=v; saveState(); if(k==='qty'||k==='price'){ const t=document.getElementById('pmRowT'+i); if(t) t.textContent = fmt(priceNum(m.price)*(parseFloat(m.qty)||1) || null); const f=document.getElementById('pmFoot'); if(f) f.textContent = fmt(projMountTotal()); } }
 function setProjMountCat(i, v){ const m=projMounts()[i]; if(!m) return; m.cat = v; if(autoFillFromCat(m, libByGroupCat('truss', v))) flashStat('Filled from Library ✓'); saveState(); rerenderKeepScroll(); }
@@ -11057,7 +11047,7 @@ function onProjDbPicked(ev){
   };
   rd.readAsText(f);
 }
-function addProjectorFromDb(){
+function addProjectorFromDb(){ shipSealLegacy();
   const selEl = document.getElementById('projDbSel');
   const idx = selEl ? parseInt(selEl.value,10) : NaN;
   const it = projLib()[idx];
