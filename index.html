@@ -830,7 +830,11 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
+<<<<<<< HEAD
     <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.21 · Documentation: Mapping Photos for Manual (15) · Library: stable rows · Drive uploads verified</div>
+=======
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.20 · Shipping: red rows + "not on pallet" alert on the dashboard card · Library: stable rows · Drive uploads verified</div>
+>>>>>>> f1bf3039678ec41016e6f0b0a72e6c04ec621ec7
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -2579,8 +2583,13 @@ function docPhotoCount(){
 function docContentListCount(){ return docScope().filter(e=>e.data.contentList).length; }
 
 /* ---------- photos (server: max 6, rack: max 4) ---------- */
+<<<<<<< HEAD
 const PHOTO_MAX = { server: 10, vj: 10, backup: 10, rack: 10, front: 1, rear: 1, site: 20, mapping: 15, camera: 10, speakers: 10, fan: 10, cables: 10, tools: 10, ballast: 10, safety: 10 };   /* ballast — Ballast Plates (BUILD 16.42) */
 var photoEdit = { server: false, vj: false, backup: false, rack: false, views: false, site: false, mapping: false, projviews: false, camera: false, speakers: false, fan: false, cables: false, tools: false, safety: false };   /* Edit mode: shows delete crosses */
+=======
+const PHOTO_MAX = { server: 10, vj: 10, backup: 10, rack: 10, front: 1, rear: 1, site: 20, camera: 10, speakers: 10, fan: 10, cables: 10, tools: 10, ballast: 10, safety: 10 };   /* ballast — Ballast Plates (BUILD 16.42) */
+var photoEdit = { server: false, vj: false, backup: false, rack: false, views: false, site: false, projviews: false, camera: false, speakers: false, fan: false, cables: false, tools: false, safety: false };   /* Edit mode: shows delete crosses */
+>>>>>>> f1bf3039678ec41016e6f0b0a72e6c04ec621ec7
 function togglePhotoEdit(kind){ photoEdit[kind] = !photoEdit[kind]; rerenderKeepScroll(); }
 function photosOf(kind){
   if(kind==='site'){ return ensureDocs(state).sitePh; }
@@ -2724,7 +2733,11 @@ function openLightboxProj(id, kind, i){
   const p = entryPhotos(e, kind)[i];
   if(p){
     const P = e.data.project || {};
+<<<<<<< HEAD
     const lbl = kind==='server' ? 'Dome Server' : kind==='vj' ? 'VJ Server' : kind==='backup' ? 'Backup Server' : kind==='front' ? 'Rack — Front' : kind==='rear' ? 'Rack — Rear' : kind==='site' ? 'Site' : kind==='mapping' ? 'Manual Mapping' : kind==='camera' ? 'Camera' : kind==='speakers' ? 'Speakers' : kind==='fan' ? 'Screen Fan' : kind==='cables' ? 'Cables' : kind==='tools' ? 'Tools' : kind==='safety' ? 'Safety' : 'Rack';
+=======
+    const lbl = kind==='server' ? 'Dome Server' : kind==='vj' ? 'VJ Server' : kind==='backup' ? 'Backup Server' : kind==='front' ? 'Rack — Front' : kind==='rear' ? 'Rack — Rear' : kind==='site' ? 'Site' : kind==='camera' ? 'Camera' : kind==='speakers' ? 'Speakers' : kind==='fan' ? 'Screen Fan' : kind==='cables' ? 'Cables' : kind==='tools' ? 'Tools' : kind==='safety' ? 'Safety' : 'Rack';
+>>>>>>> f1bf3039678ec41016e6f0b0a72e6c04ec621ec7
     openLightbox(p.src, lbl + ' — #' + (P.number||'') + ' · ' + (p.caption||p.name||''));
   }
 }
@@ -6450,7 +6463,11 @@ function fbpMediaIsEmpty(e){
   const photoSets = [ m.server&&m.server.photos, m.backup&&m.backup.photos, m.vj&&m.vj.photos,
     m.rack&&m.rack.photos, m.rack&&m.rack.frontPh, m.rack&&m.rack.rearPh, m.camera&&m.camera.photos,
     m.speakers&&m.speakers.photos, m.fan&&m.fan.photos, m.cables&&m.cables.photos, m.tools&&m.tools.photos, m.safety&&m.safety.photos, m.ballast&&m.ballast.photos,
+<<<<<<< HEAD
     m.docs&&m.docs.sitePh, m.docs&&m.docs.mapPh ];
+=======
+    m.docs&&m.docs.sitePh ];
+>>>>>>> f1bf3039678ec41016e6f0b0a72e6c04ec621ec7
   if(photoSets.some(anyArr)) return false;
   if(m.projectors && m.projectors.models && Object.keys(m.projectors.models).length) return false;
   if(m.shipping && m.shipping.palletPhotos && Object.keys(m.shipping.palletPhotos).some(k=>anyArr(m.shipping.palletPhotos[k]))) return false;
@@ -13398,7 +13415,11 @@ var SE = (function(){
         'projectors.list':{}, 'projectors.list/#/web':{ asset:'data' }, 'projectors.lenses':{}, 'projectors.acc':{}, 'projectors.mounts':{},
         'shipping.pallets':{}, 'shipping.docs':{ asset:'data' }, 'shipping.palletPhotos/*':{ asset:'src' },
         'dome.ballast.rows':{}, 'dome.ballast.photos':{ asset:'src' },
+<<<<<<< HEAD
         'rack.frontPh':{ asset:'src' }, 'rack.rearPh':{ asset:'src' }, 'docs.sitePh':{ asset:'src' }, 'docs.mapPh':{ asset:'src' }, 'docs.files/*':{ asset:'data' },
+=======
+        'rack.frontPh':{ asset:'src' }, 'rack.rearPh':{ asset:'src' }, 'docs.sitePh':{ asset:'src' }, 'docs.files/*':{ asset:'data' },
+>>>>>>> f1bf3039678ec41016e6f0b0a72e6c04ec621ec7
         'ext.cameraCases':{}, 'ext.projAcc':{}, 'ext.fanCases':{}, 'ext.projMounts':{} };
         PHOTO_KEYS.forEach(function(k){ L[k + '.photos'] = { asset:'src' }; }); return L; })(),
       binaries: { 'projectors.models/*': ['f','r'], 'contentList': ['data'] },
@@ -13922,7 +13943,11 @@ var SE = (function(){
   function folderFor(root, cpath){ const segs = cpath.split('/'); const s = segs[0].split('.')[0];
     if(kindOf(root) !== 'project') return ['Dome Library'];
     if(segs[0] === 'docs.files') return ['Documentation', docCatLabel(segs[1] || '')];
+<<<<<<< HEAD
     if(cpath === 'docs.sitePh') return ['Photos', 'Site']; if(cpath === 'docs.mapPh') return ['Photos', 'Manual Mapping']; if(cpath === 'rack.frontPh') return ['Photos', 'Rack Front']; if(cpath === 'rack.rearPh') return ['Photos', 'Rack Rear'];
+=======
+    if(cpath === 'docs.sitePh') return ['Photos', 'Site']; if(cpath === 'rack.frontPh') return ['Photos', 'Rack Front']; if(cpath === 'rack.rearPh') return ['Photos', 'Rack Rear'];
+>>>>>>> f1bf3039678ec41016e6f0b0a72e6c04ec621ec7
     if(cpath === 'dome.ballast.photos') return ['Photos', 'Ballast Plates']; if(segs[0] === 'shipping.palletPhotos') return ['Photos', 'Pallet ' + (segs[1] || '')];
     if(cpath === 'shipping.docs') return ['Documentation', 'Shipping Documents']; if(segs[0] === 'projectors.models') return ['Photos', 'Projectors']; if(segs[0] === 'projectors.list') return ['Files', 'Projectors'];
     if(cpath === 'contentList') return ['Documentation', 'Content List']; if(cpath === s + '.photos' && PHOTO_DIR_BY_KEY[s]) return ['Photos', PHOTO_DIR_BY_KEY[s]]; return ['Files', s]; }
