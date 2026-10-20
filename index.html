@@ -539,6 +539,8 @@
     padding:9px 6px;cursor:pointer;appearance:auto}
   table.eq select.cell:focus{outline:none;background:#fff7f7}
   table.eq select.cell.empty{color:#9aa2ad}
+tr.row-draft>td{background:#fffbe8 !important}   /* BUILD 17.22: row being edited, not saved yet (Enter / leave the row) */
+tr.row-draft>td:first-child{box-shadow:inset 3px 0 0 #e0a800}
 .cell.libdup{border-color:var(--fdp-red) !important;box-shadow:0 0 0 2px rgba(211,47,47,.12);background:#fff6f6}   /* BUILD 17.09: duplicate library name */
 
   /* sidebar project block */
@@ -830,7 +832,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.20 · Shipping: red rows + "not on pallet" alert on the dashboard card · Library: stable rows · Drive uploads verified</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.22 · Tables: a row is saved on Enter / leaving the row · Mapping Photos for Manual</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -967,7 +969,7 @@ const emptyState = () => ({
   contentList: null,
   validation: { cpu:false, gpu:false, capture:false, video:false, burnin:false },
   vjValidation: { cpu:false, mem:false, gpu:false },
-  docs: { sitePh: [], files: {} },   /* Documentation archive: site photos + files per DOC category */
+  docs: { sitePh: [], mapPh: [], files: {} },   /* Documentation archive: site photos + manual mapping photos (17.21) + files per DOC category */
   projectors: { list: [], selId: null },   /* Projectors module: inventory, setup, web settings */
   camera: { rows: [], ready: false, photos: [], cases: [] },   /* Calibration Camera module (mirrors server builder); cases = flight cases (BUILD 16.16) */
   dome: { domeUid: '', kitId: '', ready: false, snap: null },   /* Dome & Truss module (BUILD 16.27): dome picked from the Dome Library (+ optional truss kit); snap = metadata copy for shipping */
@@ -1190,6 +1192,7 @@ function ensureProjectors(d){
 function ensureDocs(d){
   if(!d.docs || typeof d.docs!=='object') d.docs = { sitePh: [], files: {} };
   if(!Array.isArray(d.docs.sitePh)) d.docs.sitePh = [];
+  if(!Array.isArray(d.docs.mapPh)) d.docs.mapPh = [];   /* BUILD 17.21: Mapping Photos for Manual */
   if(!d.docs.files || typeof d.docs.files!=='object') d.docs.files = {};
   return d.docs;
 }
@@ -1377,7 +1380,51 @@ var _savePending = false, _saveQueued = false;
    incoming snapshots could produce a write out of thin air. */
 var _saveQueuedUser = false;
 function _saveRunQueued(){ const user = _saveQueuedUser; _saveQueued = false; _saveQueuedUser = false; if(user){ saveState(); } else { const sk = saveState._skipCloud; saveState._skipCloud = true; try{ saveState(); }finally{ saveState._skipCloud = sk; } } }
+/* ============ BUILD 17.22 — ROW DRAFTS: a table row is saved when you finish it (Enter, or leaving the row) ============
+   While the cursor is in a cell of a module / library table, every keystroke and category pick changes the row ON THIS SCREEN only
+   (and in this browser's storage, so nothing is lost on a crash). Nothing is sent to the server, no incoming update touches the page,
+   so the row cannot jump. Enter, Tab/click out of the row, switching tab or closing the window = ONE save of the whole row → one
+   write to the server. Buttons and checkboxes in a row (remove, ship separately, add to library…) save immediately as before. */
+var _rowDraft = null, _rowDraftCommitting = false;   /* { tr, dirty } */
+function _rowDraftEl(el){
+  try{ if(!el || el.nodeType !== 1 || !el.closest) return null;
+    const tag = el.tagName; if(tag !== 'INPUT' && tag !== 'SELECT' && tag !== 'TEXTAREA') return null;
+    const ty = String(el.type || '').toLowerCase(); if(ty === 'checkbox' || ty === 'radio' || ty === 'file' || ty === 'button' || ty === 'submit') return null;
+    const tr = el.closest('tr'); if(!tr) return null; const tb = tr.closest('table.eq'); if(!tb) return null;
+    const c = document.getElementById('content'); if(!c || !c.contains(tb)) return null;
+    return tr; }catch(_){ return null; } }
+function _rowDraftMark(tr, on){ try{ if(tr && tr.classList){ tr.classList.toggle('row-draft', !!on); if(on) tr.title = 'Not saved yet — press Enter or leave the row'; else if(tr.title === 'Not saved yet — press Enter or leave the row') tr.removeAttribute('title'); } }catch(_){} }
+function _rowDraftHold(){
+  if(saveState._skipCloud || _rowDraftCommitting) return false;
+  const a = document.activeElement; const tr = _rowDraftEl(a); if(!tr) return false;
+  if(_rowDraft && _rowDraft.tr !== tr && !document.contains(_rowDraft.tr)) _rowDraft.tr = tr;   /* the same row re-rendered → the draft follows it */
+  if(!_rowDraft || _rowDraft.tr !== tr){ if(_rowDraft) _rowDraftCommit(); _rowDraft = { tr: tr, dirty: false }; }
+  _rowDraft.dirty = true; _rowDraftMark(tr, true); return true; }
+function _rowDraftCommit(){
+  const d = _rowDraft; if(!d) return; _rowDraft = null; _rowDraftMark(d.tr, false);
+  try{ const a = document.activeElement; if(a && _rowDraftEl(a) === d.tr) _rowDraftMark(a.closest('tr'), false); }catch(_){}
+  if(d.dirty){ _rowDraftCommitting = true; try{ saveState(); } finally { _rowDraftCommitting = false; } try{ _fsShowStat(); }catch(_){} } }
+function _rowDraftRemark(){ try{ if(!_rowDraft || !_rowDraft.dirty) return; const tr = _rowDraftEl(document.activeElement); if(tr){ _rowDraft.tr = tr; _rowDraftMark(tr, true); } }catch(_){} }
+try{
+  /* leaving the row (focus goes elsewhere) commits it — synchronously, BEFORE the blur flush applies deferred team updates */
+  document.addEventListener('focusout', function(ev){ if(!_rowDraft) return; const to = ev.relatedTarget; const trTo = _rowDraftEl(to); const trFrom = _rowDraftEl(ev.target);
+    if(trFrom && trFrom !== _rowDraft.tr && document.contains(_rowDraft.tr)) return;
+    if(trTo && (trTo === _rowDraft.tr || (trFrom && trTo === trFrom))) return;
+    if(to && _rowDraft.tr.contains(to)) return;                                   /* a button inside the same row */
+    _rowDraftCommit(); }, true);
+  document.addEventListener('focusin', function(ev){ const tr = _rowDraftEl(ev.target); if(_rowDraft && tr && tr !== _rowDraft.tr){ if(document.contains(_rowDraft.tr)) _rowDraftCommit(); else _rowDraft.tr = tr; } }, true);
+  /* Enter = row done */
+  document.addEventListener('keydown', function(ev){ if(ev.key !== 'Enter' || ev.isComposing || !_rowDraft) return; const el = ev.target; if(!el || el.tagName === 'TEXTAREA') return;
+    const inRow = _rowDraftEl(el) === _rowDraft.tr || (el.closest && el.closest('tr') === _rowDraft.tr);   /* Enter anywhere in the row being edited (a cell, its checkbox…) */
+    if(!inRow) return;
+    setTimeout(function(){ try{ if(document.activeElement === el && _rowDraftEl(el) && el.blur) el.blur(); else _rowDraftCommit(); }catch(_){} }, 0); }, true);
+  document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'hidden') _rowDraftCommit(); });
+  window.addEventListener('pagehide', function(){ _rowDraftCommit(); });
+  window.addEventListener('hashchange', function(){ _rowDraftCommit(); }, true);
+}catch(_){}
 function saveState(){
+  const _held = _rowDraftHold();   /* BUILD 17.22: inside an unfinished table row → local only */
+  if(_held){ const _skip0 = saveState._skipCloud; saveState._skipCloud = true; try{ return saveState(); } finally { saveState._skipCloud = _skip0; } }
   try{ if(typeof AD !== 'undefined') AD.onSave(!!saveState._skipCloud); }catch(_){}   /* BUILD 16.62: a user edit that removed a file → deletion job; a sync-apply only refreshes the inventory */
   /* a genuine local edit (not a cloud-apply) time-stamps the active project so a Drive
      poll won't overwrite a change you JUST made before it's pushed (fixes "renamed,
@@ -1740,6 +1787,7 @@ function rerenderKeepScroll(){
   _keepScrollTop = st;                 /* route() applies it synchronously after innerHTML (no jump-then-restore flicker) */
   route();
   _keepScrollTop = null;
+  try{ _rowDraftRemark(); }catch(_){}   /* BUILD 17.22 */
   /* restore AGAIN after layout/image-decode settles, so a page with base64 images
      (e.g. pallet photos) or late reflow doesn't drift from the offset (BUILD 12.63/14.40) */
   const restore = () => { const c2 = document.getElementById('content'); if(c2 && Math.abs(c2.scrollTop - st) > 1) c2.scrollTop = st; };
@@ -1858,13 +1906,14 @@ function migrateToolCats(){
    the WHOLE category list opens; restore on blur if nothing new was picked.
    Custom typed text is never cleared. */
 function dlFocus(el){
-  if(el.value && libFind(el.value)){ el.dataset.dlprev = el.value; el.value = ''; }
+  if(el.value && libFind(el.value)){ el.dataset.dlprev = el.value; el.dataset.dlph = el.placeholder || ''; el.placeholder = el.value; el.value = ''; }   /* 17.22: the name stays visible (grey) while the full list is open */
 }
 function dlBlur(el){
   if(el.dataset.dlprev != null){
     if(!el.value.trim()) el.value = el.dataset.dlprev;
     delete el.dataset.dlprev;
   }
+  if(el.dataset.dlph != null){ el.placeholder = el.dataset.dlph; delete el.dataset.dlph; }
   /* BUILD 16.08: a typed search fragment (e.g. `12"` or `16'`) must never be saved as the item name.
      On blur, snap it to the ONE library item it matches in this field's list (exact → prefix →
      contains), write the FULL name back and fire `input` so the row saves it (+ price/link auto-fill).
@@ -1915,7 +1964,8 @@ function fixHalfNamesFromLibrary(){
     return n;
   }catch(_){ return 0; }
 }
-try{ setTimeout(function(){ try{ fixHalfNamesFromLibrary(); }catch(_){} }, 4000); }catch(_){}   /* once after load (local library) */
+/* BUILD 17.22: no automatic run at start — it changed and SAVED rows nobody touched (a row "changed by itself"). Names are completed
+   from the Library only when the user leaves the name field (dlBlur), i.e. on a user action. */
 const catListId  = cat => 'dlLibCat'  + Math.max(0, ciIndexOf(srvCats(), cat));
 const rackListId = cat => 'dlRackCat' + Math.max(0, ciIndexOf(rackCatList(), cat));
 function libFind(name){
@@ -2573,16 +2623,17 @@ function downloadContentListEntry(id){
    same scope as the Documentation page itself, so numbers always match. */
 function docScope(){ const e = activeEntry(); return e ? [e] : []; }
 function docPhotoCount(){
-  return docScope().reduce((s,e)=> s + ['server','vj','rack','front','rear','site','camera'].reduce((x,k)=> x + entryPhotos(e,k).length, 0), 0);
+  return docScope().reduce((s,e)=> s + ['server','vj','rack','front','rear','site','mapping','camera'].reduce((x,k)=> x + entryPhotos(e,k).length, 0), 0);
 }
 function docContentListCount(){ return docScope().filter(e=>e.data.contentList).length; }
 
 /* ---------- photos (server: max 6, rack: max 4) ---------- */
-const PHOTO_MAX = { server: 10, vj: 10, backup: 10, rack: 10, front: 1, rear: 1, site: 20, camera: 10, speakers: 10, fan: 10, cables: 10, tools: 10, ballast: 10, safety: 10 };   /* ballast — Ballast Plates (BUILD 16.42) */
-var photoEdit = { server: false, vj: false, backup: false, rack: false, views: false, site: false, projviews: false, camera: false, speakers: false, fan: false, cables: false, tools: false, safety: false };   /* Edit mode: shows delete crosses */
+const PHOTO_MAX = { server: 10, vj: 10, backup: 10, rack: 10, front: 1, rear: 1, site: 20, mapping: 15, camera: 10, speakers: 10, fan: 10, cables: 10, tools: 10, ballast: 10, safety: 10 };   /* ballast — Ballast Plates (BUILD 16.42) */
+var photoEdit = { server: false, vj: false, backup: false, rack: false, views: false, site: false, mapping: false, projviews: false, camera: false, speakers: false, fan: false, cables: false, tools: false, safety: false };   /* Edit mode: shows delete crosses */
 function togglePhotoEdit(kind){ photoEdit[kind] = !photoEdit[kind]; rerenderKeepScroll(); }
 function photosOf(kind){
   if(kind==='site'){ return ensureDocs(state).sitePh; }
+  if(kind==='mapping'){ const dd = ensureDocs(state); if(!Array.isArray(dd.mapPh)) dd.mapPh = []; return dd.mapPh; }   /* BUILD 17.21 */
   if(kind==='camera'){ if(!state.camera) state.camera={rows:[],ready:false,photos:[]}; if(!Array.isArray(state.camera.photos)) state.camera.photos=[]; return state.camera.photos; }
   if(kind==='speakers'){ if(!state.speakers) state.speakers={rows:[],ready:false,photos:[]}; if(!Array.isArray(state.speakers.photos)) state.speakers.photos=[]; return state.speakers.photos; }
   if(kind==='fan'){ if(!state.fan) state.fan={rows:[],ready:false,photos:[]}; if(!Array.isArray(state.fan.photos)) state.fan.photos=[]; return state.fan.photos; }
@@ -2607,6 +2658,7 @@ function entryPhotos(e, kind){
   if(kind==='front')  return (d.rack && d.rack.frontPh) || [];
   if(kind==='rear')   return (d.rack && d.rack.rearPh) || [];
   if(kind==='site')   return (d.docs && d.docs.sitePh) || [];
+  if(kind==='mapping') return (d.docs && d.docs.mapPh) || [];   /* BUILD 17.21 */
   if(kind==='camera') return (d.camera && d.camera.photos) || [];
   if(kind==='speakers') return (d.speakers && d.speakers.photos) || [];
   if(kind==='fan') return (d.fan && d.fan.photos) || [];
@@ -2628,20 +2680,24 @@ function onPhotosPicked(ev){
   if(!kind || !files.length) return;
   const arr = photosOf(kind);
   const room = PHOTO_MAX[kind] - arr.length;
-  files.slice(0, Math.max(0, room)).forEach(f => {
+  /* BUILD 17.21: one after another — photos land in the order they were selected (parallel decoding used to shuffle them) */
+  const queue = files.slice(0, Math.max(0, room));
+  const next = () => { const f = queue.shift(); if(!f) return;
     readImageFile(f,
       dataUrl => {
         downscaleImage(dataUrl, 1280, 0.8,
           src => {
             const cap = kind==='front' ? 'Front view' : kind==='rear' ? 'Rear view' : f.name.replace(/\.[a-z0-9]+$/i,'');
-            photosOf(kind).push({ name: f.name, caption: cap, src });
+            if(photosOf(kind).length < PHOTO_MAX[kind]) photosOf(kind).push({ name: f.name, caption: cap, src });
             saveState(); rerenderKeepScroll();
             if(isHeicFile(f)) flashStat('HEIC converted ✓');
+            next();
           },
-          () => alert(heicFailMsg(f,'decode')));
+          () => { alert(heicFailMsg(f,'decode')); next(); });
       },
-      why => alert(heicFailMsg(f, why)));
-  });
+      why => { alert(heicFailMsg(f, why)); next(); });
+  };
+  next();
 }
 /* ---------- HEIC (iPhone) support ----------
    Browsers don't decode HEIC/HEIF. The heic2any converter (~1MB) is lazy-
@@ -2717,7 +2773,7 @@ function openLightboxProj(id, kind, i){
   const p = entryPhotos(e, kind)[i];
   if(p){
     const P = e.data.project || {};
-    const lbl = kind==='server' ? 'Dome Server' : kind==='vj' ? 'VJ Server' : kind==='backup' ? 'Backup Server' : kind==='front' ? 'Rack — Front' : kind==='rear' ? 'Rack — Rear' : kind==='site' ? 'Site' : kind==='camera' ? 'Camera' : kind==='speakers' ? 'Speakers' : kind==='fan' ? 'Screen Fan' : kind==='cables' ? 'Cables' : kind==='tools' ? 'Tools' : kind==='safety' ? 'Safety' : 'Rack';
+    const lbl = kind==='server' ? 'Dome Server' : kind==='vj' ? 'VJ Server' : kind==='backup' ? 'Backup Server' : kind==='front' ? 'Rack — Front' : kind==='rear' ? 'Rack — Rear' : kind==='site' ? 'Site' : kind==='mapping' ? 'Manual Mapping' : kind==='camera' ? 'Camera' : kind==='speakers' ? 'Speakers' : kind==='fan' ? 'Screen Fan' : kind==='cables' ? 'Cables' : kind==='tools' ? 'Tools' : kind==='safety' ? 'Safety' : 'Rack';
     openLightbox(p.src, lbl + ' — #' + (P.number||'') + ' · ' + (p.caption||p.name||''));
   }
 }
@@ -6428,7 +6484,7 @@ function fbpMediaPayload(e){
     camera:{ photos:(d.camera&&d.camera.photos)||[] },
     speakers:{ photos:(d.speakers&&d.speakers.photos)||[] }, fan:{ photos:(d.fan&&d.fan.photos)||[] }, cables:{ photos:(d.cables&&d.cables.photos)||[] }, tools:{ photos:(d.tools&&d.tools.photos)||[] }, safety:{ photos:(d.safety&&d.safety.photos)||[] },   /* BUILD 16.42: these modules' photos now travel too · + safety (16.73) */
     ballast:{ photos:(d.dome&&d.dome.ballast&&d.dome.ballast.photos)||[] },
-    docs:{ sitePh:(d.docs&&d.docs.sitePh)||[], files:(d.docs&&d.docs.files)||{} },
+    docs:{ sitePh:(d.docs&&d.docs.sitePh)||[], mapPh:(d.docs&&d.docs.mapPh)||[], files:(d.docs&&d.docs.files)||{} },
     projectors:{ models:(d.projectors&&d.projectors.models)||{} },
     projectorsWeb: projWebPayload(d),                       /* BUILD 14.5: projector Web-settings files travel here, not in the DB doc */
     shipping:{ palletPhotos:(d.shipping&&d.shipping.palletPhotos)||{}, docs:(d.shipping&&Array.isArray(d.shipping.docs))?d.shipping.docs:[] },   /* BUILD 16.09: shipping docs travel in the media file */
@@ -6443,7 +6499,7 @@ function fbpMediaIsEmpty(e){
   const photoSets = [ m.server&&m.server.photos, m.backup&&m.backup.photos, m.vj&&m.vj.photos,
     m.rack&&m.rack.photos, m.rack&&m.rack.frontPh, m.rack&&m.rack.rearPh, m.camera&&m.camera.photos,
     m.speakers&&m.speakers.photos, m.fan&&m.fan.photos, m.cables&&m.cables.photos, m.tools&&m.tools.photos, m.safety&&m.safety.photos, m.ballast&&m.ballast.photos,
-    m.docs&&m.docs.sitePh ];
+    m.docs&&m.docs.sitePh, m.docs&&m.docs.mapPh ];
   if(photoSets.some(anyArr)) return false;
   if(m.projectors && m.projectors.models && Object.keys(m.projectors.models).length) return false;
   if(m.shipping && m.shipping.palletPhotos && Object.keys(m.shipping.palletPhotos).some(k=>anyArr(m.shipping.palletPhotos[k]))) return false;
@@ -7334,6 +7390,7 @@ async function _fsPushPass(e, pid){ if(SE_ON && SE.enabled(pid)) return SE.pushP
 /* BUILD 16.06 LIVE hotfix (Defect 2, cont.): when the user finishes editing (blur), apply the
    incoming values that were deferred while typing, refresh the open module, and push promptly. */
 function _fsApplyPendingSnap(){
+  if(_rowDraft && _rowDraft.dirty) return false;              /* BUILD 17.22: never over an unfinished row — applied after it is saved */
   const e = activeEntry(); if(!e) return false;
   const pid = fbpPid(e); if(!pid) return false;
   const snap = _fsPendingSnap[pid]; if(!snap) return false;
@@ -7370,7 +7427,7 @@ function _fsRerenderSoon(){
    a cursor left in a cell kept the module page stale for as long as the tab was open ("rows are in Shipping but not in Cables"). */
 var _fsLastKeyAt = 0;
 try{ document.addEventListener('keydown', function(){ _fsLastKeyAt = Date.now(); }, true); document.addEventListener('input', function(){ _fsLastKeyAt = Date.now(); }, true); }catch(_){}
-setInterval(function(){ try{ const pid = activeEntry() && fbpPid(activeEntry()); const waiting = _fsRerenderPending || (pid && _fsPendingSnap[pid]); if(!waiting) return; if(!isTypingInInput()) return; if(Date.now() - _fsLastKeyAt < 10000) return; const a = document.activeElement; if(a && a.blur){ a.blur(); } }catch(_){} }, 3000);
+setInterval(function(){ try{ const pid = activeEntry() && fbpPid(activeEntry()); const waiting = _fsRerenderPending || (pid && _fsPendingSnap[pid]); if(!waiting) return; if(!isTypingInInput()) return; if(Date.now() - _fsLastKeyAt < 10000) return; if(_rowDraft && _rowDraft.dirty) return; const a = document.activeElement; if(a && a.blur){ a.blur(); } }catch(_){} }, 3000);
 function _fsFlushOnBlur(ev){
   /* ignore blur events produced by our OWN re-render (element detached) — otherwise render→blur→push→render loops */
   try{ if(_fsRerendering) return; if(ev && ev.target && ev.target.nodeType === 1 && !document.contains(ev.target)) return; }catch(_){}
@@ -7720,7 +7777,7 @@ function fsApplyLibrary(data){
   if(localExtra){ try{ fsDiag('library: local-only items / categories kept; they are published with the Publish button or the next library edit (no write from a snapshot)'); }catch(_){} }   /* BUILD 17.03: never sets the dirty flag from a snapshot */
   _libSigLast = libSig();
   try{ normalizeSort(); }catch(_){}
-  if(before !== _libSigLast){ try{ setTimeout(function(){ try{ fixHalfNamesFromLibrary(); }catch(_){} }, 600); }catch(_){} }   /* BUILD 16.10: library arrived → complete half names */
+  /* BUILD 17.22: a library arriving from a teammate no longer rewrites (and saves) project rows — that was a write without a user action */
   return before !== _libSigLast;
 }
 /* run once shortly after connect: publish our library ONLY if the server has none yet (seed) or we
@@ -8842,6 +8899,7 @@ async function cloudOpenFolder(fid, name){
 }
 const PHOTO_DIRS = [
   ['site',   'Site'],
+  ['mapping', 'Manual Mapping'],   /* BUILD 17.21 → Photos/Manual Mapping/ */
   ['server', 'Dome Server'],
   ['vj',     'VJ Server'],
   ['backup', 'Backup Server'],
@@ -8922,7 +8980,7 @@ function applyPhotosFrom(d, s){
   if(s.camera){ d.camera = d.camera || {rows:[],ready:false,photos:[]}; setA(d.camera, 'photos', s.camera.photos); }
   ['speakers','fan','cables','tools','safety'].forEach(k => { if(s[k]){ d[k] = d[k] || {rows:[],ready:false,photos:[]}; setA(d[k], 'photos', s[k].photos); } });   /* BUILD 16.42 · + safety (16.73) */
   if(s.ballast){ ensureDome(d); setA(d.dome.ballast, 'photos', s.ballast.photos); }
-  if(s.docs){ d.docs = d.docs || {}; setA(d.docs, 'sitePh', s.docs.sitePh); }
+  if(s.docs){ d.docs = d.docs || {}; setA(d.docs, 'sitePh', s.docs.sitePh); if('mapPh' in s.docs) setA(d.docs, 'mapPh', s.docs.mapPh); }   /* 17.21: an older media file without mapPh never clears ours */
   if(s.projectors && s.projectors.models){ d.projectors = d.projectors || {}; const inM=s.projectors.models, loM=d.projectors.models||{}; if(!(Object.keys(inM).length===0 && Object.keys(loM).length>0) && JSON.stringify(loM) !== JSON.stringify(inM)){ d.projectors.models = inM; ch = true; } }
   if(s.shipping){ d.shipping = d.shipping || {}; const inP=s.shipping.palletPhotos||{}, loP=d.shipping.palletPhotos||{}; const hasP=o=>Object.keys(o).some(k=>Array.isArray(o[k])&&o[k].length); if(!(!hasP(inP) && hasP(loP)) && JSON.stringify(loP) !== JSON.stringify(inP)){ d.shipping.palletPhotos = inP; ch = true; } }
   return ch;
@@ -11622,6 +11680,7 @@ function pageDocumentation(){
 
     ${secHead('Manuals','Operator manuals, technical manuals and quick guides.')}
     ${fileSections[2]}
+    ${act ? `<div style="margin-top:14px">${photoCard('mapping','Mapping Photos for Manual — #'+esc(actP.number),'Mapping / alignment photos for the manual of the active project — up to '+PHOTO_MAX.mapping+'. Click a photo to preview; Edit to remove or caption.')}</div>` : ''}
 
     ${secHead('Project Documents','Equipment lists, shipping and client documents.')}
     ${fileSections[3]}
@@ -13389,7 +13448,7 @@ var SE = (function(){
         'projectors.list':{}, 'projectors.list/#/web':{ asset:'data' }, 'projectors.lenses':{}, 'projectors.acc':{}, 'projectors.mounts':{},
         'shipping.pallets':{}, 'shipping.docs':{ asset:'data' }, 'shipping.palletPhotos/*':{ asset:'src' },
         'dome.ballast.rows':{}, 'dome.ballast.photos':{ asset:'src' },
-        'rack.frontPh':{ asset:'src' }, 'rack.rearPh':{ asset:'src' }, 'docs.sitePh':{ asset:'src' }, 'docs.files/*':{ asset:'data' },
+        'rack.frontPh':{ asset:'src' }, 'rack.rearPh':{ asset:'src' }, 'docs.sitePh':{ asset:'src' }, 'docs.mapPh':{ asset:'src' }, 'docs.files/*':{ asset:'data' },
         'ext.cameraCases':{}, 'ext.projAcc':{}, 'ext.fanCases':{}, 'ext.projMounts':{} };
         PHOTO_KEYS.forEach(function(k){ L[k + '.photos'] = { asset:'src' }; }); return L; })(),
       binaries: { 'projectors.models/*': ['f','r'], 'contentList': ['data'] },
@@ -13913,7 +13972,7 @@ var SE = (function(){
   function folderFor(root, cpath){ const segs = cpath.split('/'); const s = segs[0].split('.')[0];
     if(kindOf(root) !== 'project') return ['Dome Library'];
     if(segs[0] === 'docs.files') return ['Documentation', docCatLabel(segs[1] || '')];
-    if(cpath === 'docs.sitePh') return ['Photos', 'Site']; if(cpath === 'rack.frontPh') return ['Photos', 'Rack Front']; if(cpath === 'rack.rearPh') return ['Photos', 'Rack Rear'];
+    if(cpath === 'docs.sitePh') return ['Photos', 'Site']; if(cpath === 'docs.mapPh') return ['Photos', 'Manual Mapping']; if(cpath === 'rack.frontPh') return ['Photos', 'Rack Front']; if(cpath === 'rack.rearPh') return ['Photos', 'Rack Rear'];
     if(cpath === 'dome.ballast.photos') return ['Photos', 'Ballast Plates']; if(segs[0] === 'shipping.palletPhotos') return ['Photos', 'Pallet ' + (segs[1] || '')];
     if(cpath === 'shipping.docs') return ['Documentation', 'Shipping Documents']; if(segs[0] === 'projectors.models') return ['Photos', 'Projectors']; if(segs[0] === 'projectors.list') return ['Files', 'Projectors'];
     if(cpath === 'contentList') return ['Documentation', 'Content List']; if(cpath === s + '.photos' && PHOTO_DIR_BY_KEY[s]) return ['Photos', PHOTO_DIR_BY_KEY[s]]; return ['Files', s]; }
@@ -14484,7 +14543,7 @@ loadState(()=>{ restoreHandles();
   registerModule('vjValidation', { kind: 'singleton', title: 'VJ Validation' });
   registerModule('shipping',     { kind: 'singleton', title: 'Shipping', mediaKeys: ['palletPhotos', 'docs'] });
   registerModule('shippingPallets', { kind: 'table', title: 'Shipping Pallets', idKey: 'id', parent: 'shipping', parentArrayKey: 'pallets' });  // #10
-  registerModule('docs',         { kind: 'singleton', title: 'Docs (refs only)', mediaKeys: ['files', 'sitePh'] });
+  registerModule('docs',         { kind: 'singleton', title: 'Docs (refs only)', mediaKeys: ['files', 'sitePh', 'mapPh'] });
   registerModule('contentList',  { kind: 'singleton', title: 'Content List', mediaKeys: ['data'] });
 
   let _opSeq = 0;
