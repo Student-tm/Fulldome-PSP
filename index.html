@@ -539,6 +539,7 @@
     padding:9px 6px;cursor:pointer;appearance:auto}
   table.eq select.cell:focus{outline:none;background:#fff7f7}
   table.eq select.cell.empty{color:#9aa2ad}
+tr.lib-moved>td{animation:libMoved 1.2s ease-out}@keyframes libMoved{0%{background:#ffe7a3}100%{background:transparent}}   /* BUILD 17.23: the row just landed in its category */
 tr.row-draft>td{background:#fffbe8 !important}   /* BUILD 17.22: row being edited, not saved yet (Enter / leave the row) */
 tr.row-draft>td:first-child{box-shadow:inset 3px 0 0 #e0a800}
 .cell.libdup{border-color:var(--fdp-red) !important;box-shadow:0 0 0 2px rgba(211,47,47,.12);background:#fff6f6}   /* BUILD 17.09: duplicate library name */
@@ -832,11 +833,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-<<<<<<< HEAD
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.22 · Tables: a row is saved on Enter / leaving the row · Mapping Photos for Manual</div>
-=======
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.21 · Documentation: Mapping Photos for Manual (15) · Library: stable rows · Drive uploads verified</div>
->>>>>>> b60a150a7f8aef5f4bc26b63cab2d9322a7989b7
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.23 · Library: a new row jumps under its category · Tables save on Enter</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1750,7 +1747,7 @@ function sortByCat(arr, list){ arr.sort((a,b)=> catIndexOf(list, a.cat) - catInd
 /* BUILD 17.07: library tables — a row that has NO NAME yet (just added, category picked, name still to type) stays at the BOTTOM
    where the user is working. Before, choosing the category re-sorted the blank row up into its category group (3rd line of a
    17-line table) and the user read that as "my row was deleted". Named rows sort by category exactly as before. */
-function sortLibByCat(arr, list){ const k = it => (it && (it.name||'').trim()) ? catIndexOf(list, it.cat) : 100000; arr.sort((a,b)=> k(a) - k(b)); }
+function sortLibByCat(arr, list){ const k = it => (it && ((it.name||'').trim() || (it.cat||'').trim())) ? catIndexOf(list, it.cat) : 100000; arr.sort((a,b)=> k(a) - k(b)); }   /* 17.23: a row joins its category group as soon as it HAS a category (stable sort → it lands under the last row of that category); a row with neither name nor category stays at the bottom */
 /* Enforce category grouping on ALL lists — including data loaded from
    storage or from a project file that was saved before sorting existed. */
 function normalizeSort(){
@@ -2016,11 +2013,30 @@ function updLib(group, i, k, v){
   if(k === 'name'){ const dup = libDupOf(group, arr[i]); if(dup && !arr[i]._dupWarned){ arr[i]._dupWarned = true; flashStat('This name is already in the Library — the row stays on this computer until you change the name'); } if(!dup) delete arr[i]._dupWarned; try{ const el = document.activeElement; if(el && el.tagName==='INPUT') el.classList.toggle('libdup', dup); }catch(_){} }
   if(k === 'link') schedAutoLibPrice(group, i);
   if(k === 'cat'){
-    if(group !== 'tools') sortLibByCat(arr, groupCats(group));   /* tools items are bucketed by grp, not cat — keep their position */
-    saveState(); rerenderKeepScroll(); return;
+    const row = arr[i]; const rid = libItemId(row); const fromSelect = !!(document.activeElement && document.activeElement.tagName === 'SELECT');
+    if(group !== 'tools') sortLibByCat(arr, groupCats(group));
+    else libMoveToolToCat(arr, row);                           /* tools: inside its own sub-table (bucket), under the last row of the same category */
+    saveState(); rerenderKeepScroll();
+    if(fromSelect) libFocusName(rid);                          /* BUILD 17.23: the row moved under its category — the cursor follows it to the name field */
+    return;
   }
   saveState();
 }
+function libMoveToolToCat(arr, row){ try{
+  const b = toolItemGrp(row), c = normCat(row.cat); if(!c) return; const from = arr.indexOf(row); if(from < 0) return; arr.splice(from, 1);
+  let j = -1; arr.forEach((x, ix) => { if(toolItemGrp(x) === b && normCat(x.cat) === c) j = ix; });
+  if(j < 0){ const bk = TOOL_BUCKETS.find(t => t.key === b); const list = bk ? groupCats(bk.catKey) : []; const ci = catIndexOf(list, row.cat);
+    const later = arr.findIndex(x => toolItemGrp(x) === b && (x.name||'').trim() && catIndexOf(list, x.cat) > ci);
+    if(later >= 0) j = later - 1; else { arr.forEach((x, ix) => { if(toolItemGrp(x) === b && ((x.name||'').trim() || (x.cat||'').trim())) j = ix; }); } }
+  arr.splice(j + 1, 0, row); }catch(_){} }
+function libFocusName(rid){ try{
+  const inp = Array.from(document.querySelectorAll('#content table.eq input.cell.b')).find(x => (x.getAttribute('oninput') || '').indexOf("'" + rid + "'") >= 0); if(!inp) return;
+  const tr = inp.closest('tr');
+  document.querySelectorAll('#content tr.row-draft').forEach(t => { if(t !== tr) _rowDraftMark(t, false); });
+  if(_rowDraft){ _rowDraft.tr = tr; if(_rowDraft.dirty) _rowDraftMark(tr, true); }   /* the unsaved row is THIS row now — moving the cursor here does not save it */
+  inp.focus({ preventScroll:true }); try{ inp.scrollIntoView({ block:'nearest' }); }catch(_){}
+  if(tr){ tr.classList.add('lib-moved'); setTimeout(() => { try{ tr.classList.remove('lib-moved'); }catch(_){} }, 1200); }
+}catch(_){} }
 function addLib(group){ ensureLibGroup(group).push(blankLibItem()); saveState(); rerenderKeepScroll(); }
 function rmLib(group, i){ const arr = ensureLibGroup(group); i = libRowIndex(arr, i); if(i < 0) return; arr.splice(i,1); saveState(); rerenderKeepScroll(); }
 
@@ -7664,8 +7680,10 @@ function libMerge3(base, local, server){
   });
   return out;
 }
+function _libDraftOpen(){ return !!(_rowDraft && _rowDraft.dirty && location.hash === '#/library'); }   /* BUILD 17.23: a Library row is being edited */
 async function fsPushLibrary(){
   if(!fsReady() || _libPushing) return;
+  if(_libDraftOpen()){ clearTimeout(_fsLibT); _fsLibT = setTimeout(fsPushLibrary, 1500); return; }   /* BUILD 17.23: never publish a half-typed row — wait for Enter / leaving the row */
   if(SE_ON && SE.enabled('shared_library')){ _libDirty = false; try{ _libSigLast = libSig(); }catch(_){} await SE.push('shared_library'); return; }   /* BUILD 16.55: canary */
   const local = { library:{}, cats:{} };
   const refOf = new WeakMap();   /* BUILD 17.09: copy → the live db.library object it was taken from */
@@ -7711,7 +7729,7 @@ async function fsPushLibrary(){
       try{ normalizeSort(); }catch(_){}
       if(!isTypingInInput() && (location.hash==='#/library')){ try{ rerenderKeepScroll(); }catch(_){} }
     }
-    _libSigLast = libSig(); _libFails = 0; _libPaused = null;
+    _libSigLast = _libDraftOpen() ? '' : libSig(); _libFails = 0; _libPaused = null;   /* 17.23: an open Library row is not "published" — its Enter publishes it */
     try{ fsDiag('shared library merged+published (rev ' + result.rev + ')'); }catch(_){}
     saveState._skipCloud = true; saveState(); saveState._skipCloud = false;   /* persist libRev/base + cleared dirty */
   }catch(err){
@@ -7779,10 +7797,11 @@ function fsApplyLibrary(data){
   db.libRev = rrev;
   db.libBase = _libSnapshot({library:nextLibServerOnly(inLib), cats: remoteCats || db.cats});   /* base = what the SERVER holds; our unconfirmed adds stay "pending" until published */
   if(localExtra){ try{ fsDiag('library: local-only items / categories kept; they are published with the Publish button or the next library edit (no write from a snapshot)'); }catch(_){} }   /* BUILD 17.03: never sets the dirty flag from a snapshot */
-  _libSigLast = libSig();
+  const _libChanged = before !== libSig();
+  _libSigLast = _libDraftOpen() ? '' : libSig();   /* 17.23: an incoming library never marks an open Library row as published */
   try{ normalizeSort(); }catch(_){}
   /* BUILD 17.22: a library arriving from a teammate no longer rewrites (and saves) project rows — that was a write without a user action */
-  return before !== _libSigLast;
+  return _libChanged;
 }
 /* run once shortly after connect: publish our library ONLY if the server has none yet (seed) or we
    hold genuine local changes not on the server — never force-bumps the rev on a plain reconnect. */
