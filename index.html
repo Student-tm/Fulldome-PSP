@@ -854,7 +854,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.25 · Always opens the newest version (no Ctrl+Shift+R) · Sync reconnects by itself</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.26 · New photos are never lost before upload · Always opens the newest version</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -2729,7 +2729,7 @@ function onPhotosPicked(ev){
         downscaleImage(dataUrl, 1280, 0.8,
           src => {
             const cap = kind==='front' ? 'Front view' : kind==='rear' ? 'Rear view' : f.name.replace(/\.[a-z0-9]+$/i,'');
-            if(photosOf(kind).length < PHOTO_MAX[kind]) photosOf(kind).push({ name: f.name, caption: cap, src });
+            if(photosOf(kind).length < PHOTO_MAX[kind]) photosOf(kind).push({ name: f.name, caption: cap, src, _loc: 1 });   /* 17.26: local until uploaded */
             saveState(); rerenderKeepScroll();
             if(isHeicFile(f)) flashStat('HEIC converted ✓');
             next();
@@ -2803,8 +2803,8 @@ function downscaleImage(dataUrl, maxSide, quality, cb, failCb){
     img.src = dataUrl;
   }catch(e){ if(failCb) failCb(); else cb(dataUrl); }
 }
-function rmPhoto(kind, i){ photosOf(kind).splice(i,1); saveState(); rerenderKeepScroll(); }
-function updPhotoCap(kind, i, v){ const a = photosOf(kind); if(a[i]) a[i].caption = v; saveState(); }
+function rmPhoto(kind, i){ const a = photosOf(kind); _phNoteRemoved(a[i]); a.splice(i,1); saveState(); rerenderKeepScroll(); }
+function updPhotoCap(kind, i, v){ const a = photosOf(kind); if(a[i]){ a[i].caption = v; a[i]._loc = 1; } saveState(); }   /* 17.26: an unsent caption edit survives a pull */
 function openLightboxKind(kind, i){
   const p = photosOf(kind)[i];
   if(p) openLightbox(p.src, p.caption || p.name || '');
@@ -5579,12 +5579,12 @@ function onPalletPhotoPicked(ev){
   files.slice(0, Math.max(0,room)).forEach(f=>{
     readImageFile(f,
       dataUrl=>{ downscaleImage(dataUrl, 1280, 0.8,
-        src=>{ palPhotos(id).push({ name:f.name, caption:f.name.replace(/\.[a-z0-9]+$/i,''), src }); saveState(); rerenderKeepScroll(); if(isHeicFile(f)) flashStat('HEIC converted ✓'); },
+        src=>{ palPhotos(id).push({ name:f.name, caption:f.name.replace(/\.[a-z0-9]+$/i,''), src, _loc: 1 }); saveState(); rerenderKeepScroll(); if(isHeicFile(f)) flashStat('HEIC converted ✓'); },
         ()=>alert(heicFailMsg(f,'decode'))); },
       why=>alert(heicFailMsg(f,why)));
   });
 }
-function rmPalletPhoto(id,i){ const arr=palPhotos(id); if(arr[i]){ arr.splice(i,1); saveState(); rerenderKeepScroll(); } }
+function rmPalletPhoto(id,i){ const arr=palPhotos(id); if(arr[i]){ _phNoteRemoved(arr[i]); arr.splice(i,1); saveState(); rerenderKeepScroll(); } }
 function openLightboxPallet(id,i){ const ph=palPhotos(id)[i]; if(ph) openLightbox(ph.src, ph.caption||ph.name||''); }
 function palletPhotoBlock(p){
   const arr = palPhotos(p.id);
@@ -6614,9 +6614,11 @@ async function fbpMediaUpload(e){
      deleted everything" is rare; the recovery cost of a wrongful wipe is far higher. */
   if(rec.fileId && fbpMediaIsEmpty(e)){ fbpMediaUpload._why = 'refusing to overwrite the shared media file with an empty copy'; return false; }
   const root = await fbpMediaRoot();
-  const content = JSON.stringify(fbpMediaPayload(e));
+  const _payload = fbpMediaPayload(e); const _sentKeys = {}; try{ _phAllArrays({ server:_payload.server, backup:_payload.backup, vj:_payload.vj, rack:_payload.rack, camera:_payload.camera, speakers:_payload.speakers, fan:_payload.fan, cables:_payload.cables, tools:_payload.tools, safety:_payload.safety, docs:_payload.docs, dome:{ ballast:_payload.ballast }, shipping:_payload.shipping }).forEach(a => a.forEach(p => { if(p) _sentKeys[_phKey(p)] = 1; })); }catch(_){}
+  const content = JSON.stringify(_payload, function(k, v){ return k === '_loc' ? undefined : v; });   /* 17.26: the local-until-uploaded mark never travels */
   const fileId = await backupPutInPlace(pid + '.media.json', root, content, rec.fileId);   /* PATCH in place → one compact sync file + version history */
   mediaMap()[pid] = Object.assign(rec, { fileId, msig: sig });
+  _phAfterUpload(e, _sentKeys);   /* 17.26 */
   saveState._skipCloud = true; saveState(); saveState._skipCloud = false;   /* persist the media cache without bumping _rev */
   setCloudStat('Photos/docs uploaded ✓ · ' + hhmm());
   return true;
@@ -6829,6 +6831,8 @@ async function fbpMediaSync(){
       const want = e._remoteMsig; if(want === undefined || want === null) continue;
       const localSig = fbpMediaSig(e);
       if(want === localSig) continue;                       /* our media already matches the record */
+      const known = ((mediaMap()[pid] || {}).msig) || '';
+      if(want === known && !e._mediaPending) continue;      /* BUILD 17.26: the server holds what we last pulled/pushed — the difference is OUR unsent change; the outbox uploads it. Pulling here used to throw it away. */
       /* don't clobber the active project mid-edit; retry next tick */
       if(e === activeEntry() && (isTypingInInput() || (e._dirtyAt && Date.now() - e._dirtyAt < 30000))) continue;
       try{ if(await fbpMediaDownloadApply(e, want)) any = true; }catch(_){}
@@ -9059,11 +9063,42 @@ function docsSigStr(e){
   for(let i=0;i<s.length;i++){ h = ((h<<5)+h + s.charCodeAt(i)) | 0; }
   return (h>>>0).toString(36) + '.' + s.length;
 }
+/* BUILD 17.26 — photo identity + local-until-uploaded marks */
+function _phKey(p){   /* identity of a photo = its length + a fingerprint sampled across the WHOLE image (not just the tail) */
+  if(!(p && p.src)) return 'n:' + ((p && p.name) || '');
+  const s = p.src, n = s.length, step = Math.max(1, Math.floor(n / 512)); let h = 5381;
+  for(let i = 0; i < n; i += step){ h = ((h << 5) + h + s.charCodeAt(i)) | 0; }
+  for(let i = Math.max(0, n - 64); i < n; i++){ h = ((h << 5) + h + s.charCodeAt(i)) | 0; }
+  return 's' + n + ':' + (h >>> 0).toString(36);
+}
+function _phTomb(pid){ const mm = mediaMap(); const r = mm[pid] || (mm[pid] = {}); if(!r.ptomb || typeof r.ptomb !== 'object') r.ptomb = {}; return r.ptomb; }
+function _phMerge(cur, inc, tomb){
+  cur = Array.isArray(cur) ? cur : []; inc = Array.isArray(inc) ? inc : []; tomb = tomb || {};
+  const byKey = {}; cur.forEach(p => { if(p) byKey[_phKey(p)] = p; });
+  const inKeys = {}; const res = [];
+  inc.forEach(p => { if(!p) return; const k = _phKey(p); inKeys[k] = 1; if(tomb[k]) return;          /* deleted here, upload pending */
+    const l = byKey[k]; res.push(l && l._loc ? l : p); });                                          /* our unsent caption edit wins */
+  cur.forEach(p => { if(p && p._loc && !inKeys[_phKey(p)]) res.push(p); });                         /* added here, upload pending */
+  return res;
+}
+function _phAllArrays(d){ const out = []; try{
+  [['server','photos'],['backup','photos'],['vj','photos'],['rack','photos'],['rack','frontPh'],['rack','rearPh'],['camera','photos'],['speakers','photos'],['fan','photos'],['cables','photos'],['tools','photos'],['safety','photos'],['docs','sitePh'],['docs','mapPh']].forEach(([a,b]) => { const v = d[a] && d[a][b]; if(Array.isArray(v)) out.push(v); });
+  const bl = d.dome && d.dome.ballast && d.dome.ballast.photos; if(Array.isArray(bl)) out.push(bl);
+  const pp = d.shipping && d.shipping.palletPhotos; if(pp && typeof pp === 'object') Object.keys(pp).forEach(k => { if(Array.isArray(pp[k])) out.push(pp[k]); });
+}catch(_){} return out; }
+/* after a CONFIRMED upload: photos that were inside it are on Drive now (clear `_loc`); deletions that took effect drop their tombstone */
+function _phAfterUpload(e, sentKeys){ try{ const pid = fbpPid(e); _phAllArrays(e.data).forEach(arr => arr.forEach(p => { if(p && p._loc && sentKeys[_phKey(p)]) delete p._loc; }));
+  const t = _phTomb(pid); Object.keys(t).forEach(k => { if(!sentKeys[k]) delete t[k]; }); }catch(_){} }
+function _phNoteRemoved(p){ try{ if(!p || p._loc) return; const e = activeEntry(); const pid = e && fbpPid(e); if(pid) _phTomb(pid)[_phKey(p)] = Date.now(); }catch(_){} }
 /* copy all photo arrays from a downloaded project state onto the local entry data */
 function applyPhotosFrom(d, s){
   let ch = false;
-  /* BUILD 15.38 — Замок 5 (photos): an EMPTY incoming array never overwrites a NON-empty local one. */
-  const setA = (obj, key, val) => { if(!obj) return; const cur = obj[key]||[]; if(!(val||[]).length && cur.length) return; if(JSON.stringify(cur) !== JSON.stringify(val||[])){ obj[key] = val||[]; ch = true; } };
+  /* BUILD 15.38 — Замок 5 (photos): an EMPTY incoming array never overwrites a NON-empty local one.
+     BUILD 17.26 — MERGE, not replace: a photo added here and not uploaded yet (`_loc`) is kept; a photo deleted here and not
+     uploaded yet (tombstone) stays deleted; everything else follows the shared file (teammates' additions and deletions). Before,
+     a pull replaced the whole array — a new photo vanished ~30–60 s after it was added whenever its upload had not finished. */
+  const tomb = (function(){ try{ const pid = d && d.project && d.project.pid; return pid ? _phTomb(pid) : {}; }catch(_){ return {}; } })();
+  const setA = (obj, key, val) => { if(!obj) return; const cur = obj[key]||[]; if(!(val||[]).length && cur.length) return; const next = _phMerge(cur, val||[], tomb); if(JSON.stringify(cur) !== JSON.stringify(next)){ obj[key] = next; ch = true; } };
   if(s.server) setA(d.server, 'photos', s.server.photos);
   if(s.backup){ d.backup = d.backup || {rows:[],ready:false,photos:[],caseSize:'',name:'',enabled:false}; setA(d.backup, 'photos', s.backup.photos); }
   if(s.vj){ d.vj = d.vj || {rows:[],ready:false,photos:[]}; setA(d.vj, 'photos', s.vj.photos); }
@@ -9073,7 +9108,10 @@ function applyPhotosFrom(d, s){
   if(s.ballast){ ensureDome(d); setA(d.dome.ballast, 'photos', s.ballast.photos); }
   if(s.docs){ d.docs = d.docs || {}; setA(d.docs, 'sitePh', s.docs.sitePh); if('mapPh' in s.docs) setA(d.docs, 'mapPh', s.docs.mapPh); }   /* 17.21: an older media file without mapPh never clears ours */
   if(s.projectors && s.projectors.models){ d.projectors = d.projectors || {}; const inM=s.projectors.models, loM=d.projectors.models||{}; if(!(Object.keys(inM).length===0 && Object.keys(loM).length>0) && JSON.stringify(loM) !== JSON.stringify(inM)){ d.projectors.models = inM; ch = true; } }
-  if(s.shipping){ d.shipping = d.shipping || {}; const inP=s.shipping.palletPhotos||{}, loP=d.shipping.palletPhotos||{}; const hasP=o=>Object.keys(o).some(k=>Array.isArray(o[k])&&o[k].length); if(!(!hasP(inP) && hasP(loP)) && JSON.stringify(loP) !== JSON.stringify(inP)){ d.shipping.palletPhotos = inP; ch = true; } }
+  if(s.shipping){ d.shipping = d.shipping || {}; const inP=s.shipping.palletPhotos||{}, loP=d.shipping.palletPhotos||{}; const hasP=o=>Object.keys(o).some(k=>Array.isArray(o[k])&&o[k].length);
+    if(!(!hasP(inP) && hasP(loP))){ const nextP = {}; const keys = {}; Object.keys(inP).forEach(k => keys[k] = 1); Object.keys(loP).forEach(k => keys[k] = 1);
+      Object.keys(keys).forEach(k => { const m = _phMerge(loP[k] || [], inP[k] || [], tomb); if(m.length) nextP[k] = m; });   /* 17.26: pallet photos merge the same way */
+      if(JSON.stringify(loP) !== JSON.stringify(nextP)){ d.shipping.palletPhotos = nextP; ch = true; } } }
   return ch;
 }
 /* apply the DOCUMENTATION files + content list from a newer copy (BUILD 12.89) — these ride
