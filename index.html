@@ -854,7 +854,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.27 · Completed: newest on top · New photos are never lost before upload</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.29 · Shipping: only rows added after packing are red · Completed: newest on top</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -5219,17 +5219,15 @@ function shipPlaceReview(pl, places){
     const rid = it.rid;
     if(!rid || seen[rid]){ out.items[it.key] = { st:'new' }; out.issues++; return; }   /* no identity yet, or a copy of another row → not packed */
     seen[rid] = 1;
-    const e = M.rows[rid];
-    if(!e){
-      const from = Object.keys(shipManifests()).find(k => k !== pl.key && shipManifests()[k] && shipManifests()[k].rows && shipManifests()[k].rows[rid]);
-      out.items[it.key] = from ? { st:'review', kind:'moved', why:'moved here from ' + (shipManifests()[from].place || 'another place') } : { st:'new' };
-      out.issues++; return;
-    }
-    if(String(e.s || '') !== shipSig(it)){ out.items[it.key] = { st:'review', kind:'changed', why:'model / serial changed (packed: ' + (e.n || '—') + ')' }; out.issues++; return; }
-    if(+e.q !== shipQty(it)){ out.items[it.key] = { st:'review', kind:'qty', why:'qty ' + e.q + ' → ' + shipQty(it), q0:+e.q }; out.issues++; return; }
+    /* BUILD 17.29 — ONE rule (the user's): a row that was there when the place was ticked "On pallet" is ON THE PALLET, whatever
+       happens to it later (new name, qty, model, serial, a Dome Library card edit, moved to another ticked place) — it is the same
+       element. Only a row that was NOT there (added later and forgotten) is red. Nothing else is ever flagged. */
+    if(M.rows[rid]) return;
+    const inOther = Object.keys(shipManifests()).some(k => k !== pl.key && shipManifests()[k] && shipManifests()[k].rows && shipManifests()[k].rows[rid]);
+    if(inOther) return;
+    out.items[it.key] = { st:'new' }; out.issues++;
   });
-  Object.keys(M.rows).forEach(rid => { if(!seen[rid]){ const e = M.rows[rid] || {}; out.removed.push({ rid, n:e.n || '—', q:e.q }); out.issues++; } });
-  return out;
+  return out;   /* 17.29: no "removed" lines, no "changed" / "qty" flags */
 }
 /* BUILD 17.20: how many red rows the Shipping list shows right now (flagged items + "removed — still on the pallet?" lines). Pure. */
 function shipNotOnPalletCount(){ try{ return shipPlaces().reduce((a, pl) => { const rv = shipPlaceReview(pl); return a + Object.keys(rv.items).length + rv.removed.length; }, 0); }catch(_){ return 0; } }
@@ -5650,7 +5648,7 @@ function pageShipping(){
         const cmt = (S.meta && S.meta[it.key] && S.meta[it.key].cmt) || '';
         const f = rv.items[it.key];
         const fCls = f ? ' ship-late' : '';   /* 17.19: one look for every flag — the row outlined red */
-        const fTag = f ? ` <span class="ship-late-tag">NOT ON THE PALLET${f.kind === 'qty' ? ' · ' + esc(f.why.toUpperCase()) : f.kind === 'changed' ? ' · CHANGED' : f.kind === 'moved' ? ' · MOVED' : ''}</span>` : '';
+        const fTag = f ? ` <span class="ship-late-tag">NOT ON THE PALLET</span>` : '';
         return `<tr class="${ri===plan.length-1?'pl-last':''}${fCls}"${f?` onclick="shipRowClick(event,'${esc(pl.key)}','${esc(it.key)}')" title="Click to confirm"`:''}>
           <td class="tight" style="width:5%;text-align:right;color:var(--dim);white-space:nowrap">${it.ord===2?'<span class="odot o2 sh-ord" title="Received"></span>':it.ord===1?'<span class="odot o1 sh-ord" title="Ordered — waiting"></span>':''}${n}</td>
           <td${(it.cat||'').trim()?` title="${esc(it.cat)}"`:''}><span class="shipjump" onclick="shipGoTo('${esc(it.key)}')">${esc(it.name)}</span>${fTag}</td>
