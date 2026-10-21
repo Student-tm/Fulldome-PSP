@@ -497,6 +497,12 @@
   .csec-title{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--fdp-red);margin:0 0 12px;border-bottom:2px solid var(--fdp-red);padding-bottom:6px}
   .crow{display:flex;align-items:center;gap:10px;padding:8px 2px;border-top:1px solid var(--line);min-height:46px;box-sizing:border-box}
   .crow:first-child{border-top:none}
+  .cplus{width:22px;height:22px;flex:none;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink2);font:700 14px/1 inherit;cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center}
+  .cplus:hover{border-color:var(--fdp-red);color:var(--fdp-red)}
+  .cplus-sp{width:22px;flex:none}
+  .csub{display:flex;align-items:center;gap:10px;height:36px;box-sizing:border-box;padding:0 6px 0 70px;font-size:12.5px;color:var(--ink2);border-top:1px dashed var(--line);cursor:default}
+  label.csub{cursor:pointer} .csub input{margin:0;width:15px;height:15px;accent-color:var(--fdp-red)} .csub.c-empty{opacity:.45}
+  #cdstCard .csub{padding-left:48px}
   .cmi{display:inline-flex;width:28px;height:28px;border-radius:7px;background:#f1f2f4;color:var(--ink2);align-items:center;justify-content:center;flex:none}
   .cmi svg{width:16px;height:16px}
   @media(max-width:820px){ .cgrid{grid-template-columns:1fr} }
@@ -854,7 +860,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.29 · Shipping: only rows added after packing are red · Completed: newest on top</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.30 · Constructor: pick tables to copy</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -3636,43 +3642,127 @@ const CONSTRUCT_MODULES = [
   {key:'safety',     label:'Safety Equipment',   ic:IC.safety}
 ];
 var _constrExpand = {};   /* which source projects are expanded (session-only) */
-function constructCount(data, key){
-  const m = (data && data[key]) || {};
-  if(key === 'projectors') return ((m.list)||[]).filter(p => (((p.mfr||'')+(p.model||'')).trim())).length;
-  return ((m.rows)||[]).filter(r => (r.name||'').trim()).length;
+/* BUILD 17.30 — per-table copy. A module with several equipment tables (Projectors: Inventory / Lenses / Accessories /
+   Mount; Cables: Power / Video / Audio; Tools: 4 groups; Camera: cases + builder; Screen Fan: boxes + builders) gets a
+   "+" in the source row: it lists the tables with checkboxes (all ticked by default). Copy copies only the ticked
+   tables and replaces only those tables here — the other tables of the current project are left as they are.
+   Copied rows get fresh row ids; shipping data is never copied. Session-only UI state. */
+var _constrParts = {};    /* pid|key → parts list open */
+var _constrOff = {};      /* pid|key|partId → true when UNticked */
+function _cNamed(r){ return !!String((r && r.name) || '').trim(); }
+function _cCases(data, key){
+  const M = (data && data[key]) || {}; const cs = (Array.isArray(M.cases) ? M.cases : []).slice();
+  (Array.isArray(M.rows) ? M.rows : []).forEach(r => { if(r && r.caseId && !cs.some(c => c.id === r.caseId)) cs.push({ id:r.caseId, name:String(r.caseName||'').trim() }); });
+  return cs;
 }
-function constructCopy(src, dst, key){
-  const clone = o => (o==null ? null : JSON.parse(JSON.stringify(o)));
-  const s = src[key] || {};
+function _cCaseMatch(c, ci){ const n = String((c && c.name) || '').trim().toLowerCase(); return n ? ('case:' + n) : ('case#' + ci); }
+/* → { parts:[{id,label,match,n,rows|arr}], partOf(row) } */
+function constructModel(data, key){
+  const d = data || {};
   if(key === 'projectors'){
-    dst.projectors = dst.projectors || {list:[], selId:null};
-    dst.projectors.list = clone(s.list) || [];
-    dst.projectors.selId = null;
-    dst.projectors.models = clone(s.models) || {};
+    const pr = d.projectors || {}, A = k => Array.isArray(pr[k]) ? pr[k] : [];
+    const parts = [
+      { id:'inv',   label:'Projector Inventory',   arr:A('list'),   n:A('list').filter(p => ((p.mfr||'') + (p.model||'')).trim()).length },
+      { id:'lens',  label:'Lenses',                arr:A('lenses'), n:pr.removableLens ? A('lenses').filter(l => String(l.model||'').trim()).length : 0 },
+      { id:'acc',   label:'Projector Accessories', arr:A('acc'),    n:A('acc').filter(a => String(a.item||'').trim()).length },
+      { id:'mount', label:'Projector Mount',       arr:A('mounts'), n:A('mounts').filter(m => String(m.name||'').trim()).length } ];
+    parts.forEach(p => { p.match = p.id; });
+    return { parts, partOf:null };
+  }
+  const M = d[key] || {}, rows = Array.isArray(M.rows) ? M.rows : [];
+  let parts, partOf;
+  if(key === 'cables'){ parts = CAB_GROUPS.map(g => ({ id:g.key, label:g.label })); partOf = r => cabGrpOf(r); }
+  else if(key === 'tools'){ parts = TOOL_GROUPS.map(g => ({ id:g.key, label:g.label })); partOf = r => toolGrpOf(r); }
+  else if(key === 'camera' || key === 'fan'){
+    const cs = _cCases(d, key), lab = key === 'camera' ? camCaseLabel : fanBoxLabel;
+    parts = cs.map((c, ci) => ({ id:'case:' + c.id, label:lab(c, ci), match:_cCaseMatch(c, ci), caseObj:c }));
+    const inCase = r => !!(r && r.caseId && cs.some(c => c.id === r.caseId));
+    if(key === 'camera'){ parts.push({ id:'loose', label:'Camera Builder' }); partOf = r => inCase(r) ? 'case:' + r.caseId : 'loose'; }
+    else { parts.push({ id:'screen', label:'Screen Fan Builder' }, { id:'infl', label:'Inflatable Fan Builder' }); partOf = r => inCase(r) ? 'case:' + r.caseId : (fanIsInfl(r) ? 'infl' : 'screen'); }
+  }
+  else { const mod = CONSTRUCT_MODULES.find(m => m.key === key); parts = [{ id:'all', label:mod ? mod.label : key }]; partOf = () => 'all'; }
+  parts.forEach(p => { if(!p.match) p.match = p.id; p.rows = rows.filter(r => partOf(r) === p.id); p.n = p.rows.filter(_cNamed).length; });
+  return { parts, partOf };
+}
+function constructCount(data, key){ return constructModel(data, key).parts.reduce((s, p) => s + p.n, 0); }
+function constructMulti(key){ return ['projectors','cables','tools','camera','fan'].indexOf(key) >= 0; }
+function constructSelParts(pid, data, key){ return constructModel(data, key).parts.filter(p => p.n > 0 && !_constrOff[pid + '|' + key + '|' + p.id]); }
+/* copy the given SOURCE parts (by match key) into dst — replaces only those parts */
+function constructCopy(src, dst, key, srcParts){
+  const clone = o => (o == null ? null : JSON.parse(JSON.stringify(o)));
+  const now = Date.now();
+  if(key === 'projectors'){
+    ensureProjectors(dst); const s = src.projectors || {}, D = dst.projectors;
+    srcParts.forEach(p => {
+      if(p.id === 'inv'){
+        D.list = p.arr.filter(x => ((x.mfr||'') + (x.model||'')).trim()).map(x => { const c = clone(x); c.id = newId(); delete c.rowId; c.ts = now; return c; });
+        D.selId = null; D.models = Object.assign({}, D.models || {}, clone(s.models) || {});
+      }
+      if(p.id === 'lens'){ D.lenses = p.arr.filter(x => String(x.model||'').trim()).map(x => { const c = clone(x); c.id = 'ln' + newRowId().slice(1); delete c.rowId; c.ts = now; return c; }); D.removableLens = true; }
+      if(p.id === 'acc'){ D.acc = p.arr.filter(x => String(x.item||'').trim()).map(x => { const c = clone(x); c.id = 'pa' + newRowId().slice(1); delete c.rowId; c.ts = now; return c; }); }
+      if(p.id === 'mount'){ D.mounts = p.arr.filter(x => String(x.name||'').trim()).map(x => { const c = clone(x); c.id = 'pm' + newRowId().slice(1); delete c.rowId; c.ts = now; return c; }); }
+    });
     return;
   }
-  const cur = dst[key] || {};
-  const out = { rows: clone(s.rows) || [], ready: !!s.ready, photos: cur.photos || [] };   /* keep OUR photos */
-  if(key === 'rack'){ out.heightU = s.heightU || 12; out.slots = clone(s.slots) || {}; out.frontPh = cur.frontPh || []; out.rearPh = cur.rearPh || []; out.rackId = cur.rackId || ''; }   /* keep OUR Rack ID — it's a per-project identifier */
-  if(key === 'server'){ out.caseSize = s.caseSize || ''; }
-  if(key === 'backup'){ out.caseSize = s.caseSize || ''; out.name = s.name || ''; out.enabled = true; }   /* BUILD 14.64: carry the backup server config; copying it enables the block */
-  dst[key] = out;
+  const s = src[key] || {};
+  if(!dst[key] || typeof dst[key] !== 'object') dst[key] = { rows:[], ready:false, photos:[] };
+  const D = dst[key]; if(!Array.isArray(D.rows)) D.rows = [];
+  const hasCases = (key === 'camera' || key === 'fan');
+  if(hasCases && !Array.isArray(D.cases)) D.cases = [];
+  /* 1) drop OUR rows of the parts being replaced (matched by part, case/box by name or position) */
+  const dm = constructModel(dst, key), dMatch = {}; dm.parts.forEach(p => { dMatch[p.id] = p.match; });
+  const repl = {}; srcParts.forEach(p => { repl[p.match] = 1; });
+  if(hasCases){ _cCases(dst, key).forEach(c => { if(!D.cases.some(x => x.id === c.id)) D.cases.push({ id:c.id, name:c.name }); }); }
+  D.rows = D.rows.filter(r => !repl[dMatch[dm.partOf(r)]]);
+  /* 2) append the source rows of those parts */
+  srcParts.forEach(p => {
+    let box = null;
+    if(p.caseObj){
+      box = D.cases.find((c, ci) => _cCaseMatch(c, ci) === p.match);
+      if(!box){ box = { id:newId(), name:String(p.caseObj.name||'').trim() }; D.cases.push(box); }
+    }
+    p.rows.forEach(r => {
+      const c = clone(r); c.rowId = newRowId(); c.ts = now;
+      if(box){ c.caseId = box.id; c.caseName = box.name || ''; } else { delete c.caseId; delete c.caseName; }
+      D.rows.push(c);
+    });
+  });
+  /* single-table modules: the module config travels with the table (as before) */
+  if(!constructMulti(key)){
+    D.ready = !!s.ready;
+    if(key === 'rack'){ D.heightU = s.heightU || 12; D.slots = clone(s.slots) || {}; }   /* OUR Rack ID / photos stay */
+    if(key === 'server'){ D.caseSize = s.caseSize || ''; }
+    if(key === 'backup'){ D.caseSize = s.caseSize || ''; D.name = s.name || ''; D.enabled = true; }
+  } else if(constructModel(src, key).parts.every(p => !p.n || srcParts.some(x => x.id === p.id))){ D.ready = !!s.ready; }
+  if(!Array.isArray(D.photos)) D.photos = [];
 }
 function constructToggle(id){ _constrExpand[id] = !_constrExpand[id]; rerenderKeepScroll(); }
+function constructPartsToggle(pid, key){ const k = pid + '|' + key; _constrParts[k] = !_constrParts[k]; rerenderKeepScroll(); }
+function constructPartTick(pid, key, part, on){ const k = pid + '|' + key + '|' + part; if(on) delete _constrOff[k]; else _constrOff[k] = true; rerenderKeepScroll(); }
 function constructTransfer(srcId, key){
   try{
     const src = db.projects.find(p => p.id === srcId), active = activeEntry();
     if(!src || !active || !active.data){ flashStat('No project selected'); return; }
-    const n = constructCount(src.data, key); if(!n){ return; }
+    const sel = constructSelParts(srcId, src.data, key);
+    if(!sel.length){ flashStat('Nothing selected to copy'); return; }
     const mod = CONSTRUCT_MODULES.find(m => m.key === key), label = mod ? mod.label : key;
     const srcP = src.data.project || {}, srcName = srcP.title || ('#' + (srcP.number || '')) || 'project';
-    const dstN = constructCount(active.data, key);
-    if(dstN > 0 && !confirm('The "' + label + '" section already has ' + dstN + ' item(s).\n\nReplace it with ' + n + ' from "' + srcName + '"?')) return;
-    constructCopy(src.data, active.data, key);
+    const n = sel.reduce((s, p) => s + p.n, 0);
+    const dParts = constructModel(active.data, key).parts;
+    const busy = sel.map(p => { const d = dParts.find(x => x.match === p.match); return (d && d.n) ? { label:d.label, n:d.n } : null; }).filter(Boolean);
+    if(busy.length){
+      const msg = constructMulti(key)
+        ? ('"' + label + '" here already has:\n' + busy.map(b => '  • ' + b.label + ' — ' + b.n + ' item(s)').join('\n') + '\n\nReplace these tables with the copy from "' + srcName + '"?\nOther tables are not touched.')
+        : ('The "' + label + '" section already has ' + busy[0].n + ' item(s).\n\nReplace it with ' + n + ' from "' + srcName + '"?');
+      if(!confirm(msg)) return;
+    }
+    try{ if(active.data === state) shipSealLegacy(); }catch(_){ }
+    constructCopy(src.data, active.data, key, sel);
     try{ if(typeof revalidateReady === 'function') revalidateReady(); }catch(_){ }
     saveState(); renderSideProject();
     setTimeout(()=>{ try{ if(_FS || _FBP) syncPushNow(); else cloudPushNow(); }catch(_){ } }, 150);
-    flashStat(label + ' copied from ' + srcName + ' ✓');
+    const all = constructModel(src.data, key).parts.filter(p => p.n).length;
+    flashStat(label + (constructMulti(key) && sel.length < all ? ' (' + sel.map(p => p.label).join(', ') + ')' : '') + ' copied from ' + srcName + ' ✓');
     rerenderKeepScroll();
   }catch(err){ alert('Could not copy the module: ' + (err && err.message || err)); }
 }
@@ -3705,15 +3795,27 @@ function constructAlignSoon(){
 function constructSrcCard(p){
   const P = p.data.project || {}, open = !!_constrExpand[p.id];
   const rows = CONSTRUCT_MODULES.map(m => {
-    const n = constructCount(p.data, m.key);
+    const model = constructModel(p.data, m.key), n = model.parts.reduce((s, x) => s + x.n, 0);
+    const multi = constructMulti(m.key), pk = p.id + '|' + m.key, popen = multi && n > 0 && !!_constrParts[pk];
+    const withItems = model.parts.filter(x => x.n > 0), sel = withItems.filter(x => !_constrOff[pk + '|' + x.id]);
+    const partial = multi && sel.length < withItems.length;
+    const plus = (multi && n > 0)
+      ? `<button class="cplus" title="${popen?'Hide':'Choose'} tables to copy" onclick="event.stopPropagation();constructPartsToggle('${p.id}','${m.key}')">${popen?'−':'+'}</button>`
+      : `<span class="cplus-sp"></span>`;
+    const sub = popen ? model.parts.map(x => `<label class="csub ${x.n?'':'c-empty'}">
+        <input type="checkbox" ${x.n && !_constrOff[pk + '|' + x.id] ? 'checked' : ''} ${x.n?'':'disabled'} onchange="constructPartTick('${p.id}','${m.key}','${esc(x.id)}',this.checked)">
+        <span style="flex:1">${esc(x.label)}</span>
+        <span class="chip ${x.n?'c-ok':'c-mut'}"><span class="cd"></span>${x.n}</span>
+      </label>`).join('') : '';
     return `<div class="crow">
+      ${plus}
       <span class="cmi">${m.ic}</span>
       <span style="flex:1;font-size:13px">${esc(m.label)}</span>
       <span class="chip ${n?'c-ok':'c-mut'}"><span class="cd"></span>${n}</span>
       ${n>0
-        ? `<button class="mod-btn primary" style="padding:5px 12px;font-size:12px;flex:none" onclick="event.stopPropagation();constructTransfer('${p.id}','${m.key}')">Copy ${IC.open}</button>`
+        ? `<button class="mod-btn primary" style="padding:5px 12px;font-size:12px;flex:none;min-width:86px" ${sel.length?'':'disabled'} title="${partial ? 'Copy the ticked tables only' : 'Copy'}" onclick="event.stopPropagation();constructTransfer('${p.id}','${m.key}')">${partial ? ('Copy ' + sel.length + '/' + withItems.length) : 'Copy'} ${IC.open}</button>`
         : `<span style="width:86px;flex:none"></span>`}
-    </div>`;
+    </div>${sub}`;
   }).join('');
   return `<div class="card ${open?'csrc-open':''}" style="margin-bottom:12px">
     <div class="card-head" style="cursor:pointer;margin-bottom:0;user-select:none" onclick="constructToggle('${p.id}')">
@@ -3723,13 +3825,20 @@ function constructSrcCard(p){
     <div class="csrc-mods" style="display:${open?'block':'none'};margin-top:8px">${rows}</div>
   </div>`;
 }
-function constructDstRow(active, m){
-  const n = constructCount(active.data, m.key);
+/* right pane: when the aligned source project has a module's tables open, the same lines appear here with OUR counts */
+function constructDstRow(active, m, mirror){
+  const model = constructModel(active.data, m.key), n = model.parts.reduce((s, x) => s + x.n, 0);
+  let sub = '';
+  if(mirror && constructMulti(m.key) && _constrParts[mirror.id + '|' + m.key]){
+    const sm = constructModel(mirror.data, m.key);
+    if(sm.parts.some(x => x.n > 0)) sub = sm.parts.map(x => { const d = model.parts.find(y => y.match === x.match); const dn = d ? d.n : 0;
+      return `<div class="csub" style="${dn?'':'opacity:.5'}"><span style="flex:1">${esc(d ? d.label : x.label)}</span><span class="chip ${dn?'c-ok':'c-mut'}"><span class="cd"></span>${dn ? dn : 'Empty'}</span></div>`; }).join('');
+  }
   return `<div class="crow" style="${n?'':'opacity:.5'}">
     <span class="cmi">${m.ic}</span>
     <span style="flex:1;font-size:13px;font-weight:${n?'700':'400'}">${esc(m.label)}</span>
     <span class="chip ${n?'c-ok':'c-mut'}"><span class="cd"></span>${n ? (n + ' items') : 'Empty'}</span>
-  </div>`;
+  </div>${sub}`;
 }
 /* ============================================================================
    BUILD 15.67 — ADMIN CONSOLE page (#/admin). Manage users, roles & per-user permissions.
@@ -3915,7 +4024,7 @@ function pageSettings(){
         </div>
         <div>
           <div class="csec-title">Current project — #${esc(P.number||'—')} ${esc(P.title||'')}</div>
-          <div class="card" id="cdstCard">${CONSTRUCT_MODULES.map(m => constructDstRow(active, m)).join('')}</div>
+          <div class="card" id="cdstCard">${CONSTRUCT_MODULES.map(m => constructDstRow(active, m, others.find(p => _constrExpand[p.id]))).join('')}</div>
         </div>
       </div>`;
   if(active) constructAlignSoon();   /* BUILD 15.22/15.23: line the right panel up with the expanded source project */
@@ -3923,10 +4032,9 @@ function pageSettings(){
   <div class="page">
     <div class="pagehead"><div class="eyebrow">Fulldome Projection SP</div>
       <h1 style="margin:0">Project Constructor</h1>
-      <div class="sub">Assemble the selected project from ready-made modules of your other projects. Expand a project on the left, then "Copy →" a module into the matching section of the current project on the right. Existing sections ask before they're replaced.</div>
+      <div class="sub">Assemble the selected project from ready-made modules of your other projects. Expand a project on the left, then "Copy →" a module into the matching section of the current project on the right. "+" next to a module lets you pick which of its tables to copy. Existing tables ask before they're replaced.</div>
     </div>
     ${body}
-    ${settingsDriveCard(active)}
   </div>`;
 }
 /* BUILD 14.62: Drive maintenance card — the repair helpers as buttons (were console-only). */
