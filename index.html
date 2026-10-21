@@ -2,6 +2,27 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<script>
+/* BUILD 17.25 — PRE-START FRESHNESS CHECK. GitHub Pages lets browsers keep index.html for ~10 min and the <meta> no-cache tags
+   below are ignored for the page itself — so a normal open could start an OLD copy, and only Ctrl+Shift+R helped. Before the app
+   does anything, ask the server (a HEAD request, no download) when the site file was last published; if it is newer than the copy
+   the browser opened, reload at once to a cache-busting URL. One try per published file — never a loop; the in-app updater stays
+   as the second line of defence. */
+(function(){ try{
+  if(location.protocol !== 'http:' && location.protocol !== 'https:') return;
+  var KEY = 'fdp_boot_lm', mine = Date.parse(document.lastModified), x = new XMLHttpRequest();
+  x.open('HEAD', location.pathname + '?_hk=' + Date.now(), true);
+  x.onload = function(){ try{
+    var lm = x.getResponseHeader('Last-Modified'); if(!lm) return;
+    var srv = Date.parse(lm); if(!isFinite(srv) || !isFinite(mine)) return;
+    if(srv <= mine + 1000){ try{ sessionStorage.removeItem(KEY); }catch(_){} return; }   /* this IS the newest file */
+    try{ if(sessionStorage.getItem(KEY) === String(srv)) return; sessionStorage.setItem(KEY, String(srv)); }catch(_){ return; }
+    window._fdpBootReloading = true;
+    location.replace(location.pathname + '?u=' + Date.now() + (location.hash || ''));
+  }catch(_){} };
+  x.send();
+}catch(_){} })();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- always fetch a fresh build: GitHub Pages caches aggressively (BUILD 11.5) -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -833,7 +854,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.23 · Library: a new row jumps under its category · Tables save on Enter</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.25 · Always opens the newest version (no Ctrl+Shift+R) · Sync reconnects by itself</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -7556,6 +7577,7 @@ function fsApplyDoc(data){
     });
     rec._seen = true; rec._done = e.done ? 1 : 0; rec._msig = rec._msig || data.msig || '';
     if(!!data.done !== !!e.done){ if(data.done){ e.done = true; e.doneAt = data.doneAt || Date.now(); } else { delete e.done; delete e.doneAt; } ch0 = true; }
+    rec._done = data.done ? 1 : 0;   /* BUILD 17.24: known server value = what the server holds (was the local value before applying → a redundant "done" re-write on the next edit) */
     if(stashed.length){ try{ fsDiag('pending local changes kept for review: ' + stashed.join(',') + ' (' + pid + ')'); }catch(_){} setTimeout(_fsStashBanner, 300); }
     return ch0;
   }
@@ -7591,6 +7613,7 @@ function fsApplyDoc(data){
      updates only the changed section instead of overwriting the whole cloud document. */
   try{ if(!_fsLocal[pid]){ const rec={ _seen:true, _done:e.done?1:0, _msig:e._remoteMsig||'' }; const sl0=fsSlice(e.data); FS_SECTIONS.forEach(function(s){ rec[s]=JSON.stringify(sl0[s]||{}); }); _fsLocal[pid]=rec; } }catch(_){}
   if(!!data.done !== !!e.done){ if(data.done){ e.done = true; e.doneAt = data.doneAt || Date.now(); } else { delete e.done; delete e.doneAt; } ch = true; }
+  try{ if(_fsLocal[pid] && !(typeof OB !== 'undefined' && OB.ops().some(function(o){ return o.pid === pid && o.kind === 'done'; }))) _fsLocal[pid]._done = data.done ? 1 : 0; }catch(_){}   /* BUILD 17.24: same, live (unless our own done change is still queued) */
   return ch;
 }
 function fsRemoveLocal(pid){
@@ -8008,6 +8031,51 @@ function _fsConflictUseMine(pid, s, i){
     if(_fsSetPath(cur, c.path, c.local)){ fsApplySection(e.data, s, cur); fsPushNow(e).catch(function(){}); }
     _fsConflictDrop(pid, s, i); try{ rerenderKeepScroll(); }catch(_){} }catch(_){}
 }
+/* ============ BUILD 17.24 — the projects stream never stays dead ============
+   Before: after a stream error the app showed "⚠ … click to retry" and stopped listening until someone clicked; a tab left open
+   overnight (sleep, Wi-Fi change, VPN) could sit on stale data — "I moved two projects to Completed, the others still see them in
+   progress". Now: (1) a stream error re-attaches the listener by itself (5 s → 15 s → 1 min → 2 min → 5 min); (2) when the tab comes
+   back after ≥ 3 min, the network returns, or the computer wakes from sleep, the projects are re-read from the server and applied
+   exactly like a snapshot (reads only — applying never writes). */
+var _fsHandlers = null, _fsLastSnapAt = 0, _fsStreamDead = false, _fsReattachTries = 0, _fsReattachT = null, _fsHiddenAt = 0, _fsWakeBusy = false;
+function _fsIsDenied(err){ return !!(err && (err.code === 'permission-denied' || /permission|insufficient/i.test(err.message || ''))); }
+function _fsListen(onSnap, onErr){
+  _fsHandlers = { onSnap: onSnap, onErr: onErr };
+  if(_fsUnsub){ try{ _fsUnsub(); }catch(_){} }
+  _fsStreamDead = false;
+  _fsUnsub = _fsCol.onSnapshot({ includeMetadataChanges: true }, function(snap){
+    _fsLastSnapAt = Date.now(); _fsReattachTries = 0;
+    if(_fsFatal && /stream error/i.test(_fsFatal)){ _fsFatal = ''; try{ _fsShowStat(); }catch(_){} }
+    onSnap(snap);
+  }, function(err){
+    _fsStreamDead = true;
+    try{ onErr(err); }catch(_){}
+    if(!_fsIsDenied(err)) _fsReattachSoon();
+  });
+  return _fsUnsub;
+}
+function _fsReattachSoon(){
+  clearTimeout(_fsReattachT);
+  const waits = [5000, 15000, 60000, 120000, 300000]; const w = waits[Math.min(_fsReattachTries, waits.length - 1)]; _fsReattachTries++;
+  _fsReattachT = setTimeout(function(){ _fsReattachT = null; if(!_fsHandlers || !_fsCol || !_fsReady) return;
+    try{ fsDiag('projects stream: re-attaching (try ' + _fsReattachTries + ')'); setCloudStat('Reconnecting…'); _fsListen(_fsHandlers.onSnap, _fsHandlers.onErr); }catch(_){ _fsReattachSoon(); } }, w);
+}
+function _fsWakeRefresh(why){
+  try{
+    if(!_fsReady || !_fsCol || !_fsServerSeen || _fsWakeBusy) return;
+    fsDiag('refresh from server: ' + why);
+    if(_fsStreamDead && !_fsReattachT){ _fsReattachTries = 0; _fsReattachSoon(); }
+    _fsWakeBusy = true;
+    _fsCol.get({ source: 'server' }).then(function(snap){ _fsWakeBusy = false; _fsLastSnapAt = Date.now(); try{ fsOnSnapshot(snap); }catch(_){} try{ _fsStampRecv(); }catch(_){} })
+      .catch(function(err){ _fsWakeBusy = false; fsDiag('refresh failed: ' + (err && err.message || err), true); });
+  }catch(_){ _fsWakeBusy = false; }
+}
+try{
+  document.addEventListener('visibilitychange', function(){ if(document.hidden){ _fsHiddenAt = Date.now(); return; } if(_fsHiddenAt && Date.now() - _fsHiddenAt >= 180000) _fsWakeRefresh('tab back after ' + Math.round((Date.now() - _fsHiddenAt) / 60000) + ' min'); _fsHiddenAt = 0; });
+  window.addEventListener('online', function(){ _fsWakeRefresh('network back'); });
+  /* sleep detector: timers stop while the computer sleeps — a large jump between ticks means it just woke up */
+  (function(){ var last = Date.now(); setInterval(function(){ var now = Date.now(); if(now - last > 120000) _fsWakeRefresh('computer woke up'); last = now; }, 30000); })();
+}catch(_){}
 async function fsStart(){
   if(!_FS) return;
   _fsFatal = '';
@@ -8032,7 +8100,7 @@ async function fsStart(){
      "Waiting for server…" and nothing new could be written by anyone. The same flag delivers the hasPendingWrites→false
      confirmation that the 16.46 base logic relies on. Fallback: an explicit server read opens the gate if no server snapshot came. */
   if(SE_ON){ try{ SE.stop(); SE.start(); await SE.waitConfig(3000); }catch(err){ fsDiag('SE start failed: ' + (err && err.message || err), true); } }   /* BUILD 16.55: canary config (sync_config/v5) is read BEFORE the legacy listener applies anything */
-  _fsUnsub = _fsCol.onSnapshot({ includeMetadataChanges: true }, function(snap){ fsDiag('snapshot: ' + snap.size + ' docs, ' + snap.docChanges().length + ' changes' + (snap.metadata && snap.metadata.fromCache ? ' (cache)' : '')); fsOnSnapshot(snap); }, function(err){
+  _fsUnsub = _fsListen(function(snap){ fsDiag('snapshot: ' + snap.size + ' docs, ' + snap.docChanges().length + ' changes' + (snap.metadata && snap.metadata.fromCache ? ' (cache)' : '')); fsOnSnapshot(snap); }, function(err){
     /* BUILD 15.71: plain-language, on-screen reason (no F12 needed) — permission-denied = email not in the published Rules */
     const denied = (err && (err.code === 'permission-denied' || /permission|insufficient/i.test(err.message||'')));
     _fsFatal = denied
@@ -14341,6 +14409,7 @@ loadState(()=>{ restoreHandles();
     function unsynced(){
       try{
         if(typeof isTypingInInput==='function' && isTypingInInput()) return true;                 // user typing
+        if(typeof _rowDraft!=='undefined' && _rowDraft && _rowDraft.dirty) return true;            // BUILD 17.24: a table row not saved yet (Enter)
         if(typeof _savePending!=='undefined' && (_savePending||_saveQueued)) return true;          // IndexedDB save in flight
         if(typeof _fsApplying!=='undefined' && _fsApplying) return true;                           // applying an incoming snapshot
         if(typeof _fsPushT!=='undefined' && _fsPushT) return true;                                 // debounced Firestore push scheduled
@@ -14362,6 +14431,10 @@ loadState(()=>{ restoreHandles();
     }
 
     var pending=null, bar=null, stuckShown=false, waitingSince=0; var STUCK_WAIT = 180000;   /* BUILD 16.69 */
+    /* BUILD 17.25: until the user touches the page nothing local can be lost (no typing, no queued change) — a newer build found
+       right after opening is applied at once instead of waiting for the app to finish connecting (that wait felt like "stays old") */
+    var userActed = false; try{ ['pointerdown','keydown','input'].forEach(function(t){ document.addEventListener(t, function(){ userActed = true; }, { capture:true, once:true }); }); }catch(_){}
+    function untouched(){ try{ if(userActed) return false; if(typeof OB!=='undefined' && OB && OB.count && OB.count()) return false; if(typeof _rowDraft!=='undefined' && _rowDraft && _rowDraft.dirty) return false; return true; }catch(_){ return false; } }
     function showWaiting(customMsg){
       if(bar && document.body.contains(bar)){ if(customMsg && bar._msg && bar._msg.textContent!==customMsg) bar._msg.textContent=customMsg; return; }
       bar=document.createElement('div'); bar.setAttribute('role','status');
@@ -14413,6 +14486,7 @@ loadState(()=>{ restoreHandles();
         try{ sessionStorage.removeItem('fdp_upd_gaveup'); }catch(_){}
         hideWaiting(); reloadTo(pending); return;
       }
+      if(unsynced() && untouched()){ hideWaiting(); reloadTo(pending); return; }   /* BUILD 17.25 */
       if(unsynced()){
         /* BUILD 16.69: a tab that stays "unsynced" for minutes is stuck (a push that never confirms, a listener that never
            reports ready…) — it would never update and would keep writing with the old build. After 3 minutes of continuous
