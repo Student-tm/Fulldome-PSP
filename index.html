@@ -860,7 +860,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.30 · Constructor: pick tables to copy</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.31 · Screen Fan &amp; AC: HVAC table</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1105,7 +1105,7 @@ function syncActive(){
 const READY_MODULES = [
   ['server','Dome Server'], ['rack','Server Rack'], ['camera','Camera'],
   ['speakers','Speakers'],  ['net','Network'],      ['cables','Cables'],
-  ['fan','Screen Fan'],     ['tools','Tools'],    ['safety','Safety']
+  ['fan','Screen Fan & AC'],     ['tools','Tools'],    ['safety','Safety']
 ];
 /* data presence per module, computed from ANY project's data object (default: active) */
 function readyModuleHasData(key, d){
@@ -1591,7 +1591,7 @@ function projectPurchased(){
   const parts = [];
   const add = (label, fn) => { let v = 0; try{ v = fn() || 0; }catch(_){ v = 0; } if(v) parts.push({ label, v }); };
   add('Dome Server', serverTotal); add('VJ Server', () => (state.project && state.project.vjRequired) ? vjTotal() : 0); add('Backup Server', () => (state.backup && state.backup.enabled) ? backupTotal() : 0);
-  add('Rack', rackTotal); add('Camera', camTotal); add('Speakers', spkTotal); add('Screen Fan', fanTotal); add('Cables', cabTotal); add('Tools', toolTotal); add('Safety', safTotal);
+  add('Rack', rackTotal); add('Camera', camTotal); add('Speakers', spkTotal); add('Screen Fan & AC', fanTotal); add('Cables', cabTotal); add('Tools', toolTotal); add('Safety', safTotal);
   return { parts, total: parts.reduce((s,x)=> s + x.v, 0) };
 }
 const totalItems  = () => activeSrvRows().reduce((s,r)=>s+(parseFloat(r.qty)||1),0) + state.rack.rows.filter(r=>(r.name||'').trim()).reduce((s,r)=>s+(parseFloat(r.qty)||1),0);
@@ -1684,7 +1684,7 @@ const VID_CATS  = ['HDBT Module','Splitter','Extender','Switcher','Converter','S
 const CAB_CATS  = ['Power','Network','HDBT','HDMI','DisplayPort','USB','Fiber','Audio','Adapter','Other'];
 const SAFETY_CATS = ['Exit Signs','Fire Extinguishers','Safety Vests','Hard Hats','Safety Harnesses','First Aid','Safety Signage','Barriers & Tape','Other'];   /* BUILD 16.73 */
 const SPK_CATS  = ['Main Speaker','Subwoofer','Amplifier','Audio Processor','Audio Interface','Speaker Mount','Audio Cable','Other'];
-const FAN_CATS  = ['Fan Unit','Fan Controller','Ducting','Fan Mount','Power Supply','Filter','Cable','Other'];
+const FAN_CATS  = ['Fan Unit','Air Conditioner','Fan Controller','Ducting','Fan Mount','Power Supply','Filter','Cable','Other'];
 const TOOL_CAT_RIGGING = ['Ropes','Crane Slings','Ratchet Straps','Shackles','Carabiners','Zip Ties'];   /* BUILD 14.38: Ropes, Slings & Rigging sub-table categories */
 const TOOL_CATS = TOOL_CAT_RIGGING.concat(['Other']);   /* BUILD 14.37/14.38: seeds the Ropes/Slings/Rigging bucket (catKey 'tools') */
 const TOOL_CATS_OLD = ['Rigging & Straps','Hand Tools','Power Tools','Fasteners & Hardware','Other'];   /* 14.37 generic defaults — migrated away in 14.38 */
@@ -1710,7 +1710,7 @@ const LIB_GROUPS = [
   {key:'rack',    label:'Rack Equipment',             cats:RACK_CATS, hint:'Rack cases, shelves, drawers, PDU, UPS, switches, patch panels, blanks, rails'},
   {key:'cameras', label:'Cameras',                    cats:CAM_CATS,  hint:'Calibration and reference cameras, lenses, mounts'},
   {key:'speakers',label:'Speaker / Audio System',     cats:SPK_CATS,  hint:'Main speakers, subwoofers, amplifiers, audio processors/interfaces, mounts and audio cabling'},
-  {key:'fan',     label:'Screen Fan / Ventilation',   cats:FAN_CATS,  hint:'Fan units, controllers, ducting, mounts, power supplies and filters for the dome screen'},
+  {key:'fan',     label:'Screen Fan / Ventilation / AC',   cats:FAN_CATS,  hint:'Fan units, air conditioners, controllers, ducting, mounts, power supplies and filters for the dome screen'},
   {key:'video',   label:'Video Equipment & Splitters',cats:VID_CATS,  hint:'HDBT modules, splitters, extenders, switchers, converters'},
   {key:'cables',  label:'Cables & Adapters',          cats:CAB_CATS,  hint:'Power, network, HDMI, DP, USB, fiber, audio cables and adapters'},
   {key:'tools',   label:'Tools & Installation Hardware',cats:TOOL_CATS,hint:'Rigging & straps, hand tools, power tools, fasteners & hardware for installation'},
@@ -3636,7 +3636,7 @@ const CONSTRUCT_MODULES = [
   {key:'projectors', label:'Projectors',         ic:IC.proj},
   {key:'camera',     label:'Calibration Camera', ic:IC.cam},
   {key:'speakers',   label:'Speakers / Audio',   ic:IC.spk},
-  {key:'fan',        label:'Screen Fan',         ic:IC.fan},
+  {key:'fan',        label:'Screen Fan & AC',    ic:IC.fan},
   {key:'cables',     label:'Cables & Adapters',  ic:IC.cable},
   {key:'tools',      label:'Tools',              ic:IC.tool},
   {key:'safety',     label:'Safety Equipment',   ic:IC.safety}
@@ -3678,7 +3678,7 @@ function constructModel(data, key){
     parts = cs.map((c, ci) => ({ id:'case:' + c.id, label:lab(c, ci), match:_cCaseMatch(c, ci), caseObj:c }));
     const inCase = r => !!(r && r.caseId && cs.some(c => c.id === r.caseId));
     if(key === 'camera'){ parts.push({ id:'loose', label:'Camera Builder' }); partOf = r => inCase(r) ? 'case:' + r.caseId : 'loose'; }
-    else { parts.push({ id:'screen', label:'Screen Fan Builder' }, { id:'infl', label:'Inflatable Fan Builder' }); partOf = r => inCase(r) ? 'case:' + r.caseId : (fanIsInfl(r) ? 'infl' : 'screen'); }
+    else { parts.push({ id:'screen', label:'Screen Fan Builder' }, { id:'hvac', label:'HVAC Builder' }, { id:'infl', label:'Inflatable Fan Builder' }); partOf = r => inCase(r) ? 'case:' + r.caseId : (fanIsInfl(r) ? 'infl' : fanIsHvac(r) ? 'hvac' : 'screen'); }
   }
   else { const mod = CONSTRUCT_MODULES.find(m => m.key === key); parts = [{ id:'all', label:mod ? mod.label : key }]; partOf = () => 'all'; }
   parts.forEach(p => { if(!p.match) p.match = p.id; p.rows = rows.filter(r => partOf(r) === p.id); p.n = p.rows.filter(_cNamed).length; });
@@ -4409,8 +4409,8 @@ function pageDashboard(){
 
       <div class="mod active${_lastMod==='#/fan'?' lastmod':''}">
         <div class="mod-top"><div class="mod-ic">${IC.fan}</div>
-          <div><div class="mod-name">Screen Fan</div>${modActiveBadge(_named(state.fan.rows))}</div></div>
-        <div class="mod-desc">Dome screen ventilation — fan units, controllers, ducting, mounts and power, picked from the Equipment Library, with photos and Ready check.</div>
+          <div><div class="mod-name">Screen Fan &amp; AC</div>${modActiveBadge(_named(state.fan.rows))}</div></div>
+        <div class="mod-desc">Dome screen ventilation and air conditioning — fan units, AC units, controllers, ducting, mounts and power, picked from the Equipment Library, with photos and Ready check.</div>
         <div class="mod-stats">
           <div class="ms"><span class="k">Components</span><span class="v ${state.fan.rows.filter(r=>(r.name||'').trim()).length?'ok':''}">${state.fan.rows.filter(r=>(r.name||'').trim()).length || 'None'}</span></div>
           <div class="ms"><span class="k">Components Cost</span><span class="v">${fmt(fanTotal())}</span></div>
@@ -5209,17 +5209,17 @@ function shipPlaces(){
   const fanInflOn = (typeof projInflatable==='function') && projInflatable();
   try{ fanRepairBoxes(); }catch(_){}
   const fanBoxesL = (state.fan&&state.fan.cases)||[];
-  ((state.fan&&state.fan.rows)||[]).map((r,idx)=>({r,idx})).sort((a,b)=> (fanIsInfl(a.r)?1:0)-(fanIsInfl(b.r)?1:0) || a.idx-b.idx).forEach(({r,idx})=>{
+  ((state.fan&&state.fan.rows)||[]).map((r,idx)=>({r,idx})).sort((a,b)=> (fanIsInfl(a.r)?2:fanIsHvac(a.r)?1:0)-(fanIsInfl(b.r)?2:fanIsHvac(b.r)?1:0) || a.idx-b.idx).forEach(({r,idx})=>{
     if(!(r.name||'').trim()) return; if(fanIsInfl(r) && !fanInflOn) return;
-    const it = mkItem(r,'i|fan|'+idx); if(fanIsInfl(r)) it.sub = 'Inflatable Fan Builder';
+    const it = mkItem(r,'i|fan|'+idx); if(fanIsInfl(r)) it.sub = 'Inflatable Fan Builder'; else if(fanIsHvac(r)) it.sub = 'HVAC';   /* BUILD 17.31: HVAC rows ship under their own sub-heading */
     const bx = r.caseId && fanBoxesL.find(c=>c.id===r.caseId);
     if(bx){ (fanByBox[bx.id] = fanByBox[bx.id] || []).push(it); return; }   /* BUILD 16.57: a fan box ships as ONE place */
     (isCombined(r)?fanCombined:fanSeparate).push(it); });
   let fanHasBox = false;
-  fanBoxesL.forEach((c,ci)=>{ const its = fanByBox[c.id]; if(its && its.length){ fanHasBox = true; its.forEach(it=>{ it.sub = fanBoxLabel(c, ci); }); places.push({key:'pl|fan-box|'+c.id, name:fanBoxLabel(c, ci), module:'Screen Fan', items:its, subChip:its.length+' item'+(its.length===1?'':'s')+' · ONE PLACE'}); } });
+  fanBoxesL.forEach((c,ci)=>{ const its = fanByBox[c.id]; if(its && its.length){ fanHasBox = true; its.forEach(it=>{ it.sub = fanBoxLabel(c, ci); }); places.push({key:'pl|fan-box|'+c.id, name:fanBoxLabel(c, ci), module:'Screen Fan & AC', items:its, subChip:its.length+' item'+(its.length===1?'':'s')+' · ONE PLACE'}); } });
   if(fanHasBox){ fanCombined.concat(fanSeparate).forEach(it=>{ if(!it.sub) it.sub = 'Other'; }); }
-  if(fanCombined.length) places.push({key:'pl|fan', name:'Screen Fan', module:'Screen Fan', items:fanCombined});
-  fanSeparate.forEach((it,i)=> places.push({key:'pl|fan-sep|'+shipSepId(it,i), name:it.name, module:'Screen Fan', items:[it]}));
+  if(fanCombined.length) places.push({key:'pl|fan', name:'Screen Fan & AC', module:'Screen Fan & AC', items:fanCombined});
+  fanSeparate.forEach((it,i)=> places.push({key:'pl|fan-sep|'+shipSepId(it,i), name:it.name, module:'Screen Fan & AC', items:[it]}));
   /* ---- Cables & Adapters (BUILD 14.31) ---- */
   const cabCombined = [], cabSeparate = [];
   /* BUILD 16.25: every cable item carries its sub-section (Power / Video / Audio Cables) → sub-headings in the
@@ -9107,7 +9107,7 @@ const PHOTO_DIRS = [
   ['rack',   'Rack'],
   ['camera', 'Camera'],
   ['speakers', 'Speakers'],
-  ['fan', 'Screen Fan'],
+  ['fan', 'Screen Fan & AC'],
   ['cables', 'Cables'],
   ['tools', 'Tools'],
   ['safety', 'Safety Equipment'],
@@ -10186,13 +10186,20 @@ function pageSpeakers(){
    Mirrors the Speaker module: hardware rows picked from the Equipment Library "Screen Fan /
    Ventilation" group (FAN_CATS), qty/price/link, per-row totals, Mark as Ready toggle,
    photos card (kind 'fan'). Rows flow into Equipment & Shipping (a "Screen Fan" group). */
-const fanListId = cat => 'dlFanCat' + Math.max(0, ciIndexOf(fanCats(), cat));
+const fanListId = cat => 'dlFanCat' + Math.max(0, ciIndexOf(fanCatsUi(), cat));
 const libFanByCat = cat => libByGroupCat('fan', cat);
 function fanTotal(){ return state.fan.rows.reduce((s,r)=> s + rowSum(r), 0); }
 function addFan(){ shipSealLegacy(); state.fan.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
 /* BUILD 16.41 — Inflatable Fan System: a SECOND table in the Fan module (rows tagged grp:'inflatable'), shown only
    while Project Setup → Inflatable = Yes; one module, one total, one Ready, ships under a sub-heading. */
 function fanIsInfl(r){ return !!(r && r.grp === 'inflatable'); }
+/* BUILD 17.31 — HVAC Builder: a third table in the Screen Fan & AC module (rows tagged grp:'hvac') for air conditioners etc.
+   Same section, same sync, same shipping (sub-heading "HVAC"), same Library group (Screen Fan / Ventilation / AC). */
+function fanIsHvac(r){ return !!(r && r.grp === 'hvac'); }
+function fanCatsUi(){ const c = fanCats(); return ciIndexOf(c, 'Air Conditioner') === -1 ? c.concat(['Air Conditioner']) : c; }
+function fanEnsureAC(){ try{ if(ciIndexOf(fanCats(), 'Air Conditioner') === -1) catsOf('fan').splice(1, 0, 'Air Conditioner'); }catch(_){} }   /* explicit user action only */
+function addFanHvac(){ shipSealLegacy(); fanEnsureAC();
+  const r = blankRow(); r.grp = 'hvac'; state.fan.rows.push(r); saveState(); rerenderKeepScroll(); }
 function projInflatable(){ return !!(state.project && state.project.inflatableCover === 'Yes'); }
 function addFanInfl(){ shipSealLegacy(); const r = blankRow(); r.grp = 'inflatable'; state.fan.rows.push(r); saveState(); rerenderKeepScroll(); }
 /* BUILD 16.57 — FAN BOXES: like the camera flight cases. A box is a transport container that ships as ONE place; rows from BOTH
@@ -10227,6 +10234,7 @@ function fanRepairBoxes(){
 }
 function rmFan(i){ state.fan.rows.splice(i,1); saveState(); rerenderKeepScroll(); }
 function setFanCat(i, v){
+  if(String(v||'').trim().toLowerCase() === 'air conditioner') fanEnsureAC();
   state.fan.rows[i].cat = v;
   if(autoFillFromCat(state.fan.rows[i], libFanByCat(v))) flashStat('Filled from Library ✓');
   saveState(); rerenderKeepScroll();
@@ -10259,6 +10267,7 @@ function addFanRowToLib(i){
   const name = (row.name||'').trim();
   if(!name || libFind(name)) return;
   let cat = (row.cat||'').trim();
+  if(cat && cat.toLowerCase() === 'air conditioner') fanEnsureAC();
   if(cat && !groupCats('fan').includes(cat)) cat = '';
   ensureLibGroup('fan').push({cat, name, price: row.price||'', link: row.link||''});
   sortLibByCat(db.library.fan, groupCats('fan'));
@@ -10295,8 +10304,8 @@ function pageFan(){
     <tr>
       <td class="tight" style="width:17%"><select class="cell ${!(r.cat||'').trim()?'empty':''}" onchange="setFanCat(${i},this.value);this.classList.toggle('empty',!this.value)">
         <option value="" ${!(r.cat||'').trim()?'selected':''}>— Category —</option>
-        ${fanCats().map(c=>`<option value="${c}" ${r.cat===c?'selected':''}>${c}</option>`).join('')}
-        ${(r.cat||'').trim() && ciIndexOf(fanCats(), r.cat)===-1 ? `<option value="${esc(r.cat)}" selected>${esc(r.cat)}</option>` : ''}
+        ${fanCatsUi().map(c=>`<option value="${c}" ${r.cat===c?'selected':''}>${c}</option>`).join('')}
+        ${(r.cat||'').trim() && ciIndexOf(fanCatsUi(), r.cat)===-1 ? `<option value="${esc(r.cat)}" selected>${esc(r.cat)}</option>` : ''}
       </select></td>
       <td class="tight"><div style="display:flex;align-items:center;gap:6px"><input class="cell b" id="fanN${i}" onfocus="dlFocus(this)" onblur="dlBlur(this)" list="${(r.cat||'').trim()?fanListId(r.cat):'dlLibAll'}" value="${esc(r.name)}" placeholder="Pick from Library or type" oninput="updFan(${i},'name',this.value)">${(inBox(r) && fanIsInfl(r)) ? '<span class="chip c-mut" style="flex:none" title="From the Inflatable Fan Builder">Inflatable</span>' : ''}</div></td>
       <td style="width:6%;text-align:center">${ordDot('fan', i, r)}</td>
@@ -10310,7 +10319,9 @@ function pageFan(){
       <td class="rm"><button title="Remove" onclick="rmFan(${i})">×</button></td>
     </tr>`;
   const infl = projInflatable();
-  const fanRows = state.fan.rows.map((r,i)=> (fanIsInfl(r) || inBox(r)) ? '' : fanRowHtml(r,i)).join('');
+  const fanRows = state.fan.rows.map((r,i)=> (fanIsInfl(r) || fanIsHvac(r) || inBox(r)) ? '' : fanRowHtml(r,i)).join('');
+  const hvacRows = state.fan.rows.map((r,i)=> (fanIsHvac(r) && !inBox(r)) ? fanRowHtml(r,i) : '').join('');
+  const hvacTotal = state.fan.rows.reduce((s,r)=> s + (fanIsHvac(r) ? rowSum(r) : 0), 0);
   const inflRows = state.fan.rows.map((r,i)=> (fanIsInfl(r) && !inBox(r)) ? fanRowHtml(r,i) : '').join('');
   const inflTotal = state.fan.rows.reduce((s,r)=> s + (fanIsInfl(r) ? rowSum(r) : 0), 0);
   const fanCols = hasBoxes ? 11 : 10;
@@ -10331,6 +10342,22 @@ function pageFan(){
       </table>
       <button class="add-line" onclick="addFanInfl()">+ Add component</button>
     </div>` : '';
+  /* BUILD 17.31 — HVAC Builder (air conditioners), always shown; same header style as the other builders */
+  const hvacCard = `
+    <div class="sec-title" id="fanHvac" style="margin-top:22px">
+      <div class="stic">${IC.fan}</div>
+      <div><h2>HVAC Builder</h2><div class="st-sub">Air conditioners and climate equipment — picked from the Equipment Library, Screen Fan / Ventilation / AC group. Ships under its own "HVAC" sub-heading, or inside a fan box.</div></div>
+      <div class="st-total"><div class="l">Components total</div><div class="v" id="stFanHvac">${fmt(hvacTotal)}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Hardware configuration</h3><span class="chip c-mut"><span class="cd"></span>${state.fan.rows.filter(r=>fanIsHvac(r) && (r.name||'').trim()).length}</span></div>
+      <table class="eq">
+        ${fanHead}
+        <tbody>${hvacRows}</tbody>
+        <tfoot><tr><td colspan="${fanCols-4}">HVAC total</td><td class="num" id="fanHvacFoot">${fmt(hvacTotal)}</td><td colspan="3"></td></tr></tfoot>
+      </table>
+      <button class="add-line" onclick="addFanHvac()">+ Add component</button>
+    </div>`;
   const boxBlocks = boxes.map((c,ci)=>{
     const rows = fanBoxRows(c.id);
     return `
@@ -10345,19 +10372,19 @@ function pageFan(){
         ${fanHead}
         <tbody>${rows.map(x=>fanRowHtml(x.r,x.i)).join('')}</tbody>
         <tfoot><tr><td colspan="${fanCols-4}">${esc(fanBoxLabel(c,ci))} total</td><td class="num">${fmt(fanBoxTotal(c.id))}</td><td colspan="3"></td></tr></tfoot>
-      </table>` : `<div style="padding:10px 14px;font-size:12.5px;opacity:.65">Empty — in a builder table below pick "${esc(fanBoxLabel(c,ci))}" in the Box column to move a row here (Screen Fan or Inflatable Fan rows).</div>`}
+      </table>` : `<div style="padding:10px 14px;font-size:12.5px;opacity:.65">Empty — in a builder table below pick "${esc(fanBoxLabel(c,ci))}" in the Box column to move a row here (Screen Fan, HVAC or Inflatable Fan rows).</div>`}
     </div>`;
   }).join('');
 
   return `
   <div class="page">
-    <div class="crumbs"><a href="#/dashboard">Dashboard</a> › <span class="cur">Screen Fan</span></div>
+    <div class="crumbs"><a href="#/dashboard">Dashboard</a> › <span class="cur">Screen Fan &amp; AC</span></div>
     <datalist id="dlLibAll">${libAllItems().map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>
-    ${fanCats().map((c,ci)=>`<datalist id="dlFanCat${ci}">${libFanByCat(c).map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>`).join('')}
+    ${fanCatsUi().map((c,ci)=>`<datalist id="dlFanCat${ci}">${libFanByCat(c).map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>`).join('')}
     <div class="pagehead">
       <div class="eyebrow">#${esc(P.number)} · ${esc(P.title)}${P.type?' · System: '+esc(P.type):''}${P.domeDiameter?' · '+esc(P.domeDiameter)+' m '+esc(P.domeType||''):''}</div>
-      <h1>Screen Fan</h1>
-      <div class="sub">Assemble and document the dome screen ventilation — fan units, controllers, ducting, mounts and power — picked from the Equipment Library.</div>
+      <h1>Screen Fan &amp; AC</h1>
+      <div class="sub">Assemble and document the dome screen ventilation and air conditioning — fan units, AC units, controllers, ducting, mounts and power — picked from the Equipment Library.</div>
     </div>
 
     <div class="kpis">
@@ -10371,12 +10398,12 @@ function pageFan(){
     <!-- ================= FAN BUILDER ================= -->
     <div class="sec-title" id="fan">
       <div class="stic">${IC.fan}</div>
-      <div><h2>Screen Fan Builder</h2><div class="st-sub">Hardware is picked from the Equipment Library — Screen Fan / Ventilation group.</div></div>
+      <div><h2>Screen Fan Builder</h2><div class="st-sub">Hardware is picked from the Equipment Library — Screen Fan / Ventilation / AC group.</div></div>
       <div class="st-total"><div class="l">Components total</div><div class="v" id="stFan">${fmt(fanTotal())}</div></div>
     </div>
     <!-- BUILD 16.57: fan boxes stack here, ABOVE the builders; rows of either builder are moved in with the "Box" column -->
     <div style="display:flex;align-items:center;gap:10px;margin:0 0 12px">
-      <button class="mod-btn" style="padding:6px 12px;font-size:12px" title="Create a fan box — then move rows into it from the Screen Fan or Inflatable Fan builder" onclick="addFanBox()">+ Add Fan Box</button>
+      <button class="mod-btn" style="padding:6px 12px;font-size:12px" title="Create a fan box — then move rows into it from the Screen Fan, HVAC or Inflatable Fan builder" onclick="addFanBox()">+ Add Fan Box</button>
       <span style="font-size:12px;opacity:.65">${hasBoxes ? `${boxes.length} box${boxes.length===1?'':'es'} · each box ships as one place` : 'Fans ship in boxes — create Fan Box 1, then move rows into it from either builder.'}</span>
     </div>
     ${boxBlocks}
@@ -10392,6 +10419,7 @@ function pageFan(){
       </table>
       <button class="add-line" onclick="addFan()">+ Add component</button>
     </div>
+    ${hvacCard}
     ${inflCard}
 
     ${photoCard('fan','Screen Fan Photos','Fan units, ducting and installation photos — up to '+PHOTO_MAX.fan+'. Shown in Documentation as "Screen Fan — #'+esc(P.number)+'".')}
