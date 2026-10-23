@@ -2,6 +2,27 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<script>
+/* BUILD 17.25 — PRE-START FRESHNESS CHECK. GitHub Pages lets browsers keep index.html for ~10 min and the <meta> no-cache tags
+   below are ignored for the page itself — so a normal open could start an OLD copy, and only Ctrl+Shift+R helped. Before the app
+   does anything, ask the server (a HEAD request, no download) when the site file was last published; if it is newer than the copy
+   the browser opened, reload at once to a cache-busting URL. One try per published file — never a loop; the in-app updater stays
+   as the second line of defence. */
+(function(){ try{
+  if(location.protocol !== 'http:' && location.protocol !== 'https:') return;
+  var KEY = 'fdp_boot_lm', mine = Date.parse(document.lastModified), x = new XMLHttpRequest();
+  x.open('HEAD', location.pathname + '?_hk=' + Date.now(), true);
+  x.onload = function(){ try{
+    var lm = x.getResponseHeader('Last-Modified'); if(!lm) return;
+    var srv = Date.parse(lm); if(!isFinite(srv) || !isFinite(mine)) return;
+    if(srv <= mine + 1000){ try{ sessionStorage.removeItem(KEY); }catch(_){} return; }   /* this IS the newest file */
+    try{ if(sessionStorage.getItem(KEY) === String(srv)) return; sessionStorage.setItem(KEY, String(srv)); }catch(_){ return; }
+    window._fdpBootReloading = true;
+    location.replace(location.pathname + '?u=' + Date.now() + (location.hash || ''));
+  }catch(_){} };
+  x.send();
+}catch(_){} })();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <!-- always fetch a fresh build: GitHub Pages caches aggressively (BUILD 11.5) -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -476,6 +497,12 @@
   .csec-title{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;color:var(--fdp-red);margin:0 0 12px;border-bottom:2px solid var(--fdp-red);padding-bottom:6px}
   .crow{display:flex;align-items:center;gap:10px;padding:8px 2px;border-top:1px solid var(--line);min-height:46px;box-sizing:border-box}
   .crow:first-child{border-top:none}
+  .cplus{width:22px;height:22px;flex:none;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink2);font:700 14px/1 inherit;cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center}
+  .cplus:hover{border-color:var(--fdp-red);color:var(--fdp-red)}
+  .cplus-sp{width:22px;flex:none}
+  .csub{display:flex;align-items:center;gap:10px;height:36px;box-sizing:border-box;padding:0 6px 0 70px;font-size:12.5px;color:var(--ink2);border-top:1px dashed var(--line);cursor:default}
+  label.csub{cursor:pointer} .csub input{margin:0;width:15px;height:15px;accent-color:var(--fdp-red)} .csub.c-empty{opacity:.45}
+  #cdstCard .csub{padding-left:48px}
   .cmi{display:inline-flex;width:28px;height:28px;border-radius:7px;background:#f1f2f4;color:var(--ink2);align-items:center;justify-content:center;flex:none}
   .cmi svg{width:16px;height:16px}
   @media(max-width:820px){ .cgrid{grid-template-columns:1fr} }
@@ -539,6 +566,9 @@
     padding:9px 6px;cursor:pointer;appearance:auto}
   table.eq select.cell:focus{outline:none;background:#fff7f7}
   table.eq select.cell.empty{color:#9aa2ad}
+tr.lib-moved>td{animation:libMoved 1.2s ease-out}@keyframes libMoved{0%{background:#ffe7a3}100%{background:transparent}}   /* BUILD 17.23: the row just landed in its category */
+tr.row-draft>td{background:#fffbe8 !important}   /* BUILD 17.22: row being edited, not saved yet (Enter / leave the row) */
+tr.row-draft>td:first-child{box-shadow:inset 3px 0 0 #e0a800}
 .cell.libdup{border-color:var(--fdp-red) !important;box-shadow:0 0 0 2px rgba(211,47,47,.12);background:#fff6f6}   /* BUILD 17.09: duplicate library name */
 
   /* sidebar project block */
@@ -797,6 +827,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
     <button class="top-btn" onclick="openTT()" title="Create a Technical Task"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M9.5 13h5M9.5 17h5"/></svg>Technical Task</button>
     <button class="top-btn" onclick="location.hash='#/create'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New Project</button>
     <button class="top-btn" onclick="projNewPreMode()" title="Create a pre-project" style="border-color:#69A7FF;color:#9cc4ff"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New Pre-Project</button>
+    <span class="build-chip" id="topUnsent" style="display:none;background:#b3261e;border-color:#e0574f;color:#fff;cursor:pointer" title="No connection to the server — what you type stays on this computer until the connection is back. Click to retry." onclick="fdpSendNow()"></span>
     <span class="build-chip" id="topBuild" title="App build — every machine must be on the SAME build (mixed builds can corrupt sync)">b—</span>
     <div class="online-users" id="onlineUsers" title="Online now"></div>
     <button class="icon-btn" onclick="openMediaVault()" title="Drive media files (code protected)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 018 0v3.5"/><circle cx="12" cy="15.5" r="1.4" fill="currentColor" stroke="none"/></svg></button>
@@ -830,7 +861,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.21 · Documentation: Mapping Photos for Manual (15) · Library: stable rows · Drive uploads verified</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.33 · "No connection" sign only when offline</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1075,7 +1106,7 @@ function syncActive(){
 const READY_MODULES = [
   ['server','Dome Server'], ['rack','Server Rack'], ['camera','Camera'],
   ['speakers','Speakers'],  ['net','Network'],      ['cables','Cables'],
-  ['fan','Screen Fan'],     ['tools','Tools'],    ['safety','Safety']
+  ['fan','Screen Fan & AC'],     ['tools','Tools'],    ['safety','Safety']
 ];
 /* data presence per module, computed from ANY project's data object (default: active) */
 function readyModuleHasData(key, d){
@@ -1378,7 +1409,51 @@ var _savePending = false, _saveQueued = false;
    incoming snapshots could produce a write out of thin air. */
 var _saveQueuedUser = false;
 function _saveRunQueued(){ const user = _saveQueuedUser; _saveQueued = false; _saveQueuedUser = false; if(user){ saveState(); } else { const sk = saveState._skipCloud; saveState._skipCloud = true; try{ saveState(); }finally{ saveState._skipCloud = sk; } } }
+/* ============ BUILD 17.22 — ROW DRAFTS: a table row is saved when you finish it (Enter, or leaving the row) ============
+   While the cursor is in a cell of a module / library table, every keystroke and category pick changes the row ON THIS SCREEN only
+   (and in this browser's storage, so nothing is lost on a crash). Nothing is sent to the server, no incoming update touches the page,
+   so the row cannot jump. Enter, Tab/click out of the row, switching tab or closing the window = ONE save of the whole row → one
+   write to the server. Buttons and checkboxes in a row (remove, ship separately, add to library…) save immediately as before. */
+var _rowDraft = null, _rowDraftCommitting = false;   /* { tr, dirty } */
+function _rowDraftEl(el){
+  try{ if(!el || el.nodeType !== 1 || !el.closest) return null;
+    const tag = el.tagName; if(tag !== 'INPUT' && tag !== 'SELECT' && tag !== 'TEXTAREA') return null;
+    const ty = String(el.type || '').toLowerCase(); if(ty === 'checkbox' || ty === 'radio' || ty === 'file' || ty === 'button' || ty === 'submit') return null;
+    const tr = el.closest('tr'); if(!tr) return null; const tb = tr.closest('table.eq'); if(!tb) return null;
+    const c = document.getElementById('content'); if(!c || !c.contains(tb)) return null;
+    return tr; }catch(_){ return null; } }
+function _rowDraftMark(tr, on){ try{ if(tr && tr.classList){ tr.classList.toggle('row-draft', !!on); if(on) tr.title = 'Not saved yet — press Enter or leave the row'; else if(tr.title === 'Not saved yet — press Enter or leave the row') tr.removeAttribute('title'); } }catch(_){} }
+function _rowDraftHold(){
+  if(saveState._skipCloud || _rowDraftCommitting) return false;
+  const a = document.activeElement; const tr = _rowDraftEl(a); if(!tr) return false;
+  if(_rowDraft && _rowDraft.tr !== tr && !document.contains(_rowDraft.tr)) _rowDraft.tr = tr;   /* the same row re-rendered → the draft follows it */
+  if(!_rowDraft || _rowDraft.tr !== tr){ if(_rowDraft) _rowDraftCommit(); _rowDraft = { tr: tr, dirty: false }; }
+  _rowDraft.dirty = true; _rowDraftMark(tr, true); return true; }
+function _rowDraftCommit(){
+  const d = _rowDraft; if(!d) return; _rowDraft = null; _rowDraftMark(d.tr, false);
+  try{ const a = document.activeElement; if(a && _rowDraftEl(a) === d.tr) _rowDraftMark(a.closest('tr'), false); }catch(_){}
+  if(d.dirty){ _rowDraftCommitting = true; try{ saveState(); } finally { _rowDraftCommitting = false; } try{ _fsShowStat(); }catch(_){} } }
+function _rowDraftRemark(){ try{ if(!_rowDraft || !_rowDraft.dirty) return; const tr = _rowDraftEl(document.activeElement); if(tr){ _rowDraft.tr = tr; _rowDraftMark(tr, true); } }catch(_){} }
+try{
+  /* leaving the row (focus goes elsewhere) commits it — synchronously, BEFORE the blur flush applies deferred team updates */
+  document.addEventListener('focusout', function(ev){ if(!_rowDraft) return; const to = ev.relatedTarget; const trTo = _rowDraftEl(to); const trFrom = _rowDraftEl(ev.target);
+    if(trFrom && trFrom !== _rowDraft.tr && document.contains(_rowDraft.tr)) return;
+    if(trTo && (trTo === _rowDraft.tr || (trFrom && trTo === trFrom))) return;
+    if(to && _rowDraft.tr.contains(to)) return;                                   /* a button inside the same row */
+    _rowDraftCommit(); }, true);
+  document.addEventListener('focusin', function(ev){ const tr = _rowDraftEl(ev.target); if(_rowDraft && tr && tr !== _rowDraft.tr){ if(document.contains(_rowDraft.tr)) _rowDraftCommit(); else _rowDraft.tr = tr; } }, true);
+  /* Enter = row done */
+  document.addEventListener('keydown', function(ev){ if(ev.key !== 'Enter' || ev.isComposing || !_rowDraft) return; const el = ev.target; if(!el || el.tagName === 'TEXTAREA') return;
+    const inRow = _rowDraftEl(el) === _rowDraft.tr || (el.closest && el.closest('tr') === _rowDraft.tr);   /* Enter anywhere in the row being edited (a cell, its checkbox…) */
+    if(!inRow) return;
+    setTimeout(function(){ try{ if(document.activeElement === el && _rowDraftEl(el) && el.blur) el.blur(); else _rowDraftCommit(); }catch(_){} }, 0); }, true);
+  document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'hidden') _rowDraftCommit(); });
+  window.addEventListener('pagehide', function(){ _rowDraftCommit(); });
+  window.addEventListener('hashchange', function(){ _rowDraftCommit(); }, true);
+}catch(_){}
 function saveState(){
+  const _held = _rowDraftHold();   /* BUILD 17.22: inside an unfinished table row → local only */
+  if(_held){ const _skip0 = saveState._skipCloud; saveState._skipCloud = true; try{ return saveState(); } finally { saveState._skipCloud = _skip0; } }
   try{ if(typeof AD !== 'undefined') AD.onSave(!!saveState._skipCloud); }catch(_){}   /* BUILD 16.62: a user edit that removed a file → deletion job; a sync-apply only refreshes the inventory */
   /* a genuine local edit (not a cloud-apply) time-stamps the active project so a Drive
      poll won't overwrite a change you JUST made before it's pushed (fixes "renamed,
@@ -1517,7 +1592,7 @@ function projectPurchased(){
   const parts = [];
   const add = (label, fn) => { let v = 0; try{ v = fn() || 0; }catch(_){ v = 0; } if(v) parts.push({ label, v }); };
   add('Dome Server', serverTotal); add('VJ Server', () => (state.project && state.project.vjRequired) ? vjTotal() : 0); add('Backup Server', () => (state.backup && state.backup.enabled) ? backupTotal() : 0);
-  add('Rack', rackTotal); add('Camera', camTotal); add('Speakers', spkTotal); add('Screen Fan', fanTotal); add('Cables', cabTotal); add('Tools', toolTotal); add('Safety', safTotal);
+  add('Rack', rackTotal); add('Camera', camTotal); add('Speakers', spkTotal); add('Screen Fan & AC', fanTotal); add('Cables', cabTotal); add('Tools', toolTotal); add('Safety', safTotal);
   return { parts, total: parts.reduce((s,x)=> s + x.v, 0) };
 }
 const totalItems  = () => activeSrvRows().reduce((s,r)=>s+(parseFloat(r.qty)||1),0) + state.rack.rows.filter(r=>(r.name||'').trim()).reduce((s,r)=>s+(parseFloat(r.qty)||1),0);
@@ -1610,7 +1685,7 @@ const VID_CATS  = ['HDBT Module','Splitter','Extender','Switcher','Converter','S
 const CAB_CATS  = ['Power','Network','HDBT','HDMI','DisplayPort','USB','Fiber','Audio','Adapter','Other'];
 const SAFETY_CATS = ['Exit Signs','Fire Extinguishers','Safety Vests','Hard Hats','Safety Harnesses','First Aid','Safety Signage','Barriers & Tape','Other'];   /* BUILD 16.73 */
 const SPK_CATS  = ['Main Speaker','Subwoofer','Amplifier','Audio Processor','Audio Interface','Speaker Mount','Audio Cable','Other'];
-const FAN_CATS  = ['Fan Unit','Fan Controller','Ducting','Fan Mount','Power Supply','Filter','Cable','Other'];
+const FAN_CATS  = ['Fan Unit','Air Conditioner','Fan Controller','Ducting','Fan Mount','Power Supply','Filter','Cable','Other'];
 const TOOL_CAT_RIGGING = ['Ropes','Crane Slings','Ratchet Straps','Shackles','Carabiners','Zip Ties'];   /* BUILD 14.38: Ropes, Slings & Rigging sub-table categories */
 const TOOL_CATS = TOOL_CAT_RIGGING.concat(['Other']);   /* BUILD 14.37/14.38: seeds the Ropes/Slings/Rigging bucket (catKey 'tools') */
 const TOOL_CATS_OLD = ['Rigging & Straps','Hand Tools','Power Tools','Fasteners & Hardware','Other'];   /* 14.37 generic defaults — migrated away in 14.38 */
@@ -1636,7 +1711,7 @@ const LIB_GROUPS = [
   {key:'rack',    label:'Rack Equipment',             cats:RACK_CATS, hint:'Rack cases, shelves, drawers, PDU, UPS, switches, patch panels, blanks, rails'},
   {key:'cameras', label:'Cameras',                    cats:CAM_CATS,  hint:'Calibration and reference cameras, lenses, mounts'},
   {key:'speakers',label:'Speaker / Audio System',     cats:SPK_CATS,  hint:'Main speakers, subwoofers, amplifiers, audio processors/interfaces, mounts and audio cabling'},
-  {key:'fan',     label:'Screen Fan / Ventilation',   cats:FAN_CATS,  hint:'Fan units, controllers, ducting, mounts, power supplies and filters for the dome screen'},
+  {key:'fan',     label:'Screen Fan / Ventilation / AC',   cats:FAN_CATS,  hint:'Fan units, air conditioners, controllers, ducting, mounts, power supplies and filters for the dome screen'},
   {key:'video',   label:'Video Equipment & Splitters',cats:VID_CATS,  hint:'HDBT modules, splitters, extenders, switchers, converters'},
   {key:'cables',  label:'Cables & Adapters',          cats:CAB_CATS,  hint:'Power, network, HDMI, DP, USB, fiber, audio cables and adapters'},
   {key:'tools',   label:'Tools & Installation Hardware',cats:TOOL_CATS,hint:'Rigging & straps, hand tools, power tools, fasteners & hardware for installation'},
@@ -1700,7 +1775,7 @@ function sortByCat(arr, list){ arr.sort((a,b)=> catIndexOf(list, a.cat) - catInd
 /* BUILD 17.07: library tables — a row that has NO NAME yet (just added, category picked, name still to type) stays at the BOTTOM
    where the user is working. Before, choosing the category re-sorted the blank row up into its category group (3rd line of a
    17-line table) and the user read that as "my row was deleted". Named rows sort by category exactly as before. */
-function sortLibByCat(arr, list){ const k = it => (it && (it.name||'').trim()) ? catIndexOf(list, it.cat) : 100000; arr.sort((a,b)=> k(a) - k(b)); }
+function sortLibByCat(arr, list){ const k = it => (it && ((it.name||'').trim() || (it.cat||'').trim())) ? catIndexOf(list, it.cat) : 100000; arr.sort((a,b)=> k(a) - k(b)); }   /* 17.23: a row joins its category group as soon as it HAS a category (stable sort → it lands under the last row of that category); a row with neither name nor category stays at the bottom */
 /* Enforce category grouping on ALL lists — including data loaded from
    storage or from a project file that was saved before sorting existed. */
 function normalizeSort(){
@@ -1741,6 +1816,7 @@ function rerenderKeepScroll(){
   _keepScrollTop = st;                 /* route() applies it synchronously after innerHTML (no jump-then-restore flicker) */
   route();
   _keepScrollTop = null;
+  try{ _rowDraftRemark(); }catch(_){}   /* BUILD 17.22 */
   /* restore AGAIN after layout/image-decode settles, so a page with base64 images
      (e.g. pallet photos) or late reflow doesn't drift from the offset (BUILD 12.63/14.40) */
   const restore = () => { const c2 = document.getElementById('content'); if(c2 && Math.abs(c2.scrollTop - st) > 1) c2.scrollTop = st; };
@@ -1859,13 +1935,14 @@ function migrateToolCats(){
    the WHOLE category list opens; restore on blur if nothing new was picked.
    Custom typed text is never cleared. */
 function dlFocus(el){
-  if(el.value && libFind(el.value)){ el.dataset.dlprev = el.value; el.value = ''; }
+  if(el.value && libFind(el.value)){ el.dataset.dlprev = el.value; el.dataset.dlph = el.placeholder || ''; el.placeholder = el.value; el.value = ''; }   /* 17.22: the name stays visible (grey) while the full list is open */
 }
 function dlBlur(el){
   if(el.dataset.dlprev != null){
     if(!el.value.trim()) el.value = el.dataset.dlprev;
     delete el.dataset.dlprev;
   }
+  if(el.dataset.dlph != null){ el.placeholder = el.dataset.dlph; delete el.dataset.dlph; }
   /* BUILD 16.08: a typed search fragment (e.g. `12"` or `16'`) must never be saved as the item name.
      On blur, snap it to the ONE library item it matches in this field's list (exact → prefix →
      contains), write the FULL name back and fire `input` so the row saves it (+ price/link auto-fill).
@@ -1916,7 +1993,8 @@ function fixHalfNamesFromLibrary(){
     return n;
   }catch(_){ return 0; }
 }
-try{ setTimeout(function(){ try{ fixHalfNamesFromLibrary(); }catch(_){} }, 4000); }catch(_){}   /* once after load (local library) */
+/* BUILD 17.22: no automatic run at start — it changed and SAVED rows nobody touched (a row "changed by itself"). Names are completed
+   from the Library only when the user leaves the name field (dlBlur), i.e. on a user action. */
 const catListId  = cat => 'dlLibCat'  + Math.max(0, ciIndexOf(srvCats(), cat));
 const rackListId = cat => 'dlRackCat' + Math.max(0, ciIndexOf(rackCatList(), cat));
 function libFind(name){
@@ -1963,11 +2041,30 @@ function updLib(group, i, k, v){
   if(k === 'name'){ const dup = libDupOf(group, arr[i]); if(dup && !arr[i]._dupWarned){ arr[i]._dupWarned = true; flashStat('This name is already in the Library — the row stays on this computer until you change the name'); } if(!dup) delete arr[i]._dupWarned; try{ const el = document.activeElement; if(el && el.tagName==='INPUT') el.classList.toggle('libdup', dup); }catch(_){} }
   if(k === 'link') schedAutoLibPrice(group, i);
   if(k === 'cat'){
-    if(group !== 'tools') sortLibByCat(arr, groupCats(group));   /* tools items are bucketed by grp, not cat — keep their position */
-    saveState(); rerenderKeepScroll(); return;
+    const row = arr[i]; const rid = libItemId(row); const fromSelect = !!(document.activeElement && document.activeElement.tagName === 'SELECT');
+    if(group !== 'tools') sortLibByCat(arr, groupCats(group));
+    else libMoveToolToCat(arr, row);                           /* tools: inside its own sub-table (bucket), under the last row of the same category */
+    saveState(); rerenderKeepScroll();
+    if(fromSelect) libFocusName(rid);                          /* BUILD 17.23: the row moved under its category — the cursor follows it to the name field */
+    return;
   }
   saveState();
 }
+function libMoveToolToCat(arr, row){ try{
+  const b = toolItemGrp(row), c = normCat(row.cat); if(!c) return; const from = arr.indexOf(row); if(from < 0) return; arr.splice(from, 1);
+  let j = -1; arr.forEach((x, ix) => { if(toolItemGrp(x) === b && normCat(x.cat) === c) j = ix; });
+  if(j < 0){ const bk = TOOL_BUCKETS.find(t => t.key === b); const list = bk ? groupCats(bk.catKey) : []; const ci = catIndexOf(list, row.cat);
+    const later = arr.findIndex(x => toolItemGrp(x) === b && (x.name||'').trim() && catIndexOf(list, x.cat) > ci);
+    if(later >= 0) j = later - 1; else { arr.forEach((x, ix) => { if(toolItemGrp(x) === b && ((x.name||'').trim() || (x.cat||'').trim())) j = ix; }); } }
+  arr.splice(j + 1, 0, row); }catch(_){} }
+function libFocusName(rid){ try{
+  const inp = Array.from(document.querySelectorAll('#content table.eq input.cell.b')).find(x => (x.getAttribute('oninput') || '').indexOf("'" + rid + "'") >= 0); if(!inp) return;
+  const tr = inp.closest('tr');
+  document.querySelectorAll('#content tr.row-draft').forEach(t => { if(t !== tr) _rowDraftMark(t, false); });
+  if(_rowDraft){ _rowDraft.tr = tr; if(_rowDraft.dirty) _rowDraftMark(tr, true); }   /* the unsaved row is THIS row now — moving the cursor here does not save it */
+  inp.focus({ preventScroll:true }); try{ inp.scrollIntoView({ block:'nearest' }); }catch(_){}
+  if(tr){ tr.classList.add('lib-moved'); setTimeout(() => { try{ tr.classList.remove('lib-moved'); }catch(_){} }, 1200); }
+}catch(_){} }
 function addLib(group){ ensureLibGroup(group).push(blankLibItem()); saveState(); rerenderKeepScroll(); }
 function rmLib(group, i){ const arr = ensureLibGroup(group); i = libRowIndex(arr, i); if(i < 0) return; arr.splice(i,1); saveState(); rerenderKeepScroll(); }
 
@@ -2507,7 +2604,7 @@ function renderSideProject(){
       if(ka[0]!==kb[0]) return ka[0]-kb[0];
       if(ka[1]!==kb[1]) return ka[1]-kb[1]; return 0;
     }) : [];
-  const done   = _seeDone ? db.projects.filter(e=>e.done && !isPreEntry(e)).sort((a,b)=>(a.doneAt||0)-(b.doneAt||0)) : [];
+  const done   = _seeDone ? db.projects.filter(e=>e.done && !isPreEntry(e)).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0)) : [];   /* BUILD 17.27: most recently completed on top (no completion time → bottom) */
   const progRows = cloudProg.map(cloudCard).join('') + inProg.map(cardHtml).join('');
   const doneRows = cloudDone.map(cloudCard).join('') + done.map(cardHtml).join('');
   const doneCount = done.length + cloudDone.length;
@@ -2639,7 +2736,7 @@ function onPhotosPicked(ev){
         downscaleImage(dataUrl, 1280, 0.8,
           src => {
             const cap = kind==='front' ? 'Front view' : kind==='rear' ? 'Rear view' : f.name.replace(/\.[a-z0-9]+$/i,'');
-            if(photosOf(kind).length < PHOTO_MAX[kind]) photosOf(kind).push({ name: f.name, caption: cap, src });
+            if(photosOf(kind).length < PHOTO_MAX[kind]) photosOf(kind).push({ name: f.name, caption: cap, src, _loc: 1 });   /* 17.26: local until uploaded */
             saveState(); rerenderKeepScroll();
             if(isHeicFile(f)) flashStat('HEIC converted ✓');
             next();
@@ -2713,8 +2810,8 @@ function downscaleImage(dataUrl, maxSide, quality, cb, failCb){
     img.src = dataUrl;
   }catch(e){ if(failCb) failCb(); else cb(dataUrl); }
 }
-function rmPhoto(kind, i){ photosOf(kind).splice(i,1); saveState(); rerenderKeepScroll(); }
-function updPhotoCap(kind, i, v){ const a = photosOf(kind); if(a[i]) a[i].caption = v; saveState(); }
+function rmPhoto(kind, i){ const a = photosOf(kind); _phNoteRemoved(a[i]); a.splice(i,1); saveState(); rerenderKeepScroll(); }
+function updPhotoCap(kind, i, v){ const a = photosOf(kind); if(a[i]){ a[i].caption = v; a[i]._loc = 1; } saveState(); }   /* 17.26: an unsent caption edit survives a pull */
 function openLightboxKind(kind, i){
   const p = photosOf(kind)[i];
   if(p) openLightbox(p.src, p.caption || p.name || '');
@@ -3540,49 +3637,133 @@ const CONSTRUCT_MODULES = [
   {key:'projectors', label:'Projectors',         ic:IC.proj},
   {key:'camera',     label:'Calibration Camera', ic:IC.cam},
   {key:'speakers',   label:'Speakers / Audio',   ic:IC.spk},
-  {key:'fan',        label:'Screen Fan',         ic:IC.fan},
+  {key:'fan',        label:'Screen Fan & AC',    ic:IC.fan},
   {key:'cables',     label:'Cables & Adapters',  ic:IC.cable},
   {key:'tools',      label:'Tools',              ic:IC.tool},
   {key:'safety',     label:'Safety Equipment',   ic:IC.safety}
 ];
 var _constrExpand = {};   /* which source projects are expanded (session-only) */
-function constructCount(data, key){
-  const m = (data && data[key]) || {};
-  if(key === 'projectors') return ((m.list)||[]).filter(p => (((p.mfr||'')+(p.model||'')).trim())).length;
-  return ((m.rows)||[]).filter(r => (r.name||'').trim()).length;
+/* BUILD 17.30 — per-table copy. A module with several equipment tables (Projectors: Inventory / Lenses / Accessories /
+   Mount; Cables: Power / Video / Audio; Tools: 4 groups; Camera: cases + builder; Screen Fan: boxes + builders) gets a
+   "+" in the source row: it lists the tables with checkboxes (all ticked by default). Copy copies only the ticked
+   tables and replaces only those tables here — the other tables of the current project are left as they are.
+   Copied rows get fresh row ids; shipping data is never copied. Session-only UI state. */
+var _constrParts = {};    /* pid|key → parts list open */
+var _constrOff = {};      /* pid|key|partId → true when UNticked */
+function _cNamed(r){ return !!String((r && r.name) || '').trim(); }
+function _cCases(data, key){
+  const M = (data && data[key]) || {}; const cs = (Array.isArray(M.cases) ? M.cases : []).slice();
+  (Array.isArray(M.rows) ? M.rows : []).forEach(r => { if(r && r.caseId && !cs.some(c => c.id === r.caseId)) cs.push({ id:r.caseId, name:String(r.caseName||'').trim() }); });
+  return cs;
 }
-function constructCopy(src, dst, key){
-  const clone = o => (o==null ? null : JSON.parse(JSON.stringify(o)));
-  const s = src[key] || {};
+function _cCaseMatch(c, ci){ const n = String((c && c.name) || '').trim().toLowerCase(); return n ? ('case:' + n) : ('case#' + ci); }
+/* → { parts:[{id,label,match,n,rows|arr}], partOf(row) } */
+function constructModel(data, key){
+  const d = data || {};
   if(key === 'projectors'){
-    dst.projectors = dst.projectors || {list:[], selId:null};
-    dst.projectors.list = clone(s.list) || [];
-    dst.projectors.selId = null;
-    dst.projectors.models = clone(s.models) || {};
+    const pr = d.projectors || {}, A = k => Array.isArray(pr[k]) ? pr[k] : [];
+    const parts = [
+      { id:'inv',   label:'Projector Inventory',   arr:A('list'),   n:A('list').filter(p => ((p.mfr||'') + (p.model||'')).trim()).length },
+      { id:'lens',  label:'Lenses',                arr:A('lenses'), n:pr.removableLens ? A('lenses').filter(l => String(l.model||'').trim()).length : 0 },
+      { id:'acc',   label:'Projector Accessories', arr:A('acc'),    n:A('acc').filter(a => String(a.item||'').trim()).length },
+      { id:'mount', label:'Projector Mount',       arr:A('mounts'), n:A('mounts').filter(m => String(m.name||'').trim()).length } ];
+    parts.forEach(p => { p.match = p.id; });
+    return { parts, partOf:null };
+  }
+  const M = d[key] || {}, rows = Array.isArray(M.rows) ? M.rows : [];
+  let parts, partOf;
+  if(key === 'cables'){ parts = CAB_GROUPS.map(g => ({ id:g.key, label:g.label })); partOf = r => cabGrpOf(r); }
+  else if(key === 'tools'){ parts = TOOL_GROUPS.map(g => ({ id:g.key, label:g.label })); partOf = r => toolGrpOf(r); }
+  else if(key === 'camera' || key === 'fan'){
+    const cs = _cCases(d, key), lab = key === 'camera' ? camCaseLabel : fanBoxLabel;
+    parts = cs.map((c, ci) => ({ id:'case:' + c.id, label:lab(c, ci), match:_cCaseMatch(c, ci), caseObj:c }));
+    const inCase = r => !!(r && r.caseId && cs.some(c => c.id === r.caseId));
+    if(key === 'camera'){ parts.push({ id:'loose', label:'Camera Builder' }); partOf = r => inCase(r) ? 'case:' + r.caseId : 'loose'; }
+    else { parts.push({ id:'screen', label:'Screen Fan Builder' }, { id:'hvac', label:'HVAC Builder' }, { id:'infl', label:'Inflatable Fan Builder' }); partOf = r => inCase(r) ? 'case:' + r.caseId : (fanIsInfl(r) ? 'infl' : fanIsHvac(r) ? 'hvac' : 'screen'); }
+  }
+  else { const mod = CONSTRUCT_MODULES.find(m => m.key === key); parts = [{ id:'all', label:mod ? mod.label : key }]; partOf = () => 'all'; }
+  parts.forEach(p => { if(!p.match) p.match = p.id; p.rows = rows.filter(r => partOf(r) === p.id); p.n = p.rows.filter(_cNamed).length; });
+  return { parts, partOf };
+}
+function constructCount(data, key){ return constructModel(data, key).parts.reduce((s, p) => s + p.n, 0); }
+function constructMulti(key){ return ['projectors','cables','tools','camera','fan'].indexOf(key) >= 0; }
+function constructSelParts(pid, data, key){ return constructModel(data, key).parts.filter(p => p.n > 0 && !_constrOff[pid + '|' + key + '|' + p.id]); }
+/* copy the given SOURCE parts (by match key) into dst — replaces only those parts */
+function constructCopy(src, dst, key, srcParts){
+  const clone = o => (o == null ? null : JSON.parse(JSON.stringify(o)));
+  const now = Date.now();
+  if(key === 'projectors'){
+    ensureProjectors(dst); const s = src.projectors || {}, D = dst.projectors;
+    srcParts.forEach(p => {
+      if(p.id === 'inv'){
+        D.list = p.arr.filter(x => ((x.mfr||'') + (x.model||'')).trim()).map(x => { const c = clone(x); c.id = newId(); delete c.rowId; c.ts = now; return c; });
+        D.selId = null; D.models = Object.assign({}, D.models || {}, clone(s.models) || {});
+      }
+      if(p.id === 'lens'){ D.lenses = p.arr.filter(x => String(x.model||'').trim()).map(x => { const c = clone(x); c.id = 'ln' + newRowId().slice(1); delete c.rowId; c.ts = now; return c; }); D.removableLens = true; }
+      if(p.id === 'acc'){ D.acc = p.arr.filter(x => String(x.item||'').trim()).map(x => { const c = clone(x); c.id = 'pa' + newRowId().slice(1); delete c.rowId; c.ts = now; return c; }); }
+      if(p.id === 'mount'){ D.mounts = p.arr.filter(x => String(x.name||'').trim()).map(x => { const c = clone(x); c.id = 'pm' + newRowId().slice(1); delete c.rowId; c.ts = now; return c; }); }
+    });
     return;
   }
-  const cur = dst[key] || {};
-  const out = { rows: clone(s.rows) || [], ready: !!s.ready, photos: cur.photos || [] };   /* keep OUR photos */
-  if(key === 'rack'){ out.heightU = s.heightU || 12; out.slots = clone(s.slots) || {}; out.frontPh = cur.frontPh || []; out.rearPh = cur.rearPh || []; out.rackId = cur.rackId || ''; }   /* keep OUR Rack ID — it's a per-project identifier */
-  if(key === 'server'){ out.caseSize = s.caseSize || ''; }
-  if(key === 'backup'){ out.caseSize = s.caseSize || ''; out.name = s.name || ''; out.enabled = true; }   /* BUILD 14.64: carry the backup server config; copying it enables the block */
-  dst[key] = out;
+  const s = src[key] || {};
+  if(!dst[key] || typeof dst[key] !== 'object') dst[key] = { rows:[], ready:false, photos:[] };
+  const D = dst[key]; if(!Array.isArray(D.rows)) D.rows = [];
+  const hasCases = (key === 'camera' || key === 'fan');
+  if(hasCases && !Array.isArray(D.cases)) D.cases = [];
+  /* 1) drop OUR rows of the parts being replaced (matched by part, case/box by name or position) */
+  const dm = constructModel(dst, key), dMatch = {}; dm.parts.forEach(p => { dMatch[p.id] = p.match; });
+  const repl = {}; srcParts.forEach(p => { repl[p.match] = 1; });
+  if(hasCases){ _cCases(dst, key).forEach(c => { if(!D.cases.some(x => x.id === c.id)) D.cases.push({ id:c.id, name:c.name }); }); }
+  D.rows = D.rows.filter(r => !repl[dMatch[dm.partOf(r)]]);
+  /* 2) append the source rows of those parts */
+  srcParts.forEach(p => {
+    let box = null;
+    if(p.caseObj){
+      box = D.cases.find((c, ci) => _cCaseMatch(c, ci) === p.match);
+      if(!box){ box = { id:newId(), name:String(p.caseObj.name||'').trim() }; D.cases.push(box); }
+    }
+    p.rows.forEach(r => {
+      const c = clone(r); c.rowId = newRowId(); c.ts = now;
+      if(box){ c.caseId = box.id; c.caseName = box.name || ''; } else { delete c.caseId; delete c.caseName; }
+      D.rows.push(c);
+    });
+  });
+  /* single-table modules: the module config travels with the table (as before) */
+  if(!constructMulti(key)){
+    D.ready = !!s.ready;
+    if(key === 'rack'){ D.heightU = s.heightU || 12; D.slots = clone(s.slots) || {}; }   /* OUR Rack ID / photos stay */
+    if(key === 'server'){ D.caseSize = s.caseSize || ''; }
+    if(key === 'backup'){ D.caseSize = s.caseSize || ''; D.name = s.name || ''; D.enabled = true; }
+  } else if(constructModel(src, key).parts.every(p => !p.n || srcParts.some(x => x.id === p.id))){ D.ready = !!s.ready; }
+  if(!Array.isArray(D.photos)) D.photos = [];
 }
 function constructToggle(id){ _constrExpand[id] = !_constrExpand[id]; rerenderKeepScroll(); }
+function constructPartsToggle(pid, key){ const k = pid + '|' + key; _constrParts[k] = !_constrParts[k]; rerenderKeepScroll(); }
+function constructPartTick(pid, key, part, on){ const k = pid + '|' + key + '|' + part; if(on) delete _constrOff[k]; else _constrOff[k] = true; rerenderKeepScroll(); }
 function constructTransfer(srcId, key){
   try{
     const src = db.projects.find(p => p.id === srcId), active = activeEntry();
     if(!src || !active || !active.data){ flashStat('No project selected'); return; }
-    const n = constructCount(src.data, key); if(!n){ return; }
+    const sel = constructSelParts(srcId, src.data, key);
+    if(!sel.length){ flashStat('Nothing selected to copy'); return; }
     const mod = CONSTRUCT_MODULES.find(m => m.key === key), label = mod ? mod.label : key;
     const srcP = src.data.project || {}, srcName = srcP.title || ('#' + (srcP.number || '')) || 'project';
-    const dstN = constructCount(active.data, key);
-    if(dstN > 0 && !confirm('The "' + label + '" section already has ' + dstN + ' item(s).\n\nReplace it with ' + n + ' from "' + srcName + '"?')) return;
-    constructCopy(src.data, active.data, key);
+    const n = sel.reduce((s, p) => s + p.n, 0);
+    const dParts = constructModel(active.data, key).parts;
+    const busy = sel.map(p => { const d = dParts.find(x => x.match === p.match); return (d && d.n) ? { label:d.label, n:d.n } : null; }).filter(Boolean);
+    if(busy.length){
+      const msg = constructMulti(key)
+        ? ('"' + label + '" here already has:\n' + busy.map(b => '  • ' + b.label + ' — ' + b.n + ' item(s)').join('\n') + '\n\nReplace these tables with the copy from "' + srcName + '"?\nOther tables are not touched.')
+        : ('The "' + label + '" section already has ' + busy[0].n + ' item(s).\n\nReplace it with ' + n + ' from "' + srcName + '"?');
+      if(!confirm(msg)) return;
+    }
+    try{ if(active.data === state) shipSealLegacy(); }catch(_){ }
+    constructCopy(src.data, active.data, key, sel);
     try{ if(typeof revalidateReady === 'function') revalidateReady(); }catch(_){ }
     saveState(); renderSideProject();
     setTimeout(()=>{ try{ if(_FS || _FBP) syncPushNow(); else cloudPushNow(); }catch(_){ } }, 150);
-    flashStat(label + ' copied from ' + srcName + ' ✓');
+    const all = constructModel(src.data, key).parts.filter(p => p.n).length;
+    flashStat(label + (constructMulti(key) && sel.length < all ? ' (' + sel.map(p => p.label).join(', ') + ')' : '') + ' copied from ' + srcName + ' ✓');
     rerenderKeepScroll();
   }catch(err){ alert('Could not copy the module: ' + (err && err.message || err)); }
 }
@@ -3615,15 +3796,27 @@ function constructAlignSoon(){
 function constructSrcCard(p){
   const P = p.data.project || {}, open = !!_constrExpand[p.id];
   const rows = CONSTRUCT_MODULES.map(m => {
-    const n = constructCount(p.data, m.key);
+    const model = constructModel(p.data, m.key), n = model.parts.reduce((s, x) => s + x.n, 0);
+    const multi = constructMulti(m.key), pk = p.id + '|' + m.key, popen = multi && n > 0 && !!_constrParts[pk];
+    const withItems = model.parts.filter(x => x.n > 0), sel = withItems.filter(x => !_constrOff[pk + '|' + x.id]);
+    const partial = multi && sel.length < withItems.length;
+    const plus = (multi && n > 0)
+      ? `<button class="cplus" title="${popen?'Hide':'Choose'} tables to copy" onclick="event.stopPropagation();constructPartsToggle('${p.id}','${m.key}')">${popen?'−':'+'}</button>`
+      : `<span class="cplus-sp"></span>`;
+    const sub = popen ? model.parts.map(x => `<label class="csub ${x.n?'':'c-empty'}">
+        <input type="checkbox" ${x.n && !_constrOff[pk + '|' + x.id] ? 'checked' : ''} ${x.n?'':'disabled'} onchange="constructPartTick('${p.id}','${m.key}','${esc(x.id)}',this.checked)">
+        <span style="flex:1">${esc(x.label)}</span>
+        <span class="chip ${x.n?'c-ok':'c-mut'}"><span class="cd"></span>${x.n}</span>
+      </label>`).join('') : '';
     return `<div class="crow">
+      ${plus}
       <span class="cmi">${m.ic}</span>
       <span style="flex:1;font-size:13px">${esc(m.label)}</span>
       <span class="chip ${n?'c-ok':'c-mut'}"><span class="cd"></span>${n}</span>
       ${n>0
-        ? `<button class="mod-btn primary" style="padding:5px 12px;font-size:12px;flex:none" onclick="event.stopPropagation();constructTransfer('${p.id}','${m.key}')">Copy ${IC.open}</button>`
+        ? `<button class="mod-btn primary" style="padding:5px 12px;font-size:12px;flex:none;min-width:86px" ${sel.length?'':'disabled'} title="${partial ? 'Copy the ticked tables only' : 'Copy'}" onclick="event.stopPropagation();constructTransfer('${p.id}','${m.key}')">${partial ? ('Copy ' + sel.length + '/' + withItems.length) : 'Copy'} ${IC.open}</button>`
         : `<span style="width:86px;flex:none"></span>`}
-    </div>`;
+    </div>${sub}`;
   }).join('');
   return `<div class="card ${open?'csrc-open':''}" style="margin-bottom:12px">
     <div class="card-head" style="cursor:pointer;margin-bottom:0;user-select:none" onclick="constructToggle('${p.id}')">
@@ -3633,13 +3826,20 @@ function constructSrcCard(p){
     <div class="csrc-mods" style="display:${open?'block':'none'};margin-top:8px">${rows}</div>
   </div>`;
 }
-function constructDstRow(active, m){
-  const n = constructCount(active.data, m.key);
+/* right pane: when the aligned source project has a module's tables open, the same lines appear here with OUR counts */
+function constructDstRow(active, m, mirror){
+  const model = constructModel(active.data, m.key), n = model.parts.reduce((s, x) => s + x.n, 0);
+  let sub = '';
+  if(mirror && constructMulti(m.key) && _constrParts[mirror.id + '|' + m.key]){
+    const sm = constructModel(mirror.data, m.key);
+    if(sm.parts.some(x => x.n > 0)) sub = sm.parts.map(x => { const d = model.parts.find(y => y.match === x.match); const dn = d ? d.n : 0;
+      return `<div class="csub" style="${dn?'':'opacity:.5'}"><span style="flex:1">${esc(d ? d.label : x.label)}</span><span class="chip ${dn?'c-ok':'c-mut'}"><span class="cd"></span>${dn ? dn : 'Empty'}</span></div>`; }).join('');
+  }
   return `<div class="crow" style="${n?'':'opacity:.5'}">
     <span class="cmi">${m.ic}</span>
     <span style="flex:1;font-size:13px;font-weight:${n?'700':'400'}">${esc(m.label)}</span>
     <span class="chip ${n?'c-ok':'c-mut'}"><span class="cd"></span>${n ? (n + ' items') : 'Empty'}</span>
-  </div>`;
+  </div>${sub}`;
 }
 /* ============================================================================
    BUILD 15.67 — ADMIN CONSOLE page (#/admin). Manage users, roles & per-user permissions.
@@ -3825,7 +4025,7 @@ function pageSettings(){
         </div>
         <div>
           <div class="csec-title">Current project — #${esc(P.number||'—')} ${esc(P.title||'')}</div>
-          <div class="card" id="cdstCard">${CONSTRUCT_MODULES.map(m => constructDstRow(active, m)).join('')}</div>
+          <div class="card" id="cdstCard">${CONSTRUCT_MODULES.map(m => constructDstRow(active, m, others.find(p => _constrExpand[p.id]))).join('')}</div>
         </div>
       </div>`;
   if(active) constructAlignSoon();   /* BUILD 15.22/15.23: line the right panel up with the expanded source project */
@@ -3833,10 +4033,9 @@ function pageSettings(){
   <div class="page">
     <div class="pagehead"><div class="eyebrow">Fulldome Projection SP</div>
       <h1 style="margin:0">Project Constructor</h1>
-      <div class="sub">Assemble the selected project from ready-made modules of your other projects. Expand a project on the left, then "Copy →" a module into the matching section of the current project on the right. Existing sections ask before they're replaced.</div>
+      <div class="sub">Assemble the selected project from ready-made modules of your other projects. Expand a project on the left, then "Copy →" a module into the matching section of the current project on the right. "+" next to a module lets you pick which of its tables to copy. Existing tables ask before they're replaced.</div>
     </div>
     ${body}
-    ${settingsDriveCard(active)}
   </div>`;
 }
 /* BUILD 14.62: Drive maintenance card — the repair helpers as buttons (were console-only). */
@@ -4211,8 +4410,8 @@ function pageDashboard(){
 
       <div class="mod active${_lastMod==='#/fan'?' lastmod':''}">
         <div class="mod-top"><div class="mod-ic">${IC.fan}</div>
-          <div><div class="mod-name">Screen Fan</div>${modActiveBadge(_named(state.fan.rows))}</div></div>
-        <div class="mod-desc">Dome screen ventilation — fan units, controllers, ducting, mounts and power, picked from the Equipment Library, with photos and Ready check.</div>
+          <div><div class="mod-name">Screen Fan &amp; AC</div>${modActiveBadge(_named(state.fan.rows))}</div></div>
+        <div class="mod-desc">Dome screen ventilation and air conditioning — fan units, AC units, controllers, ducting, mounts and power, picked from the Equipment Library, with photos and Ready check.</div>
         <div class="mod-stats">
           <div class="ms"><span class="k">Components</span><span class="v ${state.fan.rows.filter(r=>(r.name||'').trim()).length?'ok':''}">${state.fan.rows.filter(r=>(r.name||'').trim()).length || 'None'}</span></div>
           <div class="ms"><span class="k">Components Cost</span><span class="v">${fmt(fanTotal())}</span></div>
@@ -5011,17 +5210,17 @@ function shipPlaces(){
   const fanInflOn = (typeof projInflatable==='function') && projInflatable();
   try{ fanRepairBoxes(); }catch(_){}
   const fanBoxesL = (state.fan&&state.fan.cases)||[];
-  ((state.fan&&state.fan.rows)||[]).map((r,idx)=>({r,idx})).sort((a,b)=> (fanIsInfl(a.r)?1:0)-(fanIsInfl(b.r)?1:0) || a.idx-b.idx).forEach(({r,idx})=>{
+  ((state.fan&&state.fan.rows)||[]).map((r,idx)=>({r,idx})).sort((a,b)=> (fanIsInfl(a.r)?2:fanIsHvac(a.r)?1:0)-(fanIsInfl(b.r)?2:fanIsHvac(b.r)?1:0) || a.idx-b.idx).forEach(({r,idx})=>{
     if(!(r.name||'').trim()) return; if(fanIsInfl(r) && !fanInflOn) return;
-    const it = mkItem(r,'i|fan|'+idx); if(fanIsInfl(r)) it.sub = 'Inflatable Fan Builder';
+    const it = mkItem(r,'i|fan|'+idx); if(fanIsInfl(r)) it.sub = 'Inflatable Fan Builder'; else if(fanIsHvac(r)) it.sub = 'HVAC';   /* BUILD 17.31: HVAC rows ship under their own sub-heading */
     const bx = r.caseId && fanBoxesL.find(c=>c.id===r.caseId);
     if(bx){ (fanByBox[bx.id] = fanByBox[bx.id] || []).push(it); return; }   /* BUILD 16.57: a fan box ships as ONE place */
     (isCombined(r)?fanCombined:fanSeparate).push(it); });
   let fanHasBox = false;
-  fanBoxesL.forEach((c,ci)=>{ const its = fanByBox[c.id]; if(its && its.length){ fanHasBox = true; its.forEach(it=>{ it.sub = fanBoxLabel(c, ci); }); places.push({key:'pl|fan-box|'+c.id, name:fanBoxLabel(c, ci), module:'Screen Fan', items:its, subChip:its.length+' item'+(its.length===1?'':'s')+' · ONE PLACE'}); } });
+  fanBoxesL.forEach((c,ci)=>{ const its = fanByBox[c.id]; if(its && its.length){ fanHasBox = true; its.forEach(it=>{ it.sub = fanBoxLabel(c, ci); }); places.push({key:'pl|fan-box|'+c.id, name:fanBoxLabel(c, ci), module:'Screen Fan & AC', items:its, subChip:its.length+' item'+(its.length===1?'':'s')+' · ONE PLACE'}); } });
   if(fanHasBox){ fanCombined.concat(fanSeparate).forEach(it=>{ if(!it.sub) it.sub = 'Other'; }); }
-  if(fanCombined.length) places.push({key:'pl|fan', name:'Screen Fan', module:'Screen Fan', items:fanCombined});
-  fanSeparate.forEach((it,i)=> places.push({key:'pl|fan-sep|'+shipSepId(it,i), name:it.name, module:'Screen Fan', items:[it]}));
+  if(fanCombined.length) places.push({key:'pl|fan', name:'Screen Fan & AC', module:'Screen Fan & AC', items:fanCombined});
+  fanSeparate.forEach((it,i)=> places.push({key:'pl|fan-sep|'+shipSepId(it,i), name:it.name, module:'Screen Fan & AC', items:[it]}));
   /* ---- Cables & Adapters (BUILD 14.31) ---- */
   const cabCombined = [], cabSeparate = [];
   /* BUILD 16.25: every cable item carries its sub-section (Power / Video / Audio Cables) → sub-headings in the
@@ -5129,17 +5328,15 @@ function shipPlaceReview(pl, places){
     const rid = it.rid;
     if(!rid || seen[rid]){ out.items[it.key] = { st:'new' }; out.issues++; return; }   /* no identity yet, or a copy of another row → not packed */
     seen[rid] = 1;
-    const e = M.rows[rid];
-    if(!e){
-      const from = Object.keys(shipManifests()).find(k => k !== pl.key && shipManifests()[k] && shipManifests()[k].rows && shipManifests()[k].rows[rid]);
-      out.items[it.key] = from ? { st:'review', kind:'moved', why:'moved here from ' + (shipManifests()[from].place || 'another place') } : { st:'new' };
-      out.issues++; return;
-    }
-    if(String(e.s || '') !== shipSig(it)){ out.items[it.key] = { st:'review', kind:'changed', why:'model / serial changed (packed: ' + (e.n || '—') + ')' }; out.issues++; return; }
-    if(+e.q !== shipQty(it)){ out.items[it.key] = { st:'review', kind:'qty', why:'qty ' + e.q + ' → ' + shipQty(it), q0:+e.q }; out.issues++; return; }
+    /* BUILD 17.29 — ONE rule (the user's): a row that was there when the place was ticked "On pallet" is ON THE PALLET, whatever
+       happens to it later (new name, qty, model, serial, a Dome Library card edit, moved to another ticked place) — it is the same
+       element. Only a row that was NOT there (added later and forgotten) is red. Nothing else is ever flagged. */
+    if(M.rows[rid]) return;
+    const inOther = Object.keys(shipManifests()).some(k => k !== pl.key && shipManifests()[k] && shipManifests()[k].rows && shipManifests()[k].rows[rid]);
+    if(inOther) return;
+    out.items[it.key] = { st:'new' }; out.issues++;
   });
-  Object.keys(M.rows).forEach(rid => { if(!seen[rid]){ const e = M.rows[rid] || {}; out.removed.push({ rid, n:e.n || '—', q:e.q }); out.issues++; } });
-  return out;
+  return out;   /* 17.29: no "removed" lines, no "changed" / "qty" flags */
 }
 /* BUILD 17.20: how many red rows the Shipping list shows right now (flagged items + "removed — still on the pallet?" lines). Pure. */
 function shipNotOnPalletCount(){ try{ return shipPlaces().reduce((a, pl) => { const rv = shipPlaceReview(pl); return a + Object.keys(rv.items).length + rv.removed.length; }, 0); }catch(_){ return 0; } }
@@ -5489,12 +5686,12 @@ function onPalletPhotoPicked(ev){
   files.slice(0, Math.max(0,room)).forEach(f=>{
     readImageFile(f,
       dataUrl=>{ downscaleImage(dataUrl, 1280, 0.8,
-        src=>{ palPhotos(id).push({ name:f.name, caption:f.name.replace(/\.[a-z0-9]+$/i,''), src }); saveState(); rerenderKeepScroll(); if(isHeicFile(f)) flashStat('HEIC converted ✓'); },
+        src=>{ palPhotos(id).push({ name:f.name, caption:f.name.replace(/\.[a-z0-9]+$/i,''), src, _loc: 1 }); saveState(); rerenderKeepScroll(); if(isHeicFile(f)) flashStat('HEIC converted ✓'); },
         ()=>alert(heicFailMsg(f,'decode'))); },
       why=>alert(heicFailMsg(f,why)));
   });
 }
-function rmPalletPhoto(id,i){ const arr=palPhotos(id); if(arr[i]){ arr.splice(i,1); saveState(); rerenderKeepScroll(); } }
+function rmPalletPhoto(id,i){ const arr=palPhotos(id); if(arr[i]){ _phNoteRemoved(arr[i]); arr.splice(i,1); saveState(); rerenderKeepScroll(); } }
 function openLightboxPallet(id,i){ const ph=palPhotos(id)[i]; if(ph) openLightbox(ph.src, ph.caption||ph.name||''); }
 function palletPhotoBlock(p){
   const arr = palPhotos(p.id);
@@ -5560,7 +5757,7 @@ function pageShipping(){
         const cmt = (S.meta && S.meta[it.key] && S.meta[it.key].cmt) || '';
         const f = rv.items[it.key];
         const fCls = f ? ' ship-late' : '';   /* 17.19: one look for every flag — the row outlined red */
-        const fTag = f ? ` <span class="ship-late-tag">NOT ON THE PALLET${f.kind === 'qty' ? ' · ' + esc(f.why.toUpperCase()) : f.kind === 'changed' ? ' · CHANGED' : f.kind === 'moved' ? ' · MOVED' : ''}</span>` : '';
+        const fTag = f ? ` <span class="ship-late-tag">NOT ON THE PALLET</span>` : '';
         return `<tr class="${ri===plan.length-1?'pl-last':''}${fCls}"${f?` onclick="shipRowClick(event,'${esc(pl.key)}','${esc(it.key)}')" title="Click to confirm"`:''}>
           <td class="tight" style="width:5%;text-align:right;color:var(--dim);white-space:nowrap">${it.ord===2?'<span class="odot o2 sh-ord" title="Received"></span>':it.ord===1?'<span class="odot o1 sh-ord" title="Ordered — waiting"></span>':''}${n}</td>
           <td${(it.cat||'').trim()?` title="${esc(it.cat)}"`:''}><span class="shipjump" onclick="shipGoTo('${esc(it.key)}')">${esc(it.name)}</span>${fTag}</td>
@@ -6524,9 +6721,11 @@ async function fbpMediaUpload(e){
      deleted everything" is rare; the recovery cost of a wrongful wipe is far higher. */
   if(rec.fileId && fbpMediaIsEmpty(e)){ fbpMediaUpload._why = 'refusing to overwrite the shared media file with an empty copy'; return false; }
   const root = await fbpMediaRoot();
-  const content = JSON.stringify(fbpMediaPayload(e));
+  const _payload = fbpMediaPayload(e); const _sentKeys = {}; try{ _phAllArrays({ server:_payload.server, backup:_payload.backup, vj:_payload.vj, rack:_payload.rack, camera:_payload.camera, speakers:_payload.speakers, fan:_payload.fan, cables:_payload.cables, tools:_payload.tools, safety:_payload.safety, docs:_payload.docs, dome:{ ballast:_payload.ballast }, shipping:_payload.shipping }).forEach(a => a.forEach(p => { if(p) _sentKeys[_phKey(p)] = 1; })); }catch(_){}
+  const content = JSON.stringify(_payload, function(k, v){ return k === '_loc' ? undefined : v; });   /* 17.26: the local-until-uploaded mark never travels */
   const fileId = await backupPutInPlace(pid + '.media.json', root, content, rec.fileId);   /* PATCH in place → one compact sync file + version history */
   mediaMap()[pid] = Object.assign(rec, { fileId, msig: sig });
+  _phAfterUpload(e, _sentKeys);   /* 17.26 */
   saveState._skipCloud = true; saveState(); saveState._skipCloud = false;   /* persist the media cache without bumping _rev */
   setCloudStat('Photos/docs uploaded ✓ · ' + hhmm());
   return true;
@@ -6739,6 +6938,8 @@ async function fbpMediaSync(){
       const want = e._remoteMsig; if(want === undefined || want === null) continue;
       const localSig = fbpMediaSig(e);
       if(want === localSig) continue;                       /* our media already matches the record */
+      const known = ((mediaMap()[pid] || {}).msig) || '';
+      if(want === known && !e._mediaPending) continue;      /* BUILD 17.26: the server holds what we last pulled/pushed — the difference is OUR unsent change; the outbox uploads it. Pulling here used to throw it away. */
       /* don't clobber the active project mid-edit; retry next tick */
       if(e === activeEntry() && (isTypingInInput() || (e._dirtyAt && Date.now() - e._dirtyAt < 30000))) continue;
       try{ if(await fbpMediaDownloadApply(e, want)) any = true; }catch(_){}
@@ -7341,6 +7542,7 @@ async function _fsPushPass(e, pid){ if(SE_ON && SE.enabled(pid)) return SE.pushP
 /* BUILD 16.06 LIVE hotfix (Defect 2, cont.): when the user finishes editing (blur), apply the
    incoming values that were deferred while typing, refresh the open module, and push promptly. */
 function _fsApplyPendingSnap(){
+  if(_rowDraft && _rowDraft.dirty) return false;              /* BUILD 17.22: never over an unfinished row — applied after it is saved */
   const e = activeEntry(); if(!e) return false;
   const pid = fbpPid(e); if(!pid) return false;
   const snap = _fsPendingSnap[pid]; if(!snap) return false;
@@ -7377,7 +7579,7 @@ function _fsRerenderSoon(){
    a cursor left in a cell kept the module page stale for as long as the tab was open ("rows are in Shipping but not in Cables"). */
 var _fsLastKeyAt = 0;
 try{ document.addEventListener('keydown', function(){ _fsLastKeyAt = Date.now(); }, true); document.addEventListener('input', function(){ _fsLastKeyAt = Date.now(); }, true); }catch(_){}
-setInterval(function(){ try{ const pid = activeEntry() && fbpPid(activeEntry()); const waiting = _fsRerenderPending || (pid && _fsPendingSnap[pid]); if(!waiting) return; if(!isTypingInInput()) return; if(Date.now() - _fsLastKeyAt < 10000) return; const a = document.activeElement; if(a && a.blur){ a.blur(); } }catch(_){} }, 3000);
+setInterval(function(){ try{ const pid = activeEntry() && fbpPid(activeEntry()); const waiting = _fsRerenderPending || (pid && _fsPendingSnap[pid]); if(!waiting) return; if(!isTypingInInput()) return; if(Date.now() - _fsLastKeyAt < 10000) return; if(_rowDraft && _rowDraft.dirty) return; const a = document.activeElement; if(a && a.blur){ a.blur(); } }catch(_){} }, 3000);
 function _fsFlushOnBlur(ev){
   /* ignore blur events produced by our OWN re-render (element detached) — otherwise render→blur→push→render loops */
   try{ if(_fsRerendering) return; if(ev && ev.target && ev.target.nodeType === 1 && !document.contains(ev.target)) return; }catch(_){}
@@ -7486,6 +7688,7 @@ function fsApplyDoc(data){
     });
     rec._seen = true; rec._done = e.done ? 1 : 0; rec._msig = rec._msig || data.msig || '';
     if(!!data.done !== !!e.done){ if(data.done){ e.done = true; e.doneAt = data.doneAt || Date.now(); } else { delete e.done; delete e.doneAt; } ch0 = true; }
+    rec._done = data.done ? 1 : 0;   /* BUILD 17.24: known server value = what the server holds (was the local value before applying → a redundant "done" re-write on the next edit) */
     if(stashed.length){ try{ fsDiag('pending local changes kept for review: ' + stashed.join(',') + ' (' + pid + ')'); }catch(_){} setTimeout(_fsStashBanner, 300); }
     return ch0;
   }
@@ -7521,6 +7724,7 @@ function fsApplyDoc(data){
      updates only the changed section instead of overwriting the whole cloud document. */
   try{ if(!_fsLocal[pid]){ const rec={ _seen:true, _done:e.done?1:0, _msig:e._remoteMsig||'' }; const sl0=fsSlice(e.data); FS_SECTIONS.forEach(function(s){ rec[s]=JSON.stringify(sl0[s]||{}); }); _fsLocal[pid]=rec; } }catch(_){}
   if(!!data.done !== !!e.done){ if(data.done){ e.done = true; e.doneAt = data.doneAt || Date.now(); } else { delete e.done; delete e.doneAt; } ch = true; }
+  try{ if(_fsLocal[pid] && !(typeof OB !== 'undefined' && OB.ops().some(function(o){ return o.pid === pid && o.kind === 'done'; }))) _fsLocal[pid]._done = data.done ? 1 : 0; }catch(_){}   /* BUILD 17.24: same, live (unless our own done change is still queued) */
   return ch;
 }
 function fsRemoveLocal(pid){
@@ -7563,7 +7767,7 @@ function libNonEmpty(){ return LIB_GROUPS.some(g => ((db.library&&db.library[g.k
    clear `_libDirty` and adopt the server rev; on error we KEEP dirty, show "Library sync failed" and
    retry. This removes the clock dependency that stalled sync when two machines' clocks were skewed. */
 function libTouch(){
-  if(!fsReady()) return;
+  if(!fsReady()){ try{ if(libSig() !== _libSigLast) _libDirty = true; }catch(_){} return; }   /* BUILD 17.32: sent on connect (fsLibSyncOnConnect) */
   const s = libSig();
   if(s === _libSigLast) return;                 /* library genuinely unchanged → nothing to publish */
   _libSigLast = s;
@@ -7610,8 +7814,10 @@ function libMerge3(base, local, server){
   });
   return out;
 }
+function _libDraftOpen(){ return !!(_rowDraft && _rowDraft.dirty && location.hash === '#/library'); }   /* BUILD 17.23: a Library row is being edited */
 async function fsPushLibrary(){
   if(!fsReady() || _libPushing) return;
+  if(_libDraftOpen()){ clearTimeout(_fsLibT); _fsLibT = setTimeout(fsPushLibrary, 1500); return; }   /* BUILD 17.23: never publish a half-typed row — wait for Enter / leaving the row */
   if(SE_ON && SE.enabled('shared_library')){ _libDirty = false; try{ _libSigLast = libSig(); }catch(_){} await SE.push('shared_library'); return; }   /* BUILD 16.55: canary */
   const local = { library:{}, cats:{} };
   const refOf = new WeakMap();   /* BUILD 17.09: copy → the live db.library object it was taken from */
@@ -7657,7 +7863,7 @@ async function fsPushLibrary(){
       try{ normalizeSort(); }catch(_){}
       if(!isTypingInInput() && (location.hash==='#/library')){ try{ rerenderKeepScroll(); }catch(_){} }
     }
-    _libSigLast = libSig(); _libFails = 0; _libPaused = null;
+    _libSigLast = _libDraftOpen() ? '' : libSig(); _libFails = 0; _libPaused = null;   /* 17.23: an open Library row is not "published" — its Enter publishes it */
     try{ fsDiag('shared library merged+published (rev ' + result.rev + ')'); }catch(_){}
     saveState._skipCloud = true; saveState(); saveState._skipCloud = false;   /* persist libRev/base + cleared dirty */
   }catch(err){
@@ -7725,10 +7931,11 @@ function fsApplyLibrary(data){
   db.libRev = rrev;
   db.libBase = _libSnapshot({library:nextLibServerOnly(inLib), cats: remoteCats || db.cats});   /* base = what the SERVER holds; our unconfirmed adds stay "pending" until published */
   if(localExtra){ try{ fsDiag('library: local-only items / categories kept; they are published with the Publish button or the next library edit (no write from a snapshot)'); }catch(_){} }   /* BUILD 17.03: never sets the dirty flag from a snapshot */
-  _libSigLast = libSig();
+  const _libChanged = before !== libSig();
+  _libSigLast = _libDraftOpen() ? '' : libSig();   /* 17.23: an incoming library never marks an open Library row as published */
   try{ normalizeSort(); }catch(_){}
-  if(before !== _libSigLast){ try{ setTimeout(function(){ try{ fixHalfNamesFromLibrary(); }catch(_){} }, 600); }catch(_){} }   /* BUILD 16.10: library arrived → complete half names */
-  return before !== _libSigLast;
+  /* BUILD 17.22: a library arriving from a teammate no longer rewrites (and saves) project rows — that was a write without a user action */
+  return _libChanged;
 }
 /* run once shortly after connect: publish our library ONLY if the server has none yet (seed) or we
    hold genuine local changes not on the server — never force-bumps the rev on a plain reconnect. */
@@ -7737,6 +7944,9 @@ function fsLibSyncOnConnect(){
      the server's is published with the user's next library edit (libTouch) or Save in the Library page. */
   if(!fsReady()) return;
   try{ if(libNonEmpty() && libSig() !== _libSigLast){ _libDirty = true; fsDiag('library: local differences kept until the next library edit'); } }catch(_){}
+  /* BUILD 17.32: library items / categories the user added here that never reached the server (tab closed within a second, offline,
+     not signed in yet) are the user's OWN edits waiting to be sent — publish them now instead of waiting for the next edit. */
+  try{ if(libPending()){ _libDirty = true; fsDiag('library: publishing unsent local edits'); clearTimeout(_fsLibT); _fsLibT = setTimeout(fsPushLibrary, 800); } }catch(_){}
 }
 function fsOnSnapshot(snap){
   _fsApplying = true;
@@ -7935,6 +8145,53 @@ function _fsConflictUseMine(pid, s, i){
     if(_fsSetPath(cur, c.path, c.local)){ fsApplySection(e.data, s, cur); fsPushNow(e).catch(function(){}); }
     _fsConflictDrop(pid, s, i); try{ rerenderKeepScroll(); }catch(_){} }catch(_){}
 }
+/* ============ BUILD 17.24 — the projects stream never stays dead ============
+   Before: after a stream error the app showed "⚠ … click to retry" and stopped listening until someone clicked; a tab left open
+   overnight (sleep, Wi-Fi change, VPN) could sit on stale data — "I moved two projects to Completed, the others still see them in
+   progress". Now: (1) a stream error re-attaches the listener by itself (5 s → 15 s → 1 min → 2 min → 5 min); (2) when the tab comes
+   back after ≥ 3 min, the network returns, or the computer wakes from sleep, the projects are re-read from the server and applied
+   exactly like a snapshot (reads only — applying never writes). */
+var _fsFromCache = false;
+var _fsHandlers = null, _fsLastSnapAt = 0, _fsStreamDead = false, _fsReattachTries = 0, _fsReattachT = null, _fsHiddenAt = 0, _fsWakeBusy = false;
+function _fsIsDenied(err){ return !!(err && (err.code === 'permission-denied' || /permission|insufficient/i.test(err.message || ''))); }
+function _fsListen(onSnap, onErr){
+  _fsHandlers = { onSnap: onSnap, onErr: onErr };
+  if(_fsUnsub){ try{ _fsUnsub(); }catch(_){} }
+  _fsStreamDead = false;
+  _fsUnsub = _fsCol.onSnapshot({ includeMetadataChanges: true }, function(snap){
+    _fsLastSnapAt = Date.now(); _fsReattachTries = 0;
+    try{ _fsFromCache = !!(snap && snap.metadata && snap.metadata.fromCache); }catch(_){}   /* BUILD 17.33: offline indicator */
+    if(_fsFatal && /stream error/i.test(_fsFatal)){ _fsFatal = ''; try{ _fsShowStat(); }catch(_){} }
+    onSnap(snap);
+  }, function(err){
+    _fsStreamDead = true;
+    try{ onErr(err); }catch(_){}
+    if(!_fsIsDenied(err)) _fsReattachSoon();
+  });
+  return _fsUnsub;
+}
+function _fsReattachSoon(){
+  clearTimeout(_fsReattachT);
+  const waits = [5000, 15000, 60000, 120000, 300000]; const w = waits[Math.min(_fsReattachTries, waits.length - 1)]; _fsReattachTries++;
+  _fsReattachT = setTimeout(function(){ _fsReattachT = null; if(!_fsHandlers || !_fsCol || !_fsReady) return;
+    try{ fsDiag('projects stream: re-attaching (try ' + _fsReattachTries + ')'); setCloudStat('Reconnecting…'); _fsListen(_fsHandlers.onSnap, _fsHandlers.onErr); }catch(_){ _fsReattachSoon(); } }, w);
+}
+function _fsWakeRefresh(why){
+  try{
+    if(!_fsReady || !_fsCol || !_fsServerSeen || _fsWakeBusy) return;
+    fsDiag('refresh from server: ' + why);
+    if(_fsStreamDead && !_fsReattachT){ _fsReattachTries = 0; _fsReattachSoon(); }
+    _fsWakeBusy = true;
+    _fsCol.get({ source: 'server' }).then(function(snap){ _fsWakeBusy = false; _fsLastSnapAt = Date.now(); try{ fsOnSnapshot(snap); }catch(_){} try{ _fsStampRecv(); }catch(_){} })
+      .catch(function(err){ _fsWakeBusy = false; fsDiag('refresh failed: ' + (err && err.message || err), true); });
+  }catch(_){ _fsWakeBusy = false; }
+}
+try{
+  document.addEventListener('visibilitychange', function(){ if(document.hidden){ _fsHiddenAt = Date.now(); return; } if(_fsHiddenAt && Date.now() - _fsHiddenAt >= 180000) _fsWakeRefresh('tab back after ' + Math.round((Date.now() - _fsHiddenAt) / 60000) + ' min'); _fsHiddenAt = 0; });
+  window.addEventListener('online', function(){ _fsWakeRefresh('network back'); });
+  /* sleep detector: timers stop while the computer sleeps — a large jump between ticks means it just woke up */
+  (function(){ var last = Date.now(); setInterval(function(){ var now = Date.now(); if(now - last > 120000) _fsWakeRefresh('computer woke up'); last = now; }, 30000); })();
+}catch(_){}
 async function fsStart(){
   if(!_FS) return;
   _fsFatal = '';
@@ -7959,7 +8216,7 @@ async function fsStart(){
      "Waiting for server…" and nothing new could be written by anyone. The same flag delivers the hasPendingWrites→false
      confirmation that the 16.46 base logic relies on. Fallback: an explicit server read opens the gate if no server snapshot came. */
   if(SE_ON){ try{ SE.stop(); SE.start(); await SE.waitConfig(3000); }catch(err){ fsDiag('SE start failed: ' + (err && err.message || err), true); } }   /* BUILD 16.55: canary config (sync_config/v5) is read BEFORE the legacy listener applies anything */
-  _fsUnsub = _fsCol.onSnapshot({ includeMetadataChanges: true }, function(snap){ fsDiag('snapshot: ' + snap.size + ' docs, ' + snap.docChanges().length + ' changes' + (snap.metadata && snap.metadata.fromCache ? ' (cache)' : '')); fsOnSnapshot(snap); }, function(err){
+  _fsUnsub = _fsListen(function(snap){ fsDiag('snapshot: ' + snap.size + ' docs, ' + snap.docChanges().length + ' changes' + (snap.metadata && snap.metadata.fromCache ? ' (cache)' : '')); fsOnSnapshot(snap); }, function(err){
     /* BUILD 15.71: plain-language, on-screen reason (no F12 needed) — permission-denied = email not in the published Rules */
     const denied = (err && (err.code === 'permission-denied' || /permission|insufficient/i.test(err.message||'')));
     _fsFatal = denied
@@ -8011,6 +8268,50 @@ function fsStop(){
 }
 /* ---- unified sync dispatch: Firestore (primary) → RTDB (fallback flag) ---- */
 function syncTouch(){ if(_FS) fsTouch(); else if(_FBP) fbpTouch(); }
+/* BUILD 17.32 — UNSENT changes are visible and can't be lost by closing the tab:
+   • red "Not sent" chip in the top bar while anything of ours is still on this computer only (project ops, an open row, library);
+   • closing / reloading the tab while something is unsent asks "Leave site?" (the updater's own reload is exempt). */
+function fdpUnsent(){
+  let n = 0;
+  try{ n += (OB.ops() || []).filter(o => o && !o.dead).length; }catch(_){}
+  try{ if(_rowDraft && _rowDraft.dirty) n++; }catch(_){}
+  try{ if(_FS && !_libPaused && (_libPushing || libPending())) n++; }catch(_){}   /* real local-only library items/categories (not the in-memory dirty flag) */
+  return n;
+}
+/* BUILD 17.33 — the sign appears ONLY when there is no connection AND the user puts the cursor into a field to type
+   (or already has something unsent). Connected → no sign at all. */
+function fdpConnected(){
+  try{
+    if(location.protocol === 'file:') return false;
+    if(!_FS) return true;
+    if(!fsReady()) return false;
+    if(typeof navigator !== 'undefined' && navigator.onLine === false) return false;
+    if(_fsStreamDead || _fsFromCache) return false;
+  }catch(_){}
+  return true;
+}
+function fdpConnWhy(){ try{ if(location.protocol === 'file:') return 'opened from a file, not the site'; if(_FS && !fsReady()) return 'not signed in'; }catch(_){} return 'no connection'; }
+var _fdpConnShown = false;
+function fdpConnTick(fromFocus){
+  const el = document.getElementById('topUnsent'); if(!el) return;
+  if(fdpConnected()){ _fdpConnShown = false; el.style.display = 'none'; return; }
+  if(fromFocus || _fdpConnShown || fdpUnsent()){
+    _fdpConnShown = true;
+    el.textContent = '⚠ ' + fdpConnWhy().replace(/^./, c => c.toUpperCase()) + ' — changes stay on this computer';
+    el.style.display = '';
+  }
+}
+function fdpSendNow(){
+  try{ if(_rowDraft && _rowDraft.dirty && typeof _rowDraftCommit === 'function') _rowDraftCommit(); }catch(_){}
+  try{ if(_FS && fsReady() && typeof _fsWakeRefresh === 'function') _fsWakeRefresh('manual retry'); }catch(_){}
+  try{ OB.resume(); }catch(_){}
+  try{ if(_FS && libPending()) libPublishNow(); }catch(_){}
+  try{ if(!fsReady()) flashStat('Sign in to send the changes'); }catch(_){}
+  setTimeout(function(){ fdpConnTick(false); }, 1500);
+}
+try{ setInterval(function(){ fdpConnTick(false); }, 2000); }catch(_){}
+try{ document.addEventListener('focusin', function(ev){ const t = ev.target; if(t && (t.matches && t.matches('input,textarea,select,[contenteditable="true"]'))) fdpConnTick(true); }, true); }catch(_){}
+try{ window.addEventListener('beforeunload', function(ev){ try{ if(window._fdpReloading) return; if(fdpUnsent() && !fdpConnected()){ try{ if(_rowDraft && _rowDraft.dirty) _rowDraftCommit(); }catch(_){} ev.preventDefault(); ev.returnValue = ''; return ''; } }catch(_){} }); }catch(_){}
 function syncPushNow(e){ if(_FS) return fsPushNow(e); if(_FBP) return fbpPushNow(e); }
 function syncDelete(e){ if(_FS) return fsDelete(e); if(_FBP) return fbpDelete(e); }
 function syncReady(){ return _FS ? fsReady() : (_FBP && fbReady()); }
@@ -8856,7 +9157,7 @@ const PHOTO_DIRS = [
   ['rack',   'Rack'],
   ['camera', 'Camera'],
   ['speakers', 'Speakers'],
-  ['fan', 'Screen Fan'],
+  ['fan', 'Screen Fan & AC'],
   ['cables', 'Cables'],
   ['tools', 'Tools'],
   ['safety', 'Safety Equipment'],
@@ -8918,11 +9219,42 @@ function docsSigStr(e){
   for(let i=0;i<s.length;i++){ h = ((h<<5)+h + s.charCodeAt(i)) | 0; }
   return (h>>>0).toString(36) + '.' + s.length;
 }
+/* BUILD 17.26 — photo identity + local-until-uploaded marks */
+function _phKey(p){   /* identity of a photo = its length + a fingerprint sampled across the WHOLE image (not just the tail) */
+  if(!(p && p.src)) return 'n:' + ((p && p.name) || '');
+  const s = p.src, n = s.length, step = Math.max(1, Math.floor(n / 512)); let h = 5381;
+  for(let i = 0; i < n; i += step){ h = ((h << 5) + h + s.charCodeAt(i)) | 0; }
+  for(let i = Math.max(0, n - 64); i < n; i++){ h = ((h << 5) + h + s.charCodeAt(i)) | 0; }
+  return 's' + n + ':' + (h >>> 0).toString(36);
+}
+function _phTomb(pid){ const mm = mediaMap(); const r = mm[pid] || (mm[pid] = {}); if(!r.ptomb || typeof r.ptomb !== 'object') r.ptomb = {}; return r.ptomb; }
+function _phMerge(cur, inc, tomb){
+  cur = Array.isArray(cur) ? cur : []; inc = Array.isArray(inc) ? inc : []; tomb = tomb || {};
+  const byKey = {}; cur.forEach(p => { if(p) byKey[_phKey(p)] = p; });
+  const inKeys = {}; const res = [];
+  inc.forEach(p => { if(!p) return; const k = _phKey(p); inKeys[k] = 1; if(tomb[k]) return;          /* deleted here, upload pending */
+    const l = byKey[k]; res.push(l && l._loc ? l : p); });                                          /* our unsent caption edit wins */
+  cur.forEach(p => { if(p && p._loc && !inKeys[_phKey(p)]) res.push(p); });                         /* added here, upload pending */
+  return res;
+}
+function _phAllArrays(d){ const out = []; try{
+  [['server','photos'],['backup','photos'],['vj','photos'],['rack','photos'],['rack','frontPh'],['rack','rearPh'],['camera','photos'],['speakers','photos'],['fan','photos'],['cables','photos'],['tools','photos'],['safety','photos'],['docs','sitePh'],['docs','mapPh']].forEach(([a,b]) => { const v = d[a] && d[a][b]; if(Array.isArray(v)) out.push(v); });
+  const bl = d.dome && d.dome.ballast && d.dome.ballast.photos; if(Array.isArray(bl)) out.push(bl);
+  const pp = d.shipping && d.shipping.palletPhotos; if(pp && typeof pp === 'object') Object.keys(pp).forEach(k => { if(Array.isArray(pp[k])) out.push(pp[k]); });
+}catch(_){} return out; }
+/* after a CONFIRMED upload: photos that were inside it are on Drive now (clear `_loc`); deletions that took effect drop their tombstone */
+function _phAfterUpload(e, sentKeys){ try{ const pid = fbpPid(e); _phAllArrays(e.data).forEach(arr => arr.forEach(p => { if(p && p._loc && sentKeys[_phKey(p)]) delete p._loc; }));
+  const t = _phTomb(pid); Object.keys(t).forEach(k => { if(!sentKeys[k]) delete t[k]; }); }catch(_){} }
+function _phNoteRemoved(p){ try{ if(!p || p._loc) return; const e = activeEntry(); const pid = e && fbpPid(e); if(pid) _phTomb(pid)[_phKey(p)] = Date.now(); }catch(_){} }
 /* copy all photo arrays from a downloaded project state onto the local entry data */
 function applyPhotosFrom(d, s){
   let ch = false;
-  /* BUILD 15.38 — Замок 5 (photos): an EMPTY incoming array never overwrites a NON-empty local one. */
-  const setA = (obj, key, val) => { if(!obj) return; const cur = obj[key]||[]; if(!(val||[]).length && cur.length) return; if(JSON.stringify(cur) !== JSON.stringify(val||[])){ obj[key] = val||[]; ch = true; } };
+  /* BUILD 15.38 — Замок 5 (photos): an EMPTY incoming array never overwrites a NON-empty local one.
+     BUILD 17.26 — MERGE, not replace: a photo added here and not uploaded yet (`_loc`) is kept; a photo deleted here and not
+     uploaded yet (tombstone) stays deleted; everything else follows the shared file (teammates' additions and deletions). Before,
+     a pull replaced the whole array — a new photo vanished ~30–60 s after it was added whenever its upload had not finished. */
+  const tomb = (function(){ try{ const pid = d && d.project && d.project.pid; return pid ? _phTomb(pid) : {}; }catch(_){ return {}; } })();
+  const setA = (obj, key, val) => { if(!obj) return; const cur = obj[key]||[]; if(!(val||[]).length && cur.length) return; const next = _phMerge(cur, val||[], tomb); if(JSON.stringify(cur) !== JSON.stringify(next)){ obj[key] = next; ch = true; } };
   if(s.server) setA(d.server, 'photos', s.server.photos);
   if(s.backup){ d.backup = d.backup || {rows:[],ready:false,photos:[],caseSize:'',name:'',enabled:false}; setA(d.backup, 'photos', s.backup.photos); }
   if(s.vj){ d.vj = d.vj || {rows:[],ready:false,photos:[]}; setA(d.vj, 'photos', s.vj.photos); }
@@ -8932,7 +9264,10 @@ function applyPhotosFrom(d, s){
   if(s.ballast){ ensureDome(d); setA(d.dome.ballast, 'photos', s.ballast.photos); }
   if(s.docs){ d.docs = d.docs || {}; setA(d.docs, 'sitePh', s.docs.sitePh); if('mapPh' in s.docs) setA(d.docs, 'mapPh', s.docs.mapPh); }   /* 17.21: an older media file without mapPh never clears ours */
   if(s.projectors && s.projectors.models){ d.projectors = d.projectors || {}; const inM=s.projectors.models, loM=d.projectors.models||{}; if(!(Object.keys(inM).length===0 && Object.keys(loM).length>0) && JSON.stringify(loM) !== JSON.stringify(inM)){ d.projectors.models = inM; ch = true; } }
-  if(s.shipping){ d.shipping = d.shipping || {}; const inP=s.shipping.palletPhotos||{}, loP=d.shipping.palletPhotos||{}; const hasP=o=>Object.keys(o).some(k=>Array.isArray(o[k])&&o[k].length); if(!(!hasP(inP) && hasP(loP)) && JSON.stringify(loP) !== JSON.stringify(inP)){ d.shipping.palletPhotos = inP; ch = true; } }
+  if(s.shipping){ d.shipping = d.shipping || {}; const inP=s.shipping.palletPhotos||{}, loP=d.shipping.palletPhotos||{}; const hasP=o=>Object.keys(o).some(k=>Array.isArray(o[k])&&o[k].length);
+    if(!(!hasP(inP) && hasP(loP))){ const nextP = {}; const keys = {}; Object.keys(inP).forEach(k => keys[k] = 1); Object.keys(loP).forEach(k => keys[k] = 1);
+      Object.keys(keys).forEach(k => { const m = _phMerge(loP[k] || [], inP[k] || [], tomb); if(m.length) nextP[k] = m; });   /* 17.26: pallet photos merge the same way */
+      if(JSON.stringify(loP) !== JSON.stringify(nextP)){ d.shipping.palletPhotos = nextP; ch = true; } } }
   return ch;
 }
 /* apply the DOCUMENTATION files + content list from a newer copy (BUILD 12.89) — these ride
@@ -9901,13 +10236,20 @@ function pageSpeakers(){
    Mirrors the Speaker module: hardware rows picked from the Equipment Library "Screen Fan /
    Ventilation" group (FAN_CATS), qty/price/link, per-row totals, Mark as Ready toggle,
    photos card (kind 'fan'). Rows flow into Equipment & Shipping (a "Screen Fan" group). */
-const fanListId = cat => 'dlFanCat' + Math.max(0, ciIndexOf(fanCats(), cat));
+const fanListId = cat => 'dlFanCat' + Math.max(0, ciIndexOf(fanCatsUi(), cat));
 const libFanByCat = cat => libByGroupCat('fan', cat);
 function fanTotal(){ return state.fan.rows.reduce((s,r)=> s + rowSum(r), 0); }
 function addFan(){ shipSealLegacy(); state.fan.rows.push(blankRow()); saveState(); rerenderKeepScroll(); }
 /* BUILD 16.41 — Inflatable Fan System: a SECOND table in the Fan module (rows tagged grp:'inflatable'), shown only
    while Project Setup → Inflatable = Yes; one module, one total, one Ready, ships under a sub-heading. */
 function fanIsInfl(r){ return !!(r && r.grp === 'inflatable'); }
+/* BUILD 17.31 — HVAC Builder: a third table in the Screen Fan & AC module (rows tagged grp:'hvac') for air conditioners etc.
+   Same section, same sync, same shipping (sub-heading "HVAC"), same Library group (Screen Fan / Ventilation / AC). */
+function fanIsHvac(r){ return !!(r && r.grp === 'hvac'); }
+function fanCatsUi(){ const c = fanCats(); return ciIndexOf(c, 'Air Conditioner') === -1 ? c.concat(['Air Conditioner']) : c; }
+function fanEnsureAC(){ try{ if(ciIndexOf(fanCats(), 'Air Conditioner') === -1) catsOf('fan').splice(1, 0, 'Air Conditioner'); }catch(_){} }   /* explicit user action only */
+function addFanHvac(){ shipSealLegacy(); fanEnsureAC();
+  const r = blankRow(); r.grp = 'hvac'; state.fan.rows.push(r); saveState(); rerenderKeepScroll(); }
 function projInflatable(){ return !!(state.project && state.project.inflatableCover === 'Yes'); }
 function addFanInfl(){ shipSealLegacy(); const r = blankRow(); r.grp = 'inflatable'; state.fan.rows.push(r); saveState(); rerenderKeepScroll(); }
 /* BUILD 16.57 — FAN BOXES: like the camera flight cases. A box is a transport container that ships as ONE place; rows from BOTH
@@ -9942,6 +10284,7 @@ function fanRepairBoxes(){
 }
 function rmFan(i){ state.fan.rows.splice(i,1); saveState(); rerenderKeepScroll(); }
 function setFanCat(i, v){
+  if(String(v||'').trim().toLowerCase() === 'air conditioner') fanEnsureAC();
   state.fan.rows[i].cat = v;
   if(autoFillFromCat(state.fan.rows[i], libFanByCat(v))) flashStat('Filled from Library ✓');
   saveState(); rerenderKeepScroll();
@@ -9974,6 +10317,7 @@ function addFanRowToLib(i){
   const name = (row.name||'').trim();
   if(!name || libFind(name)) return;
   let cat = (row.cat||'').trim();
+  if(cat && cat.toLowerCase() === 'air conditioner') fanEnsureAC();
   if(cat && !groupCats('fan').includes(cat)) cat = '';
   ensureLibGroup('fan').push({cat, name, price: row.price||'', link: row.link||''});
   sortLibByCat(db.library.fan, groupCats('fan'));
@@ -10010,8 +10354,8 @@ function pageFan(){
     <tr>
       <td class="tight" style="width:17%"><select class="cell ${!(r.cat||'').trim()?'empty':''}" onchange="setFanCat(${i},this.value);this.classList.toggle('empty',!this.value)">
         <option value="" ${!(r.cat||'').trim()?'selected':''}>— Category —</option>
-        ${fanCats().map(c=>`<option value="${c}" ${r.cat===c?'selected':''}>${c}</option>`).join('')}
-        ${(r.cat||'').trim() && ciIndexOf(fanCats(), r.cat)===-1 ? `<option value="${esc(r.cat)}" selected>${esc(r.cat)}</option>` : ''}
+        ${fanCatsUi().map(c=>`<option value="${c}" ${r.cat===c?'selected':''}>${c}</option>`).join('')}
+        ${(r.cat||'').trim() && ciIndexOf(fanCatsUi(), r.cat)===-1 ? `<option value="${esc(r.cat)}" selected>${esc(r.cat)}</option>` : ''}
       </select></td>
       <td class="tight"><div style="display:flex;align-items:center;gap:6px"><input class="cell b" id="fanN${i}" onfocus="dlFocus(this)" onblur="dlBlur(this)" list="${(r.cat||'').trim()?fanListId(r.cat):'dlLibAll'}" value="${esc(r.name)}" placeholder="Pick from Library or type" oninput="updFan(${i},'name',this.value)">${(inBox(r) && fanIsInfl(r)) ? '<span class="chip c-mut" style="flex:none" title="From the Inflatable Fan Builder">Inflatable</span>' : ''}</div></td>
       <td style="width:6%;text-align:center">${ordDot('fan', i, r)}</td>
@@ -10025,7 +10369,9 @@ function pageFan(){
       <td class="rm"><button title="Remove" onclick="rmFan(${i})">×</button></td>
     </tr>`;
   const infl = projInflatable();
-  const fanRows = state.fan.rows.map((r,i)=> (fanIsInfl(r) || inBox(r)) ? '' : fanRowHtml(r,i)).join('');
+  const fanRows = state.fan.rows.map((r,i)=> (fanIsInfl(r) || fanIsHvac(r) || inBox(r)) ? '' : fanRowHtml(r,i)).join('');
+  const hvacRows = state.fan.rows.map((r,i)=> (fanIsHvac(r) && !inBox(r)) ? fanRowHtml(r,i) : '').join('');
+  const hvacTotal = state.fan.rows.reduce((s,r)=> s + (fanIsHvac(r) ? rowSum(r) : 0), 0);
   const inflRows = state.fan.rows.map((r,i)=> (fanIsInfl(r) && !inBox(r)) ? fanRowHtml(r,i) : '').join('');
   const inflTotal = state.fan.rows.reduce((s,r)=> s + (fanIsInfl(r) ? rowSum(r) : 0), 0);
   const fanCols = hasBoxes ? 11 : 10;
@@ -10046,6 +10392,22 @@ function pageFan(){
       </table>
       <button class="add-line" onclick="addFanInfl()">+ Add component</button>
     </div>` : '';
+  /* BUILD 17.31 — HVAC Builder (air conditioners), always shown; same header style as the other builders */
+  const hvacCard = `
+    <div class="sec-title" id="fanHvac" style="margin-top:22px">
+      <div class="stic">${IC.fan}</div>
+      <div><h2>HVAC Builder</h2><div class="st-sub">Air conditioners and climate equipment — picked from the Equipment Library, Screen Fan / Ventilation / AC group. Ships under its own "HVAC" sub-heading, or inside a fan box.</div></div>
+      <div class="st-total"><div class="l">Components total</div><div class="v" id="stFanHvac">${fmt(hvacTotal)}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Hardware configuration</h3><span class="chip c-mut"><span class="cd"></span>${state.fan.rows.filter(r=>fanIsHvac(r) && (r.name||'').trim()).length}</span></div>
+      <table class="eq">
+        ${fanHead}
+        <tbody>${hvacRows}</tbody>
+        <tfoot><tr><td colspan="${fanCols-4}">HVAC total</td><td class="num" id="fanHvacFoot">${fmt(hvacTotal)}</td><td colspan="3"></td></tr></tfoot>
+      </table>
+      <button class="add-line" onclick="addFanHvac()">+ Add component</button>
+    </div>`;
   const boxBlocks = boxes.map((c,ci)=>{
     const rows = fanBoxRows(c.id);
     return `
@@ -10060,19 +10422,19 @@ function pageFan(){
         ${fanHead}
         <tbody>${rows.map(x=>fanRowHtml(x.r,x.i)).join('')}</tbody>
         <tfoot><tr><td colspan="${fanCols-4}">${esc(fanBoxLabel(c,ci))} total</td><td class="num">${fmt(fanBoxTotal(c.id))}</td><td colspan="3"></td></tr></tfoot>
-      </table>` : `<div style="padding:10px 14px;font-size:12.5px;opacity:.65">Empty — in a builder table below pick "${esc(fanBoxLabel(c,ci))}" in the Box column to move a row here (Screen Fan or Inflatable Fan rows).</div>`}
+      </table>` : `<div style="padding:10px 14px;font-size:12.5px;opacity:.65">Empty — in a builder table below pick "${esc(fanBoxLabel(c,ci))}" in the Box column to move a row here (Screen Fan, HVAC or Inflatable Fan rows).</div>`}
     </div>`;
   }).join('');
 
   return `
   <div class="page">
-    <div class="crumbs"><a href="#/dashboard">Dashboard</a> › <span class="cur">Screen Fan</span></div>
+    <div class="crumbs"><a href="#/dashboard">Dashboard</a> › <span class="cur">Screen Fan &amp; AC</span></div>
     <datalist id="dlLibAll">${libAllItems().map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>
-    ${fanCats().map((c,ci)=>`<datalist id="dlFanCat${ci}">${libFanByCat(c).map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>`).join('')}
+    ${fanCatsUi().map((c,ci)=>`<datalist id="dlFanCat${ci}">${libFanByCat(c).map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>`).join('')}
     <div class="pagehead">
       <div class="eyebrow">#${esc(P.number)} · ${esc(P.title)}${P.type?' · System: '+esc(P.type):''}${P.domeDiameter?' · '+esc(P.domeDiameter)+' m '+esc(P.domeType||''):''}</div>
-      <h1>Screen Fan</h1>
-      <div class="sub">Assemble and document the dome screen ventilation — fan units, controllers, ducting, mounts and power — picked from the Equipment Library.</div>
+      <h1>Screen Fan &amp; AC</h1>
+      <div class="sub">Assemble and document the dome screen ventilation and air conditioning — fan units, AC units, controllers, ducting, mounts and power — picked from the Equipment Library.</div>
     </div>
 
     <div class="kpis">
@@ -10086,12 +10448,12 @@ function pageFan(){
     <!-- ================= FAN BUILDER ================= -->
     <div class="sec-title" id="fan">
       <div class="stic">${IC.fan}</div>
-      <div><h2>Screen Fan Builder</h2><div class="st-sub">Hardware is picked from the Equipment Library — Screen Fan / Ventilation group.</div></div>
+      <div><h2>Screen Fan Builder</h2><div class="st-sub">Hardware is picked from the Equipment Library — Screen Fan / Ventilation / AC group.</div></div>
       <div class="st-total"><div class="l">Components total</div><div class="v" id="stFan">${fmt(fanTotal())}</div></div>
     </div>
     <!-- BUILD 16.57: fan boxes stack here, ABOVE the builders; rows of either builder are moved in with the "Box" column -->
     <div style="display:flex;align-items:center;gap:10px;margin:0 0 12px">
-      <button class="mod-btn" style="padding:6px 12px;font-size:12px" title="Create a fan box — then move rows into it from the Screen Fan or Inflatable Fan builder" onclick="addFanBox()">+ Add Fan Box</button>
+      <button class="mod-btn" style="padding:6px 12px;font-size:12px" title="Create a fan box — then move rows into it from the Screen Fan, HVAC or Inflatable Fan builder" onclick="addFanBox()">+ Add Fan Box</button>
       <span style="font-size:12px;opacity:.65">${hasBoxes ? `${boxes.length} box${boxes.length===1?'':'es'} · each box ships as one place` : 'Fans ship in boxes — create Fan Box 1, then move rows into it from either builder.'}</span>
     </div>
     ${boxBlocks}
@@ -10107,6 +10469,7 @@ function pageFan(){
       </table>
       <button class="add-line" onclick="addFan()">+ Add component</button>
     </div>
+    ${hvacCard}
     ${inflCard}
 
     ${photoCard('fan','Screen Fan Photos','Fan units, ducting and installation photos — up to '+PHOTO_MAX.fan+'. Shown in Documentation as "Screen Fan — #'+esc(P.number)+'".')}
@@ -14268,6 +14631,7 @@ loadState(()=>{ restoreHandles();
     function unsynced(){
       try{
         if(typeof isTypingInInput==='function' && isTypingInInput()) return true;                 // user typing
+        if(typeof _rowDraft!=='undefined' && _rowDraft && _rowDraft.dirty) return true;            // BUILD 17.24: a table row not saved yet (Enter)
         if(typeof _savePending!=='undefined' && (_savePending||_saveQueued)) return true;          // IndexedDB save in flight
         if(typeof _fsApplying!=='undefined' && _fsApplying) return true;                           // applying an incoming snapshot
         if(typeof _fsPushT!=='undefined' && _fsPushT) return true;                                 // debounced Firestore push scheduled
@@ -14289,6 +14653,10 @@ loadState(()=>{ restoreHandles();
     }
 
     var pending=null, bar=null, stuckShown=false, waitingSince=0; var STUCK_WAIT = 180000;   /* BUILD 16.69 */
+    /* BUILD 17.25: until the user touches the page nothing local can be lost (no typing, no queued change) — a newer build found
+       right after opening is applied at once instead of waiting for the app to finish connecting (that wait felt like "stays old") */
+    var userActed = false; try{ ['pointerdown','keydown','input'].forEach(function(t){ document.addEventListener(t, function(){ userActed = true; }, { capture:true, once:true }); }); }catch(_){}
+    function untouched(){ try{ if(userActed) return false; if(typeof OB!=='undefined' && OB && OB.count && OB.count()) return false; if(typeof _rowDraft!=='undefined' && _rowDraft && _rowDraft.dirty) return false; return true; }catch(_){ return false; } }
     function showWaiting(customMsg){
       if(bar && document.body.contains(bar)){ if(customMsg && bar._msg && bar._msg.textContent!==customMsg) bar._msg.textContent=customMsg; return; }
       bar=document.createElement('div'); bar.setAttribute('role','status');
@@ -14321,6 +14689,7 @@ loadState(()=>{ restoreHandles();
     function hideWaiting(){ if(bar){ try{ bar.remove(); }catch(_){ } bar=null; try{ document.body.style.paddingTop=''; }catch(_){ } } }
 
     function reloadTo(nv){
+      try{ window._fdpReloading = true; }catch(_){}
       try{ sessionStorage.setItem('fdp_upd_target', nv); sessionStorage.setItem('fdp_upd_retry','0'); }catch(_){}
       location.replace(location.pathname + '?u=' + Date.now() + (location.hash || '#/dashboard'));   // keep pid + module (hash)
     }
@@ -14340,6 +14709,7 @@ loadState(()=>{ restoreHandles();
         try{ sessionStorage.removeItem('fdp_upd_gaveup'); }catch(_){}
         hideWaiting(); reloadTo(pending); return;
       }
+      if(unsynced() && untouched()){ hideWaiting(); reloadTo(pending); return; }   /* BUILD 17.25 */
       if(unsynced()){
         /* BUILD 16.69: a tab that stays "unsynced" for minutes is stuck (a push that never confirms, a listener that never
            reports ready…) — it would never update and would keep writing with the old build. After 3 minutes of continuous
