@@ -861,7 +861,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.33 · "No connection" sign only when offline</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.34 · Opens with server version, no banner</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -7316,7 +7316,7 @@ function _fsShowStat(extra){ var a=[];
   else if(_fsStatMode==='updated') a.push('Updated — all changes synced');
   else if(_fsLastSent) a.push('Saved to server · '+hhmmss(_fsLastSent));
   if(_fsLastRecv) a.push('Recv ↓ '+hhmmss(_fsLastRecv));
-  const st=_fsStashCount(); if(st) a.push('⚠ Pending local changes ('+st+') — Review & Sync');
+  /* BUILD 17.34: no 'Pending local changes' notice — on open the server version is taken; real edits travel in the outbox */
   const cf=_fsConflictCount(); if(cf) a.push('⚠ '+cf+' field conflict'+(cf===1?'':'s'));
   try{ const dj = AD.pendingLabel(); if(dj) a.push(dj); }catch(_){}   /* BUILD 16.62 */
   try{ if(libPending()){ const n = libLocalOnly().length; a.push('⚠ Library: local changes not published' + (n ? ' (' + n + ' item' + (n===1?'':'s') + ')' : '') + ' — Equipment Library → Publish'); } }catch(_){}   /* BUILD 17.02 */
@@ -7667,7 +7667,7 @@ function fsApplyDoc(data){
     const rec = _fsLocal[pid] || (_fsLocal[pid] = { _seen:true, _done:e.done?1:0, _msig:data.msig||'' });
     const sl = fsSlice(e.data); let ch0 = false, stashed = [];
     const obSecs = OB.sectionsOf(pid);                                        /* sections the user's recorded ops already cover → the op sends them, nothing to stash */
-    const stash = function(s, B){ if(obSecs.indexOf(s) >= 0) return; try{ const bv = (db._fsBaseVal && db._fsBaseVal[pid] && B !== undefined) ? db._fsBaseVal[pid][s] : null; _fsStashOf(pid)[s] = { val: JSON.parse(JSON.stringify(sl[s] || {})), base: (bv === undefined ? null : bv), at: Date.now(), from: 'local' }; stashed.push(s); }catch(_){} };
+    const stash = function(s, B){ if(obSecs.indexOf(s) >= 0) return; if(s === 'ext') return;   /* BUILD 17.34: 'ext' is a derived shadow of other sections — never a local edit */ try{ const bv = (db._fsBaseVal && db._fsBaseVal[pid] && B !== undefined) ? db._fsBaseVal[pid][s] : null; _fsStashOf(pid)[s] = { val: JSON.parse(JSON.stringify(sl[s] || {})), base: (bv === undefined ? null : bv), at: Date.now(), from: 'local' }; stashed.push(s); }catch(_){} };
     FS_SECTIONS.forEach(function(s){
       const rrev = revs[s] || 0;
       if(data[s] === undefined){                                               /* server has no such section (older doc, or an old client's whole-document set) */
@@ -8020,6 +8020,9 @@ function fsOnSnapshot(snap){
 function _fsStashBanner(){
   try{
     const old = document.getElementById('fsStashBar'); if(old) old.remove();
+    /* BUILD 17.34 (user): no banner — on open the SERVER version is taken. Every edit the user makes is recorded in the durable
+       outbox and sent; what differs here without an op (old builds, derived sections) is kept silently in db._fsStash only. */
+    return;
     const n = _fsStashCount(); if(!n) return;
     const items = []; Object.keys(db._fsStash||{}).forEach(function(pid){ Object.keys(db._fsStash[pid]||{}).forEach(function(s){ items.push({pid, s}); }); });
     const bar = document.createElement('div'); bar.id = 'fsStashBar';
