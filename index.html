@@ -868,7 +868,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.36 · No connection 5 s → read-only + red bar</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.37 · Changes go out at once; close asks if not sent yet</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -7620,7 +7620,7 @@ function fsTouch(){
   try{ const e = activeEntry(); if(e && e.data && e.data.project && !(SE_ON && SE.enabled(fbpPid(e)))) OB.capture(e); (db.projects||[]).forEach(function(x){ if(x && x !== e && x._localNew && !x._fbSeen && x.data && x.data.project) OB.capture(x); }); }catch(_){}   /* BUILD 17.00: record the op NOW (offline too); a just-created project gets its 'create' op */
   if(!fsReady()) return;
   clearTimeout(_fsPushT);
-  _fsPushT = setTimeout(function(){ _fsPushT = null; fsPushNow().catch(function(){}); }, 1000);
+  _fsPushT = setTimeout(function(){ _fsPushT = null; fsPushNow().catch(function(){}); }, (typeof isTypingInInput === 'function' && isTypingInInput()) ? 1000 : 150);   /* BUILD 17.37: a click (delete / add / tick) goes out at once; typing in a field still coalesces for 1 s (quota) */
 }
 /* apply one section value onto local data (reuse liveApply's per-section logic).
    For projectors, the incoming Web-settings files carry only metadata (data lives on Drive) —
@@ -8414,7 +8414,10 @@ try{ setInterval(fdpRoTick, 1000); window.addEventListener('offline', fdpRoTick)
     window.addEventListener('dragover', function(ev){ if(_fdpRO){ ev.preventDefault(); if(ev.dataTransfer) ev.dataTransfer.dropEffect = 'none'; } }, true);
   }catch(_){}
 })();
-try{ window.addEventListener('beforeunload', function(ev){ try{ if(window._fdpReloading) return; if(fdpUnsent() && !fdpConnected()){ try{ if(_rowDraft && _rowDraft.dirty) _rowDraftCommit(); }catch(_){} ev.preventDefault(); ev.returnValue = ''; return ''; } }catch(_){} }); }catch(_){}
+/* BUILD 17.37: leaving the page with something not yet on the server → send it NOW (best effort) */
+function fdpFlushNow(){ try{ if(_rowDraft && _rowDraft.dirty) _rowDraftCommit(); }catch(_){} try{ clearTimeout(_fsPushT); _fsPushT = null; }catch(_){} try{ if(fsReady() && OB.count()) OB.drainNow().catch(function(){}); }catch(_){} }
+try{ document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'hidden') fdpFlushNow(); }); window.addEventListener('pagehide', fdpFlushNow); }catch(_){}
+try{ window.addEventListener('beforeunload', function(ev){ try{ if(window._fdpReloading) return; if(fdpUnsent()){ fdpFlushNow(); try{ if(_rowDraft && _rowDraft.dirty) _rowDraftCommit(); }catch(_){} ev.preventDefault(); ev.returnValue = ''; return ''; } }catch(_){} }); }catch(_){}
 function syncPushNow(e){ if(_FS) return fsPushNow(e); if(_FBP) return fbpPushNow(e); }
 function syncDelete(e){ if(_FS) return fsDelete(e); if(_FBP) return fbpDelete(e); }
 function syncReady(){ return _FS ? fsReady() : (_FBP && fbReady()); }
