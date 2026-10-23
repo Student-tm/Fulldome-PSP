@@ -861,11 +861,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-<<<<<<< HEAD
     <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.33 · "No connection" sign only when offline</div>
-=======
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.31 · Screen Fan &amp; AC: HVAC table</div>
->>>>>>> f6a757887540091a02b57676ea3cb961cb19c0ed
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -8155,10 +8151,7 @@ function _fsConflictUseMine(pid, s, i){
    progress". Now: (1) a stream error re-attaches the listener by itself (5 s → 15 s → 1 min → 2 min → 5 min); (2) when the tab comes
    back after ≥ 3 min, the network returns, or the computer wakes from sleep, the projects are re-read from the server and applied
    exactly like a snapshot (reads only — applying never writes). */
-<<<<<<< HEAD
 var _fsFromCache = false;
-=======
->>>>>>> f6a757887540091a02b57676ea3cb961cb19c0ed
 var _fsHandlers = null, _fsLastSnapAt = 0, _fsStreamDead = false, _fsReattachTries = 0, _fsReattachT = null, _fsHiddenAt = 0, _fsWakeBusy = false;
 function _fsIsDenied(err){ return !!(err && (err.code === 'permission-denied' || /permission|insufficient/i.test(err.message || ''))); }
 function _fsListen(onSnap, onErr){
@@ -8167,10 +8160,7 @@ function _fsListen(onSnap, onErr){
   _fsStreamDead = false;
   _fsUnsub = _fsCol.onSnapshot({ includeMetadataChanges: true }, function(snap){
     _fsLastSnapAt = Date.now(); _fsReattachTries = 0;
-<<<<<<< HEAD
     try{ _fsFromCache = !!(snap && snap.metadata && snap.metadata.fromCache); }catch(_){}   /* BUILD 17.33: offline indicator */
-=======
->>>>>>> f6a757887540091a02b57676ea3cb961cb19c0ed
     if(_fsFatal && /stream error/i.test(_fsFatal)){ _fsFatal = ''; try{ _fsShowStat(); }catch(_){} }
     onSnap(snap);
   }, function(err){
