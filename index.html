@@ -568,6 +568,13 @@
   table.eq select.cell.empty{color:#9aa2ad}
 tr.lib-moved>td{animation:libMoved 1.2s ease-out}@keyframes libMoved{0%{background:#ffe7a3}100%{background:transparent}}   /* BUILD 17.23: the row just landed in its category */
 tr.row-draft>td{background:#fffbe8 !important}   /* BUILD 17.22: row being edited, not saved yet (Enter / leave the row) */
+  /* BUILD 17.36: read-only while there is no connection */
+  body.fdp-ro #content input, body.fdp-ro #content select, body.fdp-ro #content textarea{background:#f1f2f4 !important;color:#6b7480 !important;cursor:not-allowed !important}
+  body.fdp-ro .add-line, body.fdp-ro .ready-btn, body.fdp-ro .phadd, body.fdp-ro .top-actions .top-btn, body.fdp-ro #content button.mod-btn.primary{opacity:.45 !important;cursor:not-allowed !important}
+  /* BUILD 17.35: typing while there is NO connection to the server → the row / field turns red */
+  tr.fdp-off>td, tr.row-draft.fdp-off>td{background:#fde4e2 !important;border-top:1px solid #d93025 !important;border-bottom:1px solid #d93025 !important}
+  tr.fdp-off>td:first-child, tr.row-draft.fdp-off>td:first-child{box-shadow:inset 3px 0 0 #d93025 !important}
+  .fdp-off-in{outline:2px solid #d93025 !important;outline-offset:-1px;background:#fde4e2 !important}
 tr.row-draft>td:first-child{box-shadow:inset 3px 0 0 #e0a800}
 .cell.libdup{border-color:var(--fdp-red) !important;box-shadow:0 0 0 2px rgba(211,47,47,.12);background:#fff6f6}   /* BUILD 17.09: duplicate library name */
 
@@ -861,7 +868,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.34 · Opens with server version, no banner</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.36 · No connection 5 s → read-only + red bar</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -8290,14 +8297,22 @@ function fdpConnected(){
     if(!fsReady()) return false;
     if(typeof navigator !== 'undefined' && navigator.onLine === false) return false;
     if(_fsStreamDead || _fsFromCache) return false;
+    if(!_fsServerSeen) return false;
   }catch(_){}
   return true;
 }
 function fdpConnWhy(){ try{ if(location.protocol === 'file:') return 'opened from a file, not the site'; if(_FS && !fsReady()) return 'not signed in'; }catch(_){} return 'no connection'; }
 var _fdpConnShown = false;
+/* the row (or the single field outside a table) the user is typing into while disconnected */
+function fdpMarkOffline(t){
+  try{ if(!t || !t.matches || !t.matches('input,textarea,select,[contenteditable="true"]')) return;
+    const tr = t.closest('tr'); if(tr) tr.classList.add('fdp-off'); else t.classList.add('fdp-off-in'); }catch(_){}
+}
+function fdpClearOffline(){ try{ document.querySelectorAll('.fdp-off').forEach(x => x.classList.remove('fdp-off')); document.querySelectorAll('.fdp-off-in').forEach(x => x.classList.remove('fdp-off-in')); }catch(_){} }
 function fdpConnTick(fromFocus){
   const el = document.getElementById('topUnsent'); if(!el) return;
-  if(fdpConnected()){ _fdpConnShown = false; el.style.display = 'none'; return; }
+  if(fdpConnected()){ _fdpConnShown = false; el.style.display = 'none'; fdpClearOffline(); return; }
+  try{ const a = document.activeElement; if(a && a !== document.body && (fromFocus || _fdpConnShown)) fdpMarkOffline(a); if(_rowDraft && _rowDraft.dirty && _rowDraft.tr) _rowDraft.tr.classList.add('fdp-off'); }catch(_){}
   if(fromFocus || _fdpConnShown || fdpUnsent()){
     _fdpConnShown = true;
     el.textContent = '⚠ ' + fdpConnWhy().replace(/^./, c => c.toUpperCase()) + ' — changes stay on this computer';
@@ -8310,10 +8325,95 @@ function fdpSendNow(){
   try{ OB.resume(); }catch(_){}
   try{ if(_FS && libPending()) libPublishNow(); }catch(_){}
   try{ if(!fsReady()) flashStat('Sign in to send the changes'); }catch(_){}
-  setTimeout(function(){ fdpConnTick(false); }, 1500);
+  setTimeout(fdpRoTick, 1500);
 }
-try{ setInterval(function(){ fdpConnTick(false); }, 2000); }catch(_){}
-try{ document.addEventListener('focusin', function(ev){ const t = ev.target; if(t && (t.matches && t.matches('input,textarea,select,[contenteditable="true"]'))) fdpConnTick(true); }, true); }catch(_){}
+/* ============================================================================================================
+   BUILD 17.36 — NO CONNECTION = READ-ONLY (user's rule). The app works only while it is connected to the server.
+   5 s without a connection → red bar on top + everything becomes read-only: no typing, no adding rows, no buttons
+   that change anything, no Completed/restore. Navigation, links, photo viewing, PDF / file downloads keep working.
+   Whatever was typed BEFORE the drop is committed to the outbox and sent automatically when the connection is back.
+   ============================================================================================================ */
+var _fdpRO = false, _fdpOffSince = 0;
+const FDP_RO_OK = { setActive:1, goTo:1, closeLightbox:1, toggleSide:1, toggleShipGroup:1, toggleShipAllGroups:1, toggleLibGroup:1,
+  projSecToggle:1, domeSetTab:1, domeOpenCard:1, domeBackToList:1, domeKitOpen:1, domeKitBack:1, domeApplySearch:1, domeClearSearch:1,
+  domeTrussFileDownload:1, domeSchemFileDownload:1, projWebDownload:1, viewProjModelPhoto:1, genShipPDF:1, saveToFile:1, copyRowLink:1,
+  openRowLink:1, copyProjectLink:1, constructToggle:1, constructPartsToggle:1, flashStat:1, ttBackdrop:1, cloudOpenFolder:1,
+  driveOpenProject:1, adminGo:1, adminPick:1, cloudStart:1, cloudSyncNow:1, fdpSendNow:1, openPreProject:1, openProjectorWeb:1,
+  stopPropagation:1, preventDefault:1 };
+function fdpRoAllowedCall(code){
+  const names = []; String(code||'').replace(/([A-Za-z_$][\w$]*)\s*\(/g, function(_, n){ names.push(n); return _; });
+  if(!names.length) return false;
+  return names.every(n => FDP_RO_OK[n] || /^(openLightbox\w*|download\w*|close\w*)$/.test(n));
+}
+function fdpRoBar(on){
+  let bar = document.getElementById('fdpRoBar');
+  if(!on){ if(bar){ bar.remove(); try{ document.body.style.paddingTop = ''; }catch(_){} } return; }
+  const why = fdpConnWhy();
+  const txt = '⚠ NO CONNECTION TO THE SERVER — READ-ONLY. Editing is off until the connection is back' + (why === 'no connection' ? '.' : ' (' + why + ').');
+  if(!bar){
+    bar = document.createElement('div'); bar.id = 'fdpRoBar';
+    bar.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:2147483646;background:#c5221f;color:#fff;font:700 14px -apple-system,Segoe UI,Roboto,Arial,sans-serif;padding:10px 16px;display:flex;align-items:center;gap:14px;box-shadow:0 2px 10px rgba(0,0,0,.35)';
+    const m = document.createElement('span'); m.id = 'fdpRoMsg'; m.style.flex = '1'; bar.appendChild(m);
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = 'Retry'; b.setAttribute('onclick', 'fdpSendNow()');
+    b.style.cssText = 'flex:none;border:0;border-radius:6px;padding:6px 14px;background:#fff;color:#c5221f;font:700 13px -apple-system,Segoe UI,Roboto,Arial,sans-serif;cursor:pointer';
+    bar.appendChild(b); document.body.appendChild(bar); try{ document.body.style.paddingTop = '44px'; }catch(_){}
+  }
+  const m = document.getElementById('fdpRoMsg'); if(m && m.textContent !== txt) m.textContent = txt;
+}
+function fdpSetRO(on){
+  if(_fdpRO === on){ if(on) fdpRoBar(true); return; }
+  _fdpRO = on;
+  try{ document.body.classList.toggle('fdp-ro', on); }catch(_){}
+  if(on){
+    try{ const a = document.activeElement; if(a && a !== document.body && a.blur) a.blur(); }catch(_){}   /* what was typed before the drop → committed to the outbox, sent later */
+    try{ fsDiag('read-only: no connection'); }catch(_){}
+  } else {
+    try{ fsDiag('connection back — editing on'); }catch(_){}
+    try{ OB.tick(); }catch(_){}
+    try{ if(_FS && libPending()){ _libDirty = true; clearTimeout(_fsLibT); _fsLibT = setTimeout(fsPushLibrary, 500); } }catch(_){}
+  }
+  fdpRoBar(on);
+}
+function fdpRoTick(){
+  let off = false; try{ off = !fdpConnected(); }catch(_){}
+  if(!off){ _fdpOffSince = 0; if(_fdpRO) fdpSetRO(false); return; }
+  const now = Date.now(); if(!_fdpOffSince) _fdpOffSince = now;
+  if(now - _fdpOffSince >= 5000) fdpSetRO(true);
+}
+try{ setInterval(fdpRoTick, 1000); window.addEventListener('offline', fdpRoTick); window.addEventListener('online', fdpRoTick); }catch(_){}
+/* the gate: capture-phase listeners stop every changing interaction before any inline handler runs */
+(function(){
+  const isText = t => !!(t && t.matches && (t.matches('textarea,[contenteditable="true"]') || (t.matches('input') && !/^(checkbox|radio|file|button|submit|reset|range|color|image)$/i.test(t.type||''))));
+  const isCtl = t => !!(t && t.matches && t.matches('input,select,textarea,button,label,[contenteditable="true"]'));
+  const stop = ev => { ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); };
+  const nag = () => { try{ flashStat('Read-only — no connection to the server'); }catch(_){} };
+  function onPointer(ev){
+    if(!_fdpRO) return;
+    const t = ev.target; if(!t || !t.closest) return;
+    if(t.closest('#fdpRoBar')){ return; }
+    if(isText(t)) return;                                   /* focusing / selecting text to copy is fine — changes are blocked below */
+    const oc = t.closest('[onclick]');
+    if(oc){ if(fdpRoAllowedCall(oc.getAttribute('onclick'))) return; stop(ev); if(ev.type === 'click') nag(); return; }
+    const a = t.closest('a[href]'); if(a) return;           /* links / navigation */
+    if(isCtl(t) || t.closest('button,select,label')){ stop(ev); if(ev.type === 'click') nag(); return; }
+  }
+  function onKey(ev){
+    if(!_fdpRO) return;
+    const t = ev.target; if(!t || !isCtl(t) || (t.closest && t.closest('#fdpRoBar'))) return;
+    const k = ev.key || '', mod = ev.ctrlKey || ev.metaKey;
+    if(k === 'Tab' || k === 'Escape' || k === 'Shift' || k === 'Control' || k === 'Meta' || k === 'Alt') return;
+    if(mod && /^[acf]$/i.test(k)) return;                   /* copy / select all / find */
+    if(isText(t) && /^(ArrowLeft|ArrowRight|ArrowUp|ArrowDown|Home|End|PageUp|PageDown)$/.test(k)) return;
+    stop(ev); nag();
+  }
+  function onEdit(ev){ if(!_fdpRO) return; const t = ev.target; if(t && t.closest && t.closest('#fdpRoBar')) return; stop(ev); }
+  try{
+    ['mousedown','click','dblclick','auxclick'].forEach(n => window.addEventListener(n, onPointer, true));
+    window.addEventListener('keydown', onKey, true);
+    ['beforeinput','paste','cut','drop','dragstart'].forEach(n => window.addEventListener(n, onEdit, true));
+    window.addEventListener('dragover', function(ev){ if(_fdpRO){ ev.preventDefault(); if(ev.dataTransfer) ev.dataTransfer.dropEffect = 'none'; } }, true);
+  }catch(_){}
+})();
 try{ window.addEventListener('beforeunload', function(ev){ try{ if(window._fdpReloading) return; if(fdpUnsent() && !fdpConnected()){ try{ if(_rowDraft && _rowDraft.dirty) _rowDraftCommit(); }catch(_){} ev.preventDefault(); ev.returnValue = ''; return ''; } }catch(_){} }); }catch(_){}
 function syncPushNow(e){ if(_FS) return fsPushNow(e); if(_FBP) return fbpPushNow(e); }
 function syncDelete(e){ if(_FS) return fsDelete(e); if(_FBP) return fbpDelete(e); }
