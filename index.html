@@ -568,11 +568,14 @@
   table.eq select.cell.empty{color:#9aa2ad}
 tr.lib-moved>td{animation:libMoved 1.2s ease-out}@keyframes libMoved{0%{background:#ffe7a3}100%{background:transparent}}   /* BUILD 17.23: the row just landed in its category */
 tr.row-draft>td{background:#fffbe8 !important}   /* BUILD 17.22: row being edited, not saved yet (Enter / leave the row) */
+<<<<<<< HEAD
   /* BUILD 17.38: M/D/YYYY date fields */
   .dfld{position:relative}
   .dfld-h{position:absolute;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none;border:0;padding:0}
   .dfld-b{flex:none;border:1px solid var(--line);background:#fff;border-radius:6px;padding:4px 6px;font-size:13px;line-height:1;cursor:pointer}
   .dfld-b:hover{border-color:var(--fdp-red)}
+=======
+>>>>>>> 8d69ceed07f8aba7b22265eef361281e2181e9bd
   /* BUILD 17.36: read-only while there is no connection */
   body.fdp-ro #content input, body.fdp-ro #content select, body.fdp-ro #content textarea{background:#f1f2f4 !important;color:#6b7480 !important;cursor:not-allowed !important}
   body.fdp-ro .add-line, body.fdp-ro .ready-btn, body.fdp-ro .phadd, body.fdp-ro .top-actions .top-btn, body.fdp-ro #content button.mod-btn.primary{opacity:.45 !important;cursor:not-allowed !important}
@@ -873,7 +876,11 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
+<<<<<<< HEAD
     <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.38 · Dates as M/D/YYYY everywhere</div>
+=======
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.37 · Changes go out at once; close asks if not sent yet</div>
+>>>>>>> 8d69ceed07f8aba7b22265eef361281e2181e9bd
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
