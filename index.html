@@ -568,6 +568,18 @@
   table.eq select.cell.empty{color:#9aa2ad}
 tr.lib-moved>td{animation:libMoved 1.2s ease-out}@keyframes libMoved{0%{background:#ffe7a3}100%{background:transparent}}   /* BUILD 17.23: the row just landed in its category */
 tr.row-draft>td{background:#fffbe8 !important}   /* BUILD 17.22: row being edited, not saved yet (Enter / leave the row) */
+  /* BUILD 17.38: M/D/YYYY date fields */
+  .dfld{position:relative}
+  .dfld-h{position:absolute;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none;border:0;padding:0}
+  .dfld-b{flex:none;border:1px solid var(--line);background:#fff;border-radius:6px;padding:4px 6px;font-size:13px;line-height:1;cursor:pointer}
+  .dfld-b:hover{border-color:var(--fdp-red)}
+  /* BUILD 17.36: read-only while there is no connection */
+  body.fdp-ro #content input, body.fdp-ro #content select, body.fdp-ro #content textarea{background:#f1f2f4 !important;color:#6b7480 !important;cursor:not-allowed !important}
+  body.fdp-ro .add-line, body.fdp-ro .ready-btn, body.fdp-ro .phadd, body.fdp-ro .top-actions .top-btn, body.fdp-ro #content button.mod-btn.primary{opacity:.45 !important;cursor:not-allowed !important}
+  /* BUILD 17.35: typing while there is NO connection to the server → the row / field turns red */
+  tr.fdp-off>td, tr.row-draft.fdp-off>td{background:#fde4e2 !important;border-top:1px solid #d93025 !important;border-bottom:1px solid #d93025 !important}
+  tr.fdp-off>td:first-child, tr.row-draft.fdp-off>td:first-child{box-shadow:inset 3px 0 0 #d93025 !important}
+  .fdp-off-in{outline:2px solid #d93025 !important;outline-offset:-1px;background:#fde4e2 !important}
 tr.row-draft>td:first-child{box-shadow:inset 3px 0 0 #e0a800}
 .cell.libdup{border-color:var(--fdp-red) !important;box-shadow:0 0 0 2px rgba(211,47,47,.12);background:#fff6f6}   /* BUILD 17.09: duplicate library name */
 
@@ -827,6 +839,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
     <button class="top-btn" onclick="openTT()" title="Create a Technical Task"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M9.5 13h5M9.5 17h5"/></svg>Technical Task</button>
     <button class="top-btn" onclick="location.hash='#/create'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New Project</button>
     <button class="top-btn" onclick="projNewPreMode()" title="Create a pre-project" style="border-color:#69A7FF;color:#9cc4ff"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>New Pre-Project</button>
+    <span class="build-chip" id="topUnsent" style="display:none;background:#b3261e;border-color:#e0574f;color:#fff;cursor:pointer" title="No connection to the server — what you type stays on this computer until the connection is back. Click to retry." onclick="fdpSendNow()"></span>
     <span class="build-chip" id="topBuild" title="App build — every machine must be on the SAME build (mixed builds can corrupt sync)">b—</span>
     <div class="online-users" id="onlineUsers" title="Online now"></div>
     <button class="icon-btn" onclick="openMediaVault()" title="Drive media files (code protected)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 018 0v3.5"/><circle cx="12" cy="15.5" r="1.4" fill="currentColor" stroke="none"/></svg></button>
@@ -860,7 +873,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.31 · Screen Fan &amp; AC: HVAC table</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.38 · Dates as M/D/YYYY everywhere</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1505,6 +1518,46 @@ const fmt = n => (n==null || isNaN(n)) ? '—' : '$' + Number(n).toLocaleString(
 const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 /* BUILD 15.85 — value for a <input type="date">: only YYYY-MM-DD is valid, anything else → '' (empty picker). */
 function dateInputVal(v){ v=String(v==null?'':v).trim(); return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : ''; }
+/* BUILD 17.38 — ONE date format everywhere, like Windows (US): month/day/year, e.g. 11/2/2026 — on every computer and
+   browser, whatever the Mac/Windows region is. Stored values stay YYYY-MM-DD (sorting, sync); only the display changes. */
+function fmtUS(v, noYear){
+  if(v === null || v === undefined || v === '') return '';
+  let y, m, d;
+  const sv = String(v).trim(); const iso = sv.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(iso){ y = +iso[1]; m = +iso[2]; d = +iso[3]; }
+  else { const t = (typeof v === 'number' || v instanceof Date) ? new Date(v) : (/^\d{4}-\d{2}-\d{2}T/.test(sv) ? new Date(sv) : null);
+    if(!t || isNaN(t.getTime())) return sv; y = t.getFullYear(); m = t.getMonth() + 1; d = t.getDate(); }
+  return m + '/' + d + (noYear ? '' : '/' + y);
+}
+function fmtUSTime(t){ const x = new Date(t || Date.now()); return fmtUS(x) + ' ' + x.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }); }
+/* typed text → YYYY-MM-DD. Accepts M/D/YYYY (also . or - as separator, 2-digit year), YYYY-MM-DD, "Nov 7, 2026". */
+function isoFromUS(v){
+  const s = String(v == null ? '' : v).trim(); if(!s) return '';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const p2 = n => ('0' + n).slice(-2);
+  const m = s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2}|\d{4})$/);
+  if(m){ let mo = +m[1], d = +m[2], y = +m[3]; if(y < 100) y += 2000;
+    const t = new Date(y, mo - 1, d); if(t.getFullYear() === y && t.getMonth() === mo - 1 && t.getDate() === d) return y + '-' + p2(mo) + '-' + p2(d); return s; }
+  const t = Date.parse(s); if(isFinite(t) && /[a-z]/i.test(s)){ const x = new Date(t); return x.getFullYear() + '-' + p2(x.getMonth() + 1) + '-' + p2(x.getDate()); }
+  return s;
+}
+/* a date field that always SHOWS M/D/YYYY: a text box + a calendar button that opens the browser's own picker */
+function dateFld(id, iso, opts){
+  opts = opts || {}; iso = dateInputVal(iso);
+  return '<span class="dfld" style="display:inline-flex;align-items:center;gap:4px;' + (opts.wrapStyle || '') + '">'
+    + '<input type="text" ' + (id ? 'id="' + id + '" ' : '') + 'class="' + (opts.cls || '') + '" data-dfld="1" autocomplete="off" placeholder="MM/DD/YYYY" value="' + esc(fmtUS(iso)) + '" style="' + (opts.style || 'max-width:150px') + '"'
+    + ' onchange="dfldNorm(this)' + (opts.onchange ? ';' + opts.onchange : '') + '">'
+    + '<button type="button" class="dfld-b" title="Pick a date" onclick="dfldPick(this)">📅</button>'
+    + '<input type="date" class="dfld-h" tabindex="-1" aria-hidden="true" value="' + esc(iso) + '" onchange="dfldFromPicker(this)"></span>';
+}
+function dfldNorm(t){ const iso = isoFromUS(t.value); if(/^\d{4}-\d{2}-\d{2}$/.test(iso)){ t.value = fmtUS(iso); const h = t.parentNode && t.parentNode.querySelector('.dfld-h'); if(h) h.value = iso; } }
+function dfldPick(b){ const h = b.parentNode && b.parentNode.querySelector('.dfld-h'); const t = b.parentNode && b.parentNode.querySelector('input[data-dfld]'); if(!h) return;
+  try{ h.value = dateInputVal(isoFromUS(t ? t.value : '')); }catch(_){}
+  try{ if(h.showPicker){ h.showPicker(); return; } }catch(_){}
+  try{ h.focus(); h.click(); }catch(_){} }
+function dfldFromPicker(h){ const t = h.parentNode && h.parentNode.querySelector('input[data-dfld]'); if(!t) return; t.value = fmtUS(h.value); try{ t.dispatchEvent(new Event('change', { bubbles:true })); }catch(_){} }
+/* reads a date field's value as YYYY-MM-DD (text → ISO) */
+function dateFldVal(id){ const el = document.getElementById(id); return el ? isoFromUS(el.value) : ''; }
 /* Sort key for an event date (YYYY-MM-DD). Missing/invalid → +Infinity so those projects sink to the bottom. */
 function eventDateKey(P){ const v=(P&&P.ttDate)?String(P.ttDate).trim():''; if(!/^\d{4}-\d{2}-\d{2}$/.test(v)) return Infinity; const t=Date.parse(v+'T00:00:00'); return isFinite(t)?t:Infinity; }
 
@@ -2589,7 +2642,7 @@ function renderSideProject(){
     return [0, id];                                              /* no shipping date yet → by Installation Day; none at all (Infinity) → end of the block */
   };
   /* BUILD 17.05: the card cell that explains the order — exactly the date orderKey() used */
-  const _fmtD = ts => { const d = new Date(ts); return d.getTime()===_today0 ? 'Today' : d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); };
+  const _fmtD = ts => { const d = new Date(ts); return d.getTime()===_today0 ? 'Today' : fmtUS(d, d.getFullYear()===new Date().getFullYear()); };   /* BUILD 17.38: M/D (this year) or M/D/YYYY */
   const dateCell = e => {
     const d = e && e.data, k = orderKey(e);
     const sd = _dk(d && d.shipping && d.shipping.date), id = eventDateKey(d && d.project);
@@ -2946,7 +2999,7 @@ function ttApply(f){
   put('fCity',        f.city,          'city');
   put('fAddress',     f.address,       'address');
   put('fDomeCode',  f.domeCode,       'dome code');
-  put('fDate',      f.ttDate,         'date');
+  put('fDate',      f.ttDate ? fmtUS(isoFromUS(f.ttDate)) : '', 'date');
   put('fDome',      f.domeDiameter,   'dome '+f.domeDiameter+' m');
   put('fProjModel', f.projectorModel, 'projector');
   put('fAudio',     f.audioSystem,    'audio');
@@ -3043,9 +3096,9 @@ function projectForm(P){
         ${PIrow('Project Number', `<input id="fNumber" autocomplete="off" style="max-width:240px" value="${esc(P.number||'')}">`)}
         ${PIrow('System Number', `<div class="pfx" style="max-width:300px"><span class="pfx-l">FDPSN#</span><input id="fSysNumber" autocomplete="off" value="${esc(P.sysNumber||'')}"></div>`)}
         ${PIrow('TT Number', `<input id="fTtNumber" autocomplete="off" style="max-width:240px" value="${esc(P.ttNumber||'')}">`)}
-        ${PIrow('Installation Day', `<input id="fDate" type="date" autocomplete="off" style="max-width:190px" value="${esc(dateInputVal(P.ttDate))}">`)}
-        ${PIrow('Client walk-through time', `<input id="fWalkthrough" type="date" autocomplete="off" style="max-width:190px" value="${esc(dateInputVal(P.walkThrough))}">`)}
-        ${PIrow('Event break-down time', `<input id="fBreakdown" type="date" autocomplete="off" style="max-width:190px" value="${esc(dateInputVal(P.breakDown))}">`)}
+        ${PIrow('Installation Day', dateFld('fDate', P.ttDate))}
+        ${PIrow('Client walk-through time', dateFld('fWalkthrough', P.walkThrough))}
+        ${PIrow('Event break-down time', dateFld('fBreakdown', P.breakDown))}
       </div>
 
       <div class="fgrid">
@@ -3324,7 +3377,7 @@ function preCanPromote(){ return canChangeStatus(); }   /* BUILD 15.67: promote 
 var PROJ_ID2KEY = { pj_dealType:'dealType', pj_client:'client', pj_contactName:'contactName', pj_phone:'phone', pj_email:'email', pj_totalAmount:'totalAmount', pj_currency:'currency', pj_closeDate:'closeDate', pj_salesOffice:'salesOffice', pj_terms:'termsOfPayment', pj_pm:'projectManager', pj_location:'location', pj_address:'installAddress', pj_install:'installDateTime', pj_breakdown:'breakdownDateTime', pj_shipBudget:'shippingBudget', pj_travelBudget:'travelBudget', pj_labourQty:'localLabourQty', pj_labourBy:'localLabourBy', pj_projName:'title', pj_domeSize:'domeDiameter', pj_domeType:'domeType', pj_conditions:'indoorOutdoor', pj_ballast:'domeBallast', pj_outerCover:'outerCover', pj_coverNote:'coverColorNote', pj_screenType:'screenType', pj_inflatable:'inflatableCover', pj_type:'type', pj_resolution:'resolution', pj_projModel:'projectorModel', pj_projQty:'projectorQty', pj_serverLoc:'serverLocation', pj_domeDist:'domeDistance', pj_speakers:'speakersModel', pj_sub:'subwooferModel', pj_fan:'screenFan', pj_capture:'captureRequired', pj_vj:'vjRequired', pj_sound:'soundSystem', pj_hvac:'hvac', pj_safety:'safetySigns', pj_contentType:'contentType', pj_encoding:'encoding', pj_promo:'promoMaterials', pj_contentNotes:'contentNotes', pj_eventNotes:'eventNotes' };
 function preAuditSet(P, keys, by){ if(!P) return; P._audit = P._audit || {}; const at=Date.now(); (keys||[]).forEach(function(k){ P._audit[k]={by:by, at:at}; }); }
 function preAuditDiffKeys(P, f){ const ch=[]; Object.keys(f||{}).forEach(function(k){ const nv=f[k], ov=P?P[k]:undefined; if(String(nv==null?'':nv)!==String(ov==null?'':ov)) ch.push(k); }); return ch; }
-function preAuditAva(meta){ if(!meta||!meta.by) return ''; const em=String(meta.by).toLowerCase(); const d=meta.at?(' · '+new Date(meta.at).toLocaleDateString()):''; return '<span class="fld-aud" title="Last edited by '+esc(em)+d+'" style="background:'+presenceColor(em)+'">'+esc(teamInitials(em))+'</span>'; }
+function preAuditAva(meta){ if(!meta||!meta.by) return ''; const em=String(meta.by).toLowerCase(); const d=meta.at?(' · '+fmtUS(meta.at)):''; return '<span class="fld-aud" title="Last edited by '+esc(em)+d+'" style="background:'+presenceColor(em)+'">'+esc(teamInitials(em))+'</span>'; }
 function preAuditPaint(){
   try{
     if(location.hash!=='#/projects') return;
@@ -4131,15 +4184,15 @@ function readForm(){
     sysNumber: g('fSysNumber').value.trim().replace(/^#/,'').replace(/^FDPSN#?/i,''),
     ttNumber: g('fTtNumber').value.trim(),
     domeCode: (g('fDomeCode') ? g('fDomeCode').value.trim() : ''),   /* BUILD 15.83: field removed from form; kept in data model */
-    ttDate: g('fDate').value.trim(),
+    ttDate: dateFldVal('fDate'),
     client:      (g('fClient')      ? g('fClient').value.trim()      : ''),   /* BUILD 15.87 — Project Information contacts / venue */
     clientEvent: (g('fClientEvent') ? g('fClientEvent').value.trim() : ''),
     contactCell: (g('fContact')     ? g('fContact').value.trim()     : ''),
     onsite:      (g('fOnsite')      ? g('fOnsite').value.trim()      : ''),
     city:        (g('fCity')        ? g('fCity').value.trim()        : ''),
     address:     (g('fAddress')     ? g('fAddress').value.trim()     : ''),
-    walkThrough: (g('fWalkthrough') ? g('fWalkthrough').value.trim() : ''),   /* BUILD 15.88 — extra dates, not shown on the dashboard */
-    breakDown:   (g('fBreakdown')   ? g('fBreakdown').value.trim()   : ''),
+    walkThrough: dateFldVal('fWalkthrough'),   /* BUILD 15.88 — extra dates, not shown on the dashboard */
+    breakDown:   dateFldVal('fBreakdown'),
     projectorModel: g('fProjModel').value.trim(),
     audioRequired: _audioChoice,   /* BUILD 15.74 */
     audioSystem: _audioChoice ? g('fAudio').value.trim() : '',
@@ -4497,8 +4550,8 @@ function pageDashboard(){
         <div class="srow"><span class="k">Inflatable</span><span class="v">${P.inflatableCover==='Yes'?'<span class="chip c-ok"><span class="cd"></span>Yes</span>':'<span class="chip c-mut"><span class="cd"></span>No</span>'}</span></div>
         <div class="srow"><span class="k">Capture Card</span><span class="v">${P.captureRequired?'<span class="chip c-ok"><span class="cd"></span>Yes</span>':'<span class="chip c-mut"><span class="cd"></span>No</span>'}</span></div>
         <div class="srow"><span class="k">VJ Server</span><span class="v">${P.vjRequired?'<span class="chip c-ok"><span class="cd"></span>Yes</span>':'<span class="chip c-mut"><span class="cd"></span>No</span>'}</span></div>
-        <div class="srow"><span class="k">Installation Day</span><span class="v">${esc(P.ttDate)||'—'}</span></div>
-        <div class="srow"><span class="k">Created</span><span class="v">${esc(P.created)}</span></div>
+        <div class="srow"><span class="k">Installation Day</span><span class="v">${esc(fmtUS(P.ttDate))||'—'}</span></div>
+        <div class="srow"><span class="k">Created</span><span class="v">${esc(fmtUS(P.created))}</span></div>
         ${(()=>{ const pp = projectPurchased(); return `<div class="srow" style="border-top:2px solid var(--line);margin-top:4px;padding-top:10px" title="${esc(pp.parts.map(x=>x.label+': '+fmt(x.v)).join(' · ') || 'No ordered / received components yet')}"><span class="k" style="font-weight:700">Purchased — all modules</span><span class="v" style="color:var(--fdp-red);font-weight:800;font-size:15px">${fmt(pp.total)}</span></div>`; })()}
       </div>
 
@@ -4547,7 +4600,7 @@ function pageDashboard(){
           if(totWt>0) rows+=`<div class="srow"><span class="k">Total Weight</span><span class="v">${totWt} lb</span></div>`;
           return rows;
         })()}
-        <div class="srow"><span class="k">Shipping Date</span><span class="v ${(state.shipping&&state.shipping.date)?'ok':'mut'}">${(state.shipping&&state.shipping.date)?esc(state.shipping.date):'—'}</span></div>
+        <div class="srow"><span class="k">Shipping Date</span><span class="v ${(state.shipping&&state.shipping.date)?'ok':'mut'}">${(state.shipping&&state.shipping.date)?esc(fmtUS(state.shipping.date)):'—'}</span></div>
       </div>
 
       <div class="card sum"><h3>Server Validation Status</h3>
@@ -5474,7 +5527,7 @@ function genShipPDF(){
     const footer = () => {
       const n = doc.getNumberOfPages();
       setFont(8, false, DIM);
-      doc.text('Shipping / Packing List — #' + (P.number||'') + ' ' + (P.title||'') + '   ·   generated ' + new Date().toLocaleString(), M, PH - 18);
+      doc.text('Shipping / Packing List — #' + (P.number||'') + ' ' + (P.title||'') + '   ·   generated ' + fmtUSTime(Date.now()), M, PH - 18);
       doc.text('Page ' + n + ' of ' + totalPagesExp, PW - M, PH - 18, { align:'right' });
     };
     const newPage = () => { footer(); doc.addPage(); y = M; };
@@ -5554,7 +5607,7 @@ function genShipPDF(){
     const complete = units.length > 0 && T.missing === 0;
     setFont(18, true, INK); doc.text('SHIPPING / PACKING LIST', M, y + 18); y += 30;
     setFont(11, true, INK); doc.text('Project:  #' + (P.number||'') + '  ' + (P.title||''), M, y + 11);
-    setFont(11, false, DIM); doc.text('Shipping date:  ' + (S.date || '—'), PW - M, y + 11, { align:'right' }); y += 20;
+    setFont(11, false, DIM); doc.text('Shipping date:  ' + (S.date ? fmtUS(S.date) : '—'), PW - M, y + 11, { align:'right' }); y += 20;
     /* KPI strip */
     const kpis = [
       ['STATUS', complete ? 'COMPLETE' : 'INCOMPLETE', complete ? GREEN : RED],
@@ -5804,7 +5857,7 @@ function pageShipping(){
     <div class="kpis">
       <div class="kpi"><div class="kl">Pallets</div><div class="kvv">${S.pallets.length}</div></div>
       <div class="kpi"><div class="kl">Places assigned</div><div class="kvv">${assignedPlaces} / ${places.length}</div></div>
-      <div class="kpi"><div class="kl">Shipping date</div><div class="kvv" style="font-size:15px">${S.date ? esc(S.date) : '—'}</div></div>
+      <div class="kpi"><div class="kl">Shipping date</div><div class="kvv" style="font-size:15px">${S.date ? esc(fmtUS(S.date)) : '—'}</div></div>
       <div class="kpi"><div class="kl">Documents</div><div class="kvv">${S.docs.length}</div></div>
     </div>
     <div class="card">
@@ -5817,7 +5870,7 @@ function pageShipping(){
       </div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:2px 2px 4px">
         <span style="font-size:12.5px;font-weight:600;color:var(--ink2)">Shipping Date</span>
-        <input type="date" class="cell" style="width:auto;padding:6px 9px" value="${esc(S.date||'')}" onchange="setShipDate(this.value)">
+        ${dateFld('', S.date || '', { cls:'cell', style:'width:120px;padding:6px 9px', onchange:'setShipDate(isoFromUS(this.value))' })}
       </div>
       <div style="display:flex;gap:18px;flex-wrap:wrap;padding:6px 2px 2px;border-top:1px solid var(--line);margin-top:6px">${shipLabelFilesHtml()}</div>
     </div>
@@ -7315,7 +7368,7 @@ function _fsShowStat(extra){ var a=[];
   else if(_fsStatMode==='updated') a.push('Updated — all changes synced');
   else if(_fsLastSent) a.push('Saved to server · '+hhmmss(_fsLastSent));
   if(_fsLastRecv) a.push('Recv ↓ '+hhmmss(_fsLastRecv));
-  const st=_fsStashCount(); if(st) a.push('⚠ Pending local changes ('+st+') — Review & Sync');
+  /* BUILD 17.34: no 'Pending local changes' notice — on open the server version is taken; real edits travel in the outbox */
   const cf=_fsConflictCount(); if(cf) a.push('⚠ '+cf+' field conflict'+(cf===1?'':'s'));
   try{ const dj = AD.pendingLabel(); if(dj) a.push(dj); }catch(_){}   /* BUILD 16.62 */
   try{ if(libPending()){ const n = libLocalOnly().length; a.push('⚠ Library: local changes not published' + (n ? ' (' + n + ' item' + (n===1?'':'s') + ')' : '') + ' — Equipment Library → Publish'); } }catch(_){}   /* BUILD 17.02 */
@@ -7612,7 +7665,7 @@ function fsTouch(){
   try{ const e = activeEntry(); if(e && e.data && e.data.project && !(SE_ON && SE.enabled(fbpPid(e)))) OB.capture(e); (db.projects||[]).forEach(function(x){ if(x && x !== e && x._localNew && !x._fbSeen && x.data && x.data.project) OB.capture(x); }); }catch(_){}   /* BUILD 17.00: record the op NOW (offline too); a just-created project gets its 'create' op */
   if(!fsReady()) return;
   clearTimeout(_fsPushT);
-  _fsPushT = setTimeout(function(){ _fsPushT = null; fsPushNow().catch(function(){}); }, 1000);
+  _fsPushT = setTimeout(function(){ _fsPushT = null; fsPushNow().catch(function(){}); }, (typeof isTypingInInput === 'function' && isTypingInInput()) ? 1000 : 150);   /* BUILD 17.37: a click (delete / add / tick) goes out at once; typing in a field still coalesces for 1 s (quota) */
 }
 /* apply one section value onto local data (reuse liveApply's per-section logic).
    For projectors, the incoming Web-settings files carry only metadata (data lives on Drive) —
@@ -7666,7 +7719,7 @@ function fsApplyDoc(data){
     const rec = _fsLocal[pid] || (_fsLocal[pid] = { _seen:true, _done:e.done?1:0, _msig:data.msig||'' });
     const sl = fsSlice(e.data); let ch0 = false, stashed = [];
     const obSecs = OB.sectionsOf(pid);                                        /* sections the user's recorded ops already cover → the op sends them, nothing to stash */
-    const stash = function(s, B){ if(obSecs.indexOf(s) >= 0) return; try{ const bv = (db._fsBaseVal && db._fsBaseVal[pid] && B !== undefined) ? db._fsBaseVal[pid][s] : null; _fsStashOf(pid)[s] = { val: JSON.parse(JSON.stringify(sl[s] || {})), base: (bv === undefined ? null : bv), at: Date.now(), from: 'local' }; stashed.push(s); }catch(_){} };
+    const stash = function(s, B){ if(obSecs.indexOf(s) >= 0) return; if(s === 'ext') return;   /* BUILD 17.34: 'ext' is a derived shadow of other sections — never a local edit */ try{ const bv = (db._fsBaseVal && db._fsBaseVal[pid] && B !== undefined) ? db._fsBaseVal[pid][s] : null; _fsStashOf(pid)[s] = { val: JSON.parse(JSON.stringify(sl[s] || {})), base: (bv === undefined ? null : bv), at: Date.now(), from: 'local' }; stashed.push(s); }catch(_){} };
     FS_SECTIONS.forEach(function(s){
       const rrev = revs[s] || 0;
       if(data[s] === undefined){                                               /* server has no such section (older doc, or an old client's whole-document set) */
@@ -7766,7 +7819,7 @@ function libNonEmpty(){ return LIB_GROUPS.some(g => ((db.library&&db.library[g.k
    clear `_libDirty` and adopt the server rev; on error we KEEP dirty, show "Library sync failed" and
    retry. This removes the clock dependency that stalled sync when two machines' clocks were skewed. */
 function libTouch(){
-  if(!fsReady()) return;
+  if(!fsReady()){ try{ if(libSig() !== _libSigLast) _libDirty = true; }catch(_){} return; }   /* BUILD 17.32: sent on connect (fsLibSyncOnConnect) */
   const s = libSig();
   if(s === _libSigLast) return;                 /* library genuinely unchanged → nothing to publish */
   _libSigLast = s;
@@ -7943,6 +7996,9 @@ function fsLibSyncOnConnect(){
      the server's is published with the user's next library edit (libTouch) or Save in the Library page. */
   if(!fsReady()) return;
   try{ if(libNonEmpty() && libSig() !== _libSigLast){ _libDirty = true; fsDiag('library: local differences kept until the next library edit'); } }catch(_){}
+  /* BUILD 17.32: library items / categories the user added here that never reached the server (tab closed within a second, offline,
+     not signed in yet) are the user's OWN edits waiting to be sent — publish them now instead of waiting for the next edit. */
+  try{ if(libPending()){ _libDirty = true; fsDiag('library: publishing unsent local edits'); clearTimeout(_fsLibT); _fsLibT = setTimeout(fsPushLibrary, 800); } }catch(_){}
 }
 function fsOnSnapshot(snap){
   _fsApplying = true;
@@ -8016,6 +8072,9 @@ function fsOnSnapshot(snap){
 function _fsStashBanner(){
   try{
     const old = document.getElementById('fsStashBar'); if(old) old.remove();
+    /* BUILD 17.34 (user): no banner — on open the SERVER version is taken. Every edit the user makes is recorded in the durable
+       outbox and sent; what differs here without an op (old builds, derived sections) is kept silently in db._fsStash only. */
+    return;
     const n = _fsStashCount(); if(!n) return;
     const items = []; Object.keys(db._fsStash||{}).forEach(function(pid){ Object.keys(db._fsStash[pid]||{}).forEach(function(s){ items.push({pid, s}); }); });
     const bar = document.createElement('div'); bar.id = 'fsStashBar';
@@ -8147,6 +8206,7 @@ function _fsConflictUseMine(pid, s, i){
    progress". Now: (1) a stream error re-attaches the listener by itself (5 s → 15 s → 1 min → 2 min → 5 min); (2) when the tab comes
    back after ≥ 3 min, the network returns, or the computer wakes from sleep, the projects are re-read from the server and applied
    exactly like a snapshot (reads only — applying never writes). */
+var _fsFromCache = false;
 var _fsHandlers = null, _fsLastSnapAt = 0, _fsStreamDead = false, _fsReattachTries = 0, _fsReattachT = null, _fsHiddenAt = 0, _fsWakeBusy = false;
 function _fsIsDenied(err){ return !!(err && (err.code === 'permission-denied' || /permission|insufficient/i.test(err.message || ''))); }
 function _fsListen(onSnap, onErr){
@@ -8155,6 +8215,7 @@ function _fsListen(onSnap, onErr){
   _fsStreamDead = false;
   _fsUnsub = _fsCol.onSnapshot({ includeMetadataChanges: true }, function(snap){
     _fsLastSnapAt = Date.now(); _fsReattachTries = 0;
+    try{ _fsFromCache = !!(snap && snap.metadata && snap.metadata.fromCache); }catch(_){}   /* BUILD 17.33: offline indicator */
     if(_fsFatal && /stream error/i.test(_fsFatal)){ _fsFatal = ''; try{ _fsShowStat(); }catch(_){} }
     onSnap(snap);
   }, function(err){
@@ -8262,6 +8323,146 @@ function fsStop(){
 }
 /* ---- unified sync dispatch: Firestore (primary) → RTDB (fallback flag) ---- */
 function syncTouch(){ if(_FS) fsTouch(); else if(_FBP) fbpTouch(); }
+/* BUILD 17.32 — UNSENT changes are visible and can't be lost by closing the tab:
+   • red "Not sent" chip in the top bar while anything of ours is still on this computer only (project ops, an open row, library);
+   • closing / reloading the tab while something is unsent asks "Leave site?" (the updater's own reload is exempt). */
+function fdpUnsent(){
+  let n = 0;
+  try{ n += (OB.ops() || []).filter(o => o && !o.dead).length; }catch(_){}
+  try{ if(_rowDraft && _rowDraft.dirty) n++; }catch(_){}
+  try{ if(_FS && !_libPaused && (_libPushing || libPending())) n++; }catch(_){}   /* real local-only library items/categories (not the in-memory dirty flag) */
+  return n;
+}
+/* BUILD 17.33 — the sign appears ONLY when there is no connection AND the user puts the cursor into a field to type
+   (or already has something unsent). Connected → no sign at all. */
+function fdpConnected(){
+  try{
+    if(location.protocol === 'file:') return false;
+    if(!_FS) return true;
+    if(!fsReady()) return false;
+    if(typeof navigator !== 'undefined' && navigator.onLine === false) return false;
+    if(_fsStreamDead || _fsFromCache) return false;
+    if(!_fsServerSeen) return false;
+  }catch(_){}
+  return true;
+}
+function fdpConnWhy(){ try{ if(location.protocol === 'file:') return 'opened from a file, not the site'; if(_FS && !fsReady()) return 'not signed in'; }catch(_){} return 'no connection'; }
+var _fdpConnShown = false;
+/* the row (or the single field outside a table) the user is typing into while disconnected */
+function fdpMarkOffline(t){
+  try{ if(!t || !t.matches || !t.matches('input,textarea,select,[contenteditable="true"]')) return;
+    const tr = t.closest('tr'); if(tr) tr.classList.add('fdp-off'); else t.classList.add('fdp-off-in'); }catch(_){}
+}
+function fdpClearOffline(){ try{ document.querySelectorAll('.fdp-off').forEach(x => x.classList.remove('fdp-off')); document.querySelectorAll('.fdp-off-in').forEach(x => x.classList.remove('fdp-off-in')); }catch(_){} }
+function fdpConnTick(fromFocus){
+  const el = document.getElementById('topUnsent'); if(!el) return;
+  if(fdpConnected()){ _fdpConnShown = false; el.style.display = 'none'; fdpClearOffline(); return; }
+  try{ const a = document.activeElement; if(a && a !== document.body && (fromFocus || _fdpConnShown)) fdpMarkOffline(a); if(_rowDraft && _rowDraft.dirty && _rowDraft.tr) _rowDraft.tr.classList.add('fdp-off'); }catch(_){}
+  if(fromFocus || _fdpConnShown || fdpUnsent()){
+    _fdpConnShown = true;
+    el.textContent = '⚠ ' + fdpConnWhy().replace(/^./, c => c.toUpperCase()) + ' — changes stay on this computer';
+    el.style.display = '';
+  }
+}
+function fdpSendNow(){
+  try{ if(_rowDraft && _rowDraft.dirty && typeof _rowDraftCommit === 'function') _rowDraftCommit(); }catch(_){}
+  try{ if(_FS && fsReady() && typeof _fsWakeRefresh === 'function') _fsWakeRefresh('manual retry'); }catch(_){}
+  try{ OB.resume(); }catch(_){}
+  try{ if(_FS && libPending()) libPublishNow(); }catch(_){}
+  try{ if(!fsReady()) flashStat('Sign in to send the changes'); }catch(_){}
+  setTimeout(fdpRoTick, 1500);
+}
+/* ============================================================================================================
+   BUILD 17.36 — NO CONNECTION = READ-ONLY (user's rule). The app works only while it is connected to the server.
+   5 s without a connection → red bar on top + everything becomes read-only: no typing, no adding rows, no buttons
+   that change anything, no Completed/restore. Navigation, links, photo viewing, PDF / file downloads keep working.
+   Whatever was typed BEFORE the drop is committed to the outbox and sent automatically when the connection is back.
+   ============================================================================================================ */
+var _fdpRO = false, _fdpOffSince = 0;
+const FDP_RO_OK = { setActive:1, goTo:1, closeLightbox:1, toggleSide:1, toggleShipGroup:1, toggleShipAllGroups:1, toggleLibGroup:1,
+  projSecToggle:1, domeSetTab:1, domeOpenCard:1, domeBackToList:1, domeKitOpen:1, domeKitBack:1, domeApplySearch:1, domeClearSearch:1,
+  domeTrussFileDownload:1, domeSchemFileDownload:1, projWebDownload:1, viewProjModelPhoto:1, genShipPDF:1, saveToFile:1, copyRowLink:1,
+  openRowLink:1, copyProjectLink:1, constructToggle:1, constructPartsToggle:1, flashStat:1, ttBackdrop:1, cloudOpenFolder:1,
+  driveOpenProject:1, adminGo:1, adminPick:1, cloudStart:1, cloudSyncNow:1, fdpSendNow:1, openPreProject:1, openProjectorWeb:1,
+  stopPropagation:1, preventDefault:1 };
+function fdpRoAllowedCall(code){
+  const names = []; String(code||'').replace(/([A-Za-z_$][\w$]*)\s*\(/g, function(_, n){ names.push(n); return _; });
+  if(!names.length) return false;
+  return names.every(n => FDP_RO_OK[n] || /^(openLightbox\w*|download\w*|close\w*)$/.test(n));
+}
+function fdpRoBar(on){
+  let bar = document.getElementById('fdpRoBar');
+  if(!on){ if(bar){ bar.remove(); try{ document.body.style.paddingTop = ''; }catch(_){} } return; }
+  const why = fdpConnWhy();
+  const txt = '⚠ NO CONNECTION TO THE SERVER — READ-ONLY. Editing is off until the connection is back' + (why === 'no connection' ? '.' : ' (' + why + ').');
+  if(!bar){
+    bar = document.createElement('div'); bar.id = 'fdpRoBar';
+    bar.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:2147483646;background:#c5221f;color:#fff;font:700 14px -apple-system,Segoe UI,Roboto,Arial,sans-serif;padding:10px 16px;display:flex;align-items:center;gap:14px;box-shadow:0 2px 10px rgba(0,0,0,.35)';
+    const m = document.createElement('span'); m.id = 'fdpRoMsg'; m.style.flex = '1'; bar.appendChild(m);
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = 'Retry'; b.setAttribute('onclick', 'fdpSendNow()');
+    b.style.cssText = 'flex:none;border:0;border-radius:6px;padding:6px 14px;background:#fff;color:#c5221f;font:700 13px -apple-system,Segoe UI,Roboto,Arial,sans-serif;cursor:pointer';
+    bar.appendChild(b); document.body.appendChild(bar); try{ document.body.style.paddingTop = '44px'; }catch(_){}
+  }
+  const m = document.getElementById('fdpRoMsg'); if(m && m.textContent !== txt) m.textContent = txt;
+}
+function fdpSetRO(on){
+  if(_fdpRO === on){ if(on) fdpRoBar(true); return; }
+  _fdpRO = on;
+  try{ document.body.classList.toggle('fdp-ro', on); }catch(_){}
+  if(on){
+    try{ const a = document.activeElement; if(a && a !== document.body && a.blur) a.blur(); }catch(_){}   /* what was typed before the drop → committed to the outbox, sent later */
+    try{ fsDiag('read-only: no connection'); }catch(_){}
+  } else {
+    try{ fsDiag('connection back — editing on'); }catch(_){}
+    try{ OB.tick(); }catch(_){}
+    try{ if(_FS && libPending()){ _libDirty = true; clearTimeout(_fsLibT); _fsLibT = setTimeout(fsPushLibrary, 500); } }catch(_){}
+  }
+  fdpRoBar(on);
+}
+function fdpRoTick(){
+  let off = false; try{ off = !fdpConnected(); }catch(_){}
+  if(!off){ _fdpOffSince = 0; if(_fdpRO) fdpSetRO(false); return; }
+  const now = Date.now(); if(!_fdpOffSince) _fdpOffSince = now;
+  if(now - _fdpOffSince >= 5000) fdpSetRO(true);
+}
+try{ setInterval(fdpRoTick, 1000); window.addEventListener('offline', fdpRoTick); window.addEventListener('online', fdpRoTick); }catch(_){}
+/* the gate: capture-phase listeners stop every changing interaction before any inline handler runs */
+(function(){
+  const isText = t => !!(t && t.matches && (t.matches('textarea,[contenteditable="true"]') || (t.matches('input') && !/^(checkbox|radio|file|button|submit|reset|range|color|image)$/i.test(t.type||''))));
+  const isCtl = t => !!(t && t.matches && t.matches('input,select,textarea,button,label,[contenteditable="true"]'));
+  const stop = ev => { ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); };
+  const nag = () => { try{ flashStat('Read-only — no connection to the server'); }catch(_){} };
+  function onPointer(ev){
+    if(!_fdpRO) return;
+    const t = ev.target; if(!t || !t.closest) return;
+    if(t.closest('#fdpRoBar')){ return; }
+    if(isText(t)) return;                                   /* focusing / selecting text to copy is fine — changes are blocked below */
+    const oc = t.closest('[onclick]');
+    if(oc){ if(fdpRoAllowedCall(oc.getAttribute('onclick'))) return; stop(ev); if(ev.type === 'click') nag(); return; }
+    const a = t.closest('a[href]'); if(a) return;           /* links / navigation */
+    if(isCtl(t) || t.closest('button,select,label')){ stop(ev); if(ev.type === 'click') nag(); return; }
+  }
+  function onKey(ev){
+    if(!_fdpRO) return;
+    const t = ev.target; if(!t || !isCtl(t) || (t.closest && t.closest('#fdpRoBar'))) return;
+    const k = ev.key || '', mod = ev.ctrlKey || ev.metaKey;
+    if(k === 'Tab' || k === 'Escape' || k === 'Shift' || k === 'Control' || k === 'Meta' || k === 'Alt') return;
+    if(mod && /^[acf]$/i.test(k)) return;                   /* copy / select all / find */
+    if(isText(t) && /^(ArrowLeft|ArrowRight|ArrowUp|ArrowDown|Home|End|PageUp|PageDown)$/.test(k)) return;
+    stop(ev); nag();
+  }
+  function onEdit(ev){ if(!_fdpRO) return; const t = ev.target; if(t && t.closest && t.closest('#fdpRoBar')) return; stop(ev); }
+  try{
+    ['mousedown','click','dblclick','auxclick'].forEach(n => window.addEventListener(n, onPointer, true));
+    window.addEventListener('keydown', onKey, true);
+    ['beforeinput','paste','cut','drop','dragstart'].forEach(n => window.addEventListener(n, onEdit, true));
+    window.addEventListener('dragover', function(ev){ if(_fdpRO){ ev.preventDefault(); if(ev.dataTransfer) ev.dataTransfer.dropEffect = 'none'; } }, true);
+  }catch(_){}
+})();
+/* BUILD 17.37: leaving the page with something not yet on the server → send it NOW (best effort) */
+function fdpFlushNow(){ try{ if(_rowDraft && _rowDraft.dirty) _rowDraftCommit(); }catch(_){} try{ clearTimeout(_fsPushT); _fsPushT = null; }catch(_){} try{ if(fsReady() && OB.count()) OB.drainNow().catch(function(){}); }catch(_){} }
+try{ document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'hidden') fdpFlushNow(); }); window.addEventListener('pagehide', fdpFlushNow); }catch(_){}
+try{ window.addEventListener('beforeunload', function(ev){ try{ if(window._fdpReloading) return; if(fdpUnsent()){ fdpFlushNow(); try{ if(_rowDraft && _rowDraft.dirty) _rowDraftCommit(); }catch(_){} ev.preventDefault(); ev.returnValue = ''; return ''; } }catch(_){} }); }catch(_){}
 function syncPushNow(e){ if(_FS) return fsPushNow(e); if(_FBP) return fbpPushNow(e); }
 function syncDelete(e){ if(_FS) return fsDelete(e); if(_FBP) return fbpDelete(e); }
 function syncReady(){ return _FS ? fsReady() : (_FBP && fbReady()); }
@@ -11557,7 +11758,7 @@ function pageProjectors(){
         : `<img src="${f.data}" alt="" style="width:46px;height:34px;flex:none;object-fit:cover;border-radius:7px;border:1px solid var(--line);cursor:pointer" title="Preview" onclick="projWebPreview('${sel.id}',${i})">`}
       <div style="min-width:0;flex:1">
         <div style="font-size:12.5px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(f.name)}">${esc(f.name)}</div>
-        <div style="font-size:11px;color:#9aa2ad">${esc(projLabel(sel))}${sel.ip?' · '+esc(sel.ip):''} · ${esc(f.added||'')} · ${fmtSize(f.size)}</div>
+        <div style="font-size:11px;color:#9aa2ad">${esc(projLabel(sel))}${sel.ip?' · '+esc(sel.ip):''} · ${esc(fmtUS(f.added||''))} · ${fmtSize(f.size)}</div>
       </div>
       <span class="chip c-mut" style="flex:none"><span class="cd"></span>${esc(f.type)}</span>
       <button class="mod-btn" style="padding:5px 12px;font-size:12px;flex:none" onclick="projWebPreview('${sel.id}',${i})">Preview</button>
@@ -11890,7 +12091,7 @@ function pageDocumentation(){
             <span style="color:var(--ink2);flex:none">${docFileIcon(f.name)}</span>
             <span style="font-size:12.5px;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(f.name)}">${esc(f.name)}</span>
             <span class="doctag" style="flex:none">#${esc(P.number)}</span>
-            <span style="font-size:11px;color:#9aa2ad;flex:none">${fmtSize(f.size)}${f.added?' · '+esc(f.added):''}${/* BUILD 17.10: three honest states — on Drive (file id known) · in the shared media file (synced, Drive copy made by an older build or a teammate) · Drive copy failed */(f._a&&f._a.data&&f._a.data.f)?' · <span title="In the project folder on Google Drive" style="color:#2e9e5b">☁ on Drive</span>':(f._mirrorErr?' · <span title="'+esc(f._mirrorErr)+'" style="color:var(--fdp-red)">⚠ Drive copy failed — Re-upload</span>':(f._synced?' · <span title="In the shared media file (synced to the team)" style="color:#2e9e5b">☁ synced</span>':(SE.isData(f.data)?' · <span title="Not on Google Drive yet — goes with the next media sync" style="color:#c77d00">⏳ pending</span>':'')))}</span>
+            <span style="font-size:11px;color:#9aa2ad;flex:none">${fmtSize(f.size)}${f.added?' · '+esc(fmtUS(f.added)):''}${/* BUILD 17.10: three honest states — on Drive (file id known) · in the shared media file (synced, Drive copy made by an older build or a teammate) · Drive copy failed */(f._a&&f._a.data&&f._a.data.f)?' · <span title="In the project folder on Google Drive" style="color:#2e9e5b">☁ on Drive</span>':(f._mirrorErr?' · <span title="'+esc(f._mirrorErr)+'" style="color:var(--fdp-red)">⚠ Drive copy failed — Re-upload</span>':(f._synced?' · <span title="In the shared media file (synced to the team)" style="color:#2e9e5b">☁ synced</span>':(SE.isData(f.data)?' · <span title="Not on Google Drive yet — goes with the next media sync" style="color:#c77d00">⏳ pending</span>':'')))}</span>
             <span style="flex:1"></span>
             ${(f._a&&f._a.data&&f._a.data.f)?`<a class="mod-btn" style="padding:4px 9px;flex:none;text-decoration:none" title="Open in Google Drive" href="${SE.driveLink(f,'data')}" target="_blank" rel="noopener">Drive</a>`:''}
             <button class="mod-btn primary" style="padding:4px 8px;flex:none" title="Download" onclick="downloadDocFileEntry('${e.id}','${catKey}',${i})">
@@ -14639,6 +14840,7 @@ loadState(()=>{ restoreHandles();
     function hideWaiting(){ if(bar){ try{ bar.remove(); }catch(_){ } bar=null; try{ document.body.style.paddingTop=''; }catch(_){ } } }
 
     function reloadTo(nv){
+      try{ window._fdpReloading = true; }catch(_){}
       try{ sessionStorage.setItem('fdp_upd_target', nv); sessionStorage.setItem('fdp_upd_retry','0'); }catch(_){}
       location.replace(location.pathname + '?u=' + Date.now() + (location.hash || '#/dashboard'));   // keep pid + module (hash)
     }
