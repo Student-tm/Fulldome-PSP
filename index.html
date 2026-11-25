@@ -873,7 +873,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.41 · Projectors: Order + Ship on Mount & Accessories</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.42 · Projectors: Order + Unit Price, module cost on the card</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -1514,7 +1514,7 @@ function updateStorageWarn(){
 }
 /* boot continues in loadState callback at the end of the file */
 
-const fmt = n => (n==null || isNaN(n)) ? '—' : '$' + Number(n).toLocaleString('en-US');
+const fmt = n => (n==null || isNaN(n)) ? '—' : '$' + Number(n).toLocaleString('en-US', (Math.round(Number(n)*100) % 100) ? { minimumFractionDigits:2, maximumFractionDigits:2 } : { maximumFractionDigits:0 });   /* BUILD 17.42: $10,213.10 / $138 */
 const esc = s => String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 /* BUILD 15.85 — value for a <input type="date">: only YYYY-MM-DD is valid, anything else → '' (empty picker). */
 function dateInputVal(v){ v=String(v==null?'':v).trim(); return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : ''; }
@@ -1644,7 +1644,7 @@ function projectPurchased(){
   const parts = [];
   const add = (label, fn) => { let v = 0; try{ v = fn() || 0; }catch(_){ v = 0; } if(v) parts.push({ label, v }); };
   add('Dome Server', serverTotal); add('VJ Server', () => (state.project && state.project.vjRequired) ? vjTotal() : 0); add('Backup Server', () => (state.backup && state.backup.enabled) ? backupTotal() : 0);
-  add('Rack', rackTotal); add('Camera', camTotal); add('Speakers', spkTotal); add('Screen Fan & AC', fanTotal); add('Cables', cabTotal); add('Tools', toolTotal); add('Safety', safTotal);
+  add('Rack', rackTotal); add('Projectors', projModuleTotal); add('Camera', camTotal); add('Speakers', spkTotal); add('Screen Fan & AC', fanTotal); add('Cables', cabTotal); add('Tools', toolTotal); add('Safety', safTotal);
   return { parts, total: parts.reduce((s,x)=> s + x.v, 0) };
 }
 const totalItems  = () => activeSrvRows().reduce((s,r)=>s+(parseFloat(r.qty)||1),0) + state.rack.rows.filter(r=>(r.name||'').trim()).reduce((s,r)=>s+(parseFloat(r.qty)||1),0);
@@ -4445,6 +4445,7 @@ function pageDashboard(){
                <div class="ms"><span class="k">Lens Ratio</span><span class="v">${esc((projLenses().find(l=>(l.ratio||'').trim())||{}).ratio || '—')}</span></div>`
             : `<div class="ms"><span class="k">Throw Ratio</span><span class="v">${esc((projList().find(p=>(p.throw||'').trim())||{}).throw || '—')}</span></div>`}
           <div class="ms"><span class="k">Configured</span><span class="v">${projList().filter(p=>p.conf==='Configured').length} / ${projList().length}</span></div>
+          <div class="ms"><span class="k">Components Cost</span><span class="v">${fmt(projModuleTotal())}</span></div>
         </div>
         <a class="mod-btn primary" href="#/projectors">Open Module ${IC.open}</a>
       </div>
@@ -10151,7 +10152,7 @@ function lpHide(){
    place, no rerender. */
 const ORD_TITLES = ['Not ordered', 'Ordered', 'Received'];
 function ordRowsOf(kind){
-  if(kind==='pmount') return projMounts(); if(kind==='pacc') return projAcc();   /* BUILD 17.41 */
+  if(kind==='pmount') return projMounts(); if(kind==='pacc') return projAcc(); if(kind==='proj') return projList(); if(kind==='lens') return projLenses();   /* BUILD 17.41/17.42 */
   return kind==='rack' ? state.rack.rows : kind==='vj' ? state.vj.rows : kind==='backup' ? state.backup.rows : kind==='camera' ? state.camera.rows : kind==='speakers' ? state.speakers.rows : kind==='fan' ? state.fan.rows : kind==='cables' ? state.cables.rows : kind==='tools' ? state.tools.rows : kind==='safety' ? state.safety.rows : state.server.rows;
 }
 function ordDot(kind, i, r){
@@ -10183,7 +10184,7 @@ function cycOrd(kind, i, el){
   t = fmt(fanTotal());
   ['kFan','stFan','fanFoot'].forEach(id=>{const e2=document.getElementById(id); if(e2) e2.textContent=t;});
   if(typeof refreshCabTotals==='function') refreshCabTotals();
-  try{ const f=document.getElementById('pmFoot'); if(f) f.textContent=fmt(projMountTotal()); const g=document.getElementById('paccFoot'); if(g) g.textContent=fmt(projAccTotal()); }catch(_){}   /* BUILD 17.41 */
+  try{ projRefreshTotals(); }catch(_){}   /* BUILD 17.41/17.42 */
   renderHeader();
 }
 
@@ -11404,6 +11405,7 @@ function rmProjector(i){
 function updProj(i,k,v){   /* typing-safe: no rerender */
   const p = projList()[i]; if(!p) return;
   p[k] = v; saveState();
+  if(k==='price') projRefreshTotals();
 }
 function updProjStatus(i,k,v){   /* selects: update KPI counters in place */
   updProj(i,k,v);
@@ -11421,7 +11423,7 @@ function addLens(silent){ shipSealLegacy(); const pr=ensureProjectors(state);
   pr.lenses.push({ id:'ln'+Date.now()+Math.floor(Math.random()*1e4), model:'', ratio:'', serial:'', qty:'', ts:Date.now() });
   if(!silent){ saveState(); rerenderKeepScroll(); } }
 function rmLens(i){ const pr=ensureProjectors(state); if(!pr.lenses[i]) return; pr.lenses.splice(i,1); saveState(); rerenderKeepScroll(); }
-function updLens(i,k,v){ const l=projLenses()[i]; if(!l) return; l[k]=v; saveState(); }
+function updLens(i,k,v){ const l=projLenses()[i]; if(!l) return; l[k]=v; saveState(); if(k==='price'||k==='qty') projRefreshTotals(); }
 /* BUILD 16.19 — Projector Accessories: item / model-part / required / source / qty to ship / packed / notes.
    Rows are added by the user only; rows with a name and Qty to Ship > 0 ship as ONE place "Projector Accessories"
    (module right after Projectors in the packing list / PDF). */
@@ -11429,7 +11431,7 @@ const PROJ_ACC_SOURCES = ['Included','Fulldome Stock','Purchase','Other'];
 function projAcc(){ return ensureProjectors(state).acc; }
 function addProjAcc(){ shipSealLegacy(); projAcc().push({ id:'pa'+Date.now()+Math.floor(Math.random()*1e4), item:'', model:'', req:'', source:'', qty:'', packed:'', notes:'', price:'', link:'', ts:Date.now() }); saveState(); rerenderKeepScroll(); }
 function rmProjAcc(i){ const a=projAcc(); if(!a[i]) return; a.splice(i,1); saveState(); rerenderKeepScroll(); }
-function updProjAcc(i,k,v){ const a=projAcc()[i]; if(!a) return; a[k]=v; saveState(); if(k==='qty'||k==='price'){ const f=document.getElementById('paccFoot'); if(f) f.textContent=fmt(projAccTotal()); } }   /* BUILD 16.21: Packed column removed (packing is tracked in Shipping) */
+function updProjAcc(i,k,v){ const a=projAcc()[i]; if(!a) return; a[k]=v; saveState(); if(k==='qty'||k==='price') projRefreshTotals(); }   /* BUILD 16.21: Packed column removed (packing is tracked in Shipping) */
 /* BUILD 16.20: EVERY named accessory ships (was: only rows with Qty to Ship > 0 — rows with an empty Qty were silently
    left out). Quantity = Qty to Ship, else Required, else Packed, else 1. */
 function projAccShipQty(a){ const n = v => parseFloat(String(v==null?'':v).replace(',','.'))||0; return n(a.qty) || n(a.req) || 1; }
@@ -11476,10 +11478,17 @@ function addProjMount(){ shipSealLegacy(); projMounts().push({ id:'pm'+Date.now(
 function rmProjMount(i){ const a=projMounts(); if(!a[i]) return; a.splice(i,1); saveState(); rerenderKeepScroll(); }
 function updProjMount(i,k,v){ const m=projMounts()[i]; if(!m) return; const _pn = (k==='name') ? libPrevName(m) : ''; m[k]=v;
   if(k==='name'){ const it = libFindBest(v); if(it) libApplyPick(m, it, _pn, 'pmP'+i, 'pmL'+i); }   /* BUILD 17.40: picking from the Library brings price + link (was never filled here) */
-  saveState(); if(k==='qty'||k==='price'||k==='name'){ const t=document.getElementById('pmRowT'+i); if(t) t.textContent = fmt(priceNum(m.price)*(parseFloat(m.qty)||1) || null); const f=document.getElementById('pmFoot'); if(f) f.textContent = fmt(projMountTotal()); } }
+  saveState(); if(k==='qty'||k==='price'||k==='name'){ const t=document.getElementById('pmRowT'+i); if(t) t.textContent = fmt(priceNum(m.price)*(parseFloat(m.qty)||1) || null); projRefreshTotals(); const f=document.getElementById('pmFoot'); if(f) f.textContent = fmt(projMountTotal()); } }
 function setProjMountCat(i, v){ const m=projMounts()[i]; if(!m) return; m.cat = v; if(autoFillFromCat(m, libByGroupCat('truss', v))) flashStat('Filled from Library ✓'); saveState(); rerenderKeepScroll(); }
 function projMountTotal(){ return projMounts().reduce((s,m)=> s + (ordCounted(m) ? (priceNum(m.price)*(parseFloat(m.qty)||1) || 0) : 0), 0); }   /* BUILD 17.41: red (not ordered) rows don't count — like every builder */
 function projAccTotal(){ return projAcc().reduce((s,a)=> s + (ordCounted(a) ? (priceNum(a.price)*(parseFloat(a.qty)||1) || 0) : 0), 0); }
+/* BUILD 17.42 — projector units and lenses carry Order + Unit Price too; the whole Projectors module has one cost
+   (units + lenses + accessories + mount, ordered/received rows only) shown on the dashboard card and in "Purchased". */
+function projUnitsTotal(){ return projList().reduce((s,p)=> s + (ordCounted(p) ? (priceNum(p.price) || 0) : 0), 0); }
+function projLensTotal(){ if(!ensureProjectors(state).removableLens) return 0; return projLenses().reduce((s,l)=> s + (ordCounted(l) ? (priceNum(l.price)*(parseFloat(String(l.qty==null?'':l.qty).replace(',','.'))||1) || 0) : 0), 0); }
+function projModuleTotal(){ return projUnitsTotal() + projLensTotal() + projAccTotal() + projMountTotal(); }
+function projRefreshTotals(){ const set=(id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=fmt(v); };
+  set('projFoot', projUnitsTotal()); set('lensFoot', projLensTotal()); set('paccFoot', projAccTotal()); set('pmFoot', projMountTotal()); set('stProj', projModuleTotal()); set('kProjCost', projModuleTotal()); }
 function projMountShipItems(){ return projMounts().filter(m=>String(m.name||'').trim()).map(m=>({ key:'i|pmount|'+m.id, name:String(m.name).trim()+(String(m.serial||'').trim()?' · SN '+String(m.serial).trim():''), qty:(parseFloat(m.qty)||1), link:m.link||'', ts:(+m.ts||0), _r:m })); }
 function addProjMountToLib(i){ const m=projMounts()[i]; if(!m || !(m.name||'').trim()) return; const cat=(m.cat||'').trim(); if(!db.library.truss) db.library.truss=[]; if(libFind(m.name)){ flashStat('Already in the Library'); return; } db.library.truss.push({ cat:cat, name:m.name.trim(), price:m.price||'', link:m.link||'' }); try{ _libDirty = true; }catch(_){} saveState(); flashStat('Added to the Library (Truss) ✓'); rerenderKeepScroll(); }
 function projMountCard(){
@@ -11769,8 +11778,8 @@ function pageProjectors(){
       <td class="tight" style="width:9%"><input class="cell num b" value="${esc(p.num)}" placeholder="#" oninput="updProj(${i},'num',this.value)"></td>
       <td class="tight" style="width:18%"><input class="cell" value="${esc(p.mfr)}" placeholder="Manufacturer" oninput="updProj(${i},'mfr',this.value)"></td>
       <td class="tight"><input class="cell b" id="projN${esc(p.id||i)}" value="${esc(p.model)}" placeholder="Model" oninput="updProj(${i},'model',this.value)"></td>
-      <td class="tight" style="width:13%"><input class="cell" value="${esc(p.bright)}" placeholder="Brightness" oninput="updProj(${i},'bright',this.value)"></td>
-      ${lensOn ? '' : `<td class="tight" style="width:10%"><input class="cell" value="${esc(p.throw)}" placeholder="Throw Ratio" oninput="updProj(${i},'throw',this.value)"></td>`}
+      <td style="width:6%;text-align:center">${ordDot('proj', i, p)}</td>
+      <td class="tight" style="width:11%"><input class="cell num" value="${esc(p.price||'')}" placeholder="—" title="Unit price" oninput="updProj(${i},'price',this.value)"></td>
       <td class="tight" style="width:15%"><input class="cell" value="${esc(p.serial)}" placeholder="Serial Number" oninput="updProj(${i},'serial',this.value)"></td>
       <td class="tight" style="width:13%"><input class="cell num" value="${esc(p.ip)}" placeholder="192.168.10.__" oninput="updProj(${i},'ip',this.value)"></td>
       <td class="rm"><button title="Remove" onclick="rmProjector(${i})">×</button></td>
@@ -11784,6 +11793,8 @@ function pageProjectors(){
       <td class="tight" style="width:16%"><input class="cell" value="${esc(l.ratio)}" placeholder="Ratio (e.g. 1.2–1.8)" oninput="updLens(${i},'ratio',this.value)"></td>
       <td class="tight" style="width:22%"><input class="cell" value="${esc(l.serial)}" placeholder="Serial Number" oninput="updLens(${i},'serial',this.value)"></td>
       <td class="tight" style="width:10%"><input class="cell num" value="${esc(l.qty)}" placeholder="Qty" oninput="updLens(${i},'qty',this.value)"></td>
+      <td style="width:6%;text-align:center">${ordDot('lens', i, l)}</td>
+      <td class="tight" style="width:11%"><input class="cell num" value="${esc(l.price||'')}" placeholder="—" title="Unit price" oninput="updLens(${i},'price',this.value)"></td>
       <td class="rm"><button title="Remove" onclick="rmLens(${i})">×</button></td>
     </tr>`).join('');
   const lensCard = lensOn ? `
@@ -11792,8 +11803,9 @@ function pageProjectors(){
       <div class="hint" style="margin:-6px 0 12px;color:var(--dim);font-size:11.5px">Removable lenses for this project — the Throw Ratio lives here instead of the projector table.</div>
       ${projLenses().length ? `
       <table class="eq">
-        <thead><tr><th style="width:6%">#</th><th>Lens Model</th><th>Ratio</th><th>Serial Number</th><th>Qty</th><th></th></tr></thead>
+        <thead><tr><th style="width:6%">#</th><th>Lens Model</th><th>Ratio</th><th>Serial Number</th><th>Qty</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:right">Unit Price</th><th></th></tr></thead>
         <tbody>${lensRows}</tbody>
+        <tfoot><tr><td colspan="6">Lenses total</td><td class="num" id="lensFoot">${fmt(projLensTotal())}</td><td></td></tr></tfoot>
       </table>` : `<div style="font-size:12.5px;color:#9aa2ad;padding:4px 2px">No lenses yet — add the first one.</div>`}
       <button class="add-line" onclick="addLens()">+ Add lens</button>
     </div>` : '';
@@ -11878,8 +11890,9 @@ function pageProjectors(){
         </div></div>
         ${list.length ? `
       <table class="eq">
-        <thead><tr><th>Number</th><th>Manufacturer</th><th>Model</th><th>Brightness</th>${lensOn?'':'<th>Throw Ratio</th>'}<th>Serial Number</th><th>Network IP</th><th></th></tr></thead>
+        <thead><tr><th>Number</th><th>Manufacturer</th><th>Model</th><th style="text-align:center" title="Order status">Order</th><th style="text-align:right">Unit Price</th><th>Serial Number</th><th>Network IP</th><th></th></tr></thead>
         <tbody>${invRows}</tbody>
+        <tfoot><tr><td colspan="4">Projectors total</td><td class="num" id="projFoot">${fmt(projUnitsTotal())}</td><td colspan="3"></td></tr></tfoot>
       </table>` : `<div style="font-size:12.5px;color:#9aa2ad;padding:4px 2px">No projectors yet — add the first one.</div>`}
       <button class="add-line" onclick="addProjector()">+ Add projector</button>
       ${projAccCard()}
