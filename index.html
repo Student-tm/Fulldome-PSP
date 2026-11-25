@@ -568,14 +568,11 @@
   table.eq select.cell.empty{color:#9aa2ad}
 tr.lib-moved>td{animation:libMoved 1.2s ease-out}@keyframes libMoved{0%{background:#ffe7a3}100%{background:transparent}}   /* BUILD 17.23: the row just landed in its category */
 tr.row-draft>td{background:#fffbe8 !important}   /* BUILD 17.22: row being edited, not saved yet (Enter / leave the row) */
-<<<<<<< HEAD
   /* BUILD 17.38: M/D/YYYY date fields */
   .dfld{position:relative}
   .dfld-h{position:absolute;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none;border:0;padding:0}
   .dfld-b{flex:none;border:1px solid var(--line);background:#fff;border-radius:6px;padding:4px 6px;font-size:13px;line-height:1;cursor:pointer}
   .dfld-b:hover{border-color:var(--fdp-red)}
-=======
->>>>>>> 8d69ceed07f8aba7b22265eef361281e2181e9bd
   /* BUILD 17.36: read-only while there is no connection */
   body.fdp-ro #content input, body.fdp-ro #content select, body.fdp-ro #content textarea{background:#f1f2f4 !important;color:#6b7480 !important;cursor:not-allowed !important}
   body.fdp-ro .add-line, body.fdp-ro .ready-btn, body.fdp-ro .phadd, body.fdp-ro .top-actions .top-btn, body.fdp-ro #content button.mod-btn.primary{opacity:.45 !important;cursor:not-allowed !important}
@@ -876,11 +873,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-<<<<<<< HEAD
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.38 · Dates as M/D/YYYY everywhere</div>
-=======
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.37 · Changes go out at once; close asks if not sent yet</div>
->>>>>>> 8d69ceed07f8aba7b22265eef361281e2181e9bd
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.39 · Dome Library: Tunnels · Library price/link fix</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -956,7 +949,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
     <div class="mt" style="display:flex;align-items:center;gap:8px"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10.5" width="16" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 018 0v3.5"/></svg> Drive Media Files</div>
     <div id="mvGate">
       <div class="mm">Enter the code to view Drive media files.</div>
-      <input class="pin-input" id="mvPin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" onkeydown="if(event.key==='Enter')mvUnlock()">
+      <input class="pin-input" id="mvPin" type="text" autocomplete="off" data-lpignore="true" data-1p-ignore="true" spellcheck="false" style="-webkit-text-security:disc;text-security:disc" inputmode="numeric" maxlength="4" placeholder="••••" onkeydown="if(event.key==='Enter')mvUnlock()">
       <div class="pin-err" id="mvErr"></div>
       <div class="mb"><button class="no" onclick="closeMediaVault()">Cancel</button><button class="yes" onclick="mvUnlock()">Unlock</button></div>
     </div>
@@ -978,7 +971,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
     <div class="mt">Delete Project</div>
     <div class="mm" id="delMsg">This will permanently remove the active project (server, rack and all its data) from the platform.<br>
     Save it to a file first if you need it later.<br><br>Enter the code to continue.</div>
-    <input class="pin-input" id="delPin" type="password" inputmode="numeric" maxlength="4" placeholder="••••">
+    <input class="pin-input" id="delPin" type="text" autocomplete="off" data-lpignore="true" data-1p-ignore="true" spellcheck="false" style="-webkit-text-security:disc;text-security:disc" inputmode="numeric" maxlength="4" placeholder="••••">
     <div class="pin-err" id="delErr"></div>
     <div class="mb" style="flex-wrap:wrap">
       <button class="no" onclick="closeDelete()">Cancel</button>
@@ -2060,6 +2053,36 @@ function libFind(name){
   name = (name||'').trim().toLowerCase();
   if(!name) return null;
   return libAllItems().find(it => it.name.trim().toLowerCase() === name) || null;
+}
+/* BUILD 17.39 — picking an item from the Library ALWAYS brings its price + link:
+   • the same name can exist in two groups — take the copy that HAS a price/link;
+   • switching a row from one library item to another replaces the old item's price/link (before, they were filled only
+     into EMPTY cells, so a row that had held another item kept the old price/link). A price/link typed by hand stays. */
+var _libFilled = new WeakMap();   /* row → the price/link the library put there this session */
+function libFindBest(name){
+  const n = String(name||'').trim().toLowerCase(); if(!n) return null;
+  const all = libAllItems().filter(it => String(it.name||'').trim().toLowerCase() === n);
+  if(!all.length) return null;
+  return all.find(it => String(it.price||'').trim() && String(it.link||'').trim()) || all.find(it => String(it.price||'').trim() || String(it.link||'').trim()) || all[0];
+}
+function libPrevName(row){
+  const nm = String((row && row.name) || '').trim();
+  if(nm && libFind(nm)) return nm;
+  try{ const a = document.activeElement; if(a && a.dataset && a.dataset.dlprev) return a.dataset.dlprev; }catch(_){}   /* dlFocus cleared the field to open the full list */
+  return nm;
+}
+function libApplyPick(row, it, prevName, priceId, linkId){
+  if(!row || !it) return;
+  const prev = prevName && String(prevName).trim().toLowerCase() !== String(it.name||'').trim().toLowerCase() ? libFindBest(prevName) : null;
+  const mem = _libFilled.get(row) || {};
+  const T = v => String(v == null ? '' : v).trim();
+  const cp = T(row.price), cl = T(row.link);
+  const ownP = !cp || cp === T(mem.price) || (prev && cp === T(prev.price));   /* empty, or it came from the library */
+  const ownL = !cl || cl === T(mem.link)  || (prev && cl === T(prev.link));
+  const setEl = (id, v) => { const e = id && document.getElementById(id); if(e) e.value = v; };
+  if(ownP && (T(it.price) || prev)){ row.price = T(it.price) ? it.price : ''; setEl(priceId, row.price); }
+  if(ownL && (T(it.link)  || prev)){ row.link  = T(it.link)  ? it.link  : ''; setEl(linkId, row.link); }
+  _libFilled.set(row, { price: row.price, link: row.link });
 }
 function ensureLibGroup(group){
   if(!db.library) db.library = emptyLibrary();
@@ -4899,11 +4922,12 @@ function vjSection(){
   `;
 }
 function updVj(i, k, v){
+  const _prevName = (k === 'name') ? libPrevName(state.vj.rows[i]) : '';   /* BUILD 17.39 */
   state.vj.rows[i][k] = v;
   if(k === 'link') schedAutoPrice('vj', i);
   if(k === 'name'){
-    const it = libFind(v);
-    if(it){
+    const it = libFindBest(v);
+    if(it){ libApplyPick(state.vj.rows[i], it, _prevName, 'vjP'+i, 'vjL'+i);
       if(!(String(state.vj.rows[i].price||'').trim()) && String(it.price||'').trim()){
         state.vj.rows[i].price = it.price;
         const pe = document.getElementById('vjP'+i); if(pe) pe.value = it.price;
@@ -4990,11 +5014,12 @@ function setSrvCat(i, v){
   saveState(); rerenderKeepScroll();
 }
 function updSrv(i, k, v){
+  const _prevName = (k === 'name') ? libPrevName(state.server.rows[i]) : '';   /* BUILD 17.39 */
   state.server.rows[i][k] = v;
   if(k === 'link') schedAutoPrice('server', i);
   if(k === 'name'){
-    const it = libFind(v);
-    if(it){
+    const it = libFindBest(v);
+    if(it){ libApplyPick(state.server.rows[i], it, _prevName, 'srvP'+i, 'srvL'+i);
       if(!(String(state.server.rows[i].price||'').trim()) && String(it.price||'').trim()){
         state.server.rows[i].price = it.price;
         const pe = document.getElementById('srvP'+i); if(pe) pe.value = it.price;
@@ -5012,11 +5037,12 @@ function updSrv(i, k, v){
   refreshTotals(); refreshReadyUI();
 }
 function updRack(i, k, v){
+  const _prevName = (k === 'name') ? libPrevName(state.rack.rows[i]) : '';   /* BUILD 17.39 */
   state.rack.rows[i][k] = v;
   if(k === 'link') schedAutoPrice('rack', i);
   if(k === 'name'){
-    const it = libFind(v);
-    if(it){
+    const it = libFindBest(v);
+    if(it){ libApplyPick(state.rack.rows[i], it, _prevName, 'rackP'+i, 'rackL'+i);
       if(!(String(state.rack.rows[i].price||'').trim()) && String(it.price||'').trim()){
         state.rack.rows[i].price = it.price;
         const pe = document.getElementById('rackP'+i); if(pe) pe.value = it.price;
@@ -5125,11 +5151,12 @@ function setBkCat(i, v){
   saveState(); rerenderKeepScroll();
 }
 function updBk(i, k, v){
+  const _prevName = (k === 'name') ? libPrevName(state.backup.rows[i]) : '';   /* BUILD 17.39 */
   state.backup.rows[i][k] = v;
   if(k === 'link') schedAutoPrice('backup', i);
   if(k === 'name'){
-    const it = libFind(v);
-    if(it){
+    const it = libFindBest(v);
+    if(it){ libApplyPick(state.backup.rows[i], it, _prevName, 'bkP'+i, 'bkL'+i);
       if(!(String(state.backup.rows[i].price||'').trim()) && String(it.price||'').trim()){
         state.backup.rows[i].price = it.price;
         const pe = document.getElementById('bkP'+i); if(pe) pe.value = it.price;
@@ -8388,7 +8415,7 @@ function fdpSendNow(){
 var _fdpRO = false, _fdpOffSince = 0;
 const FDP_RO_OK = { setActive:1, goTo:1, closeLightbox:1, toggleSide:1, toggleShipGroup:1, toggleShipAllGroups:1, toggleLibGroup:1,
   projSecToggle:1, domeSetTab:1, domeOpenCard:1, domeBackToList:1, domeKitOpen:1, domeKitBack:1, domeApplySearch:1, domeClearSearch:1,
-  domeTrussFileDownload:1, domeSchemFileDownload:1, projWebDownload:1, viewProjModelPhoto:1, genShipPDF:1, saveToFile:1, copyRowLink:1,
+  domeTrussFileDownload:1, domeTunnelFileDownload:1, domeSchemFileDownload:1, projWebDownload:1, viewProjModelPhoto:1, genShipPDF:1, saveToFile:1, copyRowLink:1,
   openRowLink:1, copyProjectLink:1, constructToggle:1, constructPartsToggle:1, flashStat:1, ttBackdrop:1, cloudOpenFolder:1,
   driveOpenProject:1, adminGo:1, adminPick:1, cloudStart:1, cloudSyncNow:1, fdpSendNow:1, openPreProject:1, openProjectorWeb:1,
   stopPropagation:1, preventDefault:1 };
@@ -10208,11 +10235,12 @@ function setCamCat(i, v){
   saveState(); rerenderKeepScroll();
 }
 function updCam(i, k, v){
+  const _prevName = (k === 'name') ? libPrevName(state.camera.rows[i]) : '';   /* BUILD 17.39 */
   state.camera.rows[i][k] = v;
   if(k === 'link') schedAutoPrice('camera', i);
   if(k === 'name'){
-    const it = libFind(v);
-    if(it){
+    const it = libFindBest(v);
+    if(it){ libApplyPick(state.camera.rows[i], it, _prevName, 'camP'+i, 'camL'+i);
       if(!(String(state.camera.rows[i].price||'').trim()) && String(it.price||'').trim()){
         state.camera.rows[i].price = it.price;
         const pe = document.getElementById('camP'+i); if(pe) pe.value = it.price;
@@ -10274,11 +10302,12 @@ function setSpkCat(i, v){
   saveState(); rerenderKeepScroll();
 }
 function updSpk(i, k, v){
+  const _prevName = (k === 'name') ? libPrevName(state.speakers.rows[i]) : '';   /* BUILD 17.39 */
   state.speakers.rows[i][k] = v;
   if(k === 'link') schedAutoPrice('speakers', i);
   if(k === 'name'){
-    const it = libFind(v);
-    if(it){
+    const it = libFindBest(v);
+    if(it){ libApplyPick(state.speakers.rows[i], it, _prevName, 'spkP'+i, 'spkL'+i);
       if(!(String(state.speakers.rows[i].price||'').trim()) && String(it.price||'').trim()){
         state.speakers.rows[i].price = it.price;
         const pe = document.getElementById('spkP'+i); if(pe) pe.value = it.price;
@@ -10448,11 +10477,12 @@ function setFanCat(i, v){
   saveState(); rerenderKeepScroll();
 }
 function updFan(i, k, v){
+  const _prevName = (k === 'name') ? libPrevName(state.fan.rows[i]) : '';   /* BUILD 17.39 */
   state.fan.rows[i][k] = v;
   if(k === 'link') schedAutoPrice('fan', i);
   if(k === 'name'){
-    const it = libFind(v);
-    if(it){
+    const it = libFindBest(v);
+    if(it){ libApplyPick(state.fan.rows[i], it, _prevName, 'fanP'+i, 'fanL'+i);
       if(!(String(state.fan.rows[i].price||'').trim()) && String(it.price||'').trim()){
         state.fan.rows[i].price = it.price;
         const pe = document.getElementById('fanP'+i); if(pe) pe.value = it.price;
@@ -10662,11 +10692,12 @@ function setCabCat(i, v){
   saveState(); rerenderKeepScroll();
 }
 function updCab(i, k, v){
+  const _prevName = (k === 'name') ? libPrevName(state.cables.rows[i]) : '';   /* BUILD 17.39 */
   state.cables.rows[i][k] = v;
   if(k === 'link') schedAutoPrice('cables', i);
   if(k === 'name'){
-    const it = libFind(v);
-    if(it){
+    const it = libFindBest(v);
+    if(it){ libApplyPick(state.cables.rows[i], it, _prevName, 'cabP'+i, 'cabL'+i);
       if(!(String(state.cables.rows[i].price||'').trim()) && String(it.price||'').trim()){
         state.cables.rows[i].price = it.price;
         const pe = document.getElementById('cabP'+i); if(pe) pe.value = it.price;
@@ -10806,11 +10837,12 @@ function setSafCat(i, v){
   saveState(); rerenderKeepScroll();
 }
 function updSaf(i, k, v){
+  const _prevName = (k === 'name') ? libPrevName(state.safety.rows[i]) : '';   /* BUILD 17.39 */
   state.safety.rows[i][k] = v;
   if(k === 'link') schedAutoPrice('safety', i);
   if(k === 'name'){
-    const it = libFind(v);
-    if(it){
+    const it = libFindBest(v);
+    if(it){ libApplyPick(state.safety.rows[i], it, _prevName, 'safP'+i, 'safL'+i);
       if(!(String(state.safety.rows[i].price||'').trim()) && String(it.price||'').trim()){ state.safety.rows[i].price = it.price; const pe = document.getElementById('safP'+i); if(pe) pe.value = it.price; }
       if(!(String(state.safety.rows[i].link||'').trim()) && (it.link||'').trim()){ state.safety.rows[i].link = it.link; const le = document.getElementById('safL'+i); if(le) le.value = it.link; }
     }
@@ -10944,11 +10976,12 @@ function setToolCat(i, v){
   saveState(); rerenderKeepScroll();
 }
 function updTool(i, k, v){
+  const _prevName = (k === 'name') ? libPrevName(state.tools.rows[i]) : '';   /* BUILD 17.39 */
   state.tools.rows[i][k] = v;
   if(k === 'link') schedAutoPrice('tools', i);
   if(k === 'name'){
-    const it = libFind(v);
-    if(it){
+    const it = libFindBest(v);
+    if(it){ libApplyPick(state.tools.rows[i], it, _prevName, 'toolP'+i, 'toolL'+i);
       if(!(String(state.tools.rows[i].price||'').trim()) && String(it.price||'').trim()){
         state.tools.rows[i].price = it.price;
         const pe = document.getElementById('toolP'+i); if(pe) pe.value = it.price;
@@ -11192,7 +11225,9 @@ function domeSnapOf(m){ if(!m) return null; const t = domeEnsureTruss(m);
     fanOpenings:String(m.fanOpenings||''), hvacOpenings:String(m.hvacOpenings||''),
     truss:{ sn:t.sn||'', color:t.color||'', bags:t.bags||'', parts:t.parts||'', couplers:t.couplers||'',
       elements:domeLiveEls(t).filter(e=>String(e.name||'').trim()).map(e=>({ id:e.id, cat:e.cat||'', name:e.name, qty:String(e.qty||'1') })),
-      kits:domeLiveKits(t).map(k=>({ id:k.id, num:k.num||'', status:k.status||'', items:(k.items||[]).filter(it=>it && String(it.name||'').trim()).map(it=>({ id:it.id, core:!!it.core, cat:it.cat||'', name:it.name, qty:String(it.qty||'1'), link:it.link||'' })) })) } }; }
+      kits:domeLiveKits(t).map(k=>({ id:k.id, num:k.num||'', status:k.status||'', items:(k.items||[]).filter(it=>it && String(it.name||'').trim()).map(it=>({ id:it.id, core:!!it.core, cat:it.cat||'', name:it.name, qty:String(it.qty||'1'), link:it.link||'' })) })) },
+    tunnels:domeEnsureTunnels(m).filter(x=>x && !x.deleted).map(x=>({ id:x.id, num:x.num||'', sn:x.sn||'', parts:x.parts||'', color:x.color||'', bags:x.bags||'',
+      elements:(x.elements||[]).filter(e=>e && !e.deleted && String(e.name||'').trim()).map(e=>({ id:e.id, cat:e.cat||'', name:e.name, qty:String(e.qty||'1') })) })) }; }   /* BUILD 17.39 */
 /* the dome data the module works with: the live library card when present, else the project's snapshot */
 function projDomeData(){ const dm = ensureDome(state); if(!dm.domeUid) return null; const m = domeFind(dm.domeUid); if(m && !m.archived) return domeSnapOf(m); return dm.snap || null; }
 function domeSnapTitle(sn){ if(!sn) return ''; const size = String(sn.size||'').replace(/\s*m$/i,'').trim(); return [size?size+' m':'', sn.type, sn.serial].filter(Boolean).join(' · ') || 'Dome'; }
@@ -11250,6 +11285,10 @@ function domeShipPlaces(){ const sn = projDomeData(); const dm = ensureDome(stat
   if(kit){ kit.items.forEach(it => items.push({ key:'i|truss-kit|'+it.id, name:it.name, qty:parseFloat(it.qty)||1, link:it.link||'', cat:it.cat||(it.core?'Truss':'Truss kit'), sub:'Truss Kit '+kit.num })); }
   else { if(ringName) items.push({ key:'i|truss', name:ringName, qty:1, link:'', cat:'Truss', serial:t.sn||'' }); (t.elements||[]).forEach(e => items.push({ key:'i|truss-el|'+e.id, name:e.name, qty:parseFloat(e.qty)||1, link:'', cat:e.cat||'Truss' })); }
   if(items.length) out.push({ key:'pl|truss', name:'Truss' + (kit?(' — Kit '+kit.num):''), module:'Dome & Truss', items });
+  /* BUILD 17.39: every tunnel of the dome ships as its own place — the tunnel itself + its components */
+  (sn.tunnels||[]).forEach(function(tn){ const nm = domeTunnelName(tn); const its = [{ key:'i|tunnel|'+tn.id, name:nm, qty:1, link:'', cat:'Tunnel', serial:String(tn.sn||'').trim() }];
+    (tn.elements||[]).forEach(function(e){ its.push({ key:'i|tunnel-el|'+tn.id+'|'+e.id, name:e.name, qty:parseFloat(e.qty)||1, link:'', cat:e.cat||'Tunnel' }); });
+    out.push({ key:'pl|tunnel|'+tn.id, name:nm, module:'Dome & Truss', items:its }); });
   return out; }
 function domeModuleStats(){ const sn = projDomeData(); const dm = ensureDome(state); const t = (sn && sn.truss) || {}; const kit = dm.kitId ? (t.kits||[]).find(k=>k.id===dm.kitId) : null;
   return { dome: sn ? domeSnapTitle(sn) : '', truss: sn ? (String(t.sn||'').trim() || String(t.color||'').trim() || ((t.elements||[]).length ? (t.elements.length+' elements') : '')) : '', kit: kit ? ('Kit ' + kit.num) : '', ready: projDomeReady() }; }
@@ -12346,6 +12385,23 @@ function domeSchemDoc(s){ s=s||{}; const out={}; DOME_SCHEM.forEach(b=>{ out[b.k
 const TRUSS_COLORS = ['Black','Aluminum (unpainted)'];
 function domeEmptyTruss(){ return { sn:'', color:'', bags:'', parts:'', couplers:'', elements:[], files:[], kits:[] }; }   /* elements = components that ship WITH the truss (from library); kits = numbered ready configs */
 function domeEmptyTrussEl(){ return { id:newId(), cat:'', name:'', qty:'' }; }
+/* ===== BUILD 17.39 — TUNNELS (Dome Library → card → Tunnels tab). A dome can have several tunnels; each is like the truss:
+   SN · QTT of parts · Colour · QTT of bags · components that ship with it (Truss library) · drawings (PDF/DWG).
+   m.tunnels = [{ id, num, sn, parts, color, bags, elements:[{id,cat,name,qty,deleted}], files:[…], deleted }] — deletions are
+   tombstones (deleted:true), merged as id-lists like truss kits. Each live tunnel ships as its own place in the project. */
+function domeEmptyTunnel(num){ return { id:newId(), num:num||'01', sn:'', parts:'', color:'', bags:'', elements:[], files:[], deleted:false }; }
+function domeEnsureTunnels(m){ if(!m) return []; if(!Array.isArray(m.tunnels)) m.tunnels = [];
+  m.tunnels.forEach(t=>{ if(!t || typeof t!=='object') return; if(!t.id) t.id=newId();
+    ['num','sn','parts','color','bags'].forEach(f=>{ if(typeof t[f]!=='string') t[f]=String(t[f]==null?'':t[f]); }); if(!t.num) t.num=domeKitPad(1); t.deleted=!!t.deleted;
+    if(!Array.isArray(t.elements)) t.elements=[]; t.elements.forEach(e=>{ if(e && typeof e==='object'){ if(!e.id) e.id=newId(); ['cat','name','qty'].forEach(f=>{ if(typeof e[f]!=='string') e[f]=String(e[f]==null?'':e[f]); }); e.deleted=!!e.deleted; } });
+    if(!Array.isArray(t.files)) t.files=[]; t.files.forEach(f=>{ if(f && typeof f==='object'){ if(!f.id) f.id=newId(); ['name','type','notes','data','driveFileId','added'].forEach(k=>{ if(typeof f[k]!=='string') f[k]=String(f[k]==null?'':f[k]); }); if(typeof f.size!=='number') f.size=parseInt(f.size,10)||0; f.archived=!!f.archived; } }); });
+  return m.tunnels; }
+function domeLiveTunnels(m){ return ((m && m.tunnels) || []).filter(t=>t && !t.deleted); }
+function domeTunnelName(t){ const sn=String((t&&t.sn)||'').trim(), col=String((t&&t.color)||'').trim(); return 'Tunnel ' + ((t&&t.num)||'') + (sn ? (' · ' + sn) : (col ? (' · ' + col) : '')); }
+/* Firestore carries METADATA ONLY for tunnel files (no base64) — same rule as the truss */
+function domeTunnelsDoc(list){ return (Array.isArray(list)?list:[]).map(t=>({ id:String(t.id||''), num:String(t.num||''), sn:String(t.sn||''), parts:String(t.parts||''), color:String(t.color||''), bags:String(t.bags||''), deleted:!!t.deleted,
+  elements:(Array.isArray(t.elements)?t.elements:[]).map(e=>({ id:String(e.id||''), cat:String(e.cat||''), name:String(e.name||''), qty:String(e.qty||''), deleted:!!e.deleted })),
+  files:(Array.isArray(t.files)?t.files:[]).map(f=>({ id:String(f.id||''), name:String(f.name||''), type:String(f.type||''), size:(typeof f.size==='number'?f.size:parseInt(f.size,10)||0), notes:String(f.notes||''), driveFileId:String(f.driveFileId||''), added:String(f.added||''), archived:!!f.archived })) })); }
 function domeEmptyKitItem(){ return { id:newId(), core:false, cat:'', name:'', qty:'', price:'', comment:'', link:'' }; }
 function domeKitPad(n){ n=parseInt(n,10)||0; return (n<10?'0':'')+n; }
 /* BUILD 16.39 — deleted kits / truss elements / covers are TOMBSTONES (deleted:true kept in the list, hidden everywhere),
@@ -12427,7 +12483,7 @@ function domeEmptyComponents(){
 }
 function domeEmptyModel(){
   return { domeUid:newId(), serial:'', size:'', type:'', screenType:'', screenTypeOther:'',
-    doors:'', doorsCustom:'', hvacOpenings:'', fanOpenings:'', readyToShip:false, components:domeEmptyComponents(), truss:domeEmptyTruss(), schematics:domeEmptySchem(), archived:false, deleted:false, rev:0, _saved:false };
+    doors:'', doorsCustom:'', hvacOpenings:'', fanOpenings:'', readyToShip:false, components:domeEmptyComponents(), truss:domeEmptyTruss(), tunnels:[], schematics:domeEmptySchem(), archived:false, deleted:false, rev:0, _saved:false };
 }
 /* Normalise a model's components to the current shape (lazy migration for older dome cards). */
 function domeEnsureComponents(m){
@@ -12662,6 +12718,7 @@ function _domeKeepLocalBytes(oldM, newM){
       newList.forEach(function(f){ if(!f || f.data) return; const o = oldList.find(function(x){ return x && x.id===f.id && x.data; }); if(o) f.data = o.data; }); };
     if(oldM.schematics && newM.schematics) DOME_SCHEM.forEach(function(b){ copy(oldM.schematics[b.key], newM.schematics[b.key]); });
     if(oldM.truss && newM.truss) copy(oldM.truss.files, newM.truss.files);
+    if(Array.isArray(oldM.tunnels) && Array.isArray(newM.tunnels)) newM.tunnels.forEach(function(t){ const o = oldM.tunnels.find(function(x){ return x && t && x.id === t.id; }); if(o) copy(o.files, t.files); });   /* BUILD 17.39 */
   }catch(_){}
   return newM;
 }
@@ -12732,7 +12789,7 @@ function domeFsModelDoc(m){
   return { domeUid:m.domeUid, serial:m.serial||'', size:String(m.size||''), type:m.type||'', screenType:m.screenType||'',
     screenTypeOther:m.screenTypeOther||'', doors:m.doors||'', doorsCustom:m.doorsCustom||'',
     hvacOpenings:String(m.hvacOpenings||''), fanOpenings:String(m.fanOpenings||''), readyToShip:!!m.readyToShip,
-    components:domeComponentsDoc(m.components), truss:domeTrussDoc(m.truss), schematics:domeSchemDoc(m.schematics), archived:!!m.archived, deleted:!!m.deleted, updatedBy:_gUser||'', rev:(m.rev||0) };
+    components:domeComponentsDoc(m.components), truss:domeTrussDoc(m.truss), tunnels:domeTunnelsDoc(m.tunnels), schematics:domeSchemDoc(m.schematics), archived:!!m.archived, deleted:!!m.deleted, updatedBy:_gUser||'', rev:(m.rev||0) };
 }
 
 /* ---- Google Drive backup (BUILD 15.06): on Save, and every 15 min if changed, write the dome card
@@ -12804,6 +12861,7 @@ async function domeBackupWrite(m, force){
     domeDriveMap()[m.domeUid]=Object.assign(domeDriveMap()[m.domeUid]||{}, { jsonId, sig, jsonName });
     saveDomeLib();
     try{ await domeTrussUploadFiles(m, fid); }catch(_){}   /* BUILD 15.14: upload attached truss PDFs/DWGs (best-effort) */
+    try{ await domeTunnelUploadFiles(m, fid); }catch(_){}  /* BUILD 17.39: tunnel drawings → Documentation / Tunnels */
     try{ await domeSchemUploadFiles(m, fid); }catch(_){}   /* BUILD 15.82: upload attached assembly schematics (best-effort) */
     try{ await domeBackupToBackupRoot(m); }catch(_){}      /* BUILD 15.36: mirror JSON into Fulldome PSP — BACKUPS / Dome Library */
     if(force) setCloudStat('Dome card backed up to Drive ✓ · ' + hhmm());
@@ -12968,6 +13026,36 @@ function domeTrussElAddToLib(iid){ const e=domeTrussEl(iid); if(!e) return; cons
   ensureLibGroup('truss').push({ cat:e.cat||'', name:name, price:'', link:'' }); saveState(); flashStat('Added to Truss library ✓'); rerenderKeepScroll(); }
 /* Kit create-picker: choose which truss components (ring + couplers + elements) become kit rows */
 var _domeKitPick = null;
+/* ---- Tunnels tab handlers (BUILD 17.39) ---- */
+function domeTunnelFind(id){ const m=domeEditing(); if(!m) return null; domeEnsureTunnels(m); return m.tunnels.find(t=>t.id===id && !t.deleted)||null; }
+function domeTunnelAdd(){ const m=domeEditing(); if(!m) return; domeEnsureTunnels(m); let mx=0; m.tunnels.forEach(t=>{ const n=parseInt(t.num,10); if(isFinite(n)&&n>mx) mx=n; });
+  m.tunnels.push(domeEmptyTunnel(domeKitPad(mx+1))); saveDomeLib(); rerenderKeepScroll(); }
+function domeTunnelRemove(id){ const t=domeTunnelFind(id); if(!t) return; if(!confirm('Remove ' + domeTunnelName(t) + ' from this dome card?')) return; t.deleted=true; saveDomeLib(); rerenderKeepScroll(); }
+function domeTunnelUpd(id, field, val){ const t=domeTunnelFind(id); if(!t) return; t[field]=val; saveDomeLib(); }
+function domeTunnelEl(id, eid){ const t=domeTunnelFind(id); if(!t) return null; return t.elements.find(e=>e.id===eid && !e.deleted)||null; }
+function domeTunnelElAdd(id){ const t=domeTunnelFind(id); if(!t) return; t.elements.push(domeEmptyTrussEl()); saveDomeLib(); rerenderKeepScroll(); }
+function domeTunnelElUpd(id, eid, field, val){ const e=domeTunnelEl(id, eid); if(!e) return; e[field]=val; saveDomeLib(); if(field==='cat') rerenderKeepScroll(); }
+function domeTunnelElDel(id, eid){ const e=domeTunnelEl(id, eid); if(!e) return; e.deleted=true; saveDomeLib(); rerenderKeepScroll(); }
+function domeTunnelElAddToLib(id, eid){ const e=domeTunnelEl(id, eid); if(!e) return; const name=(e.name||'').trim(); if(!name||libFind(name)) return;
+  ensureLibGroup('truss').push({ cat:e.cat||'', name:name, price:'', link:'' }); saveState(); flashStat('Added to Truss library ✓'); rerenderKeepScroll(); }
+function domeTunnelAddFile(id, input){ const m=domeEditing(); const t=domeTunnelFind(id); if(!m||!t||!input||!input.files||!input.files[0]) return; const f=input.files[0];
+  const MAX=25*1024*1024; if(f.size>MAX){ alert('File too large (max 25 MB). Please attach a smaller PDF/DWG.'); input.value=''; return; }
+  const rd=new FileReader();
+  rd.onload=function(){ t.files.push({ id:newId(), name:f.name, type:f.type||'', size:f.size, notes:'', data:String(rd.result||''), driveFileId:'', added:new Date().toISOString(), archived:false }); saveDomeLib();
+    try{ domeBackupWrite(m, true); }catch(_){} rerenderKeepScroll(); };
+  rd.onerror=function(){ alert('Could not read the file.'); };
+  rd.readAsDataURL(f); input.value=''; }
+function domeTunnelFileUpd(id, fid, field, val){ const t=domeTunnelFind(id); if(!t) return; const f=t.files.find(x=>x.id===fid); if(!f) return; f[field]=val; saveDomeLib(); }
+function domeTunnelFileRemove(id, fid){ const t=domeTunnelFind(id); if(!t) return; const f=t.files.find(x=>x.id===fid); if(!f) return;
+  if(!confirm('Remove this file from the tunnel? (metadata only — the Google Drive copy is not deleted)')) return; f.archived=true; saveDomeLib(); rerenderKeepScroll(); }
+function domeTunnelFileDownload(id, fid){ const t=domeTunnelFind(id); if(!t) return; const f=t.files.find(x=>x.id===fid); if(!f) return;
+  if(f.data){ const a=document.createElement('a'); a.href=f.data; a.download=f.name||'tunnel-file'; document.body.appendChild(a); a.click(); a.remove(); }
+  else if(f.driveFileId){ window.open('https://drive.google.com/file/d/'+f.driveFileId+'/view','_blank'); }
+  else { alert('This file was added on another device and is not stored locally yet.'); } }
+async function domeTunnelUploadFiles(m, fid){ if(!m||!(_cloudOn && _gTok)) return; const pend=[]; domeLiveTunnels(m).forEach(t=>(t.files||[]).forEach(f=>{ if(!f.archived && f.data && !f.driveFileId) pend.push(f); })); if(!pend.length) return;
+  try{ const docFolder=await driveEnsureFolder('Documentation', fid); const tf=await driveEnsureFolder('Tunnels', docFolder);
+    for(const f of pend){ try{ const id=await driveUpload(f.name||'tunnel-file', tf, dataUrlToBytes(f.data), f.type||'application/octet-stream'); if(id) f.driveFileId=id; }catch(_){} }
+    saveDomeLib(); }catch(_){} }
 function domeKitPickSkip(){ _domeKitPick=null; rerenderKeepScroll(); }
 function domeKitPickApply(kitId, keys){ const k=domeKitFind(kitId); if(!k) return; const m=domeEditing();
   const cand=domeTrussCandidates(m); const set={}; (keys||[]).forEach(x=>set[x]=1);
@@ -13193,8 +13281,9 @@ function pageDomeCard(){
       <button class="dtab ${_domeTab==='overview'?'sel':''}" data-pressec="overview" onclick="domeSetTab('overview')">Overview</button>
       <button class="dtab ${_domeTab==='components'?'sel':''}" data-pressec="components" onclick="domeSetTab('components')">Components</button>
       <button class="dtab ${_domeTab==='truss'?'sel':''}" data-pressec="truss" onclick="domeSetTab('truss')">Truss</button>
+      <button class="dtab ${_domeTab==='tunnels'?'sel':''}" data-pressec="tunnels" onclick="domeSetTab('tunnels')">Tunnels${domeLiveTunnels(m).length ? ' <span style="font-size:11px;opacity:.7">(' + domeLiveTunnels(m).length + ')</span>' : ''}</button>
     </div>
-    ${ _domeTab==='components' ? domeTabComponents(m) : _domeTab==='truss' ? `<div class="dcomp">${domeTabTruss(m)}</div>` : `<div class="dcomp"><div class="card">${domeTabOverview(m)}</div>${domeSchematicsCard(m)}</div>` }   /* BUILD 16.38: Overview + Truss use the same compact one-per-row layout as Components */
+    ${ _domeTab==='components' ? domeTabComponents(m) : _domeTab==='truss' ? `<div class="dcomp">${domeTabTruss(m)}</div>` : _domeTab==='tunnels' ? `<div class="dcomp">${domeTabTunnels(m)}</div>` : `<div class="dcomp"><div class="card">${domeTabOverview(m)}</div>${domeSchematicsCard(m)}</div>` }   /* BUILD 16.38: Overview + Truss use the same compact one-per-row layout as Components */
   </div>`;
 }
 function _dfld(label,inner){ return `<div class="fld"><label>${label}</label>${inner}</div>`; }
@@ -13393,6 +13482,66 @@ function domeTabTruss(m){
     ${fileRows}
   </div>
   ${domeKitCard(m)}`;
+}
+/* ---- Tunnels tab (BUILD 17.39) ---- */
+function domeTabTunnels(m){
+  const list = domeEnsureTunnels(m).filter(t=>!t.deleted);
+  const cats = groupCats('truss');
+  const dls = `<datalist id="dlTrussKit">${(db.library&&db.library.truss||[]).filter(it=>(it.name||'').trim()).map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>
+    ${cats.map((c,ci)=>`<datalist id="dlTrussCat_${ci}">${libByGroupCat('truss',c).map(it=>`<option value="${esc(it.name)}"></option>`).join('')}</datalist>`).join('')}`;
+  const one = t => {
+    const els = t.elements.filter(e=>!e.deleted);
+    const rows = els.map((e,i)=>{ const listId=(e.cat||'').trim()?kitCatListId(e.cat):'dlTrussKit'; return `<tr>
+      <td style="width:4%;text-align:center;color:var(--dim)">${i+1}</td>
+      <td class="tight" style="width:22%"><select class="cell ${!(e.cat||'').trim()?'empty':''}" onchange="domeTunnelElUpd('${t.id}','${e.id}','cat',this.value)">
+        <option value="" ${!(e.cat||'').trim()?'selected':''}>— Category —</option>
+        ${cats.map(c=>`<option value="${esc(c)}" ${e.cat===c?'selected':''}>${esc(c)}</option>`).join('')}
+        ${(e.cat||'').trim() && ciIndexOf(cats,e.cat)===-1?`<option value="${esc(e.cat)}" selected>${esc(e.cat)}</option>`:''}
+      </select></td>
+      <td class="tight"><input class="cell b" list="${listId}" value="${esc(e.name)}" placeholder="Pick from Truss library or type" oninput="domeTunnelElUpd('${t.id}','${e.id}','name',this.value)"></td>
+      <td class="tight" style="width:9%"><input class="cell num" value="${esc(e.qty)}" placeholder="1" oninput="domeTunnelElUpd('${t.id}','${e.id}','qty',this.value)"></td>
+      <td class="tolib">${(e.name||'').trim() && !libFind(e.name)?`<button title="Add to Truss library" onclick="domeTunnelElAddToLib('${t.id}','${e.id}')">${_SVG_BOOK}</button>`:''}</td>
+      <td class="rm"><button title="Remove" onclick="domeTunnelElDel('${t.id}','${e.id}')">×</button></td>
+    </tr>`; }).join('') || `<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:14px">No components yet. Add the parts that ship with this tunnel.</td></tr>`;
+    const files = t.files.filter(f=>!f.archived);
+    const fileRows = files.map(f=>`
+      <div style="border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:0 0 10px;background:#fbfbfc">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px">
+          <div style="min-width:0"><span style="font-weight:700;font-size:12.5px">${esc(f.name||'file')}</span>
+            <span style="color:var(--dim);font-size:11px;margin-left:8px">${esc(domeFileKind(f))}${f.size?(' · '+esc(domeFileSize(f.size))):''}${f.driveFileId?' · on Drive':''}</span></div>
+          <div style="display:flex;gap:6px;flex:none">
+            <button class="mod-btn" style="padding:5px 12px" onclick="domeTunnelFileDownload('${t.id}','${f.id}')">Download</button>
+            <button class="mod-btn" style="padding:5px 12px;color:var(--fdp-red)" onclick="domeTunnelFileRemove('${t.id}','${f.id}')">Remove</button>
+          </div>
+        </div>
+        ${_dfld('Notice / Notes', `<textarea class="cell" placeholder="Notes for this drawing (e.g. revision, what it shows)" oninput="domeTunnelFileUpd('${t.id}','${f.id}','notes',this.value)">${esc(f.notes)}</textarea>`)}
+      </div>`).join('') || `<div style="color:var(--dim);font-size:12.5px;padding:4px 2px 10px">No files yet. Add a PDF or DWG/DXF drawing.</div>`;
+    return `<div class="card" id="tunnel_${esc(t.id)}">
+      <div class="card-head"><h3>${esc(domeTunnelName(t))}</h3>
+        <button class="mod-btn" style="padding:5px 12px;color:var(--fdp-red)" onclick="domeTunnelRemove('${t.id}')">Remove tunnel</button></div>
+      <div class="fgrid">
+        ${_dfld('Tunnel Serial Number (SN)', `<input class="cell" value="${esc(t.sn)}" placeholder="e.g. TN-10-001" oninput="domeTunnelUpd('${t.id}','sn',this.value)">`)}
+        ${_dfld('QTT of Parts', `<input class="cell num" type="number" min="0" step="1" value="${esc(t.parts)}" placeholder="0" oninput="domeTunnelUpd('${t.id}','parts',this.value)">`)}
+        ${_dfld('Colour', `<select class="cell" onchange="domeTunnelUpd('${t.id}','color',this.value)"><option value="" ${!t.color?'selected':''}>—</option>${TRUSS_COLORS.map(x=>`<option value="${esc(x)}" ${t.color===x?'selected':''}>${esc(x)}</option>`).join('')}</select>`)}
+        ${_dfld('QTT of Bags', `<input class="cell num" type="number" min="0" step="1" value="${esc(t.bags)}" placeholder="0" oninput="domeTunnelUpd('${t.id}','bags',this.value)">`)}
+      </div>
+      <div style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px">
+        <div class="hint" style="margin:0 0 12px;color:var(--dim);font-size:11.5px">Components that ship WITH this tunnel. In a project they are listed in the tunnel's shipping place.</div>
+        <table class="eq"><thead><tr><th style="width:4%">#</th><th>Category</th><th>Item</th><th style="text-align:right">Qty</th><th colspan="2"></th></tr></thead><tbody>${rows}</tbody></table>
+        <button class="add-line" onclick="domeTunnelElAdd('${t.id}')">+ Add from Truss Library</button>
+      </div>
+      <div style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px"><span style="font-weight:800;font-size:12.5px;letter-spacing:.4px;text-transform:uppercase">Tunnel Drawings &amp; Files</span>
+          <span><input type="file" id="tunFile_${esc(t.id)}" accept=".pdf,.dwg,.dxf,application/pdf" style="display:none" onchange="domeTunnelAddFile('${t.id}',this)">
+          <button class="mod-btn" style="padding:6px 12px" onclick="document.getElementById('tunFile_${esc(t.id)}').click()">+ Add PDF / DWG</button></span></div>
+        <div class="hint" style="margin:0 0 12px;color:var(--dim);font-size:11.5px">Backed up to Google Drive (Dome Library → this dome → Documentation → Tunnels).</div>
+        ${fileRows}
+      </div>
+    </div>`;
+  };
+  return `${dls}
+    ${list.length ? list.map(one).join('') : `<div class="card" style="text-align:center;padding:28px 20px"><div style="color:var(--dim);font-size:13px;margin-bottom:14px">This dome has no tunnels yet.</div></div>`}
+    <button class="add-line" style="margin-top:4px" onclick="domeTunnelAdd()">+ Add Tunnel</button>`;
 }
 function domeTrussElRow(e, n){
   const cats=groupCats('truss');
@@ -13926,7 +14075,7 @@ var SE = (function(){
       sections: function(e){ const o = {}; Object.keys(emptyState()).forEach(function(k){ o[k] = 1; }); Object.keys(e.data || {}).forEach(function(k){ if(!skipKey(k) && k !== 'ready') o[k] = 1; }); return Object.keys(o); }
     },
     dome_library: {
-      lists: { 'domes':{ idKey:'domeUid' }, 'domes/#/components.covers':{}, 'domes/#/truss.elements':{}, 'domes/#/truss.files':{}, 'domes/#/truss.kits':{}, 'domes/#/truss.kits/#/items':{},
+      lists: { 'domes':{ idKey:'domeUid' }, 'domes/#/components.covers':{}, 'domes/#/truss.elements':{}, 'domes/#/truss.files':{}, 'domes/#/truss.kits':{}, 'domes/#/truss.kits/#/items':{}, 'domes/#/tunnels':{}, 'domes/#/tunnels/#/elements':{}, 'domes/#/tunnels/#/files':{},
                'domes/#/schematics.assembly':{}, 'domes/#/schematics.lego':{}, 'domes/#/schematics.doors':{} },
       binaries: {}, sections: function(){ return []; }
     },
