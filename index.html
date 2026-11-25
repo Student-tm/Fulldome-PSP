@@ -873,7 +873,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.39 · Dome Library: Tunnels · Library price/link fix</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.40 · Projector Mount: price + link from Library</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -11465,7 +11465,9 @@ function projMountCats(){ return groupCats('truss'); }
 const projMountListId = cat => 'dlPmCat' + Math.max(0, ciIndexOf(projMountCats(), cat));
 function addProjMount(){ shipSealLegacy(); projMounts().push({ id:'pm'+Date.now()+Math.floor(Math.random()*1e4), cat:'', name:'', qty:'', price:'', link:'', serial:'', ts:Date.now() }); saveState(); rerenderKeepScroll(); }
 function rmProjMount(i){ const a=projMounts(); if(!a[i]) return; a.splice(i,1); saveState(); rerenderKeepScroll(); }
-function updProjMount(i,k,v){ const m=projMounts()[i]; if(!m) return; m[k]=v; saveState(); if(k==='qty'||k==='price'){ const t=document.getElementById('pmRowT'+i); if(t) t.textContent = fmt(priceNum(m.price)*(parseFloat(m.qty)||1) || null); const f=document.getElementById('pmFoot'); if(f) f.textContent = fmt(projMountTotal()); } }
+function updProjMount(i,k,v){ const m=projMounts()[i]; if(!m) return; const _pn = (k==='name') ? libPrevName(m) : ''; m[k]=v;
+  if(k==='name'){ const it = libFindBest(v); if(it) libApplyPick(m, it, _pn, 'pmP'+i, 'pmL'+i); }   /* BUILD 17.40: picking from the Library brings price + link (was never filled here) */
+  saveState(); if(k==='qty'||k==='price'||k==='name'){ const t=document.getElementById('pmRowT'+i); if(t) t.textContent = fmt(priceNum(m.price)*(parseFloat(m.qty)||1) || null); const f=document.getElementById('pmFoot'); if(f) f.textContent = fmt(projMountTotal()); } }
 function setProjMountCat(i, v){ const m=projMounts()[i]; if(!m) return; m.cat = v; if(autoFillFromCat(m, libByGroupCat('truss', v))) flashStat('Filled from Library ✓'); saveState(); rerenderKeepScroll(); }
 function projMountTotal(){ return projMounts().reduce((s,m)=> s + (priceNum(m.price)*(parseFloat(m.qty)||1) || 0), 0); }
 function projMountShipItems(){ return projMounts().filter(m=>String(m.name||'').trim()).map(m=>({ key:'i|pmount|'+m.id, name:String(m.name).trim()+(String(m.serial||'').trim()?' · SN '+String(m.serial).trim():''), qty:(parseFloat(m.qty)||1), link:m.link||'', ts:(+m.ts||0), _r:m })); }
@@ -11482,9 +11484,9 @@ function projMountCard(){
       <td class="tight"><input class="cell b" id="pmN${i}" onfocus="dlFocus(this)" onblur="dlBlur(this)" list="${(m.cat||'').trim()?projMountListId(m.cat):'dlLibTruss'}" value="${esc(m.name)}" placeholder="Pick from Library (Truss) or type" oninput="updProjMount(${i},'name',this.value)"></td>
       <td class="tight" style="width:12%"><input class="cell" value="${esc(m.serial)}" placeholder="Serial Number" oninput="updProjMount(${i},'serial',this.value)"></td>
       <td class="tight" style="width:7%"><input class="cell num" value="${esc(m.qty)}" placeholder="1" oninput="updProjMount(${i},'qty',this.value)"></td>
-      <td class="tight" style="width:11%"><input class="cell num" value="${esc(m.price)}" placeholder="—" oninput="updProjMount(${i},'price',this.value)"></td>
+      <td class="tight" style="width:11%"><input class="cell num" id="pmP${i}" value="${esc(m.price)}" placeholder="—" oninput="updProjMount(${i},'price',this.value)"></td>
       <td class="num" style="width:11%"><span id="pmRowT${i}">${fmt(priceNum(m.price)*(parseFloat(m.qty)||1) || null)}</span></td>
-      <td class="tight" style="width:11%"><input class="cell" value="${esc(m.link)}" placeholder="https://" oninput="updProjMount(${i},'link',this.value)"></td>
+      <td class="tight" style="width:11%"><input class="cell" id="pmL${i}" value="${esc(m.link)}" placeholder="https://" oninput="updProjMount(${i},'link',this.value)"></td>
       <td class="tolib">${(m.name||'').trim() && !libFind(m.name) ? `<button title="Add to Library (Truss)" onclick="addProjMountToLib(${i})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M9 9.5h6M12 6.5v6"/></svg></button>` : ''}</td>
       <td class="rm"><button title="Remove" onclick="rmProjMount(${i})">×</button></td>
     </tr>`).join('');
@@ -13067,9 +13069,8 @@ function domeKitItem(id, iid){ const k=domeKitFind(id); if(!k) return null; retu
 function domeKitItemAdd(id){ const k=domeKitFind(id); if(!k) return; k.items.push(domeEmptyKitItem()); saveDomeLib(); rerenderKeepScroll(); }
 function domeKitItemTotal(it){ const v=priceNum(it.price)*(parseFloat(it.qty)||1); return v?fmt(v):'—'; }
 function kitCatListId(cat){ const cats=groupCats('truss'); const i=ciIndexOf(cats, cat); return i>=0 ? ('dlTrussCat_'+i) : 'dlTrussKit'; }
-function domeKitItemUpd(id, iid, field, val){ const it=domeKitItem(id,iid); if(!it) return; it[field]=val;
-  if(field==='name' && !String(it.price||'').trim()){ const hit=libFind(val); if(hit){ it.price=hit.price||''; it.link=it.link||hit.link||'';
-    const pe=document.getElementById('kiP_'+iid); if(pe) pe.value=it.price; const le=document.getElementById('kiL_'+iid); if(le) le.value=it.link;
+function domeKitItemUpd(id, iid, field, val){ const it=domeKitItem(id,iid); if(!it) return; const _pn = (field==='name') ? libPrevName(it) : ''; it[field]=val;
+  if(field==='name'){ const hit=libFindBest(val); if(hit){ libApplyPick(it, hit, _pn, 'kiP_'+iid, 'kiL_'+iid);   /* BUILD 17.40: same rule as the builders */
     const te=document.getElementById('kiT_'+iid); if(te) te.textContent=domeKitItemTotal(it); } }
   else if(field==='qty' || field==='price'){ const te=document.getElementById('kiT_'+iid); if(te) te.textContent=domeKitItemTotal(it); }
   saveDomeLib(); if(field==='cat') rerenderKeepScroll(); }   /* switch the Item datalist to the picked category */
