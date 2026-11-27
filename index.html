@@ -873,7 +873,7 @@ tr.ship-hit>td,div.ship-hit{animation:shipHit 2.6s ease-out}@keyframes shipHit{0
       border:1px solid #7a3d3a;border-radius:7px;padding:8px 9px;text-align:center"></div>
   </div>
   <div class="side-foot">
-    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.43 · Projector Photos</div>
+    <div style="text-align:center;font-size:9.5px;color:#565c66;margin-bottom:7px;letter-spacing:.5px">BUILD 17.44 · Late Google sign-in finishes the start</div>
     <button class="collapse-btn" onclick="toggleSide()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg><span>Collapse</span></button>
   </div>
 </aside>
@@ -6011,6 +6011,9 @@ function driveToken(interactive){
             _gTokExp = Date.now() + (parseInt(r.expires_in)||3600)*1000;
             driveWhoAmI();
             res(_gTok);
+            /* BUILD 17.44: the silent sign-in at start is time-boxed (4 s). When Google answers LATER, the start had already given up —
+               the user looked signed in ("Drive: <email>") but Firestore never started → read-only "not signed in". Finish it now. */
+            if(!_cloudOn && !_cloudStarting){ setTimeout(function(){ try{ cloudStart(true); }catch(_){} }, 0); }
           } else rej(new Error(r && r.error || 'token'));
         }
       });
@@ -6025,7 +6028,7 @@ function driveWhoAmI(){
       const el = document.getElementById('driveStat');
       /* BUILD 15.71: under Firestore-primary, don't clobber the Firestore status (✓ or ⚠) with the Drive line —
          that hid the real "no access to projects" error behind a harmless "Drive: <email>". */
-      if(el && !(_FS && (_fsFatal || (typeof fsReady==='function' && fsReady()))))
+      if(el && _cloudOn && !(_FS && (_fsFatal || (typeof fsReady==='function' && fsReady()))))   /* 17.44: only once the app is really started */
         el.textContent = _gUser ? ('Drive: ' + _gUser) : 'Drive: connected';
       /* BUILD 15.68: refresh the left menu so the Admin Console item appears for admins right after sign-in */
       try{ renderNav((ROUTES[location.hash]||{}).nav); renderSideProject(); }catch(_){}
@@ -8406,6 +8409,7 @@ function fdpConnTick(fromFocus){
   }
 }
 function fdpSendNow(){
+  try{ if(_FS && !fsReady()){ cloudSyncNow(); return; } }catch(_){}   /* BUILD 17.44: not signed in / not started → sign in (opens the Google sign-in) */
   try{ if(_rowDraft && _rowDraft.dirty && typeof _rowDraftCommit === 'function') _rowDraftCommit(); }catch(_){}
   try{ if(_FS && fsReady() && typeof _fsWakeRefresh === 'function') _fsWakeRefresh('manual retry'); }catch(_){}
   try{ OB.resume(); }catch(_){}
@@ -8445,6 +8449,7 @@ function fdpRoBar(on){
     bar.appendChild(b); document.body.appendChild(bar); try{ document.body.style.paddingTop = '44px'; }catch(_){}
   }
   const m = document.getElementById('fdpRoMsg'); if(m && m.textContent !== txt) m.textContent = txt;
+  try{ const b = bar.querySelector('button'); const lbl = (why === 'not signed in') ? 'Sign in' : 'Retry'; if(b && b.textContent !== lbl) b.textContent = lbl; }catch(_){}
 }
 function fdpSetRO(on){
   if(_fdpRO === on){ if(on) fdpRoBar(true); return; }
@@ -8579,8 +8584,10 @@ function setCloudStat(t){ const el=document.getElementById('driveStat'); if(el) 
 function cloudGateShow(){ const g=document.getElementById('authGate'); if(g) g.style.display='flex'; }
 function cloudGateHide(){ const g=document.getElementById('authGate'); if(g) g.style.display='none'; }
 function cloudOffline(){ _cloudOn=false; cloudStopPoll(); if(typeof fbpStop==='function') fbpStop(); if(typeof fsStop==='function') fsStop(); backupStopLoop(); if(typeof domeBackupStop==='function') domeBackupStop(); presenceStop(); try{ presStop(); }catch(_){} cloudGateHide(); setCloudStat('Offline — click to sign in and sync'); }
+var _cloudStarting = false;
 async function cloudStart(silent){
   const err = document.getElementById('authErr');
+  _cloudStarting = true;
   try{
     if(err) err.textContent='';
     setCloudStat(silent ? 'Connecting to Google…' : 'Signing in…');
@@ -8626,7 +8633,7 @@ async function cloudStart(silent){
     if(silent){ setCloudStat('Not signed in — click here to sign in & sync'); return; }   /* silent attempt failed: no gate, one-click available */
     if(err) err.textContent = 'Sign-in failed: ' + (e && e.message || 'error') + '. Check that your email is in the test users list.';
     setCloudStat('');
-  }
+  } finally { _cloudStarting = false; }
 }
 /* periodic pull of the team folder list + metas — so new projects and Done/
    validation from other machines appear on their own (~every 45s), no F5,
